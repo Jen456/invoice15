@@ -1,0 +1,316 @@
+{% extends 'form.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% block assets_form %}
+    <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
+    <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}">
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
+    <link rel="stylesheet" href="{% static 'lib/bootstrap-touchspin-4.2.5/css/jquery.bootstrap-touchspin.css' %}"/>
+    <script src="{% static 'lib/bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js' %}"></script>
+    <script src="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
+    <script src="{% static 'sale/admin/js/form.js' %}"></script>
+{% endblock %}
+
+{% block form_fields %}
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="form-group">
+                <label>{{ form.client.label }}:</label>
+                <div class="input-group input-group-search">
+                    {{ form.client }}
+                    <div class="input-group-append">
+                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-tasks"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+                            <a class="dropdown-item btnAddClient">
+                                <i class="fas fa-plus"></i> Crear cliente
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="form-group">
+                <label>{{ form.date_joined.label }}:</label>
+                {{ form.date_joined }}
+            </div>
+        </div>
+        <div class="col-lg-2">
+            <div class="form-group">
+                <label>{{ form.receipt.label }}:</label>
+                {{ form.receipt }}
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="form-group">
+                <label>{{ form.voucher_number.label }}:</label>
+                {{ form.voucher_number }}
+            </div>
+        </div>
+    </div>
+    <div class="row content-electronic-billing">
+        <div class="col-lg-2">
+            <div class="form-group">
+                <label>{{ form.create_electronic_invoice.label }}:</label><br>
+                {{ form.create_electronic_invoice }}
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="form-group">
+                <label>{{ form.payment_method.label }}:</label>
+                {{ form.payment_method }}
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="form-group">
+                <label>{{ form.time_limit.label }}:</label>
+                {{ form.time_limit }}
+            </div>
+        </div>
+    </div>
+    <div class="card p-4">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="form-group">
+                    <label>Búsqueda de productos:</label>
+                    <div class="input-group input-group-search">
+                        <input type="text" class="form-control" autocomplete="off" name="search_product" placeholder="Ingrese el nombre de un producto">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-tasks"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+                                <a class="dropdown-item btnSearchProducts">
+                                    <i class="fas fa-search"></i> Buscar productos
+                                </a>
+                                <a class="dropdown-item btnClearProducts">
+                                    <i class="fas fa-times"></i> Limpiar búsqueda
+                                </a>
+                                <a class="dropdown-item btnRemoveAllProducts">
+                                    <i class="fas fa-trash-alt"></i> Borrar todo
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-12">
+                <table style="width:100%;" class="table table-bordered table-sm" id="tblProducts">
+                    <thead>
+                    <tr>
+                        <th style="width: 5%;">Eliminar</th>
+                        <th style="width: 5%;">Código</th>
+                        <th style="width: 20%;">Producto</th>
+                        <th style="width: 5%;">Stock</th>
+                        <th style="width: 15%;">Cantidad</th>
+                        <th style="width: 15%;">P./Unitario</th>
+                        <th style="width: 15%;">Descuento</th>
+                        <th style="width: 15%;">Total</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="row d-flex flex-row-reverse">
+            <div class="col-lg-5">
+                <table class="table table-bordered table-sm">
+                    <tbody>
+                    <tr>
+                        <td><b>{{ form.subtotal_0.label|upper }}</b></td>
+                        <td>{{ form.subtotal_0 }}</td>
+                    </tr>
+                    <tr>
+                        <td><b>{{ form.subtotal_12.label|upper }} {{ company.iva|safe }}%</b></td>
+                        <td>{{ form.subtotal_12 }}</td>
+                    </tr>
+                    <tr>
+                        <td><b>{{ form.total_dscto.label|upper }}</b></td>
+                        <td>{{ form.total_dscto }}</td>
+                    </tr>
+                    <tr>
+                        <td><b>{{ form.iva.label|upper }}</b></td>
+                        <td>{{ form.iva }}</td>
+                    </tr>
+                    <tr>
+                        <td><b>{{ form.total_iva.label|upper }}</b></td>
+                        <td>{{ form.total_iva }}</td>
+                    </tr>
+                    <tr>
+                        <td><b>{{ form.total.label|upper }}</b></td>
+                        <td>{{ form.total }}</td>
+                    </tr>
+                    <tr>
+                        <td><b>{{ form.payment_type.label|upper }}</b></td>
+                        <td>
+                            <div class="form-group mb-0">
+                                {{ form.payment_type }}
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="input_sale">
+                        <td><b>{{ form.cash.label|upper }}</b></td>
+                        <td>
+                            <div class="form-group mb-0">
+                                {{ form.cash }}
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="input_sale">
+                        <td><b>{{ form.change.label|upper }}</b></td>
+                        <td>
+                            <div class="form-group mb-0">
+                                {{ form.change }}
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="input_sale" style="display: none;">
+                        <td><b>{{ form.end_credit.label|upper }}</b></td>
+                        <td>
+                            <div class="form-group mb-0">
+                                {{ form.end_credit }}
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block buttons %}
+    <button type="submit" class="btn btn-primary btn-flat">
+        <i class="fas fa-file-invoice-dollar"></i> Generar Venta
+    </button>
+    <a class="btn btn-success btn-flat btnAdditionalInfo">
+        <i class="fas fa-folder-plus"></i> Agregar información adicional a la factura
+    </a>
+    <a href="{{ list_url }}" class="btn btn-danger btn-flat">
+        <i class="fas fa-times"></i> Cancelar
+    </a>
+{% endblock %}
+
+{% block content_form_before %}
+    <div id="myModalSearchProducts" tabindex="-1" class="modal fade" role="dialog">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold">
+                        <i class="fa fa-search"></i> Búsqueda de productos
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <table style="width:100%;" class="table table-bordered table-sm" id="tblSearchProducts">
+                            <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>P./Unitario</th>
+                                <th>P./Promoción</th>
+                                <th>Stock</th>
+                                <th>Agregar</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="myModalClient" tabindex="-2" class="modal fade" role="dialog">
+        <form class="form" id="frmClient" method="POST" autocomplete="off">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title font-weight-bold">
+                            <i class="fa fa-plus"></i> Nuevo registro de un cliente
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="container-fluid">
+                            {% for field in frmUser.visible_fields %}
+                                <div class="form-group">
+                                    <label>{{ field.label }}:</label>
+                                    {{ field }}
+                                </div>
+                            {% endfor %}
+                            {% for field in frmClient.visible_fields %}
+                                <div class="form-group">
+                                    <label>{{ field.label }}:</label>
+                                    {{ field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary btn-flat btn-block">
+                            <i class="fas fa-save"></i> Guardar registro
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+    </div>
+    <div id="myModalAdditionalInfo" tabindex="-3" class="modal fade" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold">
+                        <i class="fas fa-folder-plus"></i> Información adicional
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <table style="width:100%;" class="table table-bordered table-sm" id="tblAdditionalInfo">
+                            <thead>
+                            <tr>
+                                <th style="width: 15%;">Eliminar</th>
+                                <th style="width: 35%;">Nombre</th>
+                                <th style="width: 50%;">Descripción</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <a class="btn btn-primary btn-flat btnCreateAdditionalInfo">
+                        <i class="fas fa-plus"></i> Nuevo campo
+                    </a>
+                    <a class="btn btn-danger btn-flat btnRemoveAdditionalInfo">
+                        <i class="fas fa-trash"></i> Eliminar todos los campos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="application/javascript">
+        sale.detail.iva = {{ company.iva|safe }};
+        $(function () {
+            sale.listProducts();
+            {% if final_consumer %}
+                select_client.select2('trigger', 'select', {data: {{ final_consumer|safe }}});
+            {% endif %}
+        });
+    </script>
+{% endblock %}

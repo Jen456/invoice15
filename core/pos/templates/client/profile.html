@@ -1,0 +1,26 @@
+{% extends 'client/create.html' %}
+{% load static %}
+{% block assets_form %}
+    <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
+    <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}">
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
+    <script src="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
+    <script src="{% static 'client/js/profile.js' %}"></script>
+{% endblock %}
+
+{% block form_fields %}
+    {% for field in frmUser.visible_fields %}
+        <div class="form-group">
+            <label>{{ field.label }}:</label>
+            {{ field }}
+        </div>
+    {% endfor %}
+    {% for field in form.visible_fields %}
+        <div class="form-group">
+            <label>{{ field.label }}:</label>
+            {{ field }}
+        </div>
+    {% endfor %}
+{% endblock %}

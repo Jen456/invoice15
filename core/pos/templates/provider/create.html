@@ -1,0 +1,43 @@
+{% extends 'form.html' %}
+{% load static %}
+{% block assets_form %}
+    <script src="{% static 'provider/js/form.js' %}"></script>
+{% endblock %}
+
+{% block form_fields %}
+    {% for field in form.visible_fields %}
+        {% if field.name == 'ruc' %}
+            <div class="form-group">
+                <label>{{ field.label }}:</label>
+                <div class="input-group mb-3">
+                    {{ field }}
+                    <div class="input-group-append">
+                        <button class="btn btn-secondary btnSearchRUCInSRI" name="search_ruc_sri" disabled type="button"><i class="fas fa-search"></i> Buscar RUC con el SRI</button>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="form-group">
+                <label>{{ field.label }}:</label>
+                {{ field }}
+            </div>
+        {% endif %}
+    {% endfor %}
+    <div class="modal fade" id="myModalSRI" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold">
+                        <i class="fas fa-search"></i> Consulta de RUC en el SRI
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p id="details"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

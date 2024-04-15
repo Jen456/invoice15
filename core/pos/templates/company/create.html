@@ -1,0 +1,53 @@
+{% extends 'form.html' %}
+{% load static %}
+{% load pos_extras %}
+{% block assets_form %}
+    <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
+    <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}">
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
+    <link rel="stylesheet" href="{% static 'lib/bootstrap-touchspin-4.2.5/css/jquery.bootstrap-touchspin.css' %}"/>
+    <script src="{% static 'lib/bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js' %}"></script>
+    <script src="{% static 'company/js/form.js' %}"></script>
+{% endblock %}
+
+{% block form_fields %}
+    {% for fields in form|split_form_fields:4 %}
+        <div class="row">
+            {% for field in fields %}
+                <div class="col">
+                    <div class="form-group">
+                        <label for="{{ field.label }}" class="font-weight-bold">{{ field.label }}:</label>
+                        {% if field.name == 'electronic_signature' %}
+                            <div class="input-group mb-3">
+                                {{ field }}
+                                <div class="input-group-append">
+                                    <button class="btn btn-secondary btnLoadCertificate" disabled type="button"><i class="fa-solid fa-file-circle-check"></i></button>
+                                </div>
+                            </div>
+                        {% else %}
+                            {{ field }}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+    <div class="modal fade" id="myModalCertificate" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold">
+                        <i class="fa-solid fa-file-circle-check"></i> Información de la firma electrónica
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid" id="content-certificate"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,239 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="{% static 'lib/bootstrap-4.6.0/css/bootstrap.min.css' %}"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 0 auto;
+            padding-left: 10px;
+            padding-right: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+        }
+
+        .content {
+            margin-top: 0;
+            padding: 0 0 5px 10px;
+            width: 78%;
+            display: flex;
+            flex-flow: row wrap;
+        }
+
+        .col-50 {
+            flex: 1;
+            width: 374px;
+            padding: 5px;
+        }
+
+        .col-100 {
+            flex: 1;
+            width: 748px;
+            padding: 5px;
+        }
+
+        .logo {
+            width: 100%;
+            height: 120px;
+            margin-bottom: 20px;
+        }
+
+        .text-content {
+            color: black;
+            background-color: #f6f6f6;
+            font-weight: normal;
+        }
+
+        .text-content p {
+            margin-bottom: 2px;
+            padding: 2px 10px;
+        }
+
+        .barcode {
+            width: 100%;
+            height: 188px;
+        }
+
+        .details th, details td {
+            padding: 5px 1px 1px 1px;
+            text-transform: uppercase;
+        }
+
+        .details tbody tr td {
+            border: 1px solid black;
+        }
+
+        .details thead tr {
+            background-color: #000000;
+            color: white;
+        }
+
+        .details thead tr th {
+            border: 1px solid #ffffff !important;
+        }
+
+        .totals {
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+<div class="content mt-3">
+    <div class="col-50">
+        <img class="img-fluid d-block mx-auto logo" alt="" src="{{ credit_note.company.get_image }}">
+        <div class="text-content"><p><b>Emisor:</b> {{ credit_note.company.tradename }}</p></div>
+        <div class="text-content"><p><b>Ruc:</b> {{ credit_note.company.ruc }}</p></div>
+        <div class="text-content"><p><b>Teléfono:</b> {{ credit_note.company.mobile }}</p></div>
+        <div class="text-content"><p><b>Matriz:</b> {{ credit_note.company.main_address }}</p></div>
+        <div class="text-content"><p><b>Correo:</b> {{ credit_note.company.email }}</p></div>
+        <div class="text-content"><p><b>Obligado a llevar contabilidad:</b> {{ credit_note.company.obligated_accounting }}</p></div>
+        <div class="text-content"><p><b>Contribuyente Especial No.:</b> {{ credit_note.company.special_taxpayer }}</p></div>
+    </div>
+    <div class="col-50">
+        <div class="text-content">
+            <table>
+                <thead>
+                <tr>
+                    <th style="width: 50%;; text-align: left;">
+                        <p style="width: 100%; font-size: 16px; margin-bottom: 0"><b>Nota de Credito</b></p>
+                    </th>
+                    <th style="width: 50%;; text-align: right;">
+                        <p style="width: 100%; font-size: 22px; margin-bottom: 0"><b>{{ credit_note.voucher_number_full }}</b></p>
+                    </th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+        <div class="text-content">
+            <p>
+                <b>Autorización:</b><br>
+                <span style="font-size: 12px">{{ credit_note.access_code }}</span>
+            </p>
+        </div>
+        <div class="text-content">
+            <p>
+                <b>Fecha de autorización:</b><br>
+                {{ credit_note.get_authorization_date }}
+            </p>
+        </div>
+        <div class="text-content">
+            <p>
+                <b>Clave de acceso:</b><br>
+                <img alt="" class="img-fluid barcode" src="{{ access_code_barcode }}">
+            </p>
+        </div>
+    </div>
+</div>
+<div class="content">
+    <div class="col-50">
+        <div class="text-content"><p><b>Razón Social:</b> {{ credit_note.sale.client.user.names }}</p></div>
+        <div class="text-content"><p><b>Fecha Emisión:</b> {{ credit_note.sale.get_date_joined }}</p></div>
+        <div class="text-content"><p><b>Correo electrónico:</b> {{ credit_note.sale.client.user.email }}</p></div>
+        <div class="text-content"><p><b>Comprobante que se modifica:</b> FACTURA {{ credit_note.sale.voucher_number_full }}</p></div>
+        <div class="text-content"><p><b>Razón de modificación:</b> {{ credit_note.motive }}</p></div>
+    </div>
+    <div class="col-50">
+        <div class="text-content"><p><b>RUC/CI:</b> {{ credit_note.sale.client.dni }}</p></div>
+        <div class="text-content"><p><b>Teléfono::</b> {{ credit_note.sale.client.mobile }}</p></div>
+        <div class="text-content"><p><b>Dirección:</b> {{ credit_note.sale.client.address }}</p></div>
+        <div class="text-content"><p><b>Fecha de emisión (Comprobante a modificar):</b> {{ credit_note.get_date_joined }}</p></div>
+    </div>
+</div>
+<div class="content">
+    <div class="col-100">
+        <table class="details" style="width: 100%;">
+            <thead>
+            <tr>
+                <th class="text-center" style="width: 15%;">COD.</th>
+                <th class="text-center" style="width: 5%;">CANT.</th>
+                <th class="text-center" style="width: 35%;">DESCRIPCION</th>
+                <th class="text-center" style="width: 15%;">P.U.</th>
+                <th class="text-center" style="width: 15%;">DSCTO</th>
+                <th class="text-center" style="width: 15%;">TOTAL</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for detail in credit_note.creditnotedetail_set.all %}
+                <tr>
+                    <td class="text-center">{{ detail.product.code }}</td>
+                    <td class="text-center">{{ detail.cant }}</td>
+                    <td>{{ detail.product.get_short_name }}</td>
+                    <td class="text-center">{{ detail.price|floatformat:2 }}</td>
+                    <td class="text-center">{{ detail.total_dscto|floatformat:2 }}</td>
+                    <td class="text-center">{{ detail.total|floatformat:2 }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="content">
+    <div class="col-50">
+        <table class="details" style="width: 100%;">
+            <thead>
+            <tr>
+                <th colspan="2" class="text-center text-uppercase">información adicional</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td class="text-left"><b>Teléfono</b></td>
+                <td class="text-center">{{ credit_note.sale.client.mobile }}</td>
+            </tr>
+            <tr>
+                <td class="text-left"><b>Email</b></td>
+                <td class="text-center">{{ credit_note.sale.client.user.email }}</td>
+            </tr>
+            <tr>
+                <td class="text-left"><b>Dirección</b></td>
+                <td class="text-center">{{ credit_note.sale.client.address }}</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="col-50">
+        <table class="totals" style="width: 100%;">
+            <thead>
+            <tr>
+                <th style="width: 90%;"></th>
+                <th style="width: 10%;"></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td class="float-right font-weight-bold">Subtotal sin impuestos</td>
+                <td class="text-right">{{ credit_note.get_subtotal_without_taxes|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td class="float-right font-weight-bold">Descuentos</td>
+                <td class="text-right">{{ credit_note.total_dscto|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td class="float-right font-weight-bold">Subtotal {{ credit_note.get_iva_percent }}%</td>
+                <td class="text-right">{{ credit_note.subtotal_12|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td class="float-right font-weight-bold">Subtotal 0%</td>
+                <td class="text-right">{{ credit_note.subtotal_0|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td class="float-right font-weight-bold">IVA {{ credit_note.get_iva_percent }}%</td>
+                <td class="text-right">{{ credit_note.total_iva|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td class="float-right font-weight-bold">Total</td>
+                <td class="text-right">{{ credit_note.total|floatformat:2 }}</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

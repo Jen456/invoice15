@@ -1,0 +1,198 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="{% static 'lib/bootstrap-4.6.0/css/bootstrap.min.css' %}"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        @page {
+            width: 58mm;
+            height: {{ height }}px;
+            margin: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            padding: 0;
+            margin: 0;
+            font-size: 6px;
+            color: black !important;
+            min-height: 100%;
+        }
+
+        .content {
+            width: 58mm;
+            padding: 10px;
+        }
+
+        .head-name {
+            margin-top: 10px;
+            font-size: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 0;
+            text-align: center;
+        }
+
+        .head-voucher-number {
+            font-size: 10px;
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 0;
+            font-weight: bold;
+        }
+
+        .head-details {
+            margin-top: 0;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .head-data {
+            text-align: left;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .table {
+            color: black;
+        }
+
+        #details thead tr th {
+            border-bottom: 1px outset black;
+        }
+
+        .table td, .table th {
+            padding: 0;
+            color: black;
+            font-size: 5px;
+            text-transform: uppercase;
+        }
+
+        .img-logo {
+            margin-top: 5px;
+            width: 20px;
+            height: 20px;
+            margin-bottom: 5px;
+        }
+
+        .terms {
+            text-align: center;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+<div class="content">
+    <img alt="" src="{{ sale.company.get_image }}" class="img-fluid d-block mx-auto img-logo">
+    <h1 class="head-name">{{ sale.company.tradename|upper }}</h1>
+    <p class="text-center head-details">
+        Dirección matriz: {{ sale.company.establishment_address }}<br>
+        Ruc: {{ sale.company.ruc }}<br>
+        {% if sale.is_invoice %}
+            Obligado a llevar contabilidad: {{ sale.company.get_obligated_accounting_display }}<br>
+        {% endif %}
+        Teléfono: {{ sale.company.phone }} / Celular: {{ sale.company.mobile }}
+    </p>
+    <p class="text-center head-voucher-number">TICKET N° {{ sale.voucher_number }}</p>
+    <p class="head-data">
+        {% if sale.is_invoice %}
+            <b>Fecha de autorización:</b> {{ sale.get_authorization_date }}<br>
+            <b>Fecha de emisión:</b> {{ sale.get_date_joined }}<br>
+        {% endif %}
+        {% if sale.is_invoice %}
+            <b>Factura:</b> {{ sale.voucher_number_full }}<br>
+            <b>Ambiente:</b> {{ sale.company.get_environment_type_display }}<br>
+            <b>Emisión:</b> {{ sale.company.get_emission_type_display }}<br>
+            <b>Clave de acceso:</b> {{ sale.access_code }}<br>
+        {% endif %}
+        <b>Cliente:</b> {{ sale.client.user.names }}<br>
+        <b>Número de cédula:</b> {{ sale.client.dni }}<br>
+        {% if sale.is_invoice %}
+            <b>Método de pago:</b> {{ sale.get_payment_method_display }}
+        {% endif %}
+    </p>
+    <table class="table table-borderless table-sm" id="details" style="margin-bottom: 0">
+        <thead>
+        <tr>
+            <th style="width: 15%;">Cantidad</th>
+            <th style="width: 40%;">Descripción</th>
+            <th style="width: 15%;">P./Unitario</th>
+            <th style="width: 15%;">Dscto</th>
+            <th style="width: 15%;" class="text-right">Subtotal</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for detail in sale.saledetail_set.all %}
+            <tr>
+                <td>{{ detail.cant }}</td>
+                <td>{{ detail.product.name }}</td>
+                <td>{{ detail.price|floatformat:2 }}</td>
+                <td>{{ detail.total_dscto|floatformat:2 }}</td>
+                <td class="text-right">{{ detail.total|floatformat:2 }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <table class="table table-borderless table-sm text-uppercase">
+        <thead>
+        <tr>
+            <th style="width: 80%;"></th>
+            <th style="width: 20%;"></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td class="float-right font-weight-bold">Subtotal sin impuestos</td>
+            <td class="text-right">{{ sale.get_subtotal_without_taxes|floatformat:2 }}</td>
+        </tr>
+        <tr>
+            <td class="float-right font-weight-bold">Descuentos</td>
+            <td class="text-right">{{ sale.total_dscto|floatformat:2 }}</td>
+        </tr>
+        <tr>
+            <td class="float-right font-weight-bold">Subtotal {{ sale.get_iva_percent }}%%</td>
+            <td class="text-right">{{ sale.subtotal_12|floatformat:2 }}</td>
+        </tr>
+        <tr>
+            <td class="float-right font-weight-bold">Subtotal 0%</td>
+            <td class="text-right">{{ sale.subtotal_0|floatformat:2 }}</td>
+        </tr>
+        <tr>
+            <td class="float-right font-weight-bold">IVA {{ sale.get_iva_percent }}%</td>
+            <td class="text-right">{{ sale.total_iva|floatformat:2 }}</td>
+        </tr>
+        <tr>
+            <td class="float-right font-weight-bold">Total</td>
+            <td class="text-right">{{ sale.total|floatformat:2 }}</td>
+        </tr>
+        {% if sale.payment_type == 'efectivo' %}
+            <tr>
+                <td class="float-right font-weight-bold">Efectivo</td>
+                <td class="text-right">{{ sale.cash|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td class="float-right font-weight-bold">Cambio</td>
+                <td class="text-right">{{ sale.change|floatformat:2 }}</td>
+            </tr>
+        {% else %}
+            <tr>
+                <td class="float-right font-weight-bold">Fecha limite de credito</td>
+                <td class="text-right">{{ sale.get_end_credit }}</td>
+            </tr>
+        {% endif %}
+        </tbody>
+    </table>
+    {% if sale.is_invoice %}
+        <p class="terms">
+            Contribuyente Especial No.: {{ sale.company.special_taxpayer }}<br>
+            Para acceder a sus documentos electrónicos debe ingresar al portal {{ sale.company.website }}<br>
+            Con su usuario {{ sale.client.user.username }} y clave {{ sale.client.user.username }}.<br>
+            Si tiene dificultad para ingresar o descargar sus comprobantes puede comunicarse al correo {{ sale.company.email }}
+        </p>
+    {% endif %}
+</div>
+</body>
+</html>

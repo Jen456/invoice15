@@ -1,0 +1,33 @@
+{% extends 'form.html' %}
+{% load static %}
+{% block assets_form %}
+    <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
+    <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}">
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
+    <link rel="stylesheet" href="{% static 'lib/bootstrap-touchspin-4.2.5/css/jquery.bootstrap-touchspin.css' %}"/>
+    <script src="{% static 'lib/bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js' %}"></script>
+    <script src="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
+    <script src="{% static 'debts_pay/js/form.js' %}"></script>
+{% endblock %}
+
+{% block form_fields %}
+    <div class="form-group">
+        <label>{{ form.debts_pay.label }}:</label>
+        {{ form.debts_pay }}
+    </div>
+    <div class="form-group">
+        <label>{{ form.date_joined.label }}:</label>
+        {{ form.date_joined }}
+    </div>
+    <div class="form-group">
+        <label>{{ form.valor.label }}:</label> <span class="badge badge-secondary badge-pill deuda">Deuda: $0.00</span>
+        {{ form.valor }}
+    </div>
+    <div class="form-group">
+        <label>{{ form.description.label }}:</label>
+        {{ form.description }}
+    </div>
+{% endblock %}
+
