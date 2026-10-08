@@ -10,7 +10,7 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media
-**/migrations/*
+# Las migraciones se versionan desde la línea base (rama plataforma)
 staticfiles/*
 logs/*
 .idea/*
