@@ -15,8 +15,8 @@
                         <i class="fas fa-folder-open"></i> Módulos
                     </a>
                     <ul class="dropdown-menu border-0 shadow" style="left: 0; right: inherit;">
-                        {% if request.session.group.get_session_module_types %}
-                            {% for module_type in request.session.group.get_session_module_types %}
+                        {% if session_group.get_session_module_types %}
+                            {% for module_type in session_group.get_session_module_types %}
                                 <li class="dropdown-submenu dropdown-hover">
                                     <a role="button" data-toggle="dropdown" class="dropdown-item dropdown-toggle">
                                         <i class="{{ module_type.icon }}"></i> {{ module_type.name }}
@@ -29,7 +29,7 @@
                                 </li>
                             {% endfor %}
                         {% endif %}
-                        {% for module in request.session.group.get_session_modules %}
+                        {% for module in session_group.get_session_modules %}
                             <li><a href="{{ module.url }}" class="dropdown-item"><i class="{{ module.icon }}"></i> {{ module.name }}</a></li>
                         {% endfor %}
                     </ul>
@@ -58,7 +58,7 @@
                         <p class="text-sm">Perfil actual</p>
                         <p class="text-sm text-muted">
                             {% if request.user.groups.all %}
-                                {{ request.session.group.name }}
+                                {{ session_group.name }}
                             {% else %}
                                 Sin perfil
                             {% endif %}
@@ -74,7 +74,7 @@
             {% if request.user.has_at_least_one_group %}
                 <li class="nav-item dropdown">
                     <a class="nav-link" data-toggle="dropdown">
-                        <i class="fa-solid fa-user-shield"></i> Perfil: {{ request.session.group.name }}
+                        <i class="fa-solid fa-user-shield"></i> Perfil: {{ session_group.name }}
                         {% if request.user.has_more_than_one_group %}
                             <i class="fas fa-caret-down"></i>
                         {% endif %}
@@ -82,7 +82,7 @@
                      {% if request.user.has_more_than_one_group %}
                         <div class="dropdown-menu dropdown-menu-right">
                             {% for group in user.groups.all %}
-                                {% if group.id != request.session.group.id %}
+                                {% if group.id != session_group.id %}
                                     <a href="{% url 'user_choose_profile' group.id %}" class="dropdown-item">
                                         {{ group.name }}
                                     </a>

@@ -4,13 +4,14 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Group
-from django.http import HttpResponseRedirect, HttpResponse
+from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView, FormView, View
 
 from config import settings
 from core.login.forms import UpdatePasswordForm
 from core.security.mixins import GroupPermissionMixin, GroupModuleMixin
+from core.security.session import get_group, set_group
 from core.user.forms import UserForm, ProfileForm, User
 
 
@@ -27,6 +28,12 @@ class UserListView(GroupPermissionMixin, FormView):
     def post(self, request, *args, **kwargs):
         data = {}
         action = request.POST['action']
+        if action == 'login_with_user' and not request.user.is_superuser:
+            return JsonResponse({'error': 'Solo un superusuario puede entrar como otro usuario'}, status=403)
+        if action in ('reset_password', 'update_password'):
+            group = get_group(request)
+            if group is None or not group.permissions.filter(codename='change_user').exists():
+                return JsonResponse({'error': 'Tu perfil no cuenta con el permiso necesario'}, status=403)
         try:
             if action == 'search':
                 data = []
@@ -245,9 +252,7 @@ class UserUpdatePasswordView(GroupModuleMixin, FormView):
 class UserChooseProfileView(LoginRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
-        try:
-            group = Group.objects.filter(id=self.kwargs['pk'])
-            request.session['group'] = None if not group.exists() else group[0]
-        except:
-            pass
+        group = request.user.groups.filter(id=self.kwargs['pk']).first()
+        if group is not None:
+            set_group(request, group)
         return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)

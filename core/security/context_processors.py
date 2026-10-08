@@ -2,6 +2,7 @@ from datetime import datetime
 
 from core.pos.models import Company
 from core.security.models import Dashboard
+from core.security.session import get_group, get_module
 
 
 def site_settings(request):
@@ -13,3 +14,10 @@ def site_settings(request):
         'company': Company.objects.first()
     }
     return parameters
+
+
+def session_profile(request):
+    return {
+        'session_group': get_group(request),
+        'session_module': get_module(request),
+    }

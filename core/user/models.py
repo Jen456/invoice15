@@ -47,21 +47,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         return f'{settings.STATIC_URL}img/default/empty.png'
 
     def get_group_id_session(self):
-        try:
-            request = get_current_request()
-            return int(request.session['group'].id)
-        except:
-            return 0
+        from core.security.session import get_group
+        request = get_current_request()
+        group = get_group(request) if request is not None else None
+        return group.id if group else 0
 
     def set_group_session(self):
-        try:
-            request = get_current_request()
-            groups = request.user.groups.all()
-            if groups:
-                if 'group' not in request.session:
-                    request.session['group'] = groups[0]
-        except:
-            pass
+        from core.security.session import ensure_group
+        request = get_current_request()
+        if request is not None and request.user == self:
+            ensure_group(request)
 
     def create_or_update_password(self, password):
         if self.pk is None:

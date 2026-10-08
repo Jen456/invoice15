@@ -1,66 +1,77 @@
-from crum import get_current_request
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 
 from config import settings
+from core.security.session import get_group, set_module
+
+PERMISSION_DENIED_MESSAGE = 'Tu perfil no cuenta con el permiso necesario para ingresar'
 
 
-class GroupPermissionMixin(LoginRequiredMixin, object):
-    redirect_field_name = settings.LOGIN_REDIRECT_URL
+class SessionGroupMixin(LoginRequiredMixin):
+    """Base de los mixins de permisos.
+
+    La comprobación se hace en dispatch(), así que cubre GET, POST y cualquier
+    otro método: las acciones AJAX por POST exigen el mismo permiso que la
+    pantalla que las contiene.
+    """
+
+    def get_last_url(self):
+        url_last = self.request.session.get('url_last')
+        if url_last and url_last != self.request.path:
+            return url_last
+        return settings.LOGIN_REDIRECT_URL
+
+    def deny(self, request):
+        if request.method == 'GET':
+            messages.error(request, PERMISSION_DENIED_MESSAGE)
+            return HttpResponseRedirect(self.get_last_url())
+        return JsonResponse({'error': PERMISSION_DENIED_MESSAGE}, status=403)
+
+    def get_group_module(self, group):
+        raise NotImplementedError
+
+    def has_access(self, group):
+        raise NotImplementedError
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        group = get_group(request)
+        if group is None:
+            if request.method == 'GET':
+                return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
+            return JsonResponse({'error': PERMISSION_DENIED_MESSAGE}, status=403)
+        if not self.has_access(group):
+            return self.deny(request)
+        if request.method == 'GET':
+            group_module = self.get_group_module(group)
+            set_module(request, group_module.module if group_module else None)
+            if group_module:
+                request.session['url_last'] = request.path
+        return super().dispatch(request, *args, **kwargs)
+
+
+class GroupPermissionMixin(SessionGroupMixin):
     permission_required = None
 
     def get_permissions(self):
-        permissions = []
         if isinstance(self.permission_required, str):
-            permissions.append(self.permission_required)
-        else:
-            permissions = list(self.permission_required)
-        return permissions
+            return [self.permission_required]
+        return list(self.permission_required)
 
-    def get_last_url(self):
-        request = get_current_request()
-        if 'url_last' in request.session:
-            if request.session['url_last'] != request.path:
-                return request.session['url_last']
-        return settings.LOGIN_REDIRECT_URL
-
-    def get(self, request, *args, **kwargs):
-        if 'group' not in request.session:
-            return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
-        request.session['module'] = None
-        group = request.session['group']
+    def has_access(self, group):
         permission_list = self.get_permissions()
-        queryset = group.permissions.filter(codename__in=permission_list)
-        if queryset.count() == len(permission_list):
-            group_module = group.groupmodule_set.filter(module__permissions__codename__in=[permission_list[0]]).first()
-            if group_module:
-                request.session['url_last'] = request.path
-                request.session['module'] = group_module.module
-            return super().get(request, *args, **kwargs)
-        messages.error(request, 'Tu perfil no cuenta con el permiso necesario para ingresar')
-        return HttpResponseRedirect(self.get_last_url())
+        return group.permissions.filter(codename__in=permission_list).count() == len(set(permission_list))
+
+    def get_group_module(self, group):
+        return group.groupmodule_set.filter(module__permissions__codename__in=[self.get_permissions()[0]]).first()
 
 
-class GroupModuleMixin(LoginRequiredMixin, object):
-    redirect_field_name = settings.LOGIN_REDIRECT_URL
+class GroupModuleMixin(SessionGroupMixin):
 
-    def get_last_url(self):
-        request = get_current_request()
-        if 'url_last' in request.session:
-            if request.session['url_last'] != request.path:
-                return request.session['url_last']
-        return settings.LOGIN_REDIRECT_URL
+    def has_access(self, group):
+        return self.get_group_module(group) is not None
 
-    def get(self, request, *args, **kwargs):
-        if 'group' not in request.session:
-            return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
-        request.session['module'] = None
-        group = request.session['group']
-        group_module = group.groupmodule_set.filter(module__url=request.path).first()
-        if group_module:
-            request.session['url_last'] = request.path
-            request.session['module'] = group_module.module
-            return super().get(request, *args, **kwargs)
-        messages.error(request, 'Tu perfil no cuenta con el permiso necesario para ingresar')
-        return HttpResponseRedirect(self.get_last_url())
+    def get_group_module(self, group):
+        return group.groupmodule_set.filter(module__url=self.request.path).first()

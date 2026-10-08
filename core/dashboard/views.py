@@ -24,6 +24,8 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
     def post(self, request, *args, **kwargs):
         data = {}
+        if request.user.is_client():
+            return HttpResponse(json.dumps({'error': 'Sin permiso'}), content_type='application/json', status=403)
         action = request.POST['action']
         try:
             if action == 'get_graph_stock_products':
