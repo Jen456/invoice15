@@ -1,0 +1,10 @@
+/home/facturaporaqui/logs/*/app.log {
+    daily
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    su facturaporaqui facturaporaqui
+    create 0640 facturaporaqui facturaporaqui
+}
