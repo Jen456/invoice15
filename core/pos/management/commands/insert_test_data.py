@@ -1,11 +1,12 @@
 import json
 import os
 import random
+import secrets
 import string
 from os.path import basename
 
 import django
-from django.core.management import BaseCommand
+from django.core.management import BaseCommand, CommandError
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
@@ -15,32 +16,40 @@ from core.pos.models import *
 
 
 class Command(BaseCommand):
-    help = "It allows me to insert test data into the software"
+    help = (
+        'Carga datos FICTICIOS de demostración (empresa, productos, proveedores, compras y clientes). '
+        'No incluye firma electrónica ni credenciales de correo. Nunca en producción.'
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument('--confirmar-datos-ficticios', action='store_true',
+                            help='Obligatorio: confirma que se cargan datos ficticios.')
 
     def handle(self, *args, **options):
+        if not options['confirmar_datos_ficticios']:
+            raise CommandError('Indica --confirmar-datos-ficticios para cargar datos de demostración.')
+        if getattr(settings, 'FPA_ENTORNO', '') == 'produccion':
+            raise CommandError('No se cargan datos de demostración en producción.')
+        if Company.objects.exists():
+            raise CommandError('Ya existe una empresa: no se mezclan datos de demostración con datos reales.')
         company = Company.objects.create(
-            business_name='VELEZ AGUIRRE SIMON EDUARDO',
-            tradename='PUNTOHELP',
-            ruc='0921637781001',
-            establishment_code='003',
-            issuing_point_code='003',
+            business_name='EMPRESA DE DEMOSTRACIÓN S.A.',
+            tradename='DEMOSTRACIÓN',
+            ruc='0990000000001',
+            establishment_code='001',
+            issuing_point_code='001',
             special_taxpayer='000',
-            main_address='5 DE OCTUBRE Y 10 DE AGOSTO NARANJITO,GUAYAS',
-            establishment_address='5 DE OCTUBRE Y 10 DE AGOSTO NARANJITO,GUAYAS',
-            mobile='0996555528',
-            phone='2977557',
-            email='puntohelpsa@gmail.com',
-            website='https://puntohelp.com',
-            description='VENTA AL POR MAYOR DE COMPUTADORAS Y EQUIPO PERIFÉRICO.',
+            main_address='AV. FICTICIA 123, GUAYAQUIL',
+            establishment_address='AV. FICTICIA 123, GUAYAQUIL',
+            mobile='0990000000',
+            phone='042000000',
+            email='demo@example.com',
+            website='https://example.com',
+            description='DATOS FICTICIOS PARA PRUEBAS.',
             iva=15.00,
-            electronic_signature_key='224426rajansn',
-            email_host_user='factorapos19@gmail.com',
-            email_host_password='nbkqthnfkysfuudn'
         )
         image_path = f'{settings.BASE_DIR}{settings.STATIC_URL}img/default/logo.png'
         company.image.save(basename(image_path), content=File(open(image_path, 'rb')), save=False)
-        electronic_signature_path = f'{settings.BASE_DIR}/deploy/files/firma.p12'
-        company.electronic_signature.save(basename(electronic_signature_path), content=File(open(electronic_signature_path, 'rb')), save=False)
         company.save()
 
         numbers = list(string.digits)
@@ -101,34 +110,31 @@ class Command(BaseCommand):
         user_data = [
             {
                 'names': 'Consumidor Final',
-                'email': 'davilawilliam94@gmail.com',
+                'email': 'consumidor.final@example.com',
                 'username': '9999999999999',
-                'password': '9999999999999',
                 'mobile': '9999999999',
-                'birthdate': date(1994, 10, 19),
-                'address': 'Milagro, cdla. Paquisha',
+                'birthdate': date(1990, 1, 1),
+                'address': 'S/N',
                 'identification_type': IDENTIFICATION_TYPE[3][0],
                 'send_email_invoice': False
             },
             {
-                'names': 'William Jair Dávila Vargas',
-                'email': 'wdavilav1994@gmail.com',
-                'username': '0928363993',
-                'password': '0928363993',
-                'mobile': '0979014551',
-                'birthdate': date(1994, 10, 19),
-                'address': 'Milagro, cdla. Paquisha',
+                'names': 'Cliente Ficticio Uno',
+                'email': 'cliente.uno@example.com',
+                'username': '0900000001',
+                'mobile': '0990000001',
+                'birthdate': date(1990, 1, 1),
+                'address': 'Guayaquil',
                 'identification_type': IDENTIFICATION_TYPE[0][0],
                 'send_email_invoice': False
             },
             {
-                'names': 'LIBRIMUNDI LIBRERÍA INTERNACIONAL S.A.',
-                'email': 'williamjairdavilavargas@gmail.com',
-                'username': '1791411293001',
-                'password': '1791411293001',
-                'mobile': '0979014552',
-                'birthdate': date(1994, 10, 19),
-                'address': 'Milagro, cdla. Paquisha',
+                'names': 'COMERCIAL FICTICIA S.A.',
+                'email': 'comercial.ficticia@example.com',
+                'username': '0990000002001',
+                'mobile': '0990000002',
+                'birthdate': date(1990, 1, 1),
+                'address': 'Quito',
                 'identification_type': IDENTIFICATION_TYPE[1][0],
                 'send_email_invoice': False
             }
@@ -142,7 +148,7 @@ class Command(BaseCommand):
                 is_active=True,
                 is_staff=True
             )
-            user.set_password(data['password'])
+            user.set_password(secrets.token_urlsafe(18))
             user.save()
             user.groups.add(Group.objects.get(pk=settings.GROUPS['client']))
 

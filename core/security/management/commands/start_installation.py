@@ -1,8 +1,9 @@
 import os
+import secrets
 from os.path import basename
 
 import django
-from django.core.management import BaseCommand
+from django.core.management import BaseCommand, CommandError
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
@@ -13,12 +14,31 @@ from core.pos.models import *
 
 
 class Command(BaseCommand):
-    help = "Allows to initiate the base software installation"
+    help = (
+        'Instalación base: módulos, perfiles Administrador y Cliente, y el usuario administrador. '
+        'La contraseña del administrador se genera al azar y solo se escribe en --archivo-credenciales (0600).'
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument('--admin-usuario', default='admin')
+        parser.add_argument('--admin-nombre', default='Administrador')
+        parser.add_argument('--admin-correo', required=True)
+        parser.add_argument('--archivo-credenciales', required=True,
+                            help='Ruta nueva donde se guarda la contraseña generada (no debe existir).')
+
+    def write_credentials(self, path, username, password):
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w') as f:
+            f.write(f'Usuario: {username}\nContraseña: {password}\n')
 
     def handle(self, *args, **options):
+        if Dashboard.objects.exists() or Module.objects.exists():
+            raise CommandError('La instalación base ya existe: no se vuelve a ejecutar.')
+        if os.path.exists(options['archivo_credenciales']):
+            raise CommandError('El archivo de credenciales ya existe: indica una ruta nueva.')
         dashboard = Dashboard.objects.create(
-            name='FACTORA POS',
-            author='William Jair Dávila Vargas',
+            name='FacturaPorAquí',
+            author='FacturaPorAquí',
             icon='fas fa-shopping-cart',
             layout=1,
             navbar='navbar-dark navbar-navy',
@@ -55,14 +75,6 @@ class Command(BaseCommand):
                 'description': 'Permite administrar los grupos de usuarios del sistema',
                 'moduletype': moduletype,
                 'permissions': list(Permission.objects.filter(content_type__model=Group._meta.label.split('.')[1].lower()))
-            },
-            {
-                'name': 'Respaldos',
-                'url': '/security/database/backups/',
-                'icon': 'fas fa-database',
-                'description': 'Permite administrar los respaldos de base de datos',
-                'moduletype': moduletype,
-                'permissions': list(Permission.objects.filter(content_type__model=DatabaseBackups._meta.label.split('.')[1].lower()))
             },
             {
                 'name': 'Conf. Dashboard',
@@ -359,18 +371,20 @@ class Command(BaseCommand):
             for permission in module.permissions.all():
                 group.permissions.add(permission)
 
+        password = secrets.token_urlsafe(18)
         user = User.objects.create(
-            names='William Jair Dávila Vargas',
-            username='admin',
-            email='davilawilliam93@gmail.com',
+            names=options['admin_nombre'],
+            username=options['admin_usuario'],
+            email=options['admin_correo'],
             is_active=True,
             is_superuser=True,
             is_staff=True
         )
-        user.set_password('hacker94')
+        user.set_password(password)
         user.save()
         user.groups.add(group)
-        print(f'Bienvenido {user.names}')
+        self.write_credentials(options['archivo_credenciales'], user.username, password)
+        print(f'Administrador {user.username} creado; contraseña en {options["archivo_credenciales"]}')
 
         group = Group.objects.create(name='Cliente')
         print(f'insertado {group.name}')
