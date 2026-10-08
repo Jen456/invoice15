@@ -1,0 +1,18 @@
+# Dependencias directas de FacturaPorAquí (se fijan en base.txt con `uv pip compile`).
+Django>=5.2,<5.3
+django-environ
+django-widget-tweaks
+django-user-agents
+django-cleanup
+django-crum
+psycopg[binary]
+gunicorn
+weasyprint
+Pillow
+lxml
+cryptography
+python-barcode
+XlsxWriter
+openpyxl
+suds
+requests
