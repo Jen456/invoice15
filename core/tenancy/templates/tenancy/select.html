@@ -1,0 +1,35 @@
+{% extends 'login/base.html' %}
+{% block content %}
+    <div class="login-box" style="width: min(480px, 92vw);">
+        <div class="card card-outline card-primary">
+            <div class="card-header text-center">
+                <h1 class="h4 mb-0">{{ title }}</h1>
+            </div>
+            <div class="card-body">
+                {% if memberships %}
+                    <p class="text-muted">Elige con qué empresa quieres trabajar.</p>
+                    <ul class="list-unstyled mb-0">
+                        {% for m in memberships %}
+                            <li class="mb-2">
+                                <form method="post" action="{% url 'company_switch' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="company" value="{{ m.company.id }}">
+                                    <button type="submit" class="btn btn-block {% if active_company and active_company.id == m.company.id %}btn-primary{% else %}btn-outline-primary{% endif %} text-left">
+                                        <strong>{{ m.company.tradename }}</strong>
+                                        <small class="d-block">{{ m.company.business_name }} · RUC {{ m.company.ruc }} · {{ m.group.name }}</small>
+                                    </button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>Tu usuario no pertenece a ninguna empresa activa. Pide acceso al propietario de la empresa.</p>
+                {% endif %}
+                {% if request.user.is_superuser %}
+                    <hr><a href="/plataforma/" class="btn btn-link px-0">Ir al panel de la plataforma</a>
+                {% endif %}
+                <hr><a href="{% url 'logout' %}" class="btn btn-link px-0">Cerrar sesión</a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

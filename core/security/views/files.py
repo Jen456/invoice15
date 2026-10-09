@@ -14,6 +14,8 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, Http404, HttpResponse
 
+from core.tenancy.storage import GLOBAL_PREFIXES, TENANT_ROOT
+
 BLOCKED_SUFFIXES = {'.p12', '.pfx', '.key', '.pem'}
 BLOCKED_PREFIXES = ('backup/',)
 # Tipos que el navegador podría ejecutar como documento: se aíslan con CSP sandbox.
@@ -34,9 +36,20 @@ def resolve_media_path(path):
     return relative, absolute
 
 
+def can_access(request, relative):
+    """Archivos de empresa: solo los de la empresa activa. Globales: con sesión."""
+    parts = relative.parts
+    if parts[0] == TENANT_ROOT:
+        company = getattr(request, 'company', None)
+        return company is not None and len(parts) > 2 and parts[1] == str(company.uuid)
+    return parts[0] in GLOBAL_PREFIXES
+
+
 @login_required
 def protected_media(request, path):
     relative, absolute = resolve_media_path(path)
+    if not can_access(request, relative):
+        raise Http404
     content_type = mimetypes.guess_type(absolute)[0] or 'application/octet-stream'
     if settings.FPA_X_ACCEL_PREFIX:
         response = HttpResponse(content_type=content_type)

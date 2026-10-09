@@ -44,6 +44,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    'core.tenancy',
     'core.security',
     'core.user',
     'core.login',
@@ -60,6 +61,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.tenancy.middleware.CompanyMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'crum.CurrentRequestUserMiddleware',
@@ -142,9 +144,6 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 FILE_UPLOAD_PERMISSIONS = 0o640
 
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o2750
-
-# Ruta del admin de Django (solo superusuarios); en los servidores no es la predeterminada.
-FPA_ADMIN_URL = env('FPA_ADMIN_URL', default='admin/')
 
 LOGIN_REDIRECT_URL = '/dashboard/'
 
