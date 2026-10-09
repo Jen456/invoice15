@@ -1,0 +1,550 @@
+[
+ {
+  "paquete": "admin-lte",
+  "version": "3.2.0",
+  "tarball": "https://registry.npmjs.org/admin-lte/-/admin-lte-3.2.0.tgz",
+  "integrity": "sha512-IDUfoU8jo9DVlB59lDEASAJXTesAEXDZ68DOHI3qg93r5ehVTkMl2x0ixgIyff8NiHeNYXpcOZh3tr6oGbvu9g==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "adminlte-3.2.0/css/adminlte.css",
+    "sha256": "f99d5cef704447ff68fa6b47e64eef3c6e91ad51ce1f0e3d006d561e81b8b34a",
+    "bytes": 1559615
+   },
+   {
+    "archivo": "adminlte-3.2.0/js/adminlte.min.js",
+    "sha256": "bb6ca87a6d87b4e0900a7b29ddf3bdb23e6452b2feee13807e6f1eb35f00163c",
+    "bytes": 46369
+   }
+  ]
+ },
+ {
+  "paquete": "fastclick",
+  "version": "1.0.6",
+  "tarball": "https://registry.npmjs.org/fastclick/-/fastclick-1.0.6.tgz",
+  "integrity": "sha512-cXyDBT4g0uWl/Xe75QspBDAgAWQ0lkPi/zgp6YFEUHj6WV6VIZl7R6TiDZhdOVU3W4ehp/8tG61Jev1jit+ztQ==",
+  "licencia": null,
+  "archivos": [
+   {
+    "archivo": "adminlte-3.2.0/plugins/fastclick/fastclick.js",
+    "sha256": "1aa08cb3c7aa70d268d24d59c374c14af7bd08e0af8c85f8e4f60a2651f4bab5",
+    "bytes": 25965
+   }
+  ]
+ },
+ {
+  "paquete": "bootstrap",
+  "version": "4.6.0",
+  "tarball": "https://registry.npmjs.org/bootstrap/-/bootstrap-4.6.0.tgz",
+  "integrity": "sha512-Io55IuQY3kydzHtbGvQya3H+KorS/M9rSNyfCGCg9WZ4pyT/lCxIlpJgG1GXW/PswzC84Tr2fBYi+7+jFVQQBw==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "bootstrap-4.6.0/css/bootstrap.min.css",
+    "sha256": "4ffcc598ee6cff4692c1cea272cd8a2f195f6dec32473e94370d6cdcfa5fe601",
+    "bytes": 161409
+   },
+   {
+    "archivo": "bootstrap-4.6.0/js/bootstrap.min.js",
+    "sha256": "edd03b96ae4ff7886406c59d7dfeeaa1b624a7da297bf2f92d0cb6b7f9633cba",
+    "bytes": 63467
+   }
+  ]
+ },
+ {
+  "paquete": "jquery",
+  "version": "3.5.1",
+  "tarball": "https://registry.npmjs.org/jquery/-/jquery-3.5.1.tgz",
+  "integrity": "sha512-XwIBPqcMn57FxfT+Go5pzySnm4KWkT1Tv7gjrpT1srtf8Weynl6R273VJ5GjkRb51IzMp5nbaPjJXMWeju2MKg==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "bootstrap-4.6.0/js/jquery.min.js",
+    "sha256": "f7f6a5894f1d19ddad6fa392b2ece2c5e578cbf7da4ea805b6885eb6985b6e3d",
+    "bytes": 89476
+   }
+  ]
+ },
+ {
+  "paquete": "popper.js",
+  "version": "1.16.1",
+  "tarball": "https://registry.npmjs.org/popper.js/-/popper.js-1.16.1.tgz",
+  "integrity": "sha512-Wb4p1J4zyFTbM+u6WuO4XstYx4Ky9Cewe4DWrel7B0w6VVICvPwdOpotjzcf6eD8TsckVnIMNONQyPIUFOUbCQ==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "bootstrap-4.6.0/js/popper.min.js",
+    "sha256": "fe28dc38bc057f6eb11180235bbe458b3295a39b674d889075d3d9a0b5071d9f",
+    "bytes": 21233
+   }
+  ]
+ },
+ {
+  "paquete": "daterangepicker",
+  "version": "3.1.0",
+  "tarball": "https://registry.npmjs.org/daterangepicker/-/daterangepicker-3.1.0.tgz",
+  "integrity": "sha512-DxWXvvPq4srWLCqFugqSV+6CBt/CvQ0dnpXhQ3gl0autcIDAruG1PuGG3gC7yPRNytAD1oU1AcUOzaYhOawhTw==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "bootstrap-daterangepicker-3.1/css/daterangepicker.css",
+    "sha256": "94fdb66ec8fe748981a4f2090fdf4a2a0a3dbe5ace2e65c4ce46e95d692bdac7",
+    "bytes": 8069
+   },
+   {
+    "archivo": "bootstrap-daterangepicker-3.1/js/daterangepicker.js",
+    "sha256": "88e56cd45cad3db88fdc772786d14cce8d0cc1879bc03e4e56be919dfd9ad229",
+    "bytes": 67842
+   }
+  ]
+ },
+ {
+  "paquete": "moment",
+  "version": "2.29.1",
+  "tarball": "https://registry.npmjs.org/moment/-/moment-2.29.1.tgz",
+  "integrity": "sha512-kHmoybcPV8Sqy59DwNDY3Jefr64lK/by/da0ViFcuA4DH0vQg5Q6Ze5VimxkfQNSC+Mls/Kx53s7TjP1RhFEDQ==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "bootstrap-daterangepicker-3.1/js/moment.min.js",
+    "sha256": "73de4254959530e4d1d9bec586379184f96b4953dacf9cd5e5e2bdd7bfeceef7",
+    "bytes": 58862
+   },
+   {
+    "archivo": "bootstrap-daterangepicker-3.1/js/moment-with-locales.js",
+    "sha256": "d151b3e794e262d3dfff239017b4b2da343225b746f2d95722f2db0fea9b8748",
+    "bytes": 617694
+   },
+   {
+    "archivo": "bootstrap-daterangepicker-3.1/js/moment-locale-es.js",
+    "sha256": "8845a0cad1eb82264e797c23137c0c1e7473cb2af26c1df6ff16d55284a4925c",
+    "bytes": 4198
+   }
+  ]
+ },
+ {
+  "paquete": "bootstrap-touchspin",
+  "version": "4.2.5",
+  "tarball": "https://registry.npmjs.org/bootstrap-touchspin/-/bootstrap-touchspin-4.2.5.tgz",
+  "integrity": "sha512-tGJazUyFT0psQWcZA3i/6WmaSKYrFAtD2eOScZtX4hJjNiSBIz/PxJTzP23AJoRc4OtvI8w6l831VuD9s6DSWw==",
+  "licencia": "Apache-2.0",
+  "archivos": [
+   {
+    "archivo": "bootstrap-touchspin-4.2.5/css/jquery.bootstrap-touchspin.css",
+    "sha256": "653a93404407a60abe05612eb83c3ea58f6b02f82731223ca8afa08694d07562",
+    "bytes": 901
+   },
+   {
+    "archivo": "bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js",
+    "sha256": "6128f26b8d376d57563b05249c39a4469c0ca6f312186b878ebe873e75702d9a",
+    "bytes": 22625
+   }
+  ]
+ },
+ {
+  "paquete": "datatables.net",
+  "version": "1.10.25",
+  "tarball": "https://registry.npmjs.org/datatables.net/-/datatables.net-1.10.25.tgz",
+  "integrity": "sha512-y0+C7all+MC/h1acwnjErhaJPjYGKpWTvbXrfEUbR8+P+nnhgjNn5nL1udgsTwBObMhlj1KITNBRrM/ZLSoj+Q==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "datatables-1.10.25/js/jquery.dataTables.js",
+    "sha256": "7d32a5460752ff1d4cc9e40f4c25f46339ef2b0928a3bb0672d0abdb44a247a9",
+    "bytes": 450425
+   }
+  ]
+ },
+ {
+  "paquete": "datatables.net-bs4",
+  "version": "1.10.25",
+  "tarball": "https://registry.npmjs.org/datatables.net-bs4/-/datatables.net-bs4-1.10.25.tgz",
+  "integrity": "sha512-leoiWJWxoPKHBNC9dkFRE84PRybQcAI2Aw4UiS5zisROcYRx8YG1uQOTtID4jbqakmbwwXap/c2eH+sdVP5t2w==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "datatables-1.10.25/css/dataTables.bootstrap4.min.css",
+    "sha256": "66830be1b44d61cd3d4bba46fb632e8447829c1f5141fe7e236aa059ebfa0f6b",
+    "bytes": 5229
+   },
+   {
+    "archivo": "datatables-1.10.25/js/dataTables.bootstrap4.min.js",
+    "sha256": "c7b7abf54cc3c6d4c454c090efb0446086b32f4398bd1d17b398116c2f5aec53",
+    "bytes": 2098
+   }
+  ]
+ },
+ {
+  "paquete": "datatables.net-buttons",
+  "version": "1.7.1",
+  "tarball": "https://registry.npmjs.org/datatables.net-buttons/-/datatables.net-buttons-1.7.1.tgz",
+  "integrity": "sha512-D2OxZeR18jhSx+l0xcfAJzfUH7l3LHCu0e606fV7+v3hMhphOfljjZYLaiRmGiR9lqO/f5xE/w2a+OtG/QMavw==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "datatables-1.10.25/plugins/buttons-1.7.1/js/dataTables.buttons.min.js",
+    "sha256": "735b859688ed9f70a77536860645acf24accd9f7af5e0ccd23d4c42ff5710010",
+    "bytes": 19994
+   },
+   {
+    "archivo": "datatables-1.10.25/plugins/buttons-1.7.1/js/buttons.html5.min.js",
+    "sha256": "bf8990e41f8bd41868f6d9b8c21beebe10788b31560c296141afa32583e54844",
+    "bytes": 24855
+   }
+  ]
+ },
+ {
+  "paquete": "datatables.net-buttons-bs4",
+  "version": "1.7.1",
+  "tarball": "https://registry.npmjs.org/datatables.net-buttons-bs4/-/datatables.net-buttons-bs4-1.7.1.tgz",
+  "integrity": "sha512-s+fwsgAAWp7mOKwuztPH06kaw2JNAJ71VNTw/TqGQTL6BK9FshweDKZSRIB/ePcc/Psiy8fhNEj3XHxx4OO6BA==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "datatables-1.10.25/plugins/buttons-1.7.1/css/buttons.bootstrap.min.css",
+    "sha256": "806eda23f13babc6e43195840238aeb3e965565f863d3a6c7dc712d6cd94179c",
+    "bytes": 3499
+   }
+  ]
+ },
+ {
+  "paquete": "jszip",
+  "version": "3.10.1",
+  "tarball": "https://registry.npmjs.org/jszip/-/jszip-3.10.1.tgz",
+  "integrity": "sha512-xXDvecyTpGLrqFrvkrUSoxxfJI5AH7U8zxxtVclpsUtMCq4JQ290LY8AW5c7Ggnr/Y/oK+bQMbqK2qmtk3pN4g==",
+  "licencia": "(MIT OR GPL-3.0-or-later)",
+  "archivos": [
+   {
+    "archivo": "datatables-1.10.25/plugins/jszip-2.5.0/jszip.min.js",
+    "sha256": "acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e",
+    "bytes": 97630
+   }
+  ]
+ },
+ {
+  "paquete": "pdfmake",
+  "version": "0.1.36",
+  "tarball": "https://registry.npmjs.org/pdfmake/-/pdfmake-0.1.36.tgz",
+  "integrity": "sha512-QVldm8MDJfyq43DpvLk/HoDf75gpQdhFTq7ozSd+40hR9DoOQno+P5NC/ax1CR0kfR9DrN13VxEzxYnhkUM5+w==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "datatables-1.10.25/plugins/pdfmake-0.1.36/pdfmake.min.js",
+    "sha256": "071a29c794ab8b2a52f1e139aabdfc06f6a9d99371dc2525f4767ab1ec01b5f9",
+    "bytes": 970387
+   },
+   {
+    "archivo": "datatables-1.10.25/plugins/pdfmake-0.1.36/vfs_fonts.js",
+    "sha256": "c2f1ff513843fdf543eaccf56c0597ec90d6e4dc754c17617a05fc2075f6d210",
+    "bytes": 870289
+   }
+  ]
+ },
+ {
+  "paquete": "datatables.net-responsive",
+  "version": "2.2.9",
+  "tarball": "https://registry.npmjs.org/datatables.net-responsive/-/datatables.net-responsive-2.2.9.tgz",
+  "integrity": "sha512-C+mOY/mG17zzaYPtgqAOsC4JlGddGkKmO/ADNEtNZ41bcPV1/3jJzkOWT3DCZ400NmkXLDz4WObWlPT8WCgfzg==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "datatables-1.10.25/plugins/responsive-2.2.9/js/dataTables.responsive.min.js",
+    "sha256": "7feaf64d7dca902e9abe9bfb17c6d18556593bc9d6ef126198229dea4ecfa861",
+    "bytes": 16849
+   }
+  ]
+ },
+ {
+  "paquete": "datatables.net-responsive-bs4",
+  "version": "2.2.9",
+  "tarball": "https://registry.npmjs.org/datatables.net-responsive-bs4/-/datatables.net-responsive-bs4-2.2.9.tgz",
+  "integrity": "sha512-f6MS0aL7XqjYcFSjup/JRDezbK3cCYFjAB+4vl8dwnGqRP13xwTjXiNqlrRT+fhJJzTQhaHveRpvFUn1qsyn7g==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "datatables-1.10.25/plugins/responsive-2.2.9/css/responsive.bootstrap4.min.css",
+    "sha256": "3118312c58bb616fcab0f9f5c3cc881b8ddd111ba57c09d4d3e35e5af4eee2b6",
+    "bytes": 4301
+   },
+   {
+    "archivo": "datatables-1.10.25/plugins/responsive-2.2.9/js/responsive.bootstrap4.min.js",
+    "sha256": "308c5ac6865fe2c0252c5abaed7b8055e542d4943b85b5b99823c994e4bbc11d",
+    "bytes": 3661
+   }
+  ]
+ },
+ {
+  "paquete": "@fortawesome/fontawesome-free",
+  "version": "6.1.1",
+  "tarball": "https://registry.npmjs.org/@fortawesome/fontawesome-free/-/fontawesome-free-6.1.1.tgz",
+  "integrity": "sha512-J/3yg2AIXc9wznaVqpHVX3Wa5jwKovVF0AMYSnbmcXTiL3PpRPfF58pzWucCwEiCJBp+hCNRLWClTomD8SseKg==",
+  "licencia": "(CC-BY-4.0 AND OFL-1.1 AND MIT)",
+  "archivos": [
+   {
+    "archivo": "fontawesome-6.1.1/css/all.min.css",
+    "sha256": "0df5a33710e433de1f5415b1d47e4130ca7466aee5b81955f1045c4844bbb3ed",
+    "bytes": 100782
+   },
+   {
+    "archivo": "fontawesome-6.1.1/webfonts/fa-brands-400.ttf",
+    "sha256": "e523f49c12b13a176014af1a46ae5a0545b136bf56d496426aa881026d0c318a",
+    "bytes": 181852
+   },
+   {
+    "archivo": "fontawesome-6.1.1/webfonts/fa-regular-400.ttf",
+    "sha256": "4e96a7e098e36fd493194c64e973ba5237da65760c7b746217e63c830326a9ac",
+    "bytes": 60520
+   },
+   {
+    "archivo": "fontawesome-6.1.1/webfonts/fa-solid-900.ttf",
+    "sha256": "03f2986c0824c68bdaf1e16947352f5fe417d03741806097fa9ea7131fe3a019",
+    "bytes": 388460
+   },
+   {
+    "archivo": "fontawesome-6.1.1/webfonts/fa-v4compatibility.ttf",
+    "sha256": "86a687cf5ade691e19aa03720ffa7c1ba99dd137f36cc61980eec447f2160627",
+    "bytes": 10556
+   },
+   {
+    "archivo": "fontawesome-6.1.1/webfonts/fa-brands-400.woff2",
+    "sha256": "404c746c8f7e3f9b7611a8f23d908c1a32a5c972236b9d89bb68b05d9bf4b905",
+    "bytes": 105536
+   },
+   {
+    "archivo": "fontawesome-6.1.1/webfonts/fa-regular-400.woff2",
+    "sha256": "6a274e7629c0d71dcf8cab1e7733687ebfe32e2c53b4ca9fad050b4f1d5471f3",
+    "bytes": 23940
+   },
+   {
+    "archivo": "fontawesome-6.1.1/webfonts/fa-solid-900.woff2",
+    "sha256": "d76fb4e841748a3f6bc63efa23156e02631c283bf41f84efcbdaf339ea3e1b73",
+    "bytes": 154228
+   },
+   {
+    "archivo": "fontawesome-6.1.1/webfonts/fa-v4compatibility.woff2",
+    "sha256": "0db31befb4837c56bf176e879a715b5cdf457553fc7e8877f974b4c6ef75b1b1",
+    "bytes": 4960
+   }
+  ]
+ },
+ {
+  "paquete": "es6-shim",
+  "version": "0.35.6",
+  "tarball": "https://registry.npmjs.org/es6-shim/-/es6-shim-0.35.6.tgz",
+  "integrity": "sha512-EmTr31wppcaIAgblChZiuN/l9Y7DPyw8Xtbg7fIVngn6zMW+IEBJDJngeKC3x6wr0V/vcA2wqeFnaw1bFJbDdA==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "formvalidation-1.9.0/js/es6-shim.min.js",
+    "sha256": "ba1f5a29f4374a0ea8e9b06cac1f49c85f336c74bcd269ad5873f46cac0b22b7",
+    "bytes": 57824
+   }
+  ]
+ },
+ {
+  "paquete": "zxcvbn",
+  "version": "4.4.2",
+  "tarball": "https://registry.npmjs.org/zxcvbn/-/zxcvbn-4.4.2.tgz",
+  "integrity": "sha512-Bq0B+ixT/DMyG8kgX2xWcI5jUvCwqrMxSFam7m0lAf78nf04hv6lNCsyLYdyYTrCVMqNDY/206K7eExYCeSyUQ==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "formvalidation-1.9.0/js/zxcvbn.js",
+    "sha256": "f42c651f40506acb6b662490f338dd47a5951d3312039c4ab8fe5090484f351a",
+    "bytes": 821792
+   }
+  ]
+ },
+ {
+  "paquete": "highcharts",
+  "version": "9.1.1",
+  "tarball": "https://registry.npmjs.org/highcharts/-/highcharts-9.1.1.tgz",
+  "integrity": "sha512-dNkUIJUNMh/G2TxQxxlQeILVs9tXiXQRxVkNGU9SLCh2zB2jcjJ7aQdgA0k7PFTEvDVUHphumZ301sHkDS7/pg==",
+  "licencia": "https://www.highcharts.com/license",
+  "archivos": [
+   {
+    "archivo": "highcharts-9.1.1/highcharts.js",
+    "sha256": "34f87cb2a2732881b9282f0e0a1f735ace9d87044fce4897dce3777cc9dfa445",
+    "bytes": 297257
+   },
+   {
+    "archivo": "highcharts-9.1.1/highcharts-3d.js",
+    "sha256": "6f1917b17a175333e85e081fc60e106af283c4174b39d1b12b6f6847d9264108",
+    "bytes": 49276
+   },
+   {
+    "archivo": "highcharts-9.1.1/modules/data.js",
+    "sha256": "564496dcc9b93dc6c25731798a71738d669dd70e64bd6936fcf4958989fed231",
+    "bytes": 15992
+   },
+   {
+    "archivo": "highcharts-9.1.1/modules/drilldown.js",
+    "sha256": "eafb0a952561daeb1816bb1115a6fbc548cfe8c344a14a3e8a662f9f3d30af9a",
+    "bytes": 12319
+   },
+   {
+    "archivo": "highcharts-9.1.1/modules/exporting.js",
+    "sha256": "5acdb710820aa5e3c5f3cc82291cece40121302b67a0f95215dfb42d59f63d9d",
+    "bytes": 17593
+   }
+  ]
+ },
+ {
+  "paquete": "jquery-confirm",
+  "version": "3.3.4",
+  "tarball": "https://registry.npmjs.org/jquery-confirm/-/jquery-confirm-3.3.4.tgz",
+  "integrity": "sha512-SF3mX2kWAK9FP/Hut1uLHI30LPZ9DAki3Jq6JId9vg6AlMVugjlh40APtuxPQ/0C44XTkQFSVyRrg57NMbaicA==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "jquery-confirm-3.3.4/css/jquery-confirm.min.css",
+    "sha256": "6f545eadeb021dde0a3bfa7af108cf85e1261a2a45b20e451f84b8ddac19f43f",
+    "bytes": 22546
+   },
+   {
+    "archivo": "jquery-confirm-3.3.4/js/jquery-confirm.min.js",
+    "sha256": "a1fbeefceaa19bbe2fb991a57c5d7f6f83945a42bf7f39559405b19201ebf92e",
+    "bytes": 28231
+   }
+  ]
+ },
+ {
+  "paquete": "gasparesganga-jquery-loading-overlay",
+  "version": "2.1.7",
+  "tarball": "https://registry.npmjs.org/gasparesganga-jquery-loading-overlay/-/gasparesganga-jquery-loading-overlay-2.1.7.tgz",
+  "integrity": "sha512-QItSCC330EPsUwdvzDO50SwQksmaMSf+loDYHiEpyc1tptXkeGXtFp36igNsT1cPTXRXlYxCW8wtK63K88SIdA==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "jquery-loading-overlay-2.1.7/js/loadingoverlay.min.js",
+    "sha256": "8cb16ff6222b21ba8a50b1e9aa9fe399e3c3aa2f7cf6929739c3a1b77ce045cc",
+    "bytes": 12036
+   }
+  ]
+ },
+ {
+  "paquete": "jquery-ui-dist",
+  "version": "1.12.1",
+  "tarball": "https://registry.npmjs.org/jquery-ui-dist/-/jquery-ui-dist-1.12.1.tgz",
+  "integrity": "sha512-UnQQWIvxaP7s13FLx37WufEwDYLSXKpp9JHrqEYTP6GqQNM+RMVEwsJMoc163QlzEaAV5YVfWlgQU5FPjKBtSw==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "jquery-ui-1.12.1/jquery-ui.css",
+    "sha256": "a7ac54f58ba507b13621ceb6fcf5fe879f5ac9bdcf049d16153110c6ad048c7c",
+    "bytes": 37326
+   },
+   {
+    "archivo": "jquery-ui-1.12.1/jquery-ui.min.js",
+    "sha256": "28ce75d953678c4942df47a11707a15e3c756021cf89090e3e6aa7ad6b6971c3",
+    "bytes": 253669
+   },
+   {
+    "archivo": "jquery-ui-1.12.1/images/ui-icons_444444_256x240.png",
+    "sha256": "eaf7c7ee2747275dda6c53e731a10db1a7b15f4fbb46e1b69d6bb2056bc9fd81",
+    "bytes": 7006
+   },
+   {
+    "archivo": "jquery-ui-1.12.1/images/ui-icons_555555_256x240.png",
+    "sha256": "5d04051dfd9d2d740355404f98a683d1ec0feb2fca7d76e533c1a6e5ce92dd2e",
+    "bytes": 7074
+   },
+   {
+    "archivo": "jquery-ui-1.12.1/images/ui-icons_777620_256x240.png",
+    "sha256": "9dbe4a0d03feed6f65eb2560a0a8b4ba4264545ee8fd31c1763a3b219d0328d6",
+    "bytes": 4676
+   },
+   {
+    "archivo": "jquery-ui-1.12.1/images/ui-icons_777777_256x240.png",
+    "sha256": "e75b27211e16fcf94715168001bb7055ca376d46f928110ba3d0825232452e5a",
+    "bytes": 7013
+   },
+   {
+    "archivo": "jquery-ui-1.12.1/images/ui-icons_cc0000_256x240.png",
+    "sha256": "02891575d4358e9edde3e42d94057f8e9f82a9d64376f71ee86cef149d30537e",
+    "bytes": 4632
+   },
+   {
+    "archivo": "jquery-ui-1.12.1/images/ui-icons_ffffff_256x240.png",
+    "sha256": "b6b06deef2b924cc3835d63f4883d47882734a33e71b212d917a68cede3b8e9d",
+    "bytes": 6313
+   }
+  ]
+ },
+ {
+  "paquete": "select2",
+  "version": "4.0.13",
+  "tarball": "https://registry.npmjs.org/select2/-/select2-4.0.13.tgz",
+  "integrity": "sha512-1JeB87s6oN/TDxQQYCvS5EFoQyvV6eYMZZ0AeA4tdFDYWN3BAGZ8npr17UBFddU0lgAt3H0yjX3X6/ekOj1yjw==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "select2-4.0.13/css/select2.min.css",
+    "sha256": "15d6ad4dfdb43d0affad683e70029f97a8f8fc8637a28845009ee0542dccdf81",
+    "bytes": 14966
+   },
+   {
+    "archivo": "select2-4.0.13/js/select2.min.js",
+    "sha256": "00501810e93307a8882a74d864e7547fd1458deea539361dc1124ac133799a4b",
+    "bytes": 70851
+   },
+   {
+    "archivo": "select2-4.0.13/js/i18n/es.js",
+    "sha256": "22165a232f2e7d376e3b6faf06b8afb303028e53e4eefae4e0ff35a43e81d123",
+    "bytes": 922
+   }
+  ]
+ },
+ {
+  "paquete": "@ttskch/select2-bootstrap4-theme",
+  "version": "1.5.2",
+  "tarball": "https://registry.npmjs.org/@ttskch/select2-bootstrap4-theme/-/select2-bootstrap4-theme-1.5.2.tgz",
+  "integrity": "sha512-gAj8qNy/VYwQDBkACm0USM66kxFai8flX83ayRXPNhzZckEgSqIBB9sM74SCM3ssgeX+ZVy4BifTnLis+KpIyg==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "select2-4.0.13/css/select2-bootstrap4.min.css",
+    "sha256": "87bbf2e3604fe0cb4b134b9d23206e384a01f27248da22da88e24480ee58929d",
+    "bytes": 6705
+   }
+  ]
+ },
+ {
+  "paquete": "sweetalert2",
+  "version": "11.0.16",
+  "tarball": "https://registry.npmjs.org/sweetalert2/-/sweetalert2-11.0.16.tgz",
+  "integrity": "sha512-9XStCZJMQpLQBAT/jr/4qZuA5Xwoupi/x5FagZYM1qGnyRqYecaJTPD1Cb5gc7G+9B5muH/JaDaBQGrvLpCmvQ==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "sweetalert2-11.0.16/css/sweetalert2.min.css",
+    "sha256": "aa95f071c1589dc1f9813a9715ef445d9f10783c3545eebc6db3557c56732338",
+    "bytes": 22627
+   },
+   {
+    "archivo": "sweetalert2-11.0.16/js/sweetalert2.all.min.js",
+    "sha256": "e79d4706cb5e32f28e4aa8d45d2991cbf10e1746c135b581f7a6f92f70de87c0",
+    "bytes": 63951
+   }
+  ]
+ },
+ {
+  "paquete": "tempusdominus-bootstrap",
+  "version": "5.37.0",
+  "tarball": "https://registry.npmjs.org/tempusdominus-bootstrap/-/tempusdominus-bootstrap-5.37.0.tgz",
+  "integrity": "sha512-QX5sIM7Q+vzpOSP++w8T2a/t5EQ27PsCv9fpgC9ZEh5yFm+0dotz1noyufuteSze5XrQewfcydaFdZqKHBh0ag==",
+  "licencia": "MIT",
+  "archivos": [
+   {
+    "archivo": "tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css",
+    "sha256": "2a6abd39533dec91db5c2d1aa9ecd7ce8ec0873c8d780ee1a7d4828c9114de1d",
+    "bytes": 14015
+   },
+   {
+    "archivo": "tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js",
+    "sha256": "6c216ddec1ab8bd0d3bc7fc83e76b4e348297c0252d9425b3490ab423f6abd2d",
+    "bytes": 109686
+   }
+  ]
+ }
+]
