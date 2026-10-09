@@ -62,6 +62,9 @@ class AuditLog(models.Model):
         ('membership_remove', 'Baja de membresía'),
         ('company_create', 'Alta de empresa'),
         ('company_change', 'Cambio de empresa (datos)'),
+        ('signup', 'Registro de empresa'),
+        ('email_verified', 'Correo confirmado'),
+        ('signup_resend', 'Reenvío del enlace de confirmación'),
     )
     created_at = models.DateTimeField(default=timezone.now, db_index=True, verbose_name='Fecha')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,

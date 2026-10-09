@@ -160,6 +160,14 @@ LOGIN_URL = '/login/'
 
 AUTH_USER_MODEL = 'user.User'
 
+# Ingreso con usuario, correo o RUC/cédula (core/login/backends.py).
+AUTHENTICATION_BACKENDS = ['core.login.backends.IdentifierBackend']
+
+# Registro propio: horas de validez del enlace de confirmación y límite por IP.
+FPA_REGISTRO_HORAS_ENLACE = env.int('FPA_REGISTRO_HORAS_ENLACE', default=72)
+
+FPA_REGISTRO_MAX_POR_HORA = env.int('FPA_REGISTRO_MAX_POR_HORA', default=5)
+
 # Límite de intentos fallidos de inicio de sesión por IP y usuario.
 FPA_LOGIN_MAX_INTENTOS = env.int('FPA_LOGIN_MAX_INTENTOS', default=5)
 

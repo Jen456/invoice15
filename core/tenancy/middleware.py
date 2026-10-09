@@ -6,7 +6,7 @@ from core.tenancy.models import Membership
 
 SESSION_KEY = 'company_id'
 # Rutas que no necesitan empresa activa (todo lo demás redirige al selector).
-NO_COMPANY_PREFIXES = ('/login/', '/empresas/', '/static/', '/plataforma/', '/media/',
+NO_COMPANY_PREFIXES = ('/login/', '/registro/', '/empresas/', '/static/', '/plataforma/', '/media/',
                        '/user/update/password/', '/user/update/profile/')
 PLATFORM_PREFIX = '/plataforma/'
 

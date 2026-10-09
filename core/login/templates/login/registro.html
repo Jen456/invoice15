@@ -1,0 +1,61 @@
+{% extends 'login/base.html' %}
+{% load static %}
+{% block assets_login %}
+    <script src="{% static 'login/js/registro.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+    <main class="fpa-auth-card fpa-auth-card--ancha" aria-labelledby="titulo-registro">
+        {% include 'login/_marca.html' %}
+        <h1 class="fpa-title" id="titulo-registro">Crea tu cuenta</h1>
+        <p class="fpa-subtitle">Registra tu empresa en minutos. Te enviaremos un enlace para confirmar tu correo.</p>
+
+        {% if form.non_field_errors %}
+            <div class="fpa-alert" role="alert">{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+        {% endif %}
+
+        <form method="post" id="frmRegistro" novalidate>
+            {% csrf_token %}
+            <fieldset class="fpa-fieldset">
+                <legend>Tu empresa</legend>
+                {% include 'login/_campo.html' with campo=form.nombre %}
+                {% include 'login/_campo.html' with campo=form.identificacion ayuda='Cédula de 10 dígitos o RUC de 13 dígitos.' %}
+            </fieldset>
+            <fieldset class="fpa-fieldset">
+                <legend>Contacto</legend>
+                {% include 'login/_campo.html' with campo=form.email %}
+                {% include 'login/_campo.html' with campo=form.celular ayuda='Celular de Ecuador, por ejemplo 0991234567.' %}
+            </fieldset>
+            <fieldset class="fpa-fieldset">
+                <legend>Acceso</legend>
+                {% include 'login/_campo.html' with campo=form.username ayuda='También podrás ingresar con tu correo o tu RUC/cédula.' %}
+                <div class="form-group{% if form.password.errors %} fpa-con-error{% endif %}">
+                    <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+                    <div class="input-group">
+                        {{ form.password }}
+                        <div class="input-group-append">
+                            <button class="btn btnShowPassword" type="button" aria-label="Mostrar u ocultar la contraseña">
+                                <i class="fas fa-eye" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% for error in form.password.errors %}<p class="fpa-error-campo" role="alert">{{ error }}</p>{% endfor %}
+                </div>
+                {% include 'login/_campo.html' with campo=form.password2 %}
+            </fieldset>
+            <div class="fpa-trampa" aria-hidden="true">
+                <label for="{{ form.sitio_web.id_for_label }}">No completes este campo</label>{{ form.sitio_web }}
+            </div>
+            <div class="form-group fpa-check{% if form.acepto.errors %} fpa-con-error{% endif %}">
+                {{ form.acepto }}
+                <label for="{{ form.acepto.id_for_label }}">{{ form.acepto.label }}</label>
+                {% for error in form.acepto.errors %}<p class="fpa-error-campo" role="alert">Debes aceptarlo para crear la cuenta.</p>{% endfor %}
+            </div>
+            <button type="submit" class="fpa-btn-primary">Crear cuenta</button>
+        </form>
+        <div class="fpa-links">
+            ¿Ya tienes cuenta? <a class="fpa-link" href="{% url 'login' %}">Ingresar</a>
+        </div>
+        {% include 'login/_pie.html' %}
+    </main>
+{% endblock %}

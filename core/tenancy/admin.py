@@ -110,12 +110,24 @@ class MembershipAdmin(admin.ModelAdmin):
 
 @admin.register(User, site=plataforma)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('username', 'names', 'email', 'is_active', 'is_superuser', 'last_login')
-    list_filter = ('is_active', 'is_superuser')
-    search_fields = ('username', 'names', 'email')
-    fields = ('username', 'names', 'email', 'is_active', 'is_superuser', 'date_joined', 'last_login')
-    readonly_fields = ('date_joined', 'last_login')
+    list_display = ('username', 'names', 'email', 'phone', 'is_active', 'email_verified_at', 'is_superuser', 'last_login')
+    list_filter = ('is_active', 'is_superuser', ('email_verified_at', admin.EmptyFieldListFilter))
+    search_fields = ('username', 'names', 'email', 'phone')
+    fields = ('username', 'names', 'email', 'phone', 'is_active', 'email_verified_at', 'is_superuser', 'date_joined', 'last_login')
+    readonly_fields = ('email_verified_at', 'date_joined', 'last_login')
     inlines = (MembershipInline,)
+    actions = ('activar_registros',)
+
+    @admin.action(description='Confirmar y activar las cuentas seleccionadas (registros pendientes)')
+    def activar_registros(self, request, queryset):
+        from django.utils import timezone
+        for user in queryset.filter(is_active=False, email_verified_at__isnull=True):
+            user.is_active = True
+            user.email_verified_at = timezone.now()
+            user.save(update_fields=['is_active', 'email_verified_at'])
+            membership = user.memberships.select_related('company').first()
+            audit(request, 'email_verified', company=membership.company if membership else None,
+                  usuario=user.username, origen='plataforma')
 
     def save_formset(self, request, form, formset, change):
         instances = formset.save()

@@ -20,6 +20,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(default=timezone.now)
     is_change_password = models.BooleanField(default=False)
     email_reset_token = models.TextField(null=True, blank=True)
+    phone = models.CharField(max_length=15, blank=True, default='', verbose_name='Celular')
+    email_verified_at = models.DateTimeField(null=True, blank=True, verbose_name='Correo confirmado el')
 
     objects = UserManager()
 

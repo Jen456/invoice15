@@ -113,3 +113,23 @@ body.fpa-auth {
 }
 
 @media (prefers-reduced-motion: reduce) { .fpa-btn-primary { transition: none; } }
+
+/* Registro */
+.fpa-auth-card--ancha { max-width: 520px; }
+.fpa-fieldset { border: 0; padding: 0; margin: 0 0 8px; }
+.fpa-fieldset legend { font-size: 13px; font-weight: 750; letter-spacing: 1.2px; text-transform: uppercase; color: var(--fpa-coral-oscuro); margin-bottom: 10px; }
+.fpa-ayuda { display: block; margin-top: 6px; font-size: 13px; color: var(--fpa-gris); }
+.fpa-error-campo { margin: 6px 0 0; font-size: 14px; color: #8A2416; }
+.fpa-con-error .form-control { border-color: #C0392B; }
+.fpa-check { display: flex; gap: 10px; align-items: flex-start; }
+.fpa-check input { width: 20px; height: 20px; margin-top: 3px; flex: 0 0 auto; accent-color: var(--fpa-coral); }
+.fpa-check label { font-weight: 500; font-size: 15px; margin: 0; }
+.fpa-check .fpa-error-campo { flex-basis: 100%; }
+.fpa-check.fpa-con-error { flex-wrap: wrap; }
+.fpa-trampa { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.fpa-ok { background: #E8F6EE; border: 1px solid #B9E2C9; color: #14532D; border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; font-size: 15px; }
+.fpa-ok p { margin: 0; }
+.fpa-nota { color: var(--fpa-gris); font-size: 14px; }
+
+.fpa-registro { margin-top: 24px; padding-top: 20px; border-top: 1px solid #DCE8EF; text-align: center; color: var(--fpa-gris); font-size: 15px; }
+.fpa-registro .fpa-btn-secondary { margin-top: 10px; }

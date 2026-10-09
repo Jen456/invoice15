@@ -1,0 +1,6 @@
+<div class="form-group{% if campo.errors %} fpa-con-error{% endif %}">
+    <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+    {{ campo }}
+    {% if ayuda %}<small class="fpa-ayuda" id="{{ campo.id_for_label }}-ayuda">{{ ayuda }}</small>{% endif %}
+    {% for error in campo.errors %}<p class="fpa-error-campo" role="alert">{{ error }}</p>{% endfor %}
+</div>

@@ -1,0 +1,17 @@
+{% extends 'login/base.html' %}
+{% block content %}
+    <main class="fpa-auth-card" aria-labelledby="titulo-confirmado">
+        {% include 'login/_marca.html' %}
+        {% if confirmado %}
+            <h1 class="fpa-title" id="titulo-confirmado">¡Listo! Tu correo está confirmado</h1>
+            <p class="fpa-subtitle">Ya puedes ingresar con tu usuario, tu correo o tu RUC/cédula.</p>
+            <a href="{% url 'login' %}" class="fpa-btn-primary">Ingresar</a>
+        {% else %}
+            <h1 class="fpa-title" id="titulo-confirmado">El enlace no es válido</h1>
+            <p class="fpa-subtitle">Puede que haya caducado o que la cuenta ya esté confirmada. Si aún no puedes ingresar, pide un enlace nuevo.</p>
+            <a href="{% url 'registro_reenviar' %}" class="fpa-btn-primary">Pedir un enlace nuevo</a>
+            <a href="{% url 'login' %}" class="fpa-btn-secondary">Ingresar</a>
+        {% endif %}
+        {% include 'login/_pie.html' %}
+    </main>
+{% endblock %}

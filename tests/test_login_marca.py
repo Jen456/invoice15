@@ -8,7 +8,7 @@ pytestmark = pytest.mark.django_db
 
 def test_textos_y_marca(client):
     html = client.get('/login/').content.decode()
-    for texto in ('FacturaPorAquí', 'Tu negocio, en orden', 'Bienvenido de nuevo', '>Usuario<', '>Contraseña<',
+    for texto in ('FacturaPorAquí', 'Tu negocio, en orden', 'Bienvenido de nuevo', '>Usuario, correo o RUC/cédula<', '>Contraseña<',
                   '>Ingresar<', 'Recuperar acceso', 'fpa-auth.css', 'lang="es"'):
         assert texto in html, texto
     assert 'name="csrfmiddlewaretoken"' in html

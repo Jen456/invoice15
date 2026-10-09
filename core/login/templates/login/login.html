@@ -14,6 +14,7 @@
             <div class="fpa-alert" role="alert">
                 {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
                 {% for field in form %}{% for error in field.errors %}<p>{{ error }}</p>{% endfor %}{% endfor %}
+                {% for error in form.non_field_errors.as_data %}{% if error.code == 'pending' %}<p><a class="fpa-link" href="{% url 'registro_reenviar' %}">Pedir un nuevo enlace de confirmación</a></p>{% endif %}{% endfor %}
             </div>
         {% endif %}
 
@@ -21,7 +22,7 @@
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ next }}">
             <div class="form-group">
-                <label for="{{ form.username.id_for_label }}">Usuario</label>
+                <label for="{{ form.username.id_for_label }}">Usuario, correo o RUC/cédula</label>
                 {{ form.username }}
             </div>
             <div class="form-group">
@@ -40,6 +41,10 @@
         </form>
         <div class="fpa-links">
             <a class="fpa-link" href="{% url 'reset_password' %}">Recuperar acceso</a>
+        </div>
+        <div class="fpa-registro">
+            <span>¿Primera vez en FacturaPorAquí?</span>
+            <a href="{% url 'registro' %}" class="fpa-btn-secondary">Crea tu cuenta</a>
         </div>
         {% include 'login/_pie.html' %}
     </main>

@@ -1,0 +1,19 @@
+{% extends 'login/base.html' %}
+{% block content %}
+    <main class="fpa-auth-card" aria-labelledby="titulo-enviado">
+        {% include 'login/_marca.html' %}
+        <h1 class="fpa-title" id="titulo-enviado">Confirma tu correo</h1>
+        {% if registro.enviado %}
+            <p class="fpa-subtitle">Te enviamos un enlace a <strong>{{ registro.correo }}</strong>. Ábrelo para activar tu cuenta; es válido durante {{ horas }} horas.</p>
+            <p class="fpa-nota">Si no lo ves en unos minutos, revisa la carpeta de correo no deseado.</p>
+        {% elif registro %}
+            <div class="fpa-alert" role="alert"><p>Tu cuenta quedó registrada, pero no pudimos enviar el correo de confirmación en este momento.</p></div>
+            <p class="fpa-subtitle">Inténtalo más tarde con «Reenviar enlace».</p>
+        {% else %}
+            <p class="fpa-subtitle">Revisa el correo con el que te registraste y abre el enlace de confirmación.</p>
+        {% endif %}
+        <a href="{% url 'registro_reenviar' %}" class="fpa-btn-secondary">Reenviar enlace</a>
+        <div class="fpa-links"><a class="fpa-link" href="{% url 'login' %}">Volver a ingresar</a></div>
+        {% include 'login/_pie.html' %}
+    </main>
+{% endblock %}

@@ -4,7 +4,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from django.contrib.auth import login, logout
-from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.views import LoginView
 from django.core.cache import cache
 from django.db import transaction
@@ -15,7 +14,7 @@ from django.urls import reverse_lazy
 from django.views.generic import FormView, RedirectView, TemplateView
 
 from config import settings
-from core.login.forms import ResetPasswordForm, UpdatePasswordForm
+from core.login.forms import IdentifierAuthenticationForm, ResetPasswordForm, UpdatePasswordForm
 from core.security.models import UserAccess
 from core.security.session import client_ip
 from core.tenancy.models import audit
@@ -50,7 +49,7 @@ def _register_failure(request, username=None):
 
 
 class LoginAuthView(LoginView):
-    form_class = AuthenticationForm
+    form_class = IdentifierAuthenticationForm
     template_name = 'login/login.html'
 
     def post(self, request, *args, **kwargs):
@@ -71,7 +70,7 @@ class LoginAuthView(LoginView):
     def get_form(self, form_class=None):
         form = super(LoginAuthView, self).get_form(form_class)
         attrs = {
-            'username': {'placeholder': 'Tu usuario', 'autocomplete': 'username', 'autocapitalize': 'none',
+            'username': {'placeholder': 'Tu usuario, correo o RUC/cédula', 'autocomplete': 'username', 'autocapitalize': 'none',
                          'spellcheck': 'false', 'autofocus': True},
             'password': {'placeholder': 'Tu contraseña', 'autocomplete': 'current-password'},
         }

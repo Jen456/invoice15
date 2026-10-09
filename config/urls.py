@@ -26,6 +26,7 @@ urlpatterns = [
     path('empresas/', include('core.tenancy.urls')),
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
     path('login/', include('core.login.urls')),
+    path('registro/', include('core.login.urls_registro')),
     path('pos/', include('core.pos.urls')),
     path('reports/', include('core.reports.urls')),
     path('security/', include('core.security.urls')),
