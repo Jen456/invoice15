@@ -129,6 +129,13 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 STATIC_ROOT = env('STATIC_ROOT', default=str(BASE_DIR / 'staticfiles'))
 
+# En los servidores (DEBUG=False) los estáticos llevan huella en el nombre; ver config/storage.py.
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': env('FPA_STATIC_STORAGE', default=(
+        'django.contrib.staticfiles.storage.StaticFilesStorage' if DEBUG else 'config.storage.FPAStaticStorage'))},
+}
+
 # Archivos subidos: fuera de public_html y sin acceso para nginx. Se entregan
 # solo a usuarios autenticados a través de core.security.views.files.
 MEDIA_ROOT = env('FPA_ARCHIVOS', default=str(BASE_DIR / 'media'))

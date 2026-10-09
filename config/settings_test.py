@@ -21,3 +21,4 @@ from config.settings import *  # noqa: E402,F401,F403
 ALLOWED_HOSTS = ['testserver']
 PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+STORAGES = {**STORAGES, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}}
