@@ -100,3 +100,4 @@ a.card-icon:hover {
 }
 /* Tablas anchas (DataTables): se desplazan dentro de su tarjeta en lugar de ensanchar la página. */
 .dataTables_wrapper .col-sm-12 { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.dataTables_wrapper { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
