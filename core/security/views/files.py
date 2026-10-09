@@ -1,7 +1,8 @@
 """Entrega de archivos subidos (MEDIA) solo a usuarios autenticados.
 
-En los servidores la respuesta lleva X-Accel-Redirect y nginx entrega el archivo
-desde una ubicación `internal`; en desarrollo Django lo sirve directamente.
+Django comprueba la sesión y entrega el archivo; nginx no tiene acceso a los
+datos. Si se define FPA_X_ACCEL_PREFIX, se delega la entrega a una ubicación
+`internal` de nginx (exige que nginx pueda leer la carpeta).
 Las firmas electrónicas y los respaldos nunca se entregan por esta vía.
 """
 import mimetypes

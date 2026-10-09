@@ -127,12 +127,14 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 STATIC_ROOT = env('STATIC_ROOT', default=str(BASE_DIR / 'staticfiles'))
 
-# Archivos subidos: fuera de public_html. Se entregan solo a usuarios
-# autenticados a través de core.security.views.files (X-Accel-Redirect en nginx).
+# Archivos subidos: fuera de public_html y sin acceso para nginx. Se entregan
+# solo a usuarios autenticados a través de core.security.views.files.
 MEDIA_ROOT = env('FPA_ARCHIVOS', default=str(BASE_DIR / 'media'))
 
 MEDIA_URL = '/media/'
 
+# Opcional: prefijo de una ubicación `internal` de nginx para X-Accel-Redirect.
+# Vacío = Django entrega el archivo (los servidores lo usan así: nginx no lee los datos).
 FPA_X_ACCEL_PREFIX = env('FPA_X_ACCEL_PREFIX', default='')
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
