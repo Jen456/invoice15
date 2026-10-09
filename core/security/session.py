@@ -1,46 +1,42 @@
-"""Perfil (grupo) y módulo activos de la sesión.
+"""Rol (grupo) y módulo activos.
 
-La sesión solo guarda identificadores (serializador JSON de Django). El grupo se
-vuelve a validar contra los grupos del usuario en cada petición: un
-identificador manipulado o un grupo que se le retiró al usuario no conceden
-acceso.
+El rol sale de la membresía del usuario en la empresa activa, que el middleware
+de empresas valida en cada petición. La sesión solo guarda identificadores
+(serializador JSON de Django).
 """
-GROUP_KEY = 'group_id'
 MODULE_KEY = 'module_id'
 
 
 def get_group(request):
+    """Rol del usuario en la empresa activa.
+
+    Sale de la membresía (validada por el middleware en cada petición). Un
+    superusuario que entra en una empresa sin ser miembro actúa como
+    Propietario (queda auditado al entrar). Sin empresa activa no hay rol.
+    """
     user = getattr(request, 'user', None)
     if user is None or not user.is_authenticated:
         return None
     if not hasattr(request, '_fpa_group'):
         group = None
-        group_id = request.session.get(GROUP_KEY)
-        if group_id is not None:
-            group = user.groups.filter(id=group_id).first()
-            if group is None:
-                request.session.pop(GROUP_KEY, None)
+        membership = getattr(request, 'membership', None)
+        if membership is not None:
+            group = membership.group
+        elif user.is_superuser and getattr(request, 'company', None) is not None:
+            from django.contrib.auth.models import Group
+            from core.tenancy.models import ROLE_OWNER
+            group = Group.objects.filter(name=ROLE_OWNER).first()
         request._fpa_group = group
     return request._fpa_group
 
 
 def set_group(request, group):
-    if group is None:
-        request.session.pop(GROUP_KEY, None)
-    else:
-        request.session[GROUP_KEY] = group.id
-    request._fpa_group = group
+    """Compatibilidad: el rol ya no se elige; lo fija la membresía de la empresa."""
     set_module(request, None)
 
 
 def ensure_group(request):
-    """Asigna el primer grupo del usuario si la sesión todavía no tiene uno."""
-    group = get_group(request)
-    if group is None and request.user.is_authenticated:
-        group = request.user.groups.order_by('id').first()
-        if group is not None:
-            set_group(request, group)
-    return group
+    return get_group(request)
 
 
 def get_module(request):

@@ -36,7 +36,7 @@ DOMINIO=$(sed -n 's/^ALLOWED_HOSTS=\([^,]*\).*/\1/p' "$ENVF")
 
 django() {  # orden de manage.py como facturaporaqui, con las variables del entorno
   local dir="$1"; shift
-  runuser -u "$USUARIO" -- env -C "$dir" bash -c 'set -a; . "$0"; set +a; exec .venv/bin/python manage.py "$@"' "$ENVF" "$@"
+  runuser -u "$USUARIO" -- env -C "$dir" PGOPTIONS="${PGOPTIONS:-}" bash -c 'set -a; . "$0"; set +a; exec .venv/bin/python manage.py "$@"' "$ENVF" "$@"
 }
 
 salud() {
@@ -89,12 +89,13 @@ echo "== 3. Volcado previo de la base"
 set -a; . "$ENVF"; set +a
 install -d -m 700 "$RESPALDOS"
 DUMP="$RESPALDOS/pre-$TS-$CORTO.dump"
-pg_dump --format=custom --no-owner --file="$DUMP" "$DATABASE_URL"
+# Con RLS forzada, pg_dump exige --enable-row-security y app.platform=on para ver todas las filas.
+PGOPTIONS="-c app.platform=on" pg_dump --enable-row-security --format=custom --no-owner --file="$DUMP" "$DATABASE_URL"
 chmod 600 "$DUMP"; echo "  $DUMP ($(du -h "$DUMP" | cut -f1))"
 ls -1t "$RESPALDOS"/pre-*.dump 2>/dev/null | tail -n +31 | xargs -r rm -f   # conserva 30
 
 echo "== 4. Migraciones, caché, estáticos y comprobación"
-django "$REL" migrate --noinput
+PGOPTIONS="-c app.platform=on" django "$REL" migrate --noinput   # migraciones de datos sobre todas las empresas
 django "$REL" createcachetable
 django "$REL" collectstatic --noinput --clear -v 0
 chmod -R a+rX "$STATIC_ROOT"   # nginx (www-data) lee los estáticos

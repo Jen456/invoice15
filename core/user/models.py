@@ -80,7 +80,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.groups.all().count() > 1
 
     def is_client(self):
-        return hasattr(self, 'client')
+        """¿Su rol en la empresa activa es Cliente (portal de comprobantes)?"""
+        from core.tenancy.context import current_company_id
+        from core.tenancy.models import ROLE_CLIENT
+        company_id = current_company_id()
+        if company_id is None:
+            return False
+        return self.memberships.filter(company_id=company_id, is_active=True, group__name=ROLE_CLIENT).exists()
 
     def __str__(self):
         return self.names

@@ -119,7 +119,7 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                 with transaction.atomic():
                     sale = Sale()
                     sale.date_joined = request.POST['date_joined']
-                    sale.company = Company.objects.first()
+                    sale.company = request.company
                     sale.environment_type = sale.company.environment_type
                     sale.receipt = Receipt.objects.get(voucher_type=request.POST['receipt'], establishment_code=sale.company.establishment_code, issuing_point_code=sale.company.issuing_point_code)
                     sale.voucher_number = sale.generate_voucher_number()
@@ -209,7 +209,7 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                 for i in Client.objects.filter(Q(user__names__icontains=term) | Q(dni__icontains=term)).order_by('user__names')[0:10]:
                     data.append(i.toJSON())
             elif action == 'search_voucher_number':
-                company = Company.objects.first()
+                company = request.company
                 data['voucher_number'] = ''
                 receipt = Receipt.objects.filter(voucher_type=request.POST['receipt'], establishment_code=company.establishment_code, issuing_point_code=company.issuing_point_code).first()
                 if receipt:

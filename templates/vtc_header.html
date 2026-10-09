@@ -29,11 +29,7 @@
                 <a class="dropdown-item">
                     <p class="text-sm">Perfil actual</p>
                     <p class="text-sm text-muted">
-                        {% if request.user.groups.all %}
-                            {{ session_group.name }}
-                        {% else %}
-                            Sin perfil
-                        {% endif %}
+                        {% if session_group %}{{ session_group.name }}{% else %}Sin perfil{% endif %}
                     </p>
                 </a>
                 <div class="dropdown-divider"></div>
@@ -43,27 +39,7 @@
                 </a>
             </div>
         </li>
-        {% if request.user.has_at_least_one_group %}
-            <li class="nav-item dropdown">
-                <a class="nav-link" data-toggle="dropdown">
-                    <i class="fa-solid fa-user-shield"></i> Perfil: {{ session_group.name }}
-                    {% if request.user.has_more_than_one_group %}
-                        <i class="fas fa-caret-down"></i>
-                    {% endif %}
-                </a>
-                {% if request.user.has_more_than_one_group %}
-                    <div class="dropdown-menu dropdown-menu-right">
-                        {% for group in user.groups.all %}
-                            {% if group.id != session_group.id %}
-                                <a href="{% url 'user_choose_profile' group.id %}" class="dropdown-item">
-                                    {{ group.name }}
-                                </a>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            </li>
-        {% endif %}
+        {% include 'tenancy/company_switcher.html' %}
         <li class="nav-item">
             <a class="nav-link btnLogout" href="{% url 'logout' %}">
                 <i class="fas fa-power-off"></i>

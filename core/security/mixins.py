@@ -4,6 +4,9 @@ from django.http import HttpResponseRedirect, JsonResponse
 
 from config import settings
 from core.security.session import get_group, set_module
+from core.tenancy.roles import PLATFORM_URLS
+
+PLATFORM_PATHS = tuple(sorted(PLATFORM_URLS))
 
 PERMISSION_DENIED_MESSAGE = 'Tu perfil no cuenta con el permiso necesario para ingresar'
 
@@ -37,6 +40,9 @@ class SessionGroupMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return self.handle_no_permission()
+        if request.path.startswith(PLATFORM_PATHS) and not request.user.is_superuser:
+            # Grupos, módulos y configuración global afectan a todas las empresas.
+            return self.deny(request)
         group = get_group(request)
         if group is None:
             if request.method == 'GET':

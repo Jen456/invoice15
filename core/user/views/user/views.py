@@ -12,6 +12,8 @@ from config import settings
 from core.login.forms import UpdatePasswordForm
 from core.security.mixins import GroupPermissionMixin, GroupModuleMixin
 from core.security.session import get_group, set_group
+from core.tenancy.models import Membership, audit
+from core.tenancy.users import can_manage_identity, company_members
 from core.user.forms import UserForm, ProfileForm, User
 
 
@@ -30,15 +32,23 @@ class UserListView(GroupPermissionMixin, FormView):
         action = request.POST['action']
         if action == 'login_with_user' and not request.user.is_superuser:
             return JsonResponse({'error': 'Solo un superusuario puede entrar como otro usuario'}, status=403)
-        if action in ('reset_password', 'update_password'):
+        if action in ('reset_password', 'update_password', 'login_with_user'):
             group = get_group(request)
-            if group is None or not group.permissions.filter(codename='change_user').exists():
+            if not request.user.is_superuser and (group is None or not group.permissions.filter(codename='change_user').exists()):
                 return JsonResponse({'error': 'Tu perfil no cuenta con el permiso necesario'}, status=403)
+            target = User.objects.filter(pk=request.POST.get('id'), memberships__company=request.company).first()
+            if target is None:
+                return JsonResponse({'error': 'El usuario no pertenece a esta empresa'}, status=404)
+            if action != 'login_with_user' and not can_manage_identity(target, request.company):
+                return JsonResponse({'error': 'Usuario compartido con otras empresas: su contraseña no se cambia desde aquí'}, status=403)
         try:
             if action == 'search':
                 data = []
-                for i in User.objects.all():
-                    data.append(i.toJSON())
+                for membership in company_members(request.company).order_by('user__names'):
+                    item = membership.user.toJSON()
+                    item['groups'] = [{'id': membership.group_id, 'name': membership.group.name}]
+                    item['is_active'] = membership.is_active
+                    data.append(item)
             elif action == 'reset_password':
                 user = User.objects.get(pk=request.POST['id'])
                 current_session = user == request.user
@@ -113,11 +123,11 @@ class UserUpdateView(GroupPermissionMixin, UpdateView):
     success_url = reverse_lazy('user_list')
     permission_required = 'change_user'
 
-    def dispatch(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        return super().dispatch(request, *args, **kwargs)
+    def get_queryset(self):
+        return User.objects.filter(id__in=company_members(self.request.company).values('user_id'))
 
     def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
         data = {}
         action = request.POST['action']
         try:
@@ -152,10 +162,19 @@ class UserDeleteView(GroupPermissionMixin, DeleteView):
     success_url = reverse_lazy('user_list')
     permission_required = 'delete_user'
 
+    def get_queryset(self):
+        return User.objects.filter(id__in=company_members(self.request.company).values('user_id'))
+
     def post(self, request, *args, **kwargs):
         data = {}
         try:
-            self.get_object().delete()
+            user = self.get_object()
+            if user == request.user:
+                raise ValueError('No puedes quitarte a ti mismo de la empresa')
+            Membership.objects.filter(user=user, company=request.company).delete()
+            audit(request, 'membership_remove', company=request.company, usuario=user.username)
+            if not user.is_superuser and not Membership.objects.filter(user=user).exists():
+                user.delete()
         except Exception as e:
             data['error'] = str(e)
         return HttpResponse(json.dumps(data), content_type='application/json')
@@ -252,7 +271,5 @@ class UserUpdatePasswordView(GroupModuleMixin, FormView):
 class UserChooseProfileView(LoginRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
-        group = request.user.groups.filter(id=self.kwargs['pk']).first()
-        if group is not None:
-            set_group(request, group)
-        return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
+        # El rol lo fija la membresía de cada empresa: se cambia de empresa, no de perfil.
+        return HttpResponseRedirect(reverse_lazy('company_select'))

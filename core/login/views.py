@@ -18,6 +18,7 @@ from config import settings
 from core.login.forms import ResetPasswordForm, UpdatePasswordForm
 from core.security.models import UserAccess
 from core.security.session import client_ip
+from core.tenancy.models import audit
 from core.user.models import User
 
 
@@ -88,8 +89,8 @@ class LoginAuthView(LoginView):
             cache.delete(key)
         login(self.request, form.get_user())
         if self.request.user.is_authenticated:
-            self.request.user.set_group_session()
             UserAccess(user=self.request.user).save()
+            audit(self.request, 'login')
         return HttpResponseRedirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):

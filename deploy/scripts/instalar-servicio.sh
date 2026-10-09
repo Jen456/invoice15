@@ -76,7 +76,6 @@ case "$MODO" in
   systemctl enable "facturaporaqui@$ENTORNO.service" >/dev/null 2>&1 && ok "facturaporaqui@$ENTORNO habilitado al arranque (se inicia con el primer despliegue)"
   echo "== Variables no secretas en $ENVF"
   add_var FPA_WORKERS "$([ "$ENTORNO" = produccion ] && echo 3 || echo 2)"
-  add_var FPA_ADMIN_URL "gestion-$(openssl rand -hex 6)/"
   add_var SECURE_HSTS_SECONDS "$([ "$ENTORNO" = produccion ] && echo 31536000 || echo 3600)"
   logrotate -d /etc/logrotate.d/facturaporaqui >/dev/null 2>&1 && ok "logrotate válido" || mal "logrotate -d falla"
   echo "RESULTADO: piezas instaladas con $FALLAS falla(s)."

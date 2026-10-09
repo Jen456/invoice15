@@ -2,7 +2,7 @@ import json
 
 from django.contrib.auth.models import Group
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
 
@@ -191,12 +191,11 @@ class ClientUpdateProfileView(GroupModuleMixin, UpdateView):
     form_class = ClientForm
     success_url = settings.LOGIN_REDIRECT_URL
 
-    def dispatch(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        return super().dispatch(request, *args, **kwargs)
-
     def get_object(self, queryset=None):
-        return self.request.user.client
+        client = Client.objects.filter(user=self.request.user).first()
+        if client is None:
+            raise Http404
+        return client
 
     def get_form(self, form_class=None):
         form = super().get_form(form_class)

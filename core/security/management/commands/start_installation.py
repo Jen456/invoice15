@@ -11,6 +11,7 @@ django.setup()
 from core.security.models import *
 from django.contrib.auth.models import Permission
 from core.pos.models import *
+from core.tenancy.roles import strip_platform_modules, sync_roles
 
 
 class Command(BaseCommand):
@@ -393,3 +394,9 @@ class Command(BaseCommand):
             GroupModule.objects.create(module=module, group=group)
             for permission in module.permissions.all():
                 group.permissions.add(permission)
+
+        # Roles de empresa sobre los módulos recién creados; los de la plataforma
+        # (grupos, módulos, configuración global) solo para superusuarios.
+        sync_roles(Group, Module, GroupModule)
+        strip_platform_modules(Group, GroupModule)
+        print('roles de empresa sincronizados')

@@ -18,10 +18,8 @@ class CompanyUpdateView(GroupPermissionMixin, UpdateView):
     success_url = settings.LOGIN_REDIRECT_URL
 
     def get_object(self, queryset=None):
-        company = Company.objects.first()
-        if company:
-            return company
-        return Company()
+        # Solo la empresa activa; las empresas se crean desde el panel de plataforma.
+        return self.request.company
 
     def post(self, request, *args, **kwargs):
         data = {}
