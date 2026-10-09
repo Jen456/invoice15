@@ -70,12 +70,13 @@ class LoginAuthView(LoginView):
 
     def get_form(self, form_class=None):
         form = super(LoginAuthView, self).get_form(form_class)
-        for i in form.visible_fields():
-            i.field.widget.attrs.update({
-                'class': 'form-control',
-                'autocomplete': 'off',
-                'placeholder': f'Ingrese su {i.label.lower()}'
-            })
+        attrs = {
+            'username': {'placeholder': 'Tu usuario', 'autocomplete': 'username', 'autocapitalize': 'none',
+                         'spellcheck': 'false', 'autofocus': True},
+            'password': {'placeholder': 'Tu contraseña', 'autocomplete': 'current-password'},
+        }
+        for name, field in form.fields.items():
+            field.widget.attrs.update({'class': 'form-control', **attrs.get(name, {})})
         return form
 
     def get(self, request, *args, **kwargs):
@@ -95,7 +96,7 @@ class LoginAuthView(LoginView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Inicio de Sesión'
+        context['title'] = 'Ingresar · FacturaPorAquí'
         return context
 
 
@@ -148,7 +149,7 @@ class LoginResetPasswordView(FormView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Reseteo de contraseña'
+        context['title'] = 'Recuperar acceso · FacturaPorAquí'
         context['list_url'] = self.success_url
         return context
 
@@ -192,7 +193,7 @@ class LoginUpdatePasswordView(FormView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Recuperación de Contraseña'
+        context['title'] = 'Nueva contraseña · FacturaPorAquí'
         context['list_url'] = self.success_url
         return context
 

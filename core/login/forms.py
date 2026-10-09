@@ -1,13 +1,16 @@
 from django import forms
+from django.contrib.auth import password_validation
 
 from core.user.models import User
 
 
 class ResetPasswordForm(forms.Form):
     username = forms.CharField(widget=forms.TextInput(attrs={
-        'placeholder': 'Ingrese un username',
+        'placeholder': 'Tu usuario',
         'class': 'form-control',
-        'autocomplete': 'off'
+        'autocomplete': 'username',
+        'autocapitalize': 'none',
+        'autofocus': True,
     }), label='Usuario')
 
     def clean(self):
@@ -24,16 +27,16 @@ class ResetPasswordForm(forms.Form):
 
 class UpdatePasswordForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput(attrs={
-        'placeholder': 'Ingrese un password',
+        'placeholder': 'Nueva contraseña',
         'class': 'form-control',
-        'autocomplete': 'off'
-    }), label='Password')
+        'autocomplete': 'new-password'
+    }), label='Nueva contraseña')
 
     confirm_password = forms.CharField(widget=forms.PasswordInput(attrs={
-        'placeholder': 'Repita el password',
+        'placeholder': 'Repite la contraseña',
         'class': 'form-control',
-        'autocomplete': 'off'
-    }), label='Confirmación de password')
+        'autocomplete': 'new-password'
+    }), label='Repite la contraseña')
 
     def clean(self):
         cleaned = super().clean()
@@ -41,4 +44,6 @@ class UpdatePasswordForm(forms.Form):
         confirm_password = cleaned['confirm_password']
         if password != confirm_password:
             raise forms.ValidationError('Las contraseñas deben ser iguales')
+        # Mismas reglas que el resto de la aplicación (longitud mínima, comunes, numéricas).
+        password_validation.validate_password(password)
         return cleaned
