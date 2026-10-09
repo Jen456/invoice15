@@ -52,7 +52,12 @@
             options: {
                 cutout: '55%',
                 plugins: {
-                    legend: {position: window.innerWidth < 576 ? 'bottom' : 'right', labels: {boxWidth: 14}},
+                    legend: {position: window.innerWidth < 576 ? 'bottom' : 'right', labels: {boxWidth: 14, generateLabels: function (chart) {
+                        // Nombres largos acortados en la leyenda; el texto emergente muestra el nombre completo.
+                        var items = Chart.overrides.doughnut.plugins.legend.labels.generateLabels(chart);
+                        items.forEach(function (item) { if (item.text.length > 30) { item.text = item.text.slice(0, 29) + '…'; } });
+                        return items;
+                    }}},
                     tooltip: {callbacks: {label: function (ctx) {
                         var porcentaje = total ? (ctx.parsed * 100 / total) : 0;
                         return ' ' + ctx.label + ': ' + formatear(ctx.parsed, opciones.formato) + ' (' + numero.format(porcentaje) + ' %)';
