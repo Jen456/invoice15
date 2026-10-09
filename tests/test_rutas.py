@@ -6,9 +6,10 @@ from tests import helpers
 
 # Fallos que ya existían en el código original con la base vacía; se corrigen
 # en la etapa 2 (contexto de empresa). Si dejan de fallar, la prueba avisa.
-CONOCIDOS = {
-    '/pos/client/update/profile/': 'el administrador no tiene perfil de cliente',
-    '/pos/credit/note/admin/add/': 'sin empresa configurada',
+CONOCIDOS = {}
+# Respuestas esperadas distintas de 200/302.
+ESPERADOS = {
+    '/empresas/cambiar/': 405,   # solo POST (cambio de empresa con CSRF)
 }
 
 
@@ -20,7 +21,7 @@ def rutas_simples():
             elif isinstance(p, URLPattern):
                 yield prefijo + str(p.pattern), p.name
     for ruta, nombre in sorted(set(recorrer(get_resolver().url_patterns))):
-        if '<' in ruta or nombre in ('logout',) or ruta.startswith(('admin/', 'media/')):
+        if '<' in ruta or nombre in ('logout',) or ruta.startswith(('plataforma/', 'media/')):
             continue
         yield '/' + ruta
 
@@ -37,6 +38,10 @@ def test_todas_las_pantallas_responden(client, admin):
         if url in CONOCIDOS:
             if estado in (200, 302):
                 conocidos_ok.append(url)
+            continue
+        if url in ESPERADOS:
+            if estado != ESPERADOS[url]:
+                fallos.append((url, estado))
             continue
         if estado not in (200, 302):
             fallos.append((url, estado))

@@ -8,21 +8,26 @@ from tests import helpers
 pytestmark = pytest.mark.django_db
 
 
+def escribir(relativa):
+    completa = os.path.join(dj_settings.MEDIA_ROOT, relativa)
+    os.makedirs(os.path.dirname(completa), exist_ok=True)
+    with open(completa, 'wb') as f:
+        f.write(b'contenido')
+    return relativa
+
+
 @pytest.fixture
-def archivos():
-    raiz = dj_settings.MEDIA_ROOT
-    rutas = {
-        'imagen': 'product/2026/10/08/foto.png',
-        'firma': 'company/2026/10/08/firma.p12',
-        'respaldo': 'backup/2026/10/08/base.backup',
-        'svg': 'company/2026/10/08/logo.svg',
+def archivos(empresa, empresa_b):
+    a, b = f'empresas/{empresa.uuid}', f'empresas/{empresa_b.uuid}'
+    return {
+        'imagen': escribir(f'{a}/productos/2026/10/foto.png'),
+        'firma': escribir(f'{a}/firma/2026/10/firma.p12'),
+        'respaldo': escribir('backup/2026/10/08/base.backup'),
+        'legado': escribir('product/2026/10/08/antiguo.png'),
+        'svg': escribir(f'{a}/logo/2026/10/logo.svg'),
+        'global': escribir('users/2026/10/08/avatar.png'),
+        'otra_empresa': escribir(f'{b}/productos/2026/10/foto.png'),
     }
-    for relativa in rutas.values():
-        completa = os.path.join(raiz, relativa)
-        os.makedirs(os.path.dirname(completa), exist_ok=True)
-        with open(completa, 'wb') as f:
-            f.write(b'contenido')
-    return rutas
 
 
 def test_requiere_sesion(client, archivos):
@@ -30,26 +35,27 @@ def test_requiere_sesion(client, archivos):
     assert respuesta.status_code == 302 and '/login/' in respuesta['Location']
 
 
-def test_entrega_a_usuario_autenticado(client, admin, archivos):
+def test_entrega_archivos_de_la_empresa_activa(client, admin, archivos):
     helpers.iniciar_sesion(client, admin)
     respuesta = client.get('/media/' + archivos['imagen'])
     assert respuesta.status_code == 200
     assert b''.join(respuesta.streaming_content) == b'contenido'
+    assert client.get('/media/' + archivos['global']).status_code == 200
 
 
-@pytest.mark.parametrize('clave', ['firma', 'respaldo'])
-def test_firmas_y_respaldos_nunca_se_entregan(client, admin, archivos, clave):
+@pytest.mark.parametrize('clave', ['firma', 'respaldo', 'legado', 'otra_empresa'])
+def test_nunca_entrega_firmas_respaldos_ni_archivos_ajenos(client, admin, archivos, clave):
     helpers.iniciar_sesion(client, admin)
     assert client.get('/media/' + archivos[clave]).status_code == 404
 
 
 def test_no_permite_salir_de_la_carpeta(client, admin, archivos):
     helpers.iniciar_sesion(client, admin)
-    assert client.get('/media/product/../../../etc/passwd').status_code == 404
+    assert client.get('/media/users/../../../etc/passwd').status_code == 404
     assert client.get('/media/%2e%2e/%2e%2e/etc/passwd').status_code == 404
 
 
-def test_x_accel_redirect_en_servidor(client, admin, archivos, settings):
+def test_x_accel_redirect_opcional(client, admin, archivos, settings):
     settings.FPA_X_ACCEL_PREFIX = '/_privado'
     helpers.iniciar_sesion(client, admin)
     respuesta = client.get('/media/' + archivos['imagen'])
@@ -59,5 +65,9 @@ def test_x_accel_redirect_en_servidor(client, admin, archivos, settings):
 
 def test_svg_aislado_con_csp(client, admin, archivos):
     helpers.iniciar_sesion(client, admin)
-    respuesta = client.get('/media/' + archivos['svg'])
-    assert 'sandbox' in respuesta['Content-Security-Policy']
+    assert 'sandbox' in client.get('/media/' + archivos['svg'])['Content-Security-Policy']
+
+
+def test_las_subidas_van_a_la_carpeta_de_su_empresa(empresa):
+    producto = helpers.crear_producto(empresa, 'CON-CODIGO')
+    assert producto.barcode.name.startswith(f'empresas/{empresa.uuid}/codigos/')

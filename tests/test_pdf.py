@@ -9,9 +9,9 @@ from tests import helpers
 pytestmark = pytest.mark.django_db
 
 
-def test_pdf_de_venta(client, empresa, admin, grupo_cliente):
-    cliente = helpers.crear_cliente('cliente.pdf', grupo_cliente, '0900000009', '0990000009')
-    venta = helpers.crear_venta(empresa, cliente, admin, helpers.crear_producto())
+def test_pdf_de_venta(client, empresa, admin):
+    cliente = helpers.crear_cliente('cliente.pdf', empresa, '0900000009', '0990000009')
+    venta = helpers.crear_venta(empresa, cliente, admin, helpers.crear_producto(empresa))
     helpers.iniciar_sesion(client, admin)
     respuesta = client.get(f'/pos/sale/admin/print/invoice/{venta.id}/')
     assert respuesta.status_code == 200
@@ -20,7 +20,7 @@ def test_pdf_de_venta(client, empresa, admin, grupo_cliente):
     pdf = PdfReader(io.BytesIO(respuesta.content))
     assert len(pdf.pages) == 1
     texto = pdf.pages[0].extract_text()
-    assert 'FICTICIA' in texto
+    assert 'EMPRESA A' in texto
     assert venta.voucher_number in texto
 
 
