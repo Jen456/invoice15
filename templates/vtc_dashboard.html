@@ -2,11 +2,8 @@
 {% load static %}
 {% block assets_body %}
     {% if not request.user.is_client %}
-        <script src="{% static 'lib/highcharts-9.1.1/highcharts.js' %}" type="text/javascript"></script>
-        <script src="{% static 'lib/highcharts-9.1.1/highcharts-3d.js' %}" type="text/javascript"></script>
-        <script src="{% static 'lib/highcharts-9.1.1/modules/exporting.js' %}" type="text/javascript"></script>
-        <script src="{% static 'lib/highcharts-9.1.1/modules/data.js' %}" type="text/javascript"></script>
-        <script src="{% static 'lib/highcharts-9.1.1/modules/drilldown.js' %}" type="text/javascript"></script>
+        <script src="{% static 'lib/chartjs-4.5.1/chart.umd.min.js' %}"></script>
+        <script src="{% static 'js/graficos.js' %}"></script>
     {% endif %}
 {% endblock %}
 {% block breadcrumb %}
@@ -203,47 +200,7 @@
                             dataType: 'json',
                             success: function (request) {
                                 if (!request.hasOwnProperty('error')) {
-                                    Highcharts.chart('graph-stock-products', {
-                                        chart: {
-                                            type: 'pie',
-                                            options3d: {
-                                                enabled: true,
-                                                alpha: 45,
-                                                beta: 0
-                                            }
-                                        },
-                                        exporting: {
-                                            enabled: false
-                                        },
-                                        title: {
-                                            text: ''
-                                        },
-                                        accessibility: {
-                                            point: {
-                                                valueSuffix: '%'
-                                            }
-                                        },
-                                        tooltip: {
-                                            pointFormat: 'Stock: <b>{point.y:.0f} Unidades</b>'
-                                        },
-                                        plotOptions: {
-                                            pie: {
-                                                allowPointSelect: true,
-                                                cursor: 'pointer',
-                                                depth: 35,
-                                                dataLabels: {
-                                                    enabled: true,
-                                                    format: '<b>{point.name}</b>: {point.percentage:.1f} %'
-                                                }
-                                            }
-                                        },
-                                        series: [{
-                                            'name': 'Stock de Productos',
-                                            'type': 'pie',
-                                            'colorByPoint': true,
-                                            'data': request,
-                                        }]
-                                    });
+                                    fpaGrafico.pastel('graph-stock-products', request.map(function (r) { return r[0]; }), request.map(function (r) { return r[1]; }), {formato: 'unidades', titulo: 'Stock de productos'});
                                     return false;
                                 }
                                 message_error(request.error);
@@ -266,58 +223,7 @@
                             dataType: 'json',
                             success: function (request) {
                                 if (!request.hasOwnProperty('error')) {
-                                    Highcharts.chart('graph-purchase-vs-sale', {
-                                        chart: {
-                                            type: 'column'
-                                        },
-                                        title: {
-                                            text: ''
-                                        },
-                                        subtitle: {
-                                            text: ''
-                                        },
-                                        exporting: {
-                                            enabled: false
-                                        },
-                                        xAxis: {
-                                            categories: [
-                                                'Enero',
-                                                'Febrero',
-                                                'Marzo',
-                                                'Abril',
-                                                'Mayo',
-                                                'Junio',
-                                                'Julio',
-                                                'Agosto',
-                                                'Septiembre',
-                                                'Octubre',
-                                                'Noviembre',
-                                                'Diciembre'
-                                            ],
-                                            crosshair: true
-                                        },
-                                        yAxis: {
-                                            min: 0,
-                                            title: {
-                                                text: 'Valores $'
-                                            }
-                                        },
-                                        tooltip: {
-                                            headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
-                                            pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
-                                                '<td style="padding:0"><b>${point.y:.2f}</b></td></tr>',
-                                            footerFormat: '</table>',
-                                            shared: true,
-                                            useHTML: true
-                                        },
-                                        plotOptions: {
-                                            column: {
-                                                pointPadding: 0.2,
-                                                borderWidth: 0
-                                            }
-                                        },
-                                        series: request
-                                    });
+                                    fpaGrafico.barras('graph-purchase-vs-sale', fpaGrafico.MESES, request, {formato: 'dolares', ejeY: 'Valores en USD', titulo: 'Compras y ventas del año'});
                                     return false;
                                 }
                                 message_error(request.error);

@@ -356,36 +356,16 @@
   ]
  },
  {
-  "paquete": "highcharts",
-  "version": "9.1.1",
-  "tarball": "https://registry.npmjs.org/highcharts/-/highcharts-9.1.1.tgz",
-  "integrity": "sha512-dNkUIJUNMh/G2TxQxxlQeILVs9tXiXQRxVkNGU9SLCh2zB2jcjJ7aQdgA0k7PFTEvDVUHphumZ301sHkDS7/pg==",
-  "licencia": "https://www.highcharts.com/license",
+  "paquete": "chart.js",
+  "version": "4.5.1",
+  "tarball": "https://registry.npmjs.org/chart.js/-/chart.js-4.5.1.tgz",
+  "integrity": "sha512-GIjfiT9dbmHRiYi6Nl2yFCq7kkwdkp1W/lp2J99rX0yo9tgJGn3lKQATztIjb5tVtevcBtIdICNWqlq5+E8/Pw==",
+  "licencia": "MIT",
   "archivos": [
    {
-    "archivo": "highcharts-9.1.1/highcharts.js",
-    "sha256": "34f87cb2a2732881b9282f0e0a1f735ace9d87044fce4897dce3777cc9dfa445",
-    "bytes": 297257
-   },
-   {
-    "archivo": "highcharts-9.1.1/highcharts-3d.js",
-    "sha256": "6f1917b17a175333e85e081fc60e106af283c4174b39d1b12b6f6847d9264108",
-    "bytes": 49276
-   },
-   {
-    "archivo": "highcharts-9.1.1/modules/data.js",
-    "sha256": "564496dcc9b93dc6c25731798a71738d669dd70e64bd6936fcf4958989fed231",
-    "bytes": 15992
-   },
-   {
-    "archivo": "highcharts-9.1.1/modules/drilldown.js",
-    "sha256": "eafb0a952561daeb1816bb1115a6fbc548cfe8c344a14a3e8a662f9f3d30af9a",
-    "bytes": 12319
-   },
-   {
-    "archivo": "highcharts-9.1.1/modules/exporting.js",
-    "sha256": "5acdb710820aa5e3c5f3cc82291cece40121302b67a0f95215dfb42d59f63d9d",
-    "bytes": 17593
+    "archivo": "chartjs-4.5.1/chart.umd.min.js",
+    "sha256": "48444a82d4edcb5bec0f1965faacdde18d9c17db3063d042abada2f705c9f54a",
+    "bytes": 208522
    }
   ]
  },

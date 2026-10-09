@@ -22,44 +22,7 @@ var report = {
             dataType: 'json',
             success: function (request) {
                 if (!request.hasOwnProperty('error')) {
-                    Highcharts.chart('container', {
-                        chart: {
-                            plotBackgroundColor: null,
-                            plotBorderWidth: null,
-                            plotShadow: false,
-                            type: 'pie'
-                        },
-                        exporting: {
-                            enabled: false
-                        },
-                        title: {
-                            text: ''
-                        },
-                        tooltip: {
-                            pointFormat: '{series.name}: <b>{point.y:.1f}$</b>'
-                        },
-                        accessibility: {
-                            point: {
-                                valueSuffix: '%'
-                            }
-                        },
-                        plotOptions: {
-                            pie: {
-                                allowPointSelect: true,
-                                cursor: 'pointer',
-                                dataLabels: {
-                                    enabled: true,
-                                    format: '<b>{point.name}</b>: {point.percentage:.1f} %'
-                                },
-                                showInLegend: true
-                            },
-                        },
-                        series: [{
-                            name: 'Total',
-                            colorByPoint: true,
-                            data: request
-                        }]
-                    });
+                    fpaGrafico.pastel('container', request.map(function (r) { return r.name; }), request.map(function (r) { return r.y; }), {formato: 'dolares', titulo: 'Compras, ventas y gastos del período'});
                     return false;
                 }
                 message_error(request.error);

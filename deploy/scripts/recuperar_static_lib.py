@@ -61,11 +61,8 @@ PAQUETES = [
                                                 'webfonts/': 'fontawesome-6.1.1/webfonts/'}),
     ('es6-shim', '0.35.6', {'es6-shim.min.js': 'formvalidation-1.9.0/js/es6-shim.min.js'}),
     ('zxcvbn', '4.4.2', {'dist/zxcvbn.js': 'formvalidation-1.9.0/js/zxcvbn.js'}),
-    ('highcharts', '9.1.1', {'highcharts.js': 'highcharts-9.1.1/highcharts.js',
-                             'highcharts-3d.js': 'highcharts-9.1.1/highcharts-3d.js',
-                             'modules/data.js': 'highcharts-9.1.1/modules/data.js',
-                             'modules/drilldown.js': 'highcharts-9.1.1/modules/drilldown.js',
-                             'modules/exporting.js': 'highcharts-9.1.1/modules/exporting.js'}),
+    # Gráficos con licencia MIT (sustituye a Highcharts, comercial para un SaaS).
+    ('chart.js', '4.5.1', {'dist/chart.umd.min.js': 'chartjs-4.5.1/chart.umd.min.js'}),
     ('jquery-confirm', '3.3.4', {'dist/jquery-confirm.min.css': 'jquery-confirm-3.3.4/css/jquery-confirm.min.css',
                                  'dist/jquery-confirm.min.js': 'jquery-confirm-3.3.4/js/jquery-confirm.min.js'}),
     ('gasparesganga-jquery-loading-overlay', '2.1.7', {
