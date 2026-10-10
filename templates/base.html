@@ -1,14 +1,14 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <title>{{ title }}</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="description" content="">
     <meta name="author" content="{{ dashboard.author }}">
-    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
-    <link rel="shortcut icon" href="{{ dashboard.get_image }}"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <link rel="shortcut icon" href="{% static 'img/brand/favicon.png' %}"/>
     <!--CSS-->
     <link rel="stylesheet" href="{% static 'lib/bootstrap-4.6.0/css/bootstrap.min.css' %}"/>
     <link rel="stylesheet" href="{% static 'lib/fontawesome-6.1.1/css/all.min.css' %}"/>
@@ -34,6 +34,8 @@
     <script src="{% static 'js/functions.js' %}"></script>
     <!--Block head-->
     {% block assets %}{% endblock %}
+    <link rel="stylesheet" href="{% static 'css/facturaporaqui.css' %}">
+    <script src="{% static 'js/facturaporaqui.js' %}" defer></script>
 </head>
 <!--Block body-->
 {% block body %}

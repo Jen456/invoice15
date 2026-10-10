@@ -12,27 +12,55 @@
 {% endblock %}
 
 {% block form_fields %}
-    {% for fields in form|split_form_fields:4 %}
-        <div class="row">
-            {% for field in fields %}
-                <div class="col">
-                    <div class="form-group">
-                        <label for="{{ field.label }}" class="font-weight-bold">{{ field.label }}:</label>
-                        {% if field.name == 'electronic_signature' %}
-                            <div class="input-group mb-3">
-                                {{ field }}
-                                <div class="input-group-append">
-                                    <button class="btn btn-secondary btnLoadCertificate" disabled type="button"><i class="fa-solid fa-file-circle-check"></i></button>
-                                </div>
-                            </div>
-                        {% else %}
-                            {{ field }}
-                        {% endif %}
-                    </div>
-                </div>
-            {% endfor %}
+    <div class="fp-company-intro"><span class="fp-eyebrow">Configuración</span><p>Organiza la información de tu empresa y revisa cada sección antes de guardar.</p></div>
+    <fieldset class="fp-form-section" id="fp-general">
+        <legend>Datos de tu empresa</legend><p class="fp-section-description">Identificación y datos de contacto.</p>
+        <div class="fp-form-grid">
+        {% for field in form.visible_fields %}
+            {% if field.name in 'ruc,business_name,tradename,main_address,mobile,phone,email,website,description,image' %}{% include 'company/field.html' %}{% endif %}
+        {% endfor %}
         </div>
+    </fieldset>
+    <fieldset class="fp-form-section" id="fp-tributaria">
+        <legend>Configuración tributaria</legend><p class="fp-section-description">Revisa el ambiente de emisión antes de facturar.</p>
+        <div class="fp-form-grid">
+        {% for field in form.visible_fields %}
+            {% if field.name in 'special_taxpayer,obligated_accounting,retention_agent,environment_type,emission_type,iva,vat_percentage' %}{% include 'company/field.html' %}{% endif %}
+        {% endfor %}
+        </div>
+    </fieldset>
+    <fieldset class="fp-form-section" id="fp-emision">
+        <legend>Establecimiento y punto de emisión</legend><p class="fp-section-description">Datos del lugar desde el que emites tus comprobantes.</p>
+        <div class="fp-form-grid">
+        {% for field in form.visible_fields %}
+            {% if field.name in 'establishment_address,establishment_code,issuing_point_code' %}{% include 'company/field.html' %}{% endif %}
+        {% endfor %}
+        </div>
+    </fieldset>
+    <fieldset class="fp-form-section" id="fp-firma">
+        <legend>Firma electrónica</legend><p class="fp-section-description">Certificado y clave para firmar tus comprobantes.</p>
+        <div class="fp-form-grid">
+        {% for field in form.visible_fields %}
+            {% if field.name in 'electronic_signature,electronic_signature_key' %}{% include 'company/field.html' %}{% endif %}
+        {% endfor %}
+        </div>
+    </fieldset>
+    <fieldset class="fp-form-section" id="fp-correo">
+        <legend>Correo de tu empresa</legend><p class="fp-section-description">Servidor utilizado para enviar comprobantes.</p>
+        <div class="fp-form-grid">
+        {% for field in form.visible_fields %}
+            {% if field.name in 'email_host,email_port,email_host_user,email_host_password' %}{% include 'company/field.html' %}{% endif %}
+        {% endfor %}
+        </div>
+    </fieldset>
+    {# Preserve additional fields from newer backend versions. #}
+    <div class="fp-form-grid">
+    {% for field in form.visible_fields %}
+        {% if field.name not in 'ruc,business_name,tradename,main_address,mobile,phone,email,website,description,image,special_taxpayer,obligated_accounting,retention_agent,environment_type,emission_type,iva,vat_percentage,establishment_address,establishment_code,issuing_point_code,electronic_signature,electronic_signature_key,email_host,email_port,email_host_user,email_host_password' %}
+            {% include 'company/field.html' %}
+        {% endif %}
     {% endfor %}
+    </div>
     <div class="modal fade" id="myModalCertificate" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -40,7 +68,7 @@
                     <h5 class="modal-title font-weight-bold">
                         <i class="fa-solid fa-file-circle-check"></i> Información de la firma electrónica
                     </h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>

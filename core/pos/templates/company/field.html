@@ -1,0 +1,16 @@
+{% load widget_tweaks %}
+<div class="fp-field {% if field.name == 'main_address' or field.name == 'establishment_address' or field.name == 'description' %}fp-field-wide{% endif %}">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {% if field.name == 'electronic_signature' %}
+        <div class="input-group fp-file-field">
+            {{ field }}
+            <div class="input-group-append"><button class="btn btn-secondary btnLoadCertificate" disabled type="button" aria-label="Consultar información de la firma"><i class="fa-solid fa-file-circle-check" aria-hidden="true"></i></button></div>
+        </div>
+    {% elif field.name == 'electronic_signature_key' or field.name == 'email_host_password' %}
+        <div class="input-group">{{ field|attr:'type:password'|attr:'autocomplete:new-password' }}<div class="input-group-append"><button class="btn btn-outline-secondary fp-toggle-secret" type="button" aria-controls="{{ field.id_for_label }}" aria-label="Mostrar contraseña" aria-pressed="false"><i class="fas fa-eye" aria-hidden="true"></i></button></div></div>
+    {% else %}
+        {{ field }}
+    {% endif %}
+    {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+    {% for error in field.errors %}<div class="text-danger" role="alert">{{ error }}</div>{% endfor %}
+</div>

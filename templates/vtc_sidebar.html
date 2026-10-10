@@ -1,8 +1,8 @@
 {% load static %}
 <aside class="main-sidebar elevation-2 {{ dashboard.sidebar }}">
     <a href="{% url 'dashboard' %}" class="brand-link {{ dashboard.brand_logo }}">
-        <img src="{{ dashboard.get_image }}" alt="AdminLTE Logo" class="brand-image" style="opacity: .8">
-        <span class="brand-text font-weight-light">{{ dashboard.name }}</span>
+        <img src="{% static 'img/brand/isotipo.png' %}" alt="Colibrí de FacturaPorAquí" class="brand-image" style="opacity: .8">
+        <span class="brand-text font-weight-light">FacturaPorAquí</span>
     </a>
     <div class="sidebar">
         <div class="user-panel mt-3 pb-3 mb-3 d-flex">

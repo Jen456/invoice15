@@ -32,7 +32,7 @@
                     {% block form_fields %}
                         {% for field in form.visible_fields %}
                             <div class="form-group">
-                                <label>{{ field.label }}:</label>
+                                <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
                                 {% if field.field.widget.input_type == 'checkbox' %}
                                     <br>{{ field }}
                                 {% else %}
@@ -44,7 +44,7 @@
                 </div>
             </div>
             {% block box_footer %}
-                <div class="card-footer">
+                <div class="card-footer fp-form-actions">
                     {% block buttons %}
                         <button type="submit" class="btn btn-primary btn-flat">
                             <i class="fas fa-save"></i> Guardar registro

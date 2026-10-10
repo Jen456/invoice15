@@ -26,15 +26,15 @@ var category = {
                     class: 'text-center',
                     orderable: false,
                     render: function (data, type, row) {
-                        var buttons = '<a href="' + pathname + 'update/' + row.id + '/" data-toggle="tooltip" title="Editar" class="btn btn-warning btn-xs btn-flat"><i class="fas fa-edit"></i></a> ';
-                        buttons += '<a href="' + pathname + 'delete/' + row.id + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash-alt"></i></a>';
+                        var buttons = '<a href="' + pathname + 'update/' + row.id + '/" data-toggle="tooltip" title="Editar" aria-label="Editar categoría" class="btn btn-warning btn-xs btn-flat"><i class="fas fa-edit"></i></a> ';
+                        buttons += '<a href="' + pathname + 'delete/' + row.id + '/" data-toggle="tooltip" title="Eliminar" aria-label="Eliminar categoría" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash-alt"></i></a>';
                         return buttons;
                     }
                 },
             ],
             initComplete: function (settings, json) {
                 $('[data-toggle="tooltip"]').tooltip();
-                $(this).wrap('<div class="dataTables_scroll"><div/>');
+                if (!$(this).parent().hasClass('dataTables_scroll')) $(this).wrap('<div class="dataTables_scroll"></div>');
             }
         });
     }

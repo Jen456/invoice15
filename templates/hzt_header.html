@@ -2,10 +2,10 @@
 <nav class="main-header navbar navbar-expand-md {{ dashboard.navbar }}">
     <div class="container">
         <a href="{% url 'dashboard' %}" class="navbar-brand {{ dashboard.brand_logo }}">
-            <img src="{{ dashboard.get_image }}" alt="" class="brand-image" style="opacity: .8">
-            <span class="brand-text font-weight-light">{{ dashboard.name }}</span>
+            <img src="{% static 'img/brand/isotipo.png' %}" alt="" class="brand-image" style="opacity: .8">
+            <span class="brand-text font-weight-light">FacturaPorAquí</span>
         </a>
-        <button class="navbar-toggler order-1" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler order-1" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Abrir menú">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse order-3" id="navbarCollapse">
