@@ -150,7 +150,9 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 FILE_UPLOAD_PERMISSIONS = 0o640
 
-FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o2750
+# Sin setuid/setgid: el servicio corre con RestrictSUIDSGID=yes y el sistema
+# rechazaría crear la carpeta («Operation not permitted»).
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o750
 
 LOGIN_REDIRECT_URL = '/dashboard/'
 
