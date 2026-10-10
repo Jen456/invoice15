@@ -28,6 +28,8 @@ class Command(BaseCommand):
                             help='Obligatorio: confirma que se cargan datos ficticios.')
         parser.add_argument('--ruc', default='0990000000001', help='RUC ficticio de la empresa (13 dígitos).')
         parser.add_argument('--nombre', default='DEMOSTRACIÓN', help='Nombre comercial ficticio.')
+        parser.add_argument('--propietario', help='Crea además un usuario Propietario con este nombre de usuario.')
+        parser.add_argument('--archivo-credenciales', help='Ruta nueva (0600) donde se guarda la contraseña del propietario.')
 
     def handle(self, *args, **options):
         if not options['confirmar_datos_ficticios']:
@@ -48,6 +50,24 @@ class Command(BaseCommand):
         with company_context(company):
             self.load(company)
         self.stdout.write(f'Empresa ficticia {company.tradename} (id {company.id}) creada.')
+        if options['propietario']:
+            self.crear_propietario(company, options['propietario'], options['archivo_credenciales'])
+
+    def crear_propietario(self, company, username, ruta):
+        import os
+        from core.tenancy.models import ROLE_OWNER
+        if not ruta:
+            raise CommandError('Indica --archivo-credenciales para guardar la contraseña del propietario.')
+        clave = secrets.token_urlsafe(15)
+        user = User.objects.create(username=username, names=f'Propietario {company.tradename}',
+                                   email=f'{username}@example.com')
+        user.set_password(clave)
+        user.save()
+        Membership.objects.create(user=user, company=company, group=Group.objects.get(name=ROLE_OWNER))
+        fd = os.open(ruta, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w') as f:
+            f.write(f'Usuario: {username}\nContraseña: {clave}\n')
+        self.stdout.write(f'Propietario {username} creado; contraseña en {ruta}')
 
     def load(self, company):
         image_path = f'{settings.BASE_DIR}{settings.STATIC_URL}img/default/logo.png'

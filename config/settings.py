@@ -176,6 +176,9 @@ FPA_LOGIN_MAX_INTENTOS = env.int('FPA_LOGIN_MAX_INTENTOS', default=5)
 FPA_LOGIN_BLOQUEO_SEGUNDOS = env.int('FPA_LOGIN_BLOQUEO_SEGUNDOS', default=900)
 
 # Correo de la plataforma (notificaciones y recuperación de contraseña).
+# En local: EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend imprime los correos en la consola.
+EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+
 EMAIL_HOST = env('EMAIL_HOST', default='localhost')
 
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)

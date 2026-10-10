@@ -75,3 +75,12 @@ def test_demo_crea_membresias_de_cliente_por_empresa():
     call_command('insert_test_data', confirmar_datos_ficticios=True, ruc='0990000002001', nombre='OTRA DEMO')
     consumidor = User.objects.get(username='9999999999999')
     assert Membership.objects.filter(user=consumidor).count() == 2
+
+
+@pytest.mark.django_db
+def test_demo_con_propietario_para_revisar_pantallas(tmp_path):
+    from core.tenancy.models import Membership
+    ruta = tmp_path / 'propietario.txt'
+    call_command('insert_test_data', confirmar_datos_ficticios=True, propietario='dueno.demo', archivo_credenciales=str(ruta))
+    assert stat.S_IMODE(os.stat(ruta).st_mode) == 0o600
+    assert Membership.objects.get(user__username='dueno.demo').group.name == 'Propietario'
