@@ -134,6 +134,11 @@ document.addEventListener('DOMContentLoaded', function (e) {
 
 $(function () {
 
+    // Al editar, la contraseña vacía significa "sin cambios" (el servidor no la envía al navegador).
+    if ($('input[name="action"]').val() === 'edit') {
+        fv.disableValidator('password');
+    }
+
     $('.select2').select2({
         placeholder: 'Buscar..',
         language: 'es',

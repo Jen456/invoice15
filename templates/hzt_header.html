@@ -1,4 +1,4 @@
-{% load static %}
+{% load static suscripciones %}
 <nav class="main-header navbar navbar-expand-md {{ dashboard.navbar }}">
     <div class="container">
         <a href="{% url 'dashboard' %}" class="navbar-brand {{ dashboard.brand_logo }}">
@@ -15,22 +15,22 @@
                         <i class="fas fa-folder-open"></i> Módulos
                     </a>
                     <ul class="dropdown-menu border-0 shadow" style="left: 0; right: inherit;">
-                        {% if request.session.group.get_session_module_types %}
-                            {% for module_type in request.session.group.get_session_module_types %}
+                        {% if session_group.get_session_module_types %}
+                            {% for module_type in session_group.get_session_module_types %}
                                 <li class="dropdown-submenu dropdown-hover">
                                     <a role="button" data-toggle="dropdown" class="dropdown-item dropdown-toggle">
                                         <i class="{{ module_type.icon }}"></i> {{ module_type.name }}
                                     </a>
                                     <ul class="dropdown-menu border-0 shadow">
                                         {% for module in module_type.get_session_modules %}
-                                            <li><a href="{{ module.url }}" class="dropdown-item"><i class="{{ module.icon }}"></i> {{ module.name }}</a></li>
+                                            <li><a href="{{ module.url }}" class="dropdown-item"><i class="{{ module.icon }}"></i> {{ module.name }}{% if module.url|bloqueado_por_plan:fpa_plan %}<i class="fas fa-lock fpa-candado" aria-hidden="true"></i><span class="sr-only"> (requiere plan)</span>{% endif %}</a></li>
                                         {% endfor %}
                                     </ul>
                                 </li>
                             {% endfor %}
                         {% endif %}
-                        {% for module in request.session.group.get_session_modules %}
-                            <li><a href="{{ module.url }}" class="dropdown-item"><i class="{{ module.icon }}"></i> {{ module.name }}</a></li>
+                        {% for module in session_group.get_session_modules %}
+                            <li><a href="{{ module.url }}" class="dropdown-item"><i class="{{ module.icon }}"></i> {{ module.name }}{% if module.url|bloqueado_por_plan:fpa_plan %}<i class="fas fa-lock fpa-candado" aria-hidden="true"></i><span class="sr-only"> (requiere plan)</span>{% endif %}</a></li>
                         {% endfor %}
                     </ul>
                 </li>
@@ -39,7 +39,7 @@
         <ul class="order-1 order-md-3 navbar-nav navbar-no-expand ml-auto">
             <li class="nav-item dropdown">
                 <a class="nav-link" data-toggle="dropdown" aria-expanded="false">
-                    <i class="far fa-user"></i> Usuario: {{ request.user.username }}
+                    <i class="far fa-user" aria-hidden="true"></i> <span class="d-none d-md-inline">Usuario: {{ request.user.username }}</span><span class="sr-only">Usuario {{ request.user.username }}</span>
                 </a>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" style="left: inherit; right: 0;">
                     <span class="dropdown-header">Datos de tu conexión</span>
@@ -57,11 +57,7 @@
                     <a class="dropdown-item">
                         <p class="text-sm">Perfil actual</p>
                         <p class="text-sm text-muted">
-                            {% if request.user.groups.all %}
-                                {{ request.session.group.name }}
-                            {% else %}
-                                Sin perfil
-                            {% endif %}
+                            {% if session_group %}{{ session_group.name }}{% else %}Sin perfil{% endif %}
                         </p>
                     </a>
                     <div class="dropdown-divider"></div>
@@ -71,27 +67,7 @@
                     </a>
                 </div>
             </li>
-            {% if request.user.has_at_least_one_group %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link" data-toggle="dropdown">
-                        <i class="fa-solid fa-user-shield"></i> Perfil: {{ request.session.group.name }}
-                        {% if request.user.has_more_than_one_group %}
-                            <i class="fas fa-caret-down"></i>
-                        {% endif %}
-                    </a>
-                     {% if request.user.has_more_than_one_group %}
-                        <div class="dropdown-menu dropdown-menu-right">
-                            {% for group in user.groups.all %}
-                                {% if group.id != request.session.group.id %}
-                                    <a href="{% url 'user_choose_profile' group.id %}" class="dropdown-item">
-                                        {{ group.name }}
-                                    </a>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                </li>
-            {% endif %}
+            {% include 'tenancy/company_switcher.html' %}
             <li class="nav-item">
                 <a class="nav-link btnLogout" href="{% url 'logout' %}">
                     <i class="fas fa-power-off"></i>

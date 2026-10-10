@@ -1,8 +1,10 @@
 import json
 
+from django.contrib import messages
+
 from django.db import transaction
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponseRedirect, HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, FormView
 
@@ -67,7 +69,7 @@ class CreditNoteCreateView(GroupPermissionMixin, CreateView):
         try:
             if action == 'add':
                 with transaction.atomic():
-                    company = Company.objects.first()
+                    company = request.company
                     iva = float(company.iva) / 100
                     credit_note = CreditNote()
                     credit_note.sale_id = int(request.POST['sale'])
@@ -117,9 +119,17 @@ class CreditNoteCreateView(GroupPermissionMixin, CreateView):
             data['error'] = str(e)
         return HttpResponse(json.dumps(data), content_type='application/json')
 
+    def get(self, request, *args, **kwargs):
+        try:
+            self.voucher_number_full = CreditNote().generate_voucher_number_full()
+        except Receipt.DoesNotExist:
+            messages.error(request, 'Configura primero el comprobante de Nota de Crédito (Comprobantes) para tu establecimiento y punto de emisión.')
+            return HttpResponseRedirect(self.success_url)
+        return super().get(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data()
-        context['title'] = f'Nuevo registro de una Nota de Credito - {CreditNote().generate_voucher_number_full()}'
+        context['title'] = f'Nuevo registro de una Nota de Credito - {self.voucher_number_full}'
         context['list_url'] = self.success_url
         context['action'] = 'add'
         return context

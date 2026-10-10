@@ -9,6 +9,7 @@ from django.forms.models import model_to_dict
 
 from config import settings
 from core.security.choices import *
+from core.security.session import get_group
 from core.user.models import User
 
 
@@ -74,8 +75,8 @@ class ModuleType(models.Model):
     def get_session_modules(self):
         queryset = []
         request = get_current_request()
-        if 'group' in request.session:
-            group = request.session['group']
+        group = get_group(request) if request is not None else None
+        if group is not None:
             module_ids = list(group.groupmodule_set.filter(module__module_type=self).values_list('module_id', flat=True))
             queryset = Module.objects.filter(id__in=module_ids).order_by('name')
         return queryset

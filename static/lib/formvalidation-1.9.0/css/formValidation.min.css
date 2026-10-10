@@ -1,0 +1,6 @@
+/* fv-compat — estilos mínimos de los mensajes de validación (Bootstrap 4). */
+.fv-plugins-message-container{display:none;width:100%;margin-top:.25rem;font-size:85%;color:#b3261e}
+.fv-plugins-message-container.fv-show{display:block}
+.fv-plugins-icon{display:none}
+.select2-container.is-invalid .select2-selection{border-color:#dc3545}
+.select2-container.is-valid .select2-selection{border-color:#28a745}

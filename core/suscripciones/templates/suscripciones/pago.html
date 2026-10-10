@@ -1,0 +1,54 @@
+{% extends 'skin.html' %}
+{% load static suscripciones widget_tweaks %}
+{% block assets_body %}
+    <link rel="stylesheet" href="{% static 'suscripciones/css/plan.css' %}">
+{% endblock %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item"><a href="{% url 'suscripcion' %}"><i class="fas fa-credit-card"></i> Plan y pagos</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Pago {{ pago.client_tx_id }}</li>
+{% endblock %}
+{% block content %}
+    <div class="fpa-plan">
+        <section class="card" aria-labelledby="titulo-pago">
+            <div class="card-body">
+                <h1 class="h4" id="titulo-pago">{{ pago.plan.name }} · {{ pago.get_status_display }}</h1>
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Fecha</dt><dd class="col-sm-8">{{ pago.confirmed_at|default:pago.created_at|date:"d/m/Y H:i" }}</dd>
+                    <dt class="col-sm-4">Base imponible</dt><dd class="col-sm-8">{{ pago.base_cents|dolares }}</dd>
+                    <dt class="col-sm-4">IVA {{ pago.iva_rate|floatformat:0 }} %</dt><dd class="col-sm-8">{{ pago.iva_cents|dolares }}</dd>
+                    <dt class="col-sm-4">Total</dt><dd class="col-sm-8"><strong>{{ pago.amount_cents|dolares }}</strong></dd>
+                    <dt class="col-sm-4">Medio</dt><dd class="col-sm-8">{{ pago.get_method_display }}{% if pago.card_brand %} · {{ pago.card_brand }}{% endif %}{% if pago.last_digits %} terminada en {{ pago.last_digits }}{% endif %}</dd>
+                    <dt class="col-sm-4">Referencia</dt><dd class="col-sm-8">{{ pago.client_tx_id }}</dd>
+                    {% if pago.payphone_transaction_id %}<dt class="col-sm-4">Transacción PayPhone</dt><dd class="col-sm-8">{{ pago.payphone_transaction_id }}{% if pago.authorization_code %} · autorización {{ pago.authorization_code }}{% endif %}</dd>{% endif %}
+                    {% if periodo %}<dt class="col-sm-4">Vigencia</dt><dd class="col-sm-8">{{ periodo.starts_at|date:"d/m/Y" }} al {{ periodo.ends_at|date:"d/m/Y" }} ({{ periodo.get_status_display|lower }})</dd>{% endif %}
+                    {% if pago.invoice_number %}<dt class="col-sm-4">Factura</dt><dd class="col-sm-8">{{ pago.invoice_number }}</dd>{% endif %}
+                </dl>
+            </div>
+        </section>
+        {% if pago.status == 'aprobado' %}
+            <section class="card mt-3" aria-labelledby="titulo-factura">
+                <div class="card-body">
+                    <h2 class="h5" id="titulo-factura">Factura de la suscripción</h2>
+                    {% if pago.invoice_requested and not form.errors %}
+                        <p class="mb-3">Ya la solicitaste{% if pago.invoice_number %} y fue emitida{% else %}; la recibirás en {{ pago.invoice_data.correo }}{% endif %}. Si necesitas corregir los datos, envíalos de nuevo.</p>
+                    {% else %}
+                        <p class="text-muted">Indícanos los datos y te enviaremos la factura electrónica por correo.</p>
+                    {% endif %}
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <div class="form-row">
+                            {% for field in form %}
+                                <div class="form-group col-12 col-md-6">
+                                    <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                                    {% if field.errors %}{% render_field field class="form-control is-invalid" %}{% else %}{% render_field field class="form-control" %}{% endif %}
+                                    {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn fpa-btn-pagar">Solicitar factura</button>
+                    </form>
+                </div>
+            </section>
+        {% endif %}
+    </div>
+{% endblock %}

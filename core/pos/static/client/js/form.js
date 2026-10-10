@@ -38,7 +38,7 @@ var client = {
                 message_error(request.error);
             },
             error: function (jqXHR, textStatus, errorThrown) {
-                message_error(errorThrown + ' ' + textStatus);
+                message_error((jqXHR.responseJSON && jqXHR.responseJSON.error) || (errorThrown + ' ' + textStatus));
             }
         });
     }

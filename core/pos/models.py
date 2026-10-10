@@ -3,6 +3,7 @@ import math
 import tempfile
 import time
 import unicodedata
+import uuid
 from datetime import datetime
 from io import BytesIO
 from xml.etree import ElementTree
@@ -17,11 +18,15 @@ from django.db.models import FloatField
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from django.forms import model_to_dict
+from django.utils import timezone
 
 from config import settings
 from core.pos.choices import *
 from core.pos.utilities import printer
 from core.pos.utilities.sri import SRI
+from core.tenancy.context import require_company
+from core.tenancy.models_base import TenantModel
+from core.tenancy.storage import CompanyPath
 from core.user.models import User
 
 
@@ -35,7 +40,7 @@ class Company(models.Model):
     issuing_point_code = models.CharField(max_length=3, verbose_name='Código del Punto de Emisión')
     special_taxpayer = models.CharField(max_length=13, verbose_name='Contribuyente Especial (Número de Resolución)')
     obligated_accounting = models.CharField(max_length=2, choices=OBLIGATED_ACCOUNTING, default=OBLIGATED_ACCOUNTING[1][0], verbose_name='Obligado a Llevar Contabilidad')
-    image = models.ImageField(null=True, blank=True, upload_to='company/%Y/%m/%d', verbose_name='Logotipo de la empresa')
+    image = models.ImageField(null=True, blank=True, upload_to=CompanyPath('logo'), verbose_name='Logotipo de la empresa')
     environment_type = models.PositiveIntegerField(choices=ENVIRONMENT_TYPE, default=1, verbose_name='Tipo de Ambiente')
     emission_type = models.PositiveIntegerField(choices=EMISSION_TYPE, default=1, verbose_name='Tipo de Emisión')
     retention_agent = models.CharField(max_length=2, choices=RETENTION_AGENT, default=RETENTION_AGENT[1][0], verbose_name='Agente de Retención')
@@ -46,12 +51,15 @@ class Company(models.Model):
     description = models.CharField(max_length=500, null=True, blank=True, verbose_name='Descripción')
     iva = models.DecimalField(default=0.00, decimal_places=2, max_digits=9, verbose_name='IVA')
     vat_percentage = models.IntegerField(choices=VAT_PERCENTAGE, default=VAT_PERCENTAGE[3][0], verbose_name='Porcentaje del IVA')
-    electronic_signature = models.FileField(null=True, blank=True, upload_to='company/%Y/%m/%d', verbose_name='Firma electrónica (Archivo P12)')
+    electronic_signature = models.FileField(null=True, blank=True, upload_to=CompanyPath('firma'), verbose_name='Firma electrónica (Archivo P12)')
     electronic_signature_key = models.CharField(max_length=100, verbose_name='Clave de firma electrónica')
     email_host = models.CharField(max_length=30, default='smtp.gmail.com', verbose_name='Servidor de correo')
     email_port = models.IntegerField(default=587, verbose_name='Puerto del servidor de correo')
     email_host_user = models.CharField(max_length=100, verbose_name='Username del servidor de correo')
     email_host_password = models.CharField(max_length=30, verbose_name='Password del servidor de correo')
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    is_active = models.BooleanField(default=True, verbose_name='Activa')
+    created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name='Fecha de alta')
 
     def __str__(self):
         return self.business_name
@@ -90,11 +98,11 @@ class Company(models.Model):
         )
 
 
-class Provider(models.Model):
-    name = models.CharField(max_length=100, unique=True, verbose_name='Razón Social')
-    ruc = models.CharField(max_length=13, unique=True, verbose_name='Número de RUC')
-    mobile = models.CharField(max_length=10, unique=True, verbose_name='Teléfono celular')
-    email = models.CharField(max_length=50, unique=True, verbose_name='Email')
+class Provider(TenantModel):
+    name = models.CharField(max_length=100, verbose_name='Razón Social')
+    ruc = models.CharField(max_length=13, verbose_name='Número de RUC')
+    mobile = models.CharField(max_length=10, verbose_name='Teléfono celular')
+    email = models.CharField(max_length=50, verbose_name='Email')
     address = models.CharField(max_length=500, null=True, blank=True, verbose_name='Dirección')
 
     def __str__(self):
@@ -109,12 +117,13 @@ class Provider(models.Model):
         return item
 
     class Meta:
+        constraints = [models.UniqueConstraint(fields=['company', 'name'], name='provider_name_por_empresa'), models.UniqueConstraint(fields=['company', 'ruc'], name='provider_ruc_por_empresa'), models.UniqueConstraint(fields=['company', 'mobile'], name='provider_mobile_por_empresa'), models.UniqueConstraint(fields=['company', 'email'], name='provider_email_por_empresa')]
         verbose_name = 'Proveedor'
         verbose_name_plural = 'Proveedores'
 
 
-class Category(models.Model):
-    name = models.CharField(max_length=50, unique=True, verbose_name='Nombre')
+class Category(TenantModel):
+    name = models.CharField(max_length=50, verbose_name='Nombre')
 
     def __str__(self):
         return self.name
@@ -124,19 +133,20 @@ class Category(models.Model):
         return item
 
     class Meta:
+        constraints = [models.UniqueConstraint(fields=['company', 'name'], name='category_name_por_empresa')]
         verbose_name = 'Categoria'
         verbose_name_plural = 'Categorias'
 
 
-class Product(models.Model):
+class Product(TenantModel):
     name = models.CharField(max_length=150, verbose_name='Nombre')
-    code = models.CharField(max_length=20, unique=True, verbose_name='Código')
+    code = models.CharField(max_length=20, verbose_name='Código')
     description = models.CharField(max_length=500, null=True, blank=True, verbose_name='Descripción')
     category = models.ForeignKey(Category, on_delete=models.PROTECT, verbose_name='Categoría')
     price = models.DecimalField(max_digits=9, decimal_places=2, default=0.00, verbose_name='Precio de Compra')
     pvp = models.DecimalField(max_digits=9, decimal_places=2, default=0.00, verbose_name='Precio de Venta')
-    image = models.ImageField(upload_to='product/%Y/%m/%d', null=True, blank=True, verbose_name='Imagen')
-    barcode = models.ImageField(upload_to='barcode/%Y/%m/%d', null=True, blank=True, verbose_name='Código de barra')
+    image = models.ImageField(upload_to=CompanyPath('productos'), null=True, blank=True, verbose_name='Imagen')
+    barcode = models.ImageField(upload_to=CompanyPath('codigos'), null=True, blank=True, verbose_name='Código de barra')
     inventoried = models.BooleanField(default=True, verbose_name='¿Es inventariado?')
     stock = models.IntegerField(default=0)
     with_tax = models.BooleanField(default=True, verbose_name='¿Se cobra impuesto?')
@@ -206,6 +216,7 @@ class Product(models.Model):
         super(Product, self).save()
 
     class Meta:
+        constraints = [models.UniqueConstraint(fields=['company', 'code'], name='product_code_por_empresa')]
         verbose_name = 'Producto'
         verbose_name_plural = 'Productos'
         default_permissions = ()
@@ -218,13 +229,14 @@ class Product(models.Model):
         )
 
 
-class Purchase(models.Model):
-    number = models.CharField(max_length=8, unique=True, verbose_name='Número de factura')
+class Purchase(TenantModel):
+    number = models.CharField(max_length=8, verbose_name='Número de factura')
     provider = models.ForeignKey(Provider, on_delete=models.PROTECT, verbose_name='Proveedor')
     payment_type = models.CharField(choices=PAYMENT_TYPE, max_length=50, default=PAYMENT_TYPE[0][0], verbose_name='Tipo de pago')
     date_joined = models.DateField(default=datetime.now, verbose_name='Fecha de registro')
     end_credit = models.DateField(default=datetime.now, verbose_name='Fecha de plazo de credito')
     subtotal = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
+    created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name='Registrada el')
 
     def __str__(self):
         return self.provider.name
@@ -256,6 +268,7 @@ class Purchase(models.Model):
         return item
 
     class Meta:
+        constraints = [models.UniqueConstraint(fields=['company', 'number'], name='purchase_number_por_empresa')]
         verbose_name = 'Compra'
         verbose_name_plural = 'Compras'
         default_permissions = ()
@@ -266,7 +279,7 @@ class Purchase(models.Model):
         )
 
 
-class PurchaseDetail(models.Model):
+class PurchaseDetail(TenantModel):
     purchase = models.ForeignKey(Purchase, on_delete=models.PROTECT)
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     cant = models.IntegerField(default=0)
@@ -291,10 +304,10 @@ class PurchaseDetail(models.Model):
         default_permissions = ()
 
 
-class Client(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    dni = models.CharField(max_length=13, unique=True, verbose_name='Número de cedula o ruc')
-    mobile = models.CharField(max_length=10, unique=True, verbose_name='Teléfono')
+class Client(TenantModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='clients', verbose_name='Usuario')
+    dni = models.CharField(max_length=13, verbose_name='Número de cedula o ruc')
+    mobile = models.CharField(max_length=10, verbose_name='Teléfono')
     birthdate = models.DateField(default=datetime.now, verbose_name='Fecha de nacimiento')
     address = models.CharField(max_length=500, verbose_name='Dirección')
     identification_type = models.CharField(max_length=30, choices=IDENTIFICATION_TYPE, default=IDENTIFICATION_TYPE[0][0], verbose_name='Tipo de identificación')
@@ -325,11 +338,12 @@ class Client(models.Model):
             pass
 
     class Meta:
+        constraints = [models.UniqueConstraint(fields=['company', 'dni'], name='client_dni_por_empresa'), models.UniqueConstraint(fields=['company', 'mobile'], name='client_mobile_por_empresa')]
         verbose_name = 'Cliente'
         verbose_name_plural = 'Clientes'
 
 
-class Receipt(models.Model):
+class Receipt(TenantModel):
     voucher_type = models.CharField(max_length=10, choices=VOUCHER_TYPE, verbose_name='Tipo de Comprobante')
     establishment_code = models.CharField(max_length=3, verbose_name='Código del Establecimiento Emisor')
     issuing_point_code = models.CharField(max_length=3, verbose_name='Código del Punto de Emisión')
@@ -362,8 +376,7 @@ class Receipt(models.Model):
         verbose_name_plural = 'Comprobantes'
 
 
-class Sale(models.Model):
-    company = models.ForeignKey(Company, on_delete=models.PROTECT, verbose_name='Compañia')
+class Sale(TenantModel):
     client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Cliente')
     receipt = models.ForeignKey(Receipt, on_delete=models.PROTECT, limit_choices_to={'voucher_type__in': [VOUCHER_TYPE[0][0], VOUCHER_TYPE[-1][0]]}, verbose_name='Tipo de comprobante')
     voucher_number = models.CharField(max_length=9, verbose_name='Número de comprobante')
@@ -387,8 +400,8 @@ class Sale(models.Model):
     environment_type = models.PositiveIntegerField(choices=ENVIRONMENT_TYPE, default=ENVIRONMENT_TYPE[0][0])
     access_code = models.CharField(max_length=49, null=True, blank=True, verbose_name='Clave de acceso')
     authorization_date = models.DateField(null=True, blank=True, verbose_name='Fecha de emisión')
-    xml_authorized = models.FileField(null=True, blank=True, verbose_name='XML Autorizado')
-    pdf_authorized = models.FileField(upload_to='pdf_authorized/%Y/%m/%d', null=True, blank=True, verbose_name='PDF Autorizado')
+    xml_authorized = models.FileField(upload_to=CompanyPath('comprobantes/xml'), null=True, blank=True, verbose_name='XML Autorizado')
+    pdf_authorized = models.FileField(upload_to=CompanyPath('comprobantes/pdf'), null=True, blank=True, verbose_name='PDF Autorizado')
     create_electronic_invoice = models.BooleanField(default=True, verbose_name='Crear factura electrónica')
     status = models.CharField(max_length=50, choices=INVOICE_STATUS, default=INVOICE_STATUS[0][0], verbose_name='Estado')
 
@@ -408,6 +421,8 @@ class Sale(models.Model):
         return float(self.saledetail_set.filter().aggregate(result=Coalesce(Sum('subtotal'), 0.00, output_field=FloatField()))['result'])
 
     def get_authorization_date(self):
+        if self.authorization_date is None:
+            return 'Pendiente de autorización'
         return self.authorization_date.strftime('%Y-%m-%d')
 
     def get_date_joined(self):
@@ -437,7 +452,7 @@ class Sale(models.Model):
 
     def generate_voucher_number_full(self):
         if self.receipt_id is None:
-            self.company = Company.objects.first()
+            self.company = require_company()
             self.receipt = Receipt.objects.get(voucher_type=VOUCHER_TYPE[0][0], establishment_code=self.company.establishment_code, issuing_point_code=self.company.issuing_point_code)
         self.voucher_number = self.generate_voucher_number()
         return self.get_voucher_number_full()
@@ -605,6 +620,11 @@ class Sale(models.Model):
         super(Sale, self).delete()
 
     def generate_electronic_invoice(self):
+        # Exige plan vigente y descuenta el cupo solo si el SRI autoriza (core/suscripciones/cupo.py).
+        from core.suscripciones.cupo import emitir_con_cupo
+        return emitir_con_cupo(self, self._emitir_electronicamente)
+
+    def _emitir_electronicamente(self):
         sri = SRI()
         result = sri.create_xml(self)
         if result['resp']:
@@ -635,7 +655,7 @@ class Sale(models.Model):
         )
 
 
-class SaleDetail(models.Model):
+class SaleDetail(TenantModel):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     cant = models.IntegerField(default=0)
@@ -675,7 +695,7 @@ class SaleDetail(models.Model):
         default_permissions = ()
 
 
-class CtasCollect(models.Model):
+class CtasCollect(TenantModel):
     sale = models.ForeignKey(Sale, on_delete=models.PROTECT)
     date_joined = models.DateField(default=datetime.now)
     end_date = models.DateField(default=datetime.now)
@@ -718,7 +738,7 @@ class CtasCollect(models.Model):
         )
 
 
-class PaymentsCtaCollect(models.Model):
+class PaymentsCtaCollect(TenantModel):
     ctas_collect = models.ForeignKey(CtasCollect, on_delete=models.CASCADE, verbose_name='Cuenta por cobrar')
     date_joined = models.DateField(default=datetime.now, verbose_name='Fecha de registro')
     description = models.CharField(max_length=500, null=True, blank=True, verbose_name='Detalles')
@@ -747,7 +767,7 @@ class PaymentsCtaCollect(models.Model):
         default_permissions = ()
 
 
-class DebtsPay(models.Model):
+class DebtsPay(TenantModel):
     purchase = models.ForeignKey(Purchase, on_delete=models.PROTECT)
     date_joined = models.DateField(default=datetime.now)
     end_date = models.DateField(default=datetime.now)
@@ -790,7 +810,7 @@ class DebtsPay(models.Model):
         )
 
 
-class PaymentsDebtsPay(models.Model):
+class PaymentsDebtsPay(TenantModel):
     debts_pay = models.ForeignKey(DebtsPay, on_delete=models.CASCADE, verbose_name='Cuenta por pagar')
     date_joined = models.DateField(default=datetime.now, verbose_name='Fecha de registro')
     description = models.CharField(max_length=500, null=True, blank=True, verbose_name='Detalles')
@@ -819,8 +839,8 @@ class PaymentsDebtsPay(models.Model):
         default_permissions = ()
 
 
-class TypeExpense(models.Model):
-    name = models.CharField(max_length=50, unique=True, verbose_name='Nombre')
+class TypeExpense(TenantModel):
+    name = models.CharField(max_length=50, verbose_name='Nombre')
 
     def __str__(self):
         return self.name
@@ -830,6 +850,7 @@ class TypeExpense(models.Model):
         return item
 
     class Meta:
+        constraints = [models.UniqueConstraint(fields=['company', 'name'], name='typeexpense_name_por_empresa')]
         verbose_name = 'Tipo de Gasto'
         verbose_name_plural = 'Tipos de Gastos'
         default_permissions = ()
@@ -841,7 +862,7 @@ class TypeExpense(models.Model):
         )
 
 
-class Expenses(models.Model):
+class Expenses(TenantModel):
     type_expense = models.ForeignKey(TypeExpense, on_delete=models.PROTECT, verbose_name='Tipo de Gasto')
     description = models.CharField(max_length=500, null=True, blank=True, verbose_name='Descripción')
     date_joined = models.DateField(default=datetime.now, verbose_name='Fecha de Registro')
@@ -870,7 +891,7 @@ class Expenses(models.Model):
         verbose_name_plural = 'Gastos'
 
 
-class Promotions(models.Model):
+class Promotions(TenantModel):
     start_date = models.DateField(default=datetime.now)
     end_date = models.DateField(default=datetime.now)
     state = models.BooleanField(default=True)
@@ -889,7 +910,7 @@ class Promotions(models.Model):
         verbose_name_plural = 'Promociones'
 
 
-class PromotionsDetail(models.Model):
+class PromotionsDetail(TenantModel):
     promotion = models.ForeignKey(Promotions, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     price_current = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
@@ -920,7 +941,7 @@ class PromotionsDetail(models.Model):
         default_permissions = ()
 
 
-class VoucherErrors(models.Model):
+class VoucherErrors(TenantModel):
     date_joined = models.DateField(default=datetime.now)
     datetime_joined = models.DateTimeField(default=datetime.now)
     environment_type = models.PositiveIntegerField(choices=ENVIRONMENT_TYPE, default=ENVIRONMENT_TYPE[0][0])
@@ -951,8 +972,7 @@ class VoucherErrors(models.Model):
         )
 
 
-class CreditNote(models.Model):
-    company = models.ForeignKey(Company, on_delete=models.PROTECT, verbose_name='Compañia')
+class CreditNote(TenantModel):
     sale = models.ForeignKey(Sale, on_delete=models.PROTECT, verbose_name='Venta')
     date_joined = models.DateField(default=datetime.now, verbose_name='Fecha de registro')
     motive = models.CharField(max_length=300, null=True, blank=True, verbose_name='Motivo')
@@ -968,8 +988,8 @@ class CreditNote(models.Model):
     environment_type = models.PositiveIntegerField(choices=ENVIRONMENT_TYPE, default=ENVIRONMENT_TYPE[0][0])
     access_code = models.CharField(max_length=49, null=True, blank=True, verbose_name='Clave de acceso')
     authorization_date = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de autorización')
-    xml_authorized = models.FileField(null=True, blank=True, verbose_name='XML Autorizado')
-    pdf_authorized = models.FileField(upload_to='pdf_authorized/%Y/%m/%d', null=True, blank=True, verbose_name='PDF Autorizado')
+    xml_authorized = models.FileField(upload_to=CompanyPath('comprobantes/xml'), null=True, blank=True, verbose_name='XML Autorizado')
+    pdf_authorized = models.FileField(upload_to=CompanyPath('comprobantes/pdf'), null=True, blank=True, verbose_name='PDF Autorizado')
     create_electronic_invoice = models.BooleanField(default=True, verbose_name='Crear factura electrónica')
     status = models.CharField(max_length=50, choices=INVOICE_STATUS, default=INVOICE_STATUS[0][0], verbose_name='Estado')
 
@@ -986,6 +1006,8 @@ class CreditNote(models.Model):
         return float(self.creditnotedetail_set.filter().aggregate(result=Coalesce(Sum('subtotal'), 0.00, output_field=FloatField()))['result'])
 
     def get_authorization_date(self):
+        if self.authorization_date is None:
+            return 'Pendiente de autorización'
         return self.authorization_date.strftime('%Y-%m-%d %H:%M:%S')
 
     def get_date_joined(self):
@@ -1009,7 +1031,7 @@ class CreditNote(models.Model):
         return f'{number:09d}'
 
     def generate_voucher_number_full(self):
-        self.company = Company.objects.first()
+        self.company = require_company()
         self.receipt = Receipt.objects.get(voucher_type=VOUCHER_TYPE[1][0], establishment_code=self.company.establishment_code, issuing_point_code=self.company.issuing_point_code)
         self.voucher_number = self.generate_voucher_number()
         return self.get_voucher_number_full()
@@ -1129,6 +1151,10 @@ class CreditNote(models.Model):
         return item
 
     def generate_electronic_invoice(self):
+        from core.suscripciones.cupo import emitir_con_cupo
+        return emitir_con_cupo(self, self._emitir_electronicamente)
+
+    def _emitir_electronicamente(self):
         sri = SRI()
         result = sri.create_xml(self)
         if result['resp']:
@@ -1192,7 +1218,7 @@ class CreditNote(models.Model):
         )
 
 
-class CreditNoteDetail(models.Model):
+class CreditNoteDetail(TenantModel):
     credit_note = models.ForeignKey(CreditNote, on_delete=models.CASCADE)
     sale_detail = models.ForeignKey(SaleDetail, on_delete=models.PROTECT)
     product = models.ForeignKey(Product, blank=True, null=True, on_delete=models.PROTECT)

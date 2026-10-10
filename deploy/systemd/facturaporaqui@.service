@@ -1,0 +1,40 @@
+# FacturaPorAquí — Django con Gunicorn. Instancia = entorno (pruebas | produccion).
+# Variables en /etc/facturaporaqui/%i.env (FPA_PUERTO, FPA_WORKERS, secretos).
+[Unit]
+Description=FacturaPorAquí (%i) - Django/Gunicorn
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=facturaporaqui
+Group=facturaporaqui
+WorkingDirectory=/opt/facturaporaqui/%i/current
+EnvironmentFile=/etc/facturaporaqui/%i.env
+Environment=XDG_CACHE_HOME=/tmp
+ExecStart=/opt/facturaporaqui/%i/current/.venv/bin/gunicorn config.wsgi:application \
+    --bind 127.0.0.1:${FPA_PUERTO} --workers ${FPA_WORKERS} \
+    --timeout 60 --graceful-timeout 30 --max-requests 1000 --max-requests-jitter 100 \
+    --forwarded-allow-ips 127.0.0.1 --access-logfile - --error-logfile -
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=3
+TimeoutStopSec=40
+UMask=0027
+MemoryMax=1500M
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/facturaporaqui/datos/%i/archivos /home/facturaporaqui/datos/%i/firmas /home/facturaporaqui/logs/%i
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

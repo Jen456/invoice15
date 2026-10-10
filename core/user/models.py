@@ -20,6 +20,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(default=timezone.now)
     is_change_password = models.BooleanField(default=False)
     email_reset_token = models.TextField(null=True, blank=True)
+    phone = models.CharField(max_length=15, blank=True, default='', verbose_name='Celular')
+    email_verified_at = models.DateTimeField(null=True, blank=True, verbose_name='Correo confirmado el')
 
     objects = UserManager()
 
@@ -47,21 +49,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         return f'{settings.STATIC_URL}img/default/empty.png'
 
     def get_group_id_session(self):
-        try:
-            request = get_current_request()
-            return int(request.session['group'].id)
-        except:
-            return 0
+        from core.security.session import get_group
+        request = get_current_request()
+        group = get_group(request) if request is not None else None
+        return group.id if group else 0
 
     def set_group_session(self):
-        try:
-            request = get_current_request()
-            groups = request.user.groups.all()
-            if groups:
-                if 'group' not in request.session:
-                    request.session['group'] = groups[0]
-        except:
-            pass
+        from core.security.session import ensure_group
+        request = get_current_request()
+        if request is not None and request.user == self:
+            ensure_group(request)
 
     def create_or_update_password(self, password):
         if self.pk is None:
@@ -85,7 +82,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.groups.all().count() > 1
 
     def is_client(self):
-        return hasattr(self, 'client')
+        """¿Su rol en la empresa activa es Cliente (portal de comprobantes)?"""
+        from core.tenancy.context import current_company_id
+        from core.tenancy.models import ROLE_CLIENT
+        company_id = current_company_id()
+        if company_id is None:
+            return False
+        return self.memberships.filter(company_id=company_id, is_active=True, group__name=ROLE_CLIENT).exists()
 
     def __str__(self):
         return self.names

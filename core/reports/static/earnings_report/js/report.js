@@ -124,27 +124,13 @@ var report = {
             success: function (request) {
                 console.log(request);
                 if (!request.hasOwnProperty('error')) {
-                    Highcharts.chart('container', {
-                        chart: {
-                            type: 'column'
-                        },
-                        title: {
-                            text: ''
-                        },
-                        xAxis: {
-                            categories: request.categories
-                        },
-                        credits: {
-                            enabled: false
-                        },
-                        series: request.series
-                    });
+                    fpaGrafico.barras('container', request.categories, request.series, {formato: 'dolares', titulo: 'Precio de compra, venta y ganancia por producto'});
                     return false;
                 }
                 message_error(request.error);
             },
             error: function (jqXHR, textStatus, errorThrown) {
-                message_error(errorThrown + ' ' + textStatus);
+                message_error((jqXHR.responseJSON && jqXHR.responseJSON.error) || (errorThrown + ' ' + textStatus));
             }
         });
     }

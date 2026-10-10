@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Group
@@ -12,9 +13,13 @@ from django.views.generic import CreateView, DeleteView, FormView
 from config import settings
 from core.pos.forms import SaleForm, ClientForm, ClientUserForm, Sale, SaleDetail, Client, Product, Company, Receipt, CreditNote, CreditNoteDetail, CtasCollect, INVOICE_STATUS, PAYMENT_TYPE, VOUCHER_TYPE
 from core.pos.utilities import printer
+from core.pos.utilities.access import can_print_voucher
 from core.pos.utilities.sri import SRI
 from core.reports.forms import ReportForm
 from core.security.mixins import GroupPermissionMixin
+
+
+logger = logging.getLogger(__name__)
 
 
 class SaleListView(GroupPermissionMixin, FormView):
@@ -114,7 +119,7 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                 with transaction.atomic():
                     sale = Sale()
                     sale.date_joined = request.POST['date_joined']
-                    sale.company = Company.objects.first()
+                    sale.company = request.company
                     sale.environment_type = sale.company.environment_type
                     sale.receipt = Receipt.objects.get(voucher_type=request.POST['receipt'], establishment_code=sale.company.establishment_code, issuing_point_code=sale.company.issuing_point_code)
                     sale.voucher_number = sale.generate_voucher_number()
@@ -204,7 +209,7 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                 for i in Client.objects.filter(Q(user__names__icontains=term) | Q(dni__icontains=term)).order_by('user__names')[0:10]:
                     data.append(i.toJSON())
             elif action == 'search_voucher_number':
-                company = Company.objects.first()
+                company = request.company
                 data['voucher_number'] = ''
                 receipt = Receipt.objects.filter(voucher_type=request.POST['receipt'], establishment_code=company.establishment_code, issuing_point_code=company.issuing_point_code).first()
                 if receipt:
@@ -288,12 +293,14 @@ class SalePrintInvoiceView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         try:
             sale = Sale.objects.filter(id=self.kwargs['pk']).first()
+            if sale and not can_print_voucher(request, sale):
+                sale = None
             if sale:
                 context = {'sale': sale, 'height': 450 + sale.saledetail_set.all().count() * 10}
                 pdf_file = printer.create_pdf(context=context, template_name='sale/format/ticket.html')
                 return HttpResponse(pdf_file, content_type='application/pdf')
-        except:
-            pass
+        except Exception:
+            logger.exception('No se pudo generar el PDF de la venta %s', self.kwargs['pk'])
         return HttpResponseRedirect(self.get_success_url())
 
 

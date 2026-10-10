@@ -1,0 +1,31 @@
+#=========================================================================#
+# FacturaPorAquí (@ENTORNO@) - HTTP. Plantilla nginx propia de Hestia.     #
+# Generada desde deploy/hestia/nginx/fpa.tpl.in (no editar la copia de     #
+# /usr/local/hestia/data/templates/web/nginx/: se sobrescribe al instalar). #
+# Django/Gunicorn en 127.0.0.1:@PUERTO@ (systemd: facturaporaqui@@ENTORNO@). #
+#=========================================================================#
+
+server {
+	listen      %ip%:%proxy_port%;
+	server_name %domain_idn% %alias_idn%;
+	error_log   /var/log/%web_system%/domains/%domain%.error.log error;
+
+	# Redirección a HTTPS cuando Hestia la tiene activada; el reto ACME de
+	# Let's Encrypt sigue funcionando (nginx.conf_letsencrypt, incluido abajo).
+	include %home%/%user%/conf/web/%domain%/nginx.forcessl.conf*;
+
+	location ~ /\.(?!well-known\/) {
+		deny all;
+		return 404;
+	}
+
+	location / {
+		return 301 https://$host$request_uri;
+	}
+
+	location /error/ {
+		alias %home%/%user%/web/%domain%/document_errors/;
+	}
+
+	include %home%/%user%/conf/web/%domain%/nginx.conf_*;
+}

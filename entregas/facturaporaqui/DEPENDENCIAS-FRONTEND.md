@@ -1,17 +1,9 @@
-# Frontend de FacturaPorAquí
+# Dependencias frontend — integración con plataforma
 
-Tema compartido: `static/css/facturaporaqui.css`, cargado después de los estilos de cada pantalla. Conserva Bootstrap 4/AdminLTE 3, permisos y formularios existentes. Los valores de color se definen como variables CSS. Los gráficos usan la misma paleta y respetan movimiento reducido.
+La entrega integrada conserva `static/lib` de Claude: archivos versionados, manifiesto de integridad `static/lib/MANIFIESTO.json` y recuperación mediante `deploy/scripts/recuperar_static_lib.py`. No usar el instalador antiguo de Codex, retirado de la rama. Highcharts ya no se importa ni se descarga; los gráficos usan Chart.js y `static/js/graficos.js`.
 
-## Dependencias
-El checkout original no incluye `static/lib`. Para recuperar 37 archivos públicos en las rutas existentes:
+FormValidation se resuelve con la implementación compatible incluida por Claude. En la comprobación local de navegador no hubo errores JavaScript ni recursos faltantes.
 
-```bash
-python deploy/python/install_frontend.py
-```
+El entorno de validación usó Python 3.12, dependencias de `requirements/base.txt` y `requirements/dev.txt` instaladas con `uv pip install --require-hashes`. No se modificaron estos archivos ni `.env`. El servidor local utilizó ajustes externos al checkout y empresas ficticias, con PayPhone deshabilitado.
 
-Los archivos se descargan desde jsDelivr mediante HTTPS y permanecen en el directorio ignorado `static/lib`. El instalador no reemplaza archivos existentes. Debe ejecutarse también en el servidor antes de `collectstatic`, o transferirse la carpeta de dependencias completa desde una instalación verificada.
-
-Sigue pendiente recuperar los archivos originales de FormValidation 1.9.0 y su licencia, además de las bibliotecas específicas de otras pantallas (exportaciones, calendarios, etc.). No se han sustituido ni desactivado validaciones. Los formularios que dependen de estos archivos muestran errores JavaScript y no están completamente verificados.
-
-## Validación local
-Django check, autenticación, renderizado de dos gráficos, listado de categorías y presentación de formulario. Dashboard móvil de 390px sin desbordamiento horizontal. Los datos locales están vacíos. No se modificaron datos de producción ni se desplegó al dominio. Revisar formularios y pantallas específicas con todas las bibliotecas presentes antes de publicar.
+Para desplegar, utilizar el procedimiento vigente de Claude, recoger los estáticos y comprobar versiones/cache. Codex no realizó despliegue ni pagos reales.

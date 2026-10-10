@@ -1,0 +1,28 @@
+{% if company %}
+    <li class="nav-item dropdown">
+        <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
+            <i class="fa-solid fa-building" aria-hidden="true"></i>
+            <span class="d-none d-md-inline">{{ company.tradename }}{% if session_group %} · {{ session_group.name }}{% endif %}</span>
+            <span class="sr-only">Empresa activa: {{ company.tradename }}</span>
+            <i class="fas fa-caret-down" aria-hidden="true"></i>
+        </a>
+        <div class="dropdown-menu dropdown-menu-right" style="max-width: calc(100vw - 16px);">
+            <span class="dropdown-header text-wrap">{{ company.tradename }}{% if session_group %} · {{ session_group.name }}{% endif %}</span>
+            <div class="dropdown-divider"></div>
+            {% for m in user_memberships %}
+                {% if m.company_id != company.id %}
+                    <form method="post" action="{% url 'company_switch' %}" class="m-0">
+                        {% csrf_token %}
+                        <input type="hidden" name="company" value="{{ m.company_id }}">
+                        <button type="submit" class="dropdown-item">{{ m.company.tradename }} <small class="text-muted">{{ m.group.name }}</small></button>
+                    </form>
+                {% endif %}
+            {% endfor %}
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item" href="{% url 'company_select' %}">Ver todas mis empresas</a>
+            {% if request.user.is_superuser %}
+                <a class="dropdown-item" href="/plataforma/">Panel de la plataforma</a>
+            {% endif %}
+        </div>
+    </li>
+{% endif %}

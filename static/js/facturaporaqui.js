@@ -1,16 +1,10 @@
-// Apply presentation defaults without changing chart data or application flows.
+// Presentation defaults; chart data and application flows stay on the backend.
 (function () {
-    if (!window.Highcharts) return;
-    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    Highcharts.setOptions({
-        colors: ['#CA462C', '#176581', '#44BADD', '#226E59', '#163B50', '#94613A'],
-        chart: {style: {fontFamily: 'system-ui, sans-serif', fontSize: '16px'}, animation: !reduced},
-        plotOptions: {series: {animation: reduced ? false : {duration: 650}}},
-        legend: {itemStyle: {color: '#163B50', fontSize: '15px'}},
-        xAxis: {labels: {style: {color: '#526B7A', fontSize: '14px'}}},
-        yAxis: {labels: {style: {color: '#526B7A', fontSize: '14px'}}},
-        credits: {enabled: false}
-    });
+    if (!window.Chart) return;
+    Chart.defaults.font.family = 'system-ui, sans-serif';
+    Chart.defaults.font.size = 15;
+    Chart.defaults.color = '#526B7A';
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) Chart.defaults.animation = false;
 })();
 (function () {
     // Script runs before jQuery ready callbacks initialize each DataTable.

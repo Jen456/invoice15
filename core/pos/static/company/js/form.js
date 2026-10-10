@@ -31,7 +31,7 @@ var company = {
                 message_error(request.error);
             },
             error: function (jqXHR, textStatus, errorThrown) {
-                message_error(errorThrown + ' ' + textStatus);
+                message_error((jqXHR.responseJSON && jqXHR.responseJSON.error) || (errorThrown + ' ' + textStatus));
             }
         });
     },
@@ -217,18 +217,12 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 },
                 electronic_signature: {
                     validators: {
-                        notEmpty: {},
                         callback: {
                             message: 'Introduce un archivo con extensión .p12',
                             callback: function (input) {
-                                return !company.validateExtensionP12(input);
+                                return input.value === '' || !company.validateExtensionP12(input);
                             }
                         },
-                    }
-                },
-                electronic_signature_key: {
-                    validators: {
-                        notEmpty: {},
                     }
                 },
                 email_host: {
@@ -239,16 +233,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 email_port: {
                     validators: {
                         digits: {},
-                        notEmpty: {},
-                    }
-                },
-                email_host_user: {
-                    validators: {
-                        notEmpty: {},
-                    }
-                },
-                email_host_password: {
-                    validators: {
                         notEmpty: {},
                     }
                 },

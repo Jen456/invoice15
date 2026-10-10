@@ -1,0 +1,11 @@
+Hola {{ nombre }}:
+
+Gracias por registrar {{ empresa }} en FacturaPorAquí.
+
+Para activar tu cuenta, abre este enlace (válido durante {{ horas }} horas):
+{{ enlace }}
+
+Si no fuiste tú, ignora este mensaje: la cuenta no se activará.
+
+FacturaPorAquí · Tu negocio, en orden
+https://facturaporaqui.com

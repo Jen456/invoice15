@@ -5,62 +5,47 @@
 {% endblock %}
 
 {% block content %}
-    <div class="login-box">
-        <div class="login-box-body">
-            <div class="card">
-                <div class="card-body login-card-body">
-                    <div class="contact-image">
-                        <img class="fp-login-isotipo" src="{% static 'img/brand/isotipo.png' %}" alt="Colibrí Ingenioso de FacturaPorAquí" width="150" height="130">
+    <main class="fpa-auth-card" aria-labelledby="titulo-login">
+        {% include 'login/_marca.html' %}
+        <h1 class="fpa-title" id="titulo-login">Bienvenido de nuevo</h1>
+        <p class="fpa-subtitle">Ingresa con tu usuario para continuar.</p>
+
+        {% if form.errors %}
+            <div class="fpa-alert" role="alert">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+                {% for field in form %}{% for error in field.errors %}<p>{{ error }}</p>{% endfor %}{% endfor %}
+                {% for error in form.non_field_errors.as_data %}{% if error.code == 'pending' %}<p><a class="fpa-link" href="{% url 'registro_reenviar' %}">Pedir un nuevo enlace de confirmación</a></p>{% endif %}{% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" id="frmForm" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            <div class="form-group">
+                <label for="{{ form.username.id_for_label }}">Usuario, correo o RUC/cédula</label>
+                {{ form.username }}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.password.id_for_label }}">Contraseña</label>
+                <div class="input-group">
+                    {{ form.password }}
+                    <div class="input-group-append">
+                        <button class="btn btnShowPassword" type="button" aria-label="Mostrar u ocultar la contraseña"
+                                aria-controls="{{ form.password.id_for_label }}">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
                     </div>
-                    <h1 class="fp-login-brand">FacturaPorAquí</h1>
-                    <p class="fp-login-caption">Tu negocio, en orden.</p>
-                    <p class="login-box-msg">Bienvenido de nuevo</p>
-                    <form method="post" id="frmForm" autocomplete="off">
-                        {% csrf_token %}
-                        <input type="hidden" name="next" value="{{ next }}">
-                        <div class="form-group">
-                            <label for="{{ form.username.id_for_label }}">{{ form.username.label }}:</label>
-                            {{ form.username }}
-                        </div>
-                        <div class="form-group">
-                            <label for="{{ form.password.id_for_label }}">{{ form.password.label }}:</label>
-                            <div class="input-group">
-                                {{ form.password }}
-                                <div class="input-group-append">
-                                    <button class="btn btn-primary btnShowPassword btn-flat" type="button" aria-label="Mostrar u ocultar contraseña">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <button type="submit" class="btn btn-primary btn-block btn-flat">
-                                    <i class="fas fa-sign-in-alt"></i> Ingresar
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                    <p class="mt-3 text-center desc">
-                        Si has olvidado tu contraseña <a href="{% url 'reset_password' %}">recupera tu acceso aquí <i
-                            class="fas fa-key"></i></a>
-                    </p>
                 </div>
             </div>
+            <button type="submit" class="fpa-btn-primary">Ingresar</button>
+        </form>
+        <div class="fpa-links">
+            <a class="fpa-link" href="{% url 'reset_password' %}">Recuperar acceso</a>
         </div>
-    </div>
-    <script type="application/javascript">
-        {% if form.errors %}
-            var errors = '';
-            {% for field in form %}
-                {% for error in field.errors %}
-                    errors += '{{ error }}\n';
-                {% endfor %}
-            {% endfor %}
-            {% for error in form.non_field_errors %}
-                errors += '{{ error }}\n';
-            {% endfor %}
-            message_error(errors);
-        {% endif %}
-    </script>
+        <div class="fpa-registro">
+            <span>¿Primera vez en FacturaPorAquí?</span>
+            <a href="{% url 'registro' %}" class="fpa-btn-secondary">Crea tu cuenta</a>
+        </div>
+        {% include 'login/_pie.html' %}
+    </main>
 {% endblock %}

@@ -1,0 +1,11 @@
+/* Aviso del plan (todas las pantallas). */
+/* Aviso del plan bajo la cabecera */
+.fpa-aviso-plan { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; margin: 0 0 1rem;
+    padding: .65rem 1rem; border-radius: 10px; background: #E5F1F6; color: #163B50; border-left: 4px solid #44BADD; }
+.fpa-aviso-plan span { flex: 1 1 220px; }
+.fpa-aviso-vencida, .fpa-aviso-cupo_agotado { background: #fbe3dd; border-left-color: #CA462C; }
+.fpa-aviso-accion { font-weight: 600; color: #CA462C; white-space: nowrap; }
+.fpa-aviso-accion:hover { color: #a8381f; }
+
+/* Candado en los módulos que exigen plan */
+.fpa-candado { font-size: .75em; margin-left: .35rem; opacity: .7; }

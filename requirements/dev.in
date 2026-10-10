@@ -1,0 +1,7 @@
+-c base.txt
+pytest
+pytest-django
+factory-boy
+time-machine
+coverage
+pypdf

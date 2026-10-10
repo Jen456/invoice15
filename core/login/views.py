@@ -4,32 +4,78 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from django.contrib.auth import login, logout
-from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.views import LoginView
+from django.core.cache import cache
 from django.db import transaction
+from django.forms.utils import ErrorDict
 from django.http import HttpResponseRedirect, HttpResponse
 from django.template.loader import render_to_string
 from django.urls import reverse_lazy
 from django.views.generic import FormView, RedirectView, TemplateView
 
 from config import settings
-from core.login.forms import ResetPasswordForm, UpdatePasswordForm
+from core.login.forms import IdentifierAuthenticationForm, ResetPasswordForm, UpdatePasswordForm
 from core.security.models import UserAccess
+from core.security.session import client_ip
+from core.tenancy.models import audit
 from core.user.models import User
 
 
+TOO_MANY_ATTEMPTS = 'Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo.'
+
+
+def _attempt_keys(request, username=None):
+    ip = client_ip(request)
+    keys = [f'fpa:login:ip:{ip}']
+    if username:
+        keys.append(f'fpa:login:usr:{ip}:{username.strip().lower()[:150]}')
+    return keys
+
+
+def _is_blocked(request, username=None):
+    ip_key, *user_key = _attempt_keys(request, username)
+    if cache.get(ip_key, 0) >= settings.FPA_LOGIN_MAX_INTENTOS * 4:
+        return True
+    return bool(user_key) and cache.get(user_key[0], 0) >= settings.FPA_LOGIN_MAX_INTENTOS
+
+
+def _register_failure(request, username=None):
+    for key in _attempt_keys(request, username):
+        cache.add(key, 0, settings.FPA_LOGIN_BLOQUEO_SEGUNDOS)
+        try:
+            cache.incr(key)
+        except ValueError:
+            cache.set(key, 1, settings.FPA_LOGIN_BLOQUEO_SEGUNDOS)
+
+
 class LoginAuthView(LoginView):
-    form_class = AuthenticationForm
+    form_class = IdentifierAuthenticationForm
     template_name = 'login/login.html'
+
+    def post(self, request, *args, **kwargs):
+        if _is_blocked(request, request.POST.get('username')):
+            # Se marca el error sin validar el formulario: validar llamaría a
+            # authenticate() y el bloqueo no serviría de nada.
+            form = self.get_form()
+            form.cleaned_data = {}
+            form._errors = ErrorDict()
+            form.add_error(None, TOO_MANY_ATTEMPTS)
+            return self.render_to_response(self.get_context_data(form=form))
+        return super().post(request, *args, **kwargs)
+
+    def form_invalid(self, form):
+        _register_failure(self.request, self.request.POST.get('username'))
+        return super().form_invalid(form)
 
     def get_form(self, form_class=None):
         form = super(LoginAuthView, self).get_form(form_class)
-        for i in form.visible_fields():
-            i.field.widget.attrs.update({
-                'class': 'form-control',
-                'autocomplete': 'off',
-                'placeholder': f'Ingrese su {i.label.lower()}'
-            })
+        attrs = {
+            'username': {'placeholder': 'Tu usuario, correo o RUC/cédula', 'autocomplete': 'username', 'autocapitalize': 'none',
+                         'spellcheck': 'false', 'autofocus': True},
+            'password': {'placeholder': 'Tu contraseña', 'autocomplete': 'current-password'},
+        }
+        for name, field in form.fields.items():
+            field.widget.attrs.update({'class': 'form-control', **attrs.get(name, {})})
         return form
 
     def get(self, request, *args, **kwargs):
@@ -39,15 +85,17 @@ class LoginAuthView(LoginView):
         return super().get(request, *args, **kwargs)
 
     def form_valid(self, form):
+        for key in _attempt_keys(self.request, form.get_user().get_username())[1:]:
+            cache.delete(key)
         login(self.request, form.get_user())
         if self.request.user.is_authenticated:
-            self.request.user.set_group_session()
             UserAccess(user=self.request.user).save()
+            audit(self.request, 'login')
         return HttpResponseRedirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Inicio de Sesión'
+        context['title'] = 'Ingresar · FacturaPorAquí'
         return context
 
 
@@ -58,6 +106,11 @@ class LoginResetPasswordView(FormView):
 
     def post(self, request, *args, **kwargs):
         data = {}
+        reset_key = f'fpa:reset:ip:{client_ip(request)}'
+        if cache.get(reset_key, 0) >= settings.FPA_LOGIN_MAX_INTENTOS:
+            return HttpResponse(json.dumps({'error': TOO_MANY_ATTEMPTS}), content_type='application/json')
+        cache.add(reset_key, 0, settings.FPA_LOGIN_BLOQUEO_SEGUNDOS)
+        cache.incr(reset_key)
         try:
             form = self.get_form()
             if form.is_valid():
@@ -95,7 +148,7 @@ class LoginResetPasswordView(FormView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Reseteo de contraseña'
+        context['title'] = 'Recuperar acceso · FacturaPorAquí'
         context['list_url'] = self.success_url
         return context
 
@@ -139,7 +192,7 @@ class LoginUpdatePasswordView(FormView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Recuperación de Contraseña'
+        context['title'] = 'Nueva contraseña · FacturaPorAquí'
         context['list_url'] = self.success_url
         return context
 

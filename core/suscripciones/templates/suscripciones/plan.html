@@ -1,0 +1,127 @@
+{% extends 'skin.html' %}
+{% load static suscripciones %}
+{% block assets_body %}
+    <link rel="stylesheet" href="{% static 'suscripciones/css/plan.css' %}">
+{% endblock %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item active" aria-current="page"><a href="{% url 'suscripcion' %}"><i class="fas fa-credit-card"></i> Plan y pagos</a></li>
+{% endblock %}
+{% block content %}
+    <div class="fpa-plan">
+        <header class="fp-welcome"><span class="fp-eyebrow">Suscripción de tu empresa</span><h1>Plan y pagos</h1><p>Consulta tu consumo, vigencia e historial en un solo lugar.</p></header>
+        {% for message in messages %}{% if 'plan' in message.tags %}
+            <div class="alert fpa-alerta-plan" role="alert"><i class="fas fa-lock" aria-hidden="true"></i> {{ message }}</div>
+        {% endif %}{% endfor %}
+        <section class="card fpa-plan-estado" aria-labelledby="titulo-estado">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center justify-content-between">
+                    <h1 class="h4 mb-2" id="titulo-estado">{{ estado.nombre }}</h1>
+                    {% if estado.codigo == 'activa' %}<span class="badge fpa-badge fpa-badge-ok">Activo</span>
+                    {% elif estado.codigo == 'cupo_agotado' %}<span class="badge fpa-badge fpa-badge-alerta">Cupo agotado</span>
+                    {% elif estado.codigo == 'vencida' %}<span class="badge fpa-badge fpa-badge-alerta">Vencido</span>
+                    {% else %}<span class="badge fpa-badge">Gratuito</span>{% endif %}
+                </div>
+                {% if estado.periodo %}
+                    {% with p=estado.periodo %}
+                        <p class="mb-2">Vigente del <strong>{{ p.starts_at|date:"d/m/Y" }}</strong> al <strong>{{ p.ends_at|date:"d/m/Y" }}</strong>
+                            ({{ estado.dias_restantes }} día{{ estado.dias_restantes|pluralize }} restante{{ estado.dias_restantes|pluralize }}).</p>
+                        {% if p.document_limit %}
+                            <p class="mb-1">Documentos autorizados: <strong>{{ p.documents_used }}</strong> de {{ p.document_limit }}{% if p.documents_reserved %} · {{ p.documents_reserved }} en proceso{% endif %}</p>
+                            <div class="progress fpa-progreso" role="progressbar" aria-valuemin="0" aria-valuemax="{{ p.document_limit }}" aria-valuenow="{{ p.documents_used }}" aria-label="Documentos usados">
+                                <div class="progress-bar" style="width: {% widthratio p.documents_used p.document_limit 100 %}%"></div>
+                            </div>
+                        {% else %}
+                            <p class="mb-1">Documentos autorizados en este período: <strong>{{ p.documents_used }}</strong> (ilimitado).</p>
+                        {% endif %}
+                        {% if not estado.produccion %}
+                            <p class="text-muted small mt-2 mb-0"><i class="fas fa-flask" aria-hidden="true"></i> Tu empresa emite en el ambiente de <strong>PRUEBAS</strong> del SRI: esos comprobantes no descuentan cupo.</p>
+                        {% endif %}
+                    {% endwith %}
+                    {% if estado.programado %}
+                        <p class="mt-2 mb-0"><i class="fas fa-calendar-check" aria-hidden="true"></i> Renovación pagada: <strong>{{ estado.programado.plan.name }}</strong> desde el {{ estado.programado.starts_at|date:"d/m/Y" }}.</p>
+                    {% endif %}
+                {% elif estado.vencido %}
+                    <p class="mb-0">Tu {{ estado.ultimo.plan.name }} venció el <strong>{{ estado.ultimo.ends_at|date:"d/m/Y" }}</strong>. Puedes consultar tus comprobantes; para volver a facturar renueva tu plan.</p>
+                {% else %}
+                    <p class="mb-2">Con el plan gratuito puedes llevar tu <strong>inventario</strong>: productos, categorías, proveedores, compras y ajustes de stock. La <strong>facturación electrónica y las ventas</strong> se activan al pagar un plan anual.</p>
+                {% endif %}
+                {% if uso_gratuito %}
+                    <ul class="list-unstyled fpa-uso mb-0 mt-2">
+                        {% for nombre, usado, limite in uso_gratuito %}
+                            <li>
+                                <span>{{ nombre }}: <strong>{{ usado }}</strong>{% if limite %} de {{ limite }}{% endif %}</span>
+                                {% if limite %}<div class="progress fpa-progreso" aria-hidden="true"><div class="progress-bar" style="width: {% widthratio usado limite 100 %}%"></div></div>{% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </section>
+
+        <h2 class="h5 mt-4 mb-3">{% if estado.pagado %}Renovar o cambiar de plan{% else %}Elige tu plan anual{% endif %}</h2>
+        {% if bloqueo %}<div class="alert alert-info">{{ bloqueo }}</div>{% endif %}
+        {% if not payphone_listo %}
+            <div class="alert alert-warning">El cobro en línea con PayPhone aún no está habilitado. Para activar tu plan escríbenos a <a href="mailto:ventas@facturaporaqui.com">ventas@facturaporaqui.com</a>.</div>
+        {% endif %}
+        <div class="row">
+            {% for o in opciones %}
+                <div class="col-12 col-md-6 mb-3">
+                    <article class="card h-100 fpa-plan-tarjeta{% if o.plan.unlimited %} fpa-plan-destacado{% endif %}">
+                        <div class="card-body d-flex flex-column">
+                            <p class="fp-eyebrow">Plan anual por empresa</p>
+                            <h3 class="h5 mb-1">{{ o.plan.name }}{% if o.actual %} <small class="text-muted">(tu plan actual)</small>{% endif %}</h3>
+                            <p class="fpa-precio mb-1">{{ o.plan.price_cents|dolares }} <small>al año, IVA incluido</small></p>
+                            <p class="text-muted mb-2">{{ o.plan.description }}</p>
+                            <ul class="fpa-incluye mb-3">
+                                <li>{% if o.plan.unlimited %}Comprobantes ilimitados{% else %}{{ o.plan.document_limit }} comprobantes autorizados al año{% endif %} (facturas y notas de crédito)</li>
+                                <li>Ventas, clientes, cuentas por cobrar y reportes</li>
+                                <li>Tu firma electrónica (.p12) y envío por correo</li>
+                                <li>Inventario sin límites</li>
+                            </ul>
+                            <div class="mt-auto">
+                                {% for modo, inicio, fin in o.modos %}
+                                    <form method="post" action="{% url 'suscripcion_pagar' %}" class="mb-2">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="plan" value="{{ o.plan.code }}">
+                                        <input type="hidden" name="modo" value="{{ modo }}">
+                                        <button type="submit" class="btn btn-block {% if forloop.first %}fpa-btn-pagar{% else %}btn-outline-secondary{% endif %}"{% if not payphone_listo %} disabled{% endif %}>
+                                            {% if modo == 'inmediato' %}
+                                                {% if estado.pagado %}{% if o.plan.unlimited and estado.periodo.document_limit %}Mejorar ahora{% else %}Renovar ahora{% endif %}{% else %}Pagar con PayPhone{% endif %}
+                                            {% elif o.actual %}Renovar desde el {{ inicio|date:"d/m/Y" }}
+                                            {% elif estado.pagado %}Cambiar desde el {{ inicio|date:"d/m/Y" }}
+                                            {% else %}Pagar y empezar el {{ inicio|date:"d/m/Y" }}{% endif %}
+                                        </button>
+                                        <small class="d-block text-muted">Vigencia: {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}.{% if modo == 'inmediato' and estado.pagado %} Tu plan actual termina hoy, sin prorrateo.{% endif %}</small>
+                                    </form>
+                                {% empty %}
+                                    {% if not bloqueo %}<p class="text-muted small mb-0">No disponible por ahora.</p>{% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            {% endfor %}
+        </div>
+        <p class="small text-muted">Pagos con tarjeta o con la app PayPhone. La renovación es anual y manual: te avisaremos antes del vencimiento. Si necesitas factura por la suscripción, pídela desde el detalle del pago.</p>
+
+        {% if pagos %}
+            <h2 class="h5 mt-4 mb-3">Historial de pagos</h2>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered bg-white">
+                    <thead><tr><th scope="col">Fecha</th><th scope="col">Plan</th><th scope="col">Total</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Detalle</span></th></tr></thead>
+                    <tbody>
+                    {% for pago in pagos %}
+                        <tr>
+                            <td>{{ pago.created_at|date:"d/m/Y H:i" }}</td>
+                            <td>{{ pago.plan.name }}</td>
+                            <td>{{ pago.amount_cents|dolares }}</td>
+                            <td>{{ pago.get_status_display }}</td>
+                            <td>{% if pago.status == 'aprobado' %}<a href="{% url 'suscripcion_pago' pago.uuid %}">Ver</a>{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

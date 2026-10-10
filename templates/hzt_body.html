@@ -29,8 +29,8 @@
                                             </li>
                                             {% block breadcrumb_li %}
                                                 <li class="breadcrumb-item active" aria-current="page">
-                                                    <a href="{{ request.session.module.url }}">
-                                                        <i class="{{ request.session.module.get_icon }}"></i> {{ request.session.module.name }}
+                                                    <a href="{{ session_module.url }}">
+                                                        <i class="{{ session_module.get_icon }}"></i> {{ session_module.name }}
                                                     </a>
                                                 </li>
                                             {% endblock %}
@@ -43,6 +43,7 @@
                 </section>
                 <div class="content">
                     <div class="container">
+                        {% include 'suscripciones/_aviso.html' %}
                         {% block content %}
 
                         {% endblock %}
@@ -56,10 +57,11 @@
     <script>
         {% if messages %}
             var errors = '';
-            {% for message in messages %}
+            {% for message in messages %}{% if 'plan' not in message.tags %}
                 errors += '{{ message }}\n';
-            {% endfor %}
-            message_error(errors);
+            {% endif %}{% endfor %}
+            // Los avisos del plan se muestran dentro de «Plan y pagos».
+            if (errors) { message_error(errors); }
         {% endif %}
     </script>
     </body>

@@ -2,28 +2,15 @@
 {% load static %}
 
 {% block content %}
-    <div class="lockscreen-wrapper">
-        <div class="lockscreen-logo">
-            <a><i class="{{ dashboard.get_icon }} fa-3x"></i></a>
+    <main class="fpa-auth-card" aria-labelledby="titulo-sesion">
+        {% include 'login/_marca.html' %}
+        <h1 class="fpa-title" id="titulo-sesion">Ya tienes una sesión activa</h1>
+        <div class="fpa-user">
+            <img src="{{ request.user.get_image }}" alt="">
+            <div><strong>{{ request.user.get_short_name }}</strong><br><span class="fpa-tagline">{{ request.user.username }}</span></div>
         </div>
-        <div class="lockscreen-name text-center">{{ request.user.get_short_name }}</div>
-        <div class="lockscreen-item" style="width: auto;">
-            <div class="lockscreen-image">
-                <img src="{{ request.user.get_image }}" alt="User Image">
-            </div>
-            <a href="{% url 'dashboard' %}" class="btn btn-primary btn-block">
-                <i class="fas fa-home"></i> Continuar con la sesión activa
-            </a>
-        </div>
-        <div class="help-block text-center">
-            {{ request.user.username }} continua con la sesión activa
-        </div>
-        <div class="text-center">
-            <a href="{% url 'login_different' %}">O inicia sesión como un usuario diferente</a>
-        </div>
-        <div class="lockscreen-footer text-center">
-            Copyright &copy; 2023-2024 <b><a href="https://algorisoft.com" class="text-black">{{ dashboard.name }}</a></b>
-            <br>Todos los derechos reservados
-        </div>
-    </div>
+        <a href="{% url 'dashboard' %}" class="fpa-btn-primary">Continuar</a>
+        <a href="{% url 'login_different' %}" class="fpa-btn-secondary">Ingresar con otro usuario</a>
+        {% include 'login/_pie.html' %}
+    </main>
 {% endblock %}
