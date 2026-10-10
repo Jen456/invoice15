@@ -14,3 +14,4 @@
 .fpa-btn-pagar { background: #CA462C; border-color: #CA462C; color: #fff; font-weight: 600; }
 .fpa-btn-pagar:hover, .fpa-btn-pagar:focus { background: #a8381f; border-color: #a8381f; color: #fff; }
 .fpa-btn-pagar:disabled { background: #d9a094; border-color: #d9a094; }
+.fpa-alerta-plan { background: #fbe3dd; color: #8f2c18; border-left: 4px solid #CA462C; border-radius: 10px; }

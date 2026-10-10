@@ -60,6 +60,9 @@ class PlanMiddleware:
 
     def bloquear(self, request, mensaje):
         if request.method == 'GET':
-            messages.warning(request, mensaje)
-            return HttpResponseRedirect(URL_SUSCRIPCION if puede_gestionar_plan(request) else '/dashboard/')
+            if puede_gestionar_plan(request):
+                messages.warning(request, mensaje, extra_tags='plan')
+                return HttpResponseRedirect(URL_SUSCRIPCION)
+            messages.warning(request, mensaje + ' Pide al propietario de la empresa que active el plan.')
+            return HttpResponseRedirect('/dashboard/')
         return JsonResponse({'error': mensaje, 'plan': 'requerido'}, status=403)

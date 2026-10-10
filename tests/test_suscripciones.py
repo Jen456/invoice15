@@ -99,6 +99,12 @@ class TestAcceso:
         respuesta = client.post('/pos/sale/admin/', {'action': 'search', 'start_date': '', 'end_date': ''})
         assert respuesta.status_code == 403 and respuesta.json()['plan'] == 'requerido'
 
+    def test_el_aviso_se_ve_en_la_pagina_de_planes(self, client, gratuita, dueno_gratuita):
+        entrar(client, dueno_gratuita, gratuita)
+        html = client.get('/pos/sale/admin/', follow=True).content.decode()
+        assert 'fpa-alerta-plan' in html and 'se activan con un plan anual' in html
+        assert 'message_error(errors)' in html and "errors += 'La facturación" not in html   # sin diálogo de error
+
     def test_rol_sin_gestion_del_plan_vuelve_al_panel(self, client, gratuita):
         vendedor = helpers.crear_usuario('vendedor.gratuita', gratuita, ROLE_SELLER)
         entrar(client, vendedor, gratuita)

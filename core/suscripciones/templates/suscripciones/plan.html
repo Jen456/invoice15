@@ -8,6 +8,9 @@
 {% endblock %}
 {% block content %}
     <div class="fpa-plan">
+        {% for message in messages %}{% if 'plan' in message.tags %}
+            <div class="alert fpa-alerta-plan" role="alert"><i class="fas fa-lock" aria-hidden="true"></i> {{ message }}</div>
+        {% endif %}{% endfor %}
         <section class="card fpa-plan-estado" aria-labelledby="titulo-estado">
             <div class="card-body">
                 <div class="d-flex flex-wrap align-items-center justify-content-between">
@@ -82,6 +85,8 @@
                                         <button type="submit" class="btn btn-block {% if forloop.first %}fpa-btn-pagar{% else %}btn-outline-secondary{% endif %}"{% if not payphone_listo %} disabled{% endif %}>
                                             {% if modo == 'inmediato' %}
                                                 {% if estado.pagado %}{% if o.plan.unlimited and estado.periodo.document_limit %}Mejorar ahora{% else %}Renovar ahora{% endif %}{% else %}Pagar con PayPhone{% endif %}
+                                            {% elif o.actual %}Renovar desde el {{ inicio|date:"d/m/Y" }}
+                                            {% elif estado.pagado %}Cambiar desde el {{ inicio|date:"d/m/Y" }}
                                             {% else %}Pagar y empezar el {{ inicio|date:"d/m/Y" }}{% endif %}
                                         </button>
                                         <small class="d-block text-muted">Vigencia: {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}.{% if modo == 'inmediato' and estado.pagado %} Tu plan actual termina hoy, sin prorrateo.{% endif %}</small>
