@@ -196,9 +196,10 @@ EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=20)
 
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER or 'webmaster@localhost')
 
-# Cobro de los planes con el Botón de Pagos de PayPhone. El token y el storeId
-# son de la aplicación creada en PayPhone Developer para este dominio; sin ellos
-# el botón de pago queda deshabilitado (la plataforma puede activar planes a mano).
+# Cobro de los planes con el Botón de Pagos de PayPhone. El token sale de
+# «Solicitud de compañía» en PayPhone Developer; sin él el botón de pago queda
+# deshabilitado (la plataforma puede activar planes a mano). El storeId es
+# opcional: vacío = la tienda asociada al token.
 PAYPHONE_TOKEN = env('PAYPHONE_TOKEN', default='')
 
 PAYPHONE_STORE_ID = env('PAYPHONE_STORE_ID', default='')

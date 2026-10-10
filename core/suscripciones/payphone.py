@@ -3,6 +3,8 @@
 Prepare crea el formulario de pago (dura 10 minutos) y Confirm consulta el
 resultado; si un pago aprobado no se confirma en 5 minutos, PayPhone lo reversa.
 El token y el storeId salen de las variables de entorno y nunca se registran.
+El storeId es opcional: sin él, PayPhone cobra en la tienda asociada al token
+(hace falta solo si la empresa tiene varias tiendas en PayPhone).
 """
 import logging
 
@@ -13,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class PayPhoneNoConfigurado(RuntimeError):
-    """Faltan PAYPHONE_TOKEN o PAYPHONE_STORE_ID en el entorno."""
+    """Falta PAYPHONE_TOKEN en el entorno."""
 
 
 class PayPhoneError(RuntimeError):
@@ -30,12 +32,12 @@ class PayPhoneSinRespuesta(RuntimeError):
 
 
 def configurado():
-    return bool(settings.PAYPHONE_TOKEN and settings.PAYPHONE_STORE_ID)
+    return bool(settings.PAYPHONE_TOKEN)
 
 
 def _post(ruta, cuerpo):
     if not configurado():
-        raise PayPhoneNoConfigurado('El cobro con PayPhone no está configurado en este entorno')
+        raise PayPhoneNoConfigurado('El cobro con PayPhone no está configurado en este entorno (falta PAYPHONE_TOKEN)')
     url = settings.PAYPHONE_API_BASE.rstrip('/') + ruta
     try:
         respuesta = requests.post(url, json=cuerpo, timeout=settings.PAYPHONE_TIMEOUT, headers={
@@ -62,7 +64,7 @@ def _post(ruta, cuerpo):
 
 def preparar(pago, url_respuesta, url_cancelacion, referencia):
     """Crea el formulario de pago y devuelve {paymentId, payWithCard, payWithPayPhone}."""
-    datos = _post('/api/button/Prepare', {
+    cuerpo = {
         'amount': pago.amount_cents,
         'amountWithoutTax': 0,
         'amountWithTax': pago.base_cents,
@@ -71,13 +73,15 @@ def preparar(pago, url_respuesta, url_cancelacion, referencia):
         'tip': 0,
         'currency': pago.currency,
         'clientTransactionId': pago.client_tx_id,
-        'storeId': settings.PAYPHONE_STORE_ID,
         'reference': referencia[:100],
         'responseUrl': url_respuesta,
         'cancellationUrl': url_cancelacion,
         'lang': 'es',
         'timeZone': -5,
-    })
+    }
+    if settings.PAYPHONE_STORE_ID:
+        cuerpo['storeId'] = settings.PAYPHONE_STORE_ID
+    datos = _post('/api/button/Prepare', cuerpo)
     if not isinstance(datos, dict) or not datos.get('payWithCard'):
         raise PayPhoneError('PayPhone no devolvió el enlace de pago')
     return datos

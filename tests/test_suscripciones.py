@@ -247,6 +247,16 @@ class TestPagos:
         assert pago.status == estado
         assert pago.events.filter(kind='preparar_error', detail__tipo=type(error).__name__).exists()
 
+    def test_store_id_opcional(self, settings, gratuita, payphone_configurado):
+        settings.PAYPHONE_STORE_ID = ''
+        assert payphone.configurado()
+        pago = nuevo_pago(gratuita, plan('plan-1000'), None, 'inmediato')
+        with mock.patch('core.suscripciones.payphone.requests.post') as post:
+            post.return_value.status_code = 200
+            post.return_value.json.return_value = {'paymentId': 'x', 'payWithCard': 'https://pay/x'}
+            payphone.preparar(pago, 'https://r', 'https://c', 'ref')
+        assert 'storeId' not in post.call_args.kwargs['json']
+
     def test_sin_credenciales_no_se_cobra(self, client, gratuita, dueno_gratuita, settings):
         settings.PAYPHONE_TOKEN = ''
         entrar(client, dueno_gratuita, gratuita)
