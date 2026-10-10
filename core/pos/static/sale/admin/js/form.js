@@ -180,7 +180,7 @@ var sale = {
                 message_error(request.error);
             },
             error: function (jqXHR, textStatus, errorThrown) {
-                message_error(errorThrown + ' ' + textStatus);
+                message_error((jqXHR.responseJSON && jqXHR.responseJSON.error) || (errorThrown + ' ' + textStatus));
             },
             complete: function () {
                 input_search_product.val('').focus();
@@ -207,7 +207,7 @@ var sale = {
                 message_error(request.error);
             },
             error: function (jqXHR, textStatus, errorThrown) {
-                message_error(errorThrown + ' ' + textStatus);
+                message_error((jqXHR.responseJSON && jqXHR.responseJSON.error) || (errorThrown + ' ' + textStatus));
             },
             complete: function () {
 

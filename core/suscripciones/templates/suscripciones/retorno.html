@@ -1,0 +1,33 @@
+{% extends 'login/base.html' %}
+{% block content %}
+    <main class="fpa-auth-card" aria-labelledby="titulo-pago">
+        {% include 'login/_marca.html' %}
+        {% if pago is None %}
+            <h1 class="fpa-title" id="titulo-pago">No encontramos ese pago</h1>
+            <p class="fpa-subtitle">El enlace no corresponde a ningún pago de FacturaPorAquí. Si se descontó dinero de tu tarjeta, escríbenos a bill@facturaporaqui.com con el comprobante de PayPhone.</p>
+        {% elif pago.status == 'aprobado' %}
+            <h1 class="fpa-title" id="titulo-pago">¡Pago aprobado!</h1>
+            <p class="fpa-subtitle">Tu <strong>{{ pago.plan.name }}</strong> quedó registrado{% if periodo %} del {{ periodo.starts_at|date:"d/m/Y" }} al {{ periodo.ends_at|date:"d/m/Y" }}{% endif %}.
+                Total ${{ pago.amount|floatformat:2 }} (IVA incluido). Referencia {{ pago.client_tx_id }}.</p>
+        {% elif pago.status == 'cancelado' %}
+            <h1 class="fpa-title" id="titulo-pago">Pago cancelado</h1>
+            <p class="fpa-subtitle">No se realizó ningún cobro. Puedes intentarlo de nuevo cuando quieras.</p>
+        {% elif pago.status == 'en_revision' %}
+            <h1 class="fpa-title" id="titulo-pago">Estamos revisando tu pago</h1>
+            <p class="fpa-subtitle">PayPhone aprobó la transacción, pero necesitamos revisarla antes de activar el plan. Te escribiremos en menos de 24 horas. Referencia {{ pago.client_tx_id }}.</p>
+        {% elif pago.status == 'rechazado' %}
+            <h1 class="fpa-title" id="titulo-pago">El pago no se completó</h1>
+            <p class="fpa-subtitle">PayPhone no aprobó la transacción{% if pago.note %} ({{ pago.note }}){% endif %}. No se realizó ningún cobro.</p>
+        {% else %}
+            <h1 class="fpa-title" id="titulo-pago">Estamos confirmando tu pago</h1>
+            <p class="fpa-subtitle">Aún no recibimos la confirmación de PayPhone. Pulsa «Volver a comprobar» en unos segundos. Si PayPhone no la confirma, el cobro se reversa solo.</p>
+            <a href="{{ reintentar }}" class="fpa-btn-primary">Volver a comprobar</a>
+        {% endif %}
+        {% if propio %}
+            <a href="{% url 'suscripcion' %}" class="{% if pago.status == 'aprobado' or pago.status == 'cancelado' or pago.status == 'rechazado' %}fpa-btn-primary{% else %}fpa-btn-secondary{% endif %}">Ir a Plan y pagos</a>
+        {% else %}
+            <a href="{% url 'login' %}?next={% url 'suscripcion' %}" class="fpa-btn-secondary">Ingresar</a>
+        {% endif %}
+        {% include 'login/_pie.html' %}
+    </main>
+{% endblock %}

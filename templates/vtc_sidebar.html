@@ -1,4 +1,4 @@
-{% load static %}
+{% load static suscripciones %}
 <aside class="main-sidebar elevation-2 {{ dashboard.sidebar }}">
     <a href="{% url 'dashboard' %}" class="brand-link {{ dashboard.brand_logo }}">
         <img src="{{ dashboard.get_image }}" alt="AdminLTE Logo" class="brand-image" style="opacity: .8">
@@ -28,7 +28,7 @@
                                     <li class="nav-item">
                                         <a href="{{ module.url }}" class="nav-link" data-name="submodule" data-id="{{ forloop.counter }}">
                                             <i class="{{ module.icon }} nav-icon"></i>
-                                            <p>{{ module.name }}</p>
+                                            <p>{{ module.name }}{% if module.url|bloqueado_por_plan:fpa_plan %}<i class="fas fa-lock fpa-candado" aria-hidden="true"></i><span class="sr-only"> (requiere plan)</span>{% endif %}</p>
                                         </a>
                                     </li>
                                 {% endfor %}
@@ -40,7 +40,7 @@
                     <li class="nav-item">
                         <a href="{{ module.url }}" class="nav-link" data-name="single_module" data-id="{{ forloop.counter }}">
                             <i class="nav-icon {{ module.icon }}"></i>
-                            <p>{{ module.name }}</p>
+                            <p>{{ module.name }}{% if module.url|bloqueado_por_plan:fpa_plan %}<i class="fas fa-lock fpa-candado" aria-hidden="true"></i><span class="sr-only"> (requiere plan)</span>{% endif %}</p>
                         </a>
                     </li>
                 {% endfor %}

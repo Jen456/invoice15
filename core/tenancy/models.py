@@ -65,6 +65,10 @@ class AuditLog(models.Model):
         ('signup', 'Registro de empresa'),
         ('email_verified', 'Correo confirmado'),
         ('signup_resend', 'Reenvío del enlace de confirmación'),
+        ('plan_payment_start', 'Inicio de pago del plan'),
+        ('plan_manual', 'Activación manual de plan'),
+        ('plan_period_change', 'Cambio de período de suscripción'),
+        ('plan_invoice_request', 'Solicitud de factura de la suscripción'),
     )
     created_at = models.DateTimeField(default=timezone.now, db_index=True, verbose_name='Fecha')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,

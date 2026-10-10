@@ -10,6 +10,7 @@ CONOCIDOS = {}
 # Respuestas esperadas distintas de 200/302.
 ESPERADOS = {
     '/empresas/cambiar/': 405,   # solo POST (cambio de empresa con CSRF)
+    '/suscripcion/pagar/': 405,  # solo POST (inicia el cobro en PayPhone)
 }
 
 

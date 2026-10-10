@@ -1,0 +1,13 @@
+{% if fpa_plan and not fpa_plan.codigo == 'activa' or fpa_plan.por_vencer or fpa_plan.cupo_bajo %}
+    <div class="fpa-aviso-plan fpa-aviso-{{ fpa_plan.codigo }}" role="status">
+        <i class="fas {% if fpa_plan.gratuito %}fa-gift{% else %}fa-triangle-exclamation{% endif %}" aria-hidden="true"></i>
+        <span>
+            {% if fpa_plan.gratuito %}Plan gratuito: inventario con límites. La facturación y las ventas se activan con un plan anual.
+            {% elif fpa_plan.vencido %}Tu plan venció el {{ fpa_plan.ultimo.ends_at|date:"d/m/Y" }}. Facturación en solo consulta.
+            {% elif fpa_plan.codigo == 'cupo_agotado' %}Usaste todos los documentos de tu {{ fpa_plan.periodo.plan.name }}.
+            {% elif fpa_plan.por_vencer %}Tu {{ fpa_plan.periodo.plan.name }} vence el {{ fpa_plan.periodo.ends_at|date:"d/m/Y" }}.
+            {% else %}Te quedan {{ fpa_plan.periodo.available }} documentos de tu {{ fpa_plan.periodo.plan.name }}.{% endif %}
+        </span>
+        {% if fpa_gestiona_plan %}<a href="{% url 'suscripcion' %}" class="fpa-aviso-accion">{% if fpa_plan.gratuito %}Ver planes{% else %}Renovar{% endif %}</a>{% endif %}
+    </div>
+{% endif %}

@@ -1,0 +1,21 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'plataforma:index' %}">Inicio</a> ›
+        <a href="{% url 'plataforma:suscripciones_payment_changelist' %}">Pagos</a> › Activar plan manualmente
+    </div>
+{% endblock %}
+{% block content %}
+    <p>Úsalo solo cuando el pago llegó por otro medio (transferencia, efectivo) o para corregir un pago en revisión.
+        Se registra un pago «manual» aprobado y queda en la auditoría. Las reglas de renovación son las mismas que en PayPhone.</p>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <table>{{ form.as_table }}</table>
+        {% if vista_previa %}
+            <p><strong>Vigencia resultante:</strong> {{ vista_previa.0|date:"d/m/Y H:i" }} al {{ vista_previa.1|date:"d/m/Y H:i" }}
+                (según el modo elegido; un modo no permitido se encadena al período en curso).</p>
+        {% endif %}
+        <div class="submit-row"><input type="submit" value="Activar plan" class="default"></div>
+    </form>
+{% endblock %}

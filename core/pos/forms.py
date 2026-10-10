@@ -373,9 +373,15 @@ class PaymentsCtaCollectForm(forms.ModelForm):
 
 
 class CompanyForm(forms.ModelForm):
+    # Se pueden guardar los datos de la empresa sin firma ni correo propio;
+    # la firma (.p12) solo se acepta con un plan pagado vigente.
+    OPCIONALES = ('electronic_signature', 'electronic_signature_key', 'email_host_user', 'email_host_password')
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['business_name'].widget.attrs['autofocus'] = True
+        for name in self.OPCIONALES:
+            self.fields[name].required = False
         for i in self.visible_fields():
             if type(i.field) in [forms.CharField, forms.ImageField, forms.FileField, forms.IntegerField]:
                 i.field.widget.attrs.update({
@@ -385,7 +391,7 @@ class CompanyForm(forms.ModelForm):
 
     class Meta:
         model = Company
-        fields = '__all__'
+        exclude = ('is_active',)
         widgets = {
             'ruc': forms.TextInput(attrs={'placeholder': 'Ingrese un ruc'}),
             'business_name': forms.TextInput(attrs={'placeholder': 'Ingrese un nombre de razón social'}),
@@ -412,6 +418,21 @@ class CompanyForm(forms.ModelForm):
             'email_host_user': forms.TextInput(attrs={'placeholder': 'Ingrese el username del servidor de correo'}),
             'email_host_password': forms.TextInput(attrs={'placeholder': 'Ingrese el password del servidor de correo'}),
         }
+
+    def clean_electronic_signature(self):
+        archivo = self.cleaned_data.get('electronic_signature')
+        if 'electronic_signature' in self.changed_data and archivo:
+            from core.suscripciones.servicios import tiene_plan
+            if self.instance.pk is None or not tiene_plan(self.instance):
+                raise forms.ValidationError('Para subir tu firma electrónica (.p12) primero activa un plan en «Plan y pagos».')
+        return archivo
+
+    def clean(self):
+        cleaned = super().clean()
+        for name in self.OPCIONALES[1:]:
+            if cleaned.get(name) is None:
+                cleaned[name] = ''
+        return cleaned
 
     def save(self, commit=True):
         data = {}

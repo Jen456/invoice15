@@ -1,5 +1,5 @@
 """Utilidades para crear datos ficticios en las pruebas."""
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from itertools import count
 
@@ -14,7 +14,8 @@ CLAVE = 'Clave-de-prueba-123'
 _secuencia = count(1)
 
 
-def crear_empresa(nombre='FICTICIA', **extra):
+def crear_empresa(nombre='FICTICIA', plan='ilimitado', **extra):
+    """Empresa ficticia; por defecto con un plan pagado vigente (plan=None = plan gratuito)."""
     n = next(_secuencia)
     datos = dict(ruc=f'09{n:08d}001', business_name=f'{nombre} S.A.', tradename=nombre,
                  main_address='Av. Ficticia 1', establishment_address='Av. Ficticia 1',
@@ -23,7 +24,24 @@ def crear_empresa(nombre='FICTICIA', **extra):
                  website='https://example.com', iva=Decimal('15.00'),
                  electronic_signature_key='', email_host_user='', email_host_password='')
     datos.update(extra)
-    return Company.objects.create(**datos)
+    empresa = Company.objects.create(**datos)
+    if plan:
+        dar_plan(empresa, plan)
+    return empresa
+
+
+def dar_plan(empresa, codigo='ilimitado', inicio=None, meses=12, **extra):
+    """Período pagado vigente sin pasar por PayPhone."""
+    from django.utils import timezone
+
+    from core.suscripciones.models import Plan, SubscriptionPeriod
+    from core.suscripciones.reglas import sumar_meses
+    plan = Plan.objects.get(code=codigo)
+    inicio = inicio or timezone.now() - timedelta(days=1)
+    datos = dict(company=empresa, plan=plan, status='activa', starts_at=inicio, ends_at=sumar_meses(inicio, meses),
+                 document_limit=plan.document_limit)
+    datos.update(extra)
+    return SubscriptionPeriod.objects.create(**datos)
 
 
 def crear_usuario(username, empresa=None, rol=ROLE_OWNER, superusuario=False, clave=CLAVE, activa=True):

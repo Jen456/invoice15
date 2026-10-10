@@ -342,6 +342,14 @@ class Command(BaseCommand):
                 'permissions': None,
             },
             {
+                'name': 'Plan y pagos',
+                'url': '/suscripcion/',
+                'icon': 'fas fa-credit-card',
+                'description': 'Permite ver el plan de la empresa y pagarlo con PayPhone',
+                'moduletype': None,
+                'permissions': None,
+            },
+            {
                 'name': 'Compañia',
                 'url': '/pos/company/update/',
                 'icon': 'fas fa-building',

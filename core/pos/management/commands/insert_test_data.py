@@ -47,11 +47,23 @@ class Command(BaseCommand):
             description='DATOS FICTICIOS PARA PRUEBAS.', iva=15.00,
             electronic_signature_key='', email_host_user='', email_host_password='',
         )
+        self.dar_plan_demo(company)
         with company_context(company):
             self.load(company)
         self.stdout.write(f'Empresa ficticia {company.tradename} (id {company.id}) creada.')
         if options['propietario']:
             self.crear_propietario(company, options['propietario'], options['archivo_credenciales'])
+
+    def dar_plan_demo(self, company):
+        """Período del Plan ilimitado sin pago para revisar todas las pantallas (solo datos ficticios)."""
+        from django.utils import timezone
+
+        from core.suscripciones.models import Plan, SubscriptionPeriod
+        from core.suscripciones.reglas import sumar_meses
+        plan = Plan.objects.get(code='ilimitado')
+        inicio = timezone.now()
+        SubscriptionPeriod.objects.create(company=company, plan=plan, starts_at=inicio, ends_at=sumar_meses(inicio, 12),
+                                          document_limit=plan.document_limit, note='Demostración (insert_test_data)')
 
     def crear_propietario(self, company, username, ruta):
         import os

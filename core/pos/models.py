@@ -236,6 +236,7 @@ class Purchase(TenantModel):
     date_joined = models.DateField(default=datetime.now, verbose_name='Fecha de registro')
     end_credit = models.DateField(default=datetime.now, verbose_name='Fecha de plazo de credito')
     subtotal = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
+    created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name='Registrada el')
 
     def __str__(self):
         return self.provider.name
@@ -619,6 +620,11 @@ class Sale(TenantModel):
         super(Sale, self).delete()
 
     def generate_electronic_invoice(self):
+        # Exige plan vigente y descuenta el cupo solo si el SRI autoriza (core/suscripciones/cupo.py).
+        from core.suscripciones.cupo import emitir_con_cupo
+        return emitir_con_cupo(self, self._emitir_electronicamente)
+
+    def _emitir_electronicamente(self):
         sri = SRI()
         result = sri.create_xml(self)
         if result['resp']:
@@ -1145,6 +1151,10 @@ class CreditNote(TenantModel):
         return item
 
     def generate_electronic_invoice(self):
+        from core.suscripciones.cupo import emitir_con_cupo
+        return emitir_con_cupo(self, self._emitir_electronicamente)
+
+    def _emitir_electronicamente(self):
         sri = SRI()
         result = sri.create_xml(self)
         if result['resp']:

@@ -1,0 +1,10 @@
+{% extends 'login/base.html' %}
+{% block content %}
+    <main class="fpa-auth-card" aria-labelledby="titulo-cancelado">
+        {% include 'login/_marca.html' %}
+        <h1 class="fpa-title" id="titulo-cancelado">Pago cancelado</h1>
+        <p class="fpa-subtitle">Cerraste el formulario de PayPhone. No se realizó ningún cobro{% if pago %} por el {{ pago.plan.name }}{% endif %}.</p>
+        <a href="{% url 'suscripcion' %}" class="fpa-btn-primary">Volver a Plan y pagos</a>
+        {% include 'login/_pie.html' %}
+    </main>
+{% endblock %}

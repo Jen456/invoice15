@@ -8,6 +8,7 @@ from django.views.generic import UpdateView
 from config import settings
 from core.pos.forms import CompanyForm, Company
 from core.security.mixins import GroupPermissionMixin
+from core.suscripciones.servicios import tiene_plan
 
 
 class CompanyUpdateView(GroupPermissionMixin, UpdateView):
@@ -34,6 +35,8 @@ class CompanyUpdateView(GroupPermissionMixin, UpdateView):
                 data = form.save()
             elif action == 'load_certificate':
                 instance = self.get_object()
+                if not tiene_plan(instance):
+                    raise ValueError('Para cargar tu firma electrónica (.p12) primero activa un plan en «Plan y pagos».')
                 electronic_signature_key = request.POST['electronic_signature_key']
                 archive = None
                 if 'certificate' in request.FILES:
@@ -58,4 +61,5 @@ class CompanyUpdateView(GroupPermissionMixin, UpdateView):
         context['title'] = 'Configuración de la Compañia'
         context['list_url'] = self.success_url
         context['action'] = 'create_or_edit'
+        context['firma_habilitada'] = tiene_plan(self.request.company)
         return context

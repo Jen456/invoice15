@@ -1,6 +1,7 @@
 {% extends 'form.html' %}
 {% load static %}
 {% load pos_extras %}
+{% load widget_tweaks %}
 {% block assets_form %}
     <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
     <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
@@ -19,12 +20,15 @@
                     <div class="form-group">
                         <label for="{{ field.label }}" class="font-weight-bold">{{ field.label }}:</label>
                         {% if field.name == 'electronic_signature' %}
-                            <div class="input-group mb-3">
-                                {{ field }}
+                            <div class="input-group mb-1">
+                                {% if firma_habilitada %}{{ field }}{% else %}{% render_field field disabled="disabled" %}{% endif %}
                                 <div class="input-group-append">
-                                    <button class="btn btn-secondary btnLoadCertificate" disabled type="button"><i class="fa-solid fa-file-circle-check"></i></button>
+                                    <button class="btn btn-secondary btnLoadCertificate" disabled type="button" aria-label="Ver los datos de la firma"><i class="fa-solid fa-file-circle-check"></i></button>
                                 </div>
                             </div>
+                            {% if not firma_habilitada %}
+                                <small class="form-text text-muted mb-3">Podrás subir tu firma electrónica cuando actives un plan. <a href="{% url 'suscripcion' %}">Ver planes</a></small>
+                            {% endif %}
                         {% else %}
                             {{ field }}
                         {% endif %}

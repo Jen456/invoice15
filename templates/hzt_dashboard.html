@@ -1,4 +1,5 @@
 {% extends 'skin.html' %}
+{% load suscripciones %}
 {% load static %}
 {% block breadcrumb %}{% endblock %}
 
@@ -37,7 +38,7 @@
                                                             {% else %}
                                                                 <i class="{{ module.icon }} fa-3x text-center py-4"></i>
                                                             {% endif %}
-                                                            <h4 class="font-weight-bold text-center">{{ module.name }}</h4>
+                                                            <h4 class="font-weight-bold text-center">{{ module.name }}{% if module.url|bloqueado_por_plan:fpa_plan %}<i class="fas fa-lock fpa-candado" aria-hidden="true"></i><span class="sr-only"> (requiere plan)</span>{% endif %}</h4>
                                                             <p class="desc">{{ module.description }}</p>
                                                         </a>
                                                     </div>

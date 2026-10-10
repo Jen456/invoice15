@@ -3,7 +3,7 @@
 Solo superusuarios. El middleware de empresas activa aquí el ámbito de
 plataforma (ve todas las empresas, también en PostgreSQL con RLS). El inicio de
 sesión pasa por el login de la aplicación, que tiene límite de intentos.
-Planes, suscripciones, pagos y consumo se añaden en la etapa 4.
+Planes, suscripciones, pagos y consumo: core/suscripciones/admin.py.
 """
 from urllib.parse import quote
 

@@ -7,6 +7,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from core.pos.models import *
+from core.suscripciones.cupo import PlanRequerido
 from core.tenancy.context import company_context
 
 
@@ -28,11 +29,18 @@ class Command(BaseCommand):
         excluded_invoice_states = [INVOICE_STATUS[2][0], INVOICE_STATUS[3][0], INVOICE_STATUS[4][0]]
         for instance in Sale.objects.filter(date_joined=date_joined, receipt__voucher_type=VOUCHER_TYPE[0][0], create_electronic_invoice=True).exclude(status__in=excluded_invoice_states):
             if instance.status == INVOICE_STATUS[0][0]:
-                instance.generate_electronic_invoice()
+                self.emit(instance)
             elif instance.status == INVOICE_STATUS[1][0]:
                 sri.notify_by_email(instance=instance, company=instance.company, client=instance.client)
         for instance in CreditNote.objects.filter(date_joined=date_joined, create_electronic_invoice=True).exclude(status__in=excluded_invoice_states):
             if instance.status == INVOICE_STATUS[0][0]:
-                instance.generate_electronic_invoice()
+                self.emit(instance)
             elif instance.status == INVOICE_STATUS[1][0]:
                 sri.notify_by_email(instance=instance, company=instance.company, client=instance.sale.client)
+
+    def emit(self, instance):
+        try:
+            instance.generate_electronic_invoice()
+        except PlanRequerido as e:
+            # Sin plan vigente o sin cupo: el comprobante queda sin autorizar.
+            self.stdout.write(f'{instance.company} {instance.voucher_number_full}: {e}')

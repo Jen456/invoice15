@@ -7,7 +7,9 @@ from core.tenancy.models import Membership
 SESSION_KEY = 'company_id'
 # Rutas que no necesitan empresa activa (todo lo demás redirige al selector).
 NO_COMPANY_PREFIXES = ('/login/', '/registro/', '/empresas/', '/static/', '/plataforma/', '/media/',
-                       '/user/update/password/', '/user/update/profile/')
+                       '/user/update/password/', '/user/update/profile/',
+                       # Retorno de PayPhone: se confirma por la referencia del pago, sin empresa activa.
+                       '/suscripcion/pago/retorno/', '/suscripcion/pago/cancelado/')
 PLATFORM_PREFIX = '/plataforma/'
 
 

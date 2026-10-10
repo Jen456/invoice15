@@ -51,6 +51,7 @@ LOCAL_APPS = [
     'core.dashboard',
     'core.pos',
     'core.reports',
+    'core.suscripciones',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + LOCAL_APPS + THIRD_PARTY_APPS
@@ -63,6 +64,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'core.tenancy.middleware.CompanyMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'core.suscripciones.middleware.PlanMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'crum.CurrentRequestUserMiddleware',
     'django_user_agents.middleware.UserAgentMiddleware',
@@ -83,6 +85,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'core.security.context_processors.site_settings',
                 'core.security.context_processors.session_profile',
+                'core.suscripciones.context_processors.plan',
             ],
         },
     },
@@ -192,6 +195,23 @@ EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=20)
 
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER or 'webmaster@localhost')
+
+# Cobro de los planes con el Botón de Pagos de PayPhone. El token y el storeId
+# son de la aplicación creada en PayPhone Developer para este dominio; sin ellos
+# el botón de pago queda deshabilitado (la plataforma puede activar planes a mano).
+PAYPHONE_TOKEN = env('PAYPHONE_TOKEN', default='')
+
+PAYPHONE_STORE_ID = env('PAYPHONE_STORE_ID', default='')
+
+PAYPHONE_API_BASE = env('PAYPHONE_API_BASE', default='https://pay.payphonetodoesposible.com')
+
+PAYPHONE_TIMEOUT = env.int('PAYPHONE_TIMEOUT', default=25)
+
+# Dirección pública de la aplicación para las URL de retorno (vacío = la de la petición).
+FPA_URL_APP = env('FPA_URL_APP', default='')
+
+# Buzón que recibe los avisos de pagos y las solicitudes de factura de la suscripción.
+FPA_CORREO_FACTURACION = env('FPA_CORREO_FACTURACION', default='bill@facturaporaqui.com')
 
 # Sesiones y cookies. El JavaScript existente lee la cookie csrftoken, por eso
 # CSRF_COOKIE_HTTPONLY queda en False.

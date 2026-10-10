@@ -1,4 +1,4 @@
-{% load static %}
+{% load static suscripciones %}
 <nav class="main-header navbar navbar-expand-md {{ dashboard.navbar }}">
     <div class="container">
         <a href="{% url 'dashboard' %}" class="navbar-brand {{ dashboard.brand_logo }}">
@@ -23,14 +23,14 @@
                                     </a>
                                     <ul class="dropdown-menu border-0 shadow">
                                         {% for module in module_type.get_session_modules %}
-                                            <li><a href="{{ module.url }}" class="dropdown-item"><i class="{{ module.icon }}"></i> {{ module.name }}</a></li>
+                                            <li><a href="{{ module.url }}" class="dropdown-item"><i class="{{ module.icon }}"></i> {{ module.name }}{% if module.url|bloqueado_por_plan:fpa_plan %}<i class="fas fa-lock fpa-candado" aria-hidden="true"></i><span class="sr-only"> (requiere plan)</span>{% endif %}</a></li>
                                         {% endfor %}
                                     </ul>
                                 </li>
                             {% endfor %}
                         {% endif %}
                         {% for module in session_group.get_session_modules %}
-                            <li><a href="{{ module.url }}" class="dropdown-item"><i class="{{ module.icon }}"></i> {{ module.name }}</a></li>
+                            <li><a href="{{ module.url }}" class="dropdown-item"><i class="{{ module.icon }}"></i> {{ module.name }}{% if module.url|bloqueado_por_plan:fpa_plan %}<i class="fas fa-lock fpa-candado" aria-hidden="true"></i><span class="sr-only"> (requiere plan)</span>{% endif %}</a></li>
                         {% endfor %}
                     </ul>
                 </li>
