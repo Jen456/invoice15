@@ -234,6 +234,19 @@ class TestPagos:
         assert (cuerpo['amountWithTax'], cuerpo['tax'], cuerpo['storeId']) == (7391, 1109, 'store-de-prueba')
         assert post.call_args.kwargs['headers']['Authorization'] == 'Bearer token-de-prueba'
 
+    @pytest.mark.parametrize('error, estado', [
+        (payphone.PayPhoneError('La tienda asociada no existe. Verifique su store id', 404, 100), 'rechazado'),
+        (payphone.PayPhoneSinRespuesta('Timeout'), 'error_comunicacion'),
+    ])
+    def test_prepare_fallido_vuelve_con_mensaje(self, client, gratuita, dueno_gratuita, payphone_configurado, error, estado):
+        entrar(client, dueno_gratuita, gratuita)
+        with mock.patch.object(payphone, 'preparar', side_effect=error):
+            respuesta = client.post('/suscripcion/pagar/', {'plan': 'plan-1000', 'modo': 'inmediato'}, follow=True)
+        assert respuesta.status_code == 200 and 'No pudimos conectar con PayPhone' in respuesta.content.decode()
+        pago = Payment.objects.get(company=gratuita)
+        assert pago.status == estado
+        assert pago.events.filter(kind='preparar_error', detail__tipo=type(error).__name__).exists()
+
     def test_sin_credenciales_no_se_cobra(self, client, gratuita, dueno_gratuita, settings):
         settings.PAYPHONE_TOKEN = ''
         entrar(client, dueno_gratuita, gratuita)

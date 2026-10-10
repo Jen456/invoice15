@@ -178,8 +178,8 @@ def fechas_del_nuevo_periodo(company, plan, modo, ahora=None):
 
 # ---------------------------------------------------------------- pagos
 
-def _evento(pago, tipo, **detalle):
-    PaymentEvent.objects.create(payment=pago, kind=tipo, detail=detalle)
+def _evento(pago, clase, /, **detalle):
+    PaymentEvent.objects.create(payment=pago, kind=clase, detail=detalle)
 
 
 def nuevo_pago(company, plan, usuario, modo, metodo='payphone', ahora=None):
