@@ -1,5 +1,52 @@
 # Handoff compartido — frontend
 
+## Estado actual (2026-10-10, Claude)
+
+- **Aplicación en servicio:** rama `plataforma` en el commit `817be35`, desplegada en app.facturaporaqui.com. Incluye:
+  - Multiempresa, con aislamiento por ORM y por filas en PostgreSQL, selector de empresa y roles.
+  - Registro propio de empresas.
+  - Gráficos con Chart.js.
+  - `static/lib` versionado con verificación de integridad y FormValidation sustituido por una implementación propia compatible.
+  - Desde hoy, planes y cobro con PayPhone.
+- **PayPhone está en Producción:** cobra a nombre de la tienda Suprohosting y ya registró un pago real de un cliente. Las credenciales están solo en el servidor; nunca en el repositorio ni en estos documentos.
+- **Regla de negocio:**
+  - Sin plan pagado: inventario gratuito con límites.
+  - Facturación y ventas: exigen un plan (Plan 1000 a $50 o Plan ilimitado a $85, IVA incluido).
+  - Plan vencido: solo consulta.
+  - Detalle en RESULTADOS-FRONTEND.md, entrada «Backend (Claude): planes…».
+- **Esta rama (`frontend/etapa3`):**
+  - Nace del checkout original y no está integrada ni desplegada.
+  - Contiene la entrega de Codex (`b29f1de`) más este commit, que solo añade documentación y capturas.
+  - En el servidor hay un ensayo de integración sin commit (rama `ensayo-integracion`), hecho sobre una versión anterior a los planes. No es la referencia para integrar.
+
+## Pendiente para Codex
+
+1. **Integrar la etapa 3 sobre `plataforma`** (la tarea de esta rama). Partir de `plataforma`, no de `main` ni de esta rama tal cual. Al fusionar hay que conservar:
+   - El aviso del plan en `vtc_body.html`/`hzt_body.html` y su hoja `suscripciones/css/aviso.css` en `base.html`.
+   - El candado `bloqueado_por_plan` en `vtc_sidebar.html`, `hzt_header.html` y `hzt_dashboard.html`.
+   - El filtro de mensajes con la etiqueta `plan` en el script de `message_error`.
+   - En compañía: la firma deshabilitada sin plan (`firma_habilitada`), la ausencia del campo `is_active` y los campos de firma/SMTP opcionales (también en `company/js/form.js`).
+   - El selector de empresa, las membresías y los permisos.
+   - No ejecutar `deploy/python/install_frontend.py` en `plataforma`. Descarga Highcharts, que tiene licencia de pago y se sustituyó por Chart.js a pedido de la propietaria, y no verifica la integridad de lo que baja. En `plataforma`, `static/lib` ya está en el repositorio (`deploy/scripts/recuperar_static_lib.py` y `static/lib/MANIFIESTO.json`).
+   - Archivos que tocaron las dos ramas: `templates/base.html`, `templates/vtc_sidebar.html`, `templates/hzt_header.html` y `core/pos/templates/company/create.html`.
+2. **Aplicar el tema a «Plan y pagos»:** `suscripciones/plan.html`, `pago.html`, `_aviso.html`, `retorno.html` y `cancelado.html`. Hay que conservar:
+   - Los formularios POST con CSRF y los campos `plan` y `modo`.
+   - Los precios tal como vienen del servidor («$50.00 al año, IVA incluido»).
+   - El aviso «Tu plan actual termina hoy, sin prorrateo» en las mejoras inmediatas.
+   - El texto que indica el ambiente de PRUEBAS del SRI.
+   - Que `retorno.html` y `cancelado.html` funcionen sin sesión.
+3. **Probar sin cobrar:** abrir el checkout de PayPhone está bien; completar un pago no, porque sería un cobro real. Usar empresas ficticias. Si se cambian las clases `fpa-` a `fp-`, actualizar `tests/test_suscripciones.py`, que busca `fpa-candado` y `fpa-alerta-plan`.
+
+## Notas entre agentes
+
+- **2026-10-10 · Claude → Codex:** el error `FormValidation is not defined` ya no aplica en `plataforma`. Allí `static/lib/formvalidation-1.9.0` es una implementación propia compatible con la API que usan las plantillas:
+  - `formValidation` y los plugins Trigger, SubmitButton, Bootstrap e Icon.
+  - Los validadores notEmpty, stringLength, digits, numeric, regexp, callback, remote, date, file e identical.
+
+  No hace falta recuperar el paquete con licencia.
+- **2026-10-10 · Claude → Codex:** los archivos `.p12`, `.pfx`, `.key` y `.pem` nunca se entregan por `/media/`: la vista protegida los bloquea y nginx no lee los archivos subidos. Sigue pendiente en backend no devolver al formulario las claves guardadas. Ocultarlas en pantalla no basta, como ya indicó Codex.
+- **2026-10-10 · Claude → Codex:** el formulario de compañía de `plataforma` ya permite guardar sin firma ni SMTP. La división en cinco secciones de `b29f1de` es compatible, siempre que el campo de firma conserve el estado deshabilitado y la ayuda cuando no hay plan.
+
 ## Entrega 2026-10-10 — rama `frontend/etapa3`
 
 Codex implementó branding y base responsive para login, navegación, formularios y listados. Configuración de compañía dividida en cinco secciones; columnas adaptables, etiquetas asociadas, contraseñas ocultas con control accesible. Listados con acción principal superior y controles DataTables en español. Logo Ingenioso en login/sidebar y favicon. Tema compartido coral/celeste; gráficos conservan los datos y respetan movimiento reducido.
