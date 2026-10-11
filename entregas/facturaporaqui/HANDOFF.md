@@ -1,5 +1,142 @@
 # Handoff compartido — frontend
 
+## Estado actual — asistente de configuración de facturación (Claude, 11/10/2026)
+
+- **Backend listo en `plataforma` y `frontend/etapa3`** (commits `db184cd` y `5175401`). **No desplegado:** app.facturaporaqui.com sigue en `af1f365`.
+- La plantilla `configuracion/asistente.html` es funcional y tiene un estilo mínimo (bloque `.fp-config` al final de `static/css/facturaporaqui.css`). El diseño y la marca quedan para Codex.
+- **«Secuencia actual»** era el último número usado y se creaba en 1, así que la primera factura salía 000000002. Ahora:
+  - se llama «Último número utilizado» y empieza en 0;
+  - la interfaz muestra «Número del próximo documento» (último + 1).
+- **Pruebas:** PostgreSQL 217/217 (incluye emisiones simultáneas); SQLite 212 más 5 omitidas (solo PostgreSQL).
+
+## Pendiente para Codex — asistente de configuración
+
+- [ ] Diseñar `core/configuracion/templates/configuracion/asistente.html` y `_campos.html` (pasos, formularios, errores y progreso) siguiendo el contrato de abajo. Conservar los `name` de los campos, `action`, CSRF y los textos de error del servidor.
+- [ ] Diseñar el aviso `configuracion/_aviso.html` (cabecera) y el resumen de solo lectura `configuracion/_resumen_compania.html` (sección «Establecimiento y punto de emisión» de Compañía).
+- [ ] Revisar la lista de Comprobantes (solo consulta: `receipt/list.html` y `receipt/js/list.js`).
+- [ ] Opcional: vista previa del «Número del próximo documento» en el paso 3 mientras se escribe. El servidor recalcula y valida igual.
+
+## Notas entre agentes — contrato del asistente (Claude → Codex)
+
+### Rutas y permisos
+
+| Ruta | Método | Respuesta |
+|---|---|---|
+| `/configuracion/facturacion/` | GET | 302 al primer paso pendiente (`paso_actual`); así se retoma |
+| `/configuracion/facturacion/paso/<n>/` | GET, POST | n = 1…5 (otro valor → 404). Plantilla `configuracion/asistente.html` |
+| `/configuracion/facturacion/estado.json` | GET | JSON del estado (ver «Estado») |
+
+- **Permisos:** módulo «Configuración de facturación» (`/configuracion/facturacion/`). Solo **Propietario** y **Administrador** (y superusuario); Contador, Vendedor, Consulta y Cliente no lo tienen.
+  - Sin permiso: un GET redirige con «Tu perfil no cuenta con el permiso necesario para ingresar».
+  - Un POST responde 403 JSON `{"error": "Tu perfil no cuenta con el permiso necesario para ingresar"}`.
+  - Se necesita empresa activa (selector).
+- **Aislamiento:** todo se filtra por la empresa activa (ORM y seguridad por filas de PostgreSQL en `pos_establishment`, `pos_emissionpoint`, `pos_billingsetup` y `pos_receipt`). Un `point` de otra empresa → 404.
+- **Mensajes del asistente:** usan la etiqueta `configuracion` y se muestran dentro de la página. `vtc_body.html` y `hzt_body.html` ya no los pasan al diálogo de error. Niveles: `success`, `warning` y `error`.
+
+### Contexto común (todas las pantallas)
+- `paso` (1–5), `titulo_paso`, `mensajes` (diccionario de textos exactos; ver «Mensajes»).
+- `estado`, con estas claves:
+  - `completo` (bool), `paso_actual` (int) y `pasos`: `[{numero, titulo, completo}]`.
+  - `ambiente`: `{codigo: 1|2, nombre: 'PRUEBAS'|'PRODUCCIÓN'}`.
+  - `punto` (objeto o None, con `full_code`, `establishment.code` y `establishment.address`) y `punto_codigo` (`'002-001'` o None).
+  - `documentos`: `[{tipo: '01'|'04'|'08', nombre, existe, ultimo, ultimo_completo, proximo, proximo_completo, confirmado, utilizado, origen: 'nuevo'|'otro_sistema'|'existente'|None}]`.
+  - `firma`: `{archivo: bool, clave: bool}`. Nunca se envía la clave.
+  - `requisitos`: `{factura: [...], nota_credito: [...]}`, cada elemento `{codigo: 'configuracion'|'secuencia'|'firma', mensaje, paso, url}`.
+- `/estado.json` devuelve lo mismo, con `punto` como texto (`'002-001'`).
+
+### Progreso
+- Se guarda en `BillingSetup.completed_steps` y se vuelve a validar al leerlo. Un paso deja de estar completo si cambian sus datos.
+  - **Paso 1:** RUC válido, razón social y dirección matriz.
+  - **Paso 2:** hay un punto predeterminado activo.
+  - **Paso 3:** existen las secuencias de factura y de nota de crédito del ambiente actual en ese punto.
+  - **Paso 4:** ambiente elegido; Producción, además, confirmado.
+  - **Paso 5:** confirmado y con secuencias confirmadas.
+- Cambiar el punto, la numeración o el ambiente quita el paso 5: hay que volver a confirmar. Los datos de la empresa y la firma no lo quitan.
+
+### Paso 1 — Datos de la empresa
+- **Formulario `form` (EmpresaForm):** `ruc`, `business_name`, `tradename`, `main_address`, `obligated_accounting`, `special_taxpayer`, `retention_agent`, `mobile`, `phone`, `email`.
+- **POST** correcto → 302 `paso/2/`. Con errores → 200 y errores por campo.
+- **RUC no válido:** «Ingresa un RUC válido de 13 dígitos.».
+
+### Paso 2 — Establecimientos y puntos de emisión
+- **Contexto:** `establecimientos` (con `points`), `form_establecimiento` (`code`, `name`, `address`), `form_punto` (`establishment` = id, `code`, `description`) y `form_confirmar` (`point` = id, `confirm`).
+- **POST, campo `action`:**
+  - `agregar_establecimiento` → 302 `paso/2/` y aviso «Establecimiento 002 agregado.».
+  - `agregar_punto` → 302 `paso/2/` y aviso «Punto de emisión 002-001 agregado.».
+  - `desactivar_punto` (+ `point`) → 302 `paso/2/`. No se puede con el punto predeterminado ni con uno de numeración usada.
+  - `confirmar` (+ `point`, `confirm=on`) → 302 `paso/3/`, aviso «Emitirás desde 002-001.» y Compañía alineada.
+  - Otro valor → 404.
+- **No se asume 001-001:** las empresas nuevas llegan sin establecimientos y sin códigos.
+
+### Paso 3 — Numeración (por ambiente)
+- **Ambiente:** `?ambiente=1|2` (por defecto, el de la empresa).
+- **Contexto:** `ambiente`, `ambientes`, `punto` y `documentos`: `[{tipo, nombre, secuencia, form, utilizada, proximo}]`, con `form` prefijado por el tipo.
+- **POST:** `ambiente` y, para `tipo` en `01` y `04`:
+  - `{tipo}-mode`: `nuevo`, `otro_sistema` o `mantener`;
+  - `{tipo}-last_number`;
+  - `{tipo}-confirm=on`.
+- **Respuesta:**
+  - Correcto en el ambiente actual → 302 `paso/4/`.
+  - En el otro ambiente → 302 `paso/3/?ambiente=N`.
+  - Errores → 200 con `form.non_field_errors` en cada documento.
+- **Reglas:**
+  - `nuevo`: empieza en 000000001. Exige `confirm`. No vale si la secuencia ya tiene comprobantes o un último número mayor que 0.
+  - `otro_sistema`: acepta `125`, `000000125` o `EEE-PPP-000000125` (del mismo punto), entre 1 y 999999998. Exige `confirm`. No puede ser menor que el último número de la secuencia ni que el mayor ya emitido.
+  - `mantener`: conserva la existente.
+  - Tras guardar, la secuencia queda «Pendiente de confirmar en el paso 5».
+
+### Paso 4 — Firma electrónica y ambiente
+- **Formulario `form`:**
+  - `environment_type` (1 PRUEBAS, 2 PRODUCCIÓN);
+  - `confirm_production` (obligatorio en Producción);
+  - `electronic_signature` (archivo `.p12`; requiere plan);
+  - `electronic_signature_key` (contraseña: nunca se muestra y vacía conserva la guardada).
+- **Contexto:** `firma_habilitada` (hay plan).
+- **Validación:** el `.p12` se abre con la clave en el servidor antes de guardarlo.
+- **Respuesta:**
+  - Correcto → 302 `paso/5/`.
+  - Si cambió el ambiente y falta su numeración → 302 `paso/3/` con aviso «Configura la numeración para el ambiente PRODUCCIÓN.».
+
+### Paso 5 — Revisión y confirmación
+- **Contexto:** `estado.documentos`, con último número y número del próximo documento, y `estado.requisitos.factura`. **Formulario `form`:** `confirm`.
+- **POST** correcto → 302 `paso/5/` y aviso «Configuración confirmada. Ya puedes emitir con la numeración revisada.».
+- Al confirmar se fijan las secuencias de factura y nota de crédito y se crea la de tickets (desde 1).
+
+### Mensajes exactos (`servicios.MENSAJES`; `{…}` se sustituye)
+- `ultimo_formato`: «Escribe el último número usado: 125, 000000125 o 001-002-000000125.»
+- `ultimo_rango`: «El último número debe estar entre 1 y 999999998.»
+- `ultimo_otro_punto`: «El número {numero} es de otro punto de emisión ({codigo}); aquí configuras {punto}.»
+- `retroceso`: «El último número no puede ser menor que {minimo:09d}: esta numeración ya llegó a ese número.»
+- `reinicio_usada`: «Esta numeración ya tiene comprobantes emitidos en FacturaPorAquí; no se puede reiniciar.»
+- `reinicio_existente`: «Esta numeración ya existía (último {ultimo}). Para no repetir números, mantenla o indica un último número mayor.»
+- `confirmar_nuevo`: «Confirma que nunca has emitido {documento} desde {punto} en {ambiente}.»
+- `confirmar_ultimo`: «Confirma que el último número emitido fue {numero}.»
+- `falta_punto`: «Primero registra y confirma tu establecimiento y punto de emisión (paso 2).»
+- `confirmar_codigos`: «Confirma que estos códigos son los que el SRI asignó a tu RUC.»
+- `establecimiento_duplicado`: «Ya existe el establecimiento {codigo}.»
+- `punto_duplicado`: «El punto {codigo} ya existe en el establecimiento {establecimiento}.»
+- `punto_en_uso`: «Este punto de emisión ya tiene numeración usada o es el punto con el que emites; no se puede desactivar.»
+- `confirmar_produccion`: «Confirma que entiendes que en Producción los comprobantes tienen validez tributaria.»
+- `firma_sin_plan`: «Para subir tu firma electrónica (.p12) primero activa un plan en «Plan y pagos».»
+- `firma_clave`: «La clave no abre este archivo .p12. Revisa la clave o el archivo.»
+- `firma_sin_clave`: «Escribe la clave de la firma electrónica.»
+- `pasos_pendientes`: «Antes de confirmar completa: {pasos}.»
+- `confirmar_revision`: «Confirma que estos son los números con los que debes continuar.»
+- Código de establecimiento o punto: «Usa tres dígitos, por ejemplo 001 (000 no es válido).»
+
+### Emisión y pantallas relacionadas
+- **Requisitos:** venta (`/pos/sale/admin/add/`, `action=add`), nota de crédito y ticket exigen la configuración confirmada; la emisión electrónica, además, firma y clave.
+  - Si falta algo, el JSON trae `error`: «{mensaje} Ve a «Configuración de facturación»: {url}».
+  - Ejemplo: «Para emitir facturas completa la configuración de facturación (paso 1). Ve a «Configuración de facturación»: /configuracion/facturacion/paso/1/».
+  - **El inventario no se bloquea.**
+- **Número en el formulario de venta:** `action=search_voucher_number` devuelve `voucher_number`, `voucher_number_full` (próximo, sin reservar) o `pending` (`{codigo, mensaje, paso, url}`).
+- **Aviso de cabecera:** `fpa_config_pendiente` (`{codigo, mensaje, paso, url}`) en `configuracion/_aviso.html`. Solo aparece con plan pagado y para quien puede configurarlo; incluido en `vtc_body.html` y `hzt_body.html` después del aviso del plan.
+- **Compañía:** ya no edita `establishment_code`, `issuing_point_code`, `establishment_address` ni `environment_type`. Muestra `configuracion/_resumen_compania.html` con `config=config_facturacion`, que es el mismo `estado`.
+- **Comprobantes:** solo consulta.
+  - El JSON de `search` añade `environment_type {id, name}`, `last_number_full`, `next_number_full`, `confirmed` y `confirmed_at`.
+  - `add`, `update` y `delete` → GET 302 `paso/3/`; POST 403 `{"error": "La numeración de comprobantes se configura en «Configuración de facturación» (paso 3), …"}`.
+- **Numeración segura:** la reserva del número es atómica, con bloqueo de fila en la transacción de la venta. Hay unicidad `(receipt, voucher_number)` en ventas y notas de crédito, y nunca se reutiliza un número ya registrado.
+
 ## Estado actual — Plan y pagos ajustado, publicado `af1f365` (Claude, 11/10/2026)
 
 - **Publicado:** `af1f365` en app.facturaporaqui.com desde el 11/10/2026 a las 18:40 UTC.

@@ -449,3 +449,81 @@ Sin desbordamiento horizontal ni errores en ningún ancho, ni en la vista previa
 ### Pendientes
 - **Codex:** revisar el recuadro «Tu plan actual» y los puntos de corte (1360 px) con su criterio visual. Si cambia las clases, mantener los textos que comprueban las pruebas.
 - **Claude:** asistente de configuración inicial de facturación (siguiente tarea), cifrado de claves, respaldo diario y etapa 3.
+
+## 11/10/2026 — Asistente de configuración inicial de facturación: backend (Claude)
+
+### Diagnóstico previo
+- «Secuencia actual» (`Receipt.sequence`) era el **último número usado**: el siguiente se calculaba como +1 al crear el comprobante. Se creaba con **1**, así que la primera factura de una empresa nueva salía **000000002**. Además se leía sin bloqueo: dos ventas simultáneas podían recibir el mismo número.
+- El registro asignaba **001-001** sin preguntar y no creaba secuencias. Una empresa recién registrada no podía crear ventas: «Receipt matching query does not exist».
+- «Compañía» y «Comprobantes» guardaban por separado establecimiento, punto y ambiente, que podían contradecirse. La secuencia se editaba libremente, incluso hacia atrás, y no distinguía ambiente.
+
+### Qué se hizo
+- **Modelos** (`core/pos`, aislados por empresa y con seguridad por filas):
+  - `Establishment` y `EmissionPoint`: códigos de tres dígitos con ceros iniciales (000 no vale), únicos por empresa y establecimiento, y un solo punto predeterminado por empresa.
+  - `BillingSetup`: progreso del asistente.
+  - `Receipt`: ahora es la secuencia por **empresa + ambiente + establecimiento + punto + tipo**, con restricción única, origen (`nuevo`, `otro_sistema`, `existente`) y confirmación.
+- **Reserva atómica:** `Receipt.reservar_numero()` bloquea la fila dentro de la transacción de la venta, salta números ya registrados y nunca retrocede. Restricción única `(receipt, voucher_number)` en ventas y notas de crédito.
+- **Asistente** `/configuracion/facturacion/` (app `core/configuracion`, solo Propietario y Administrador), en cinco pasos, con progreso guardado que se puede retomar:
+  1. Datos de la empresa.
+  2. Establecimientos y puntos, con confirmación de los códigos y sin asumir 001-001.
+  3. Numeración independiente de facturas y notas de crédito, por ambiente: empezar en 000000001 con confirmación, o continuar desde otro sistema (último 001-002-000000125 → próximo 001-002-000000126). Nunca se reinicia ni retrocede lo ya usado.
+  4. Firma `.p12`, validada con su clave y solo con plan, y ambiente (Producción con confirmación).
+  5. Revisión del próximo número y confirmación.
+- `/estado.json` para el frontend. Auditoría en `AuditLog`: `billing_setup_step`, `billing_point_change`, `billing_sequence_change` (con valor anterior, último y próximo) y `billing_setup_confirm`.
+- **Emisión:**
+  - Venta, nota de crédito y ticket exigen la configuración confirmada; la emisión electrónica, además, firma.
+  - El error explica qué falta y enlaza al paso.
+  - **El inventario no se bloquea.**
+  - Aviso «Continuar configuración» para Propietario y Administrador con plan pagado.
+  - Se mantienen los controles de plan, firma, permisos y la separación Pruebas/Producción.
+- **Unificación:** «Compañía» muestra establecimiento, punto, dirección, ambiente y próximos números en solo lectura. «Comprobantes» es solo consulta, con último y próximo número, ambiente y estado; crear, editar o borrar lleva al paso 3.
+- **Migraciones:**
+  - `pos 0008`: esquema.
+  - `pos 0009`: datos existentes sin cambiar ningún número. Las empresas que ya emitían quedan confirmadas; las demás, pendientes; a quien no tenía secuencias no se le asigna 001-001.
+  - `pos 0010`: seguridad por filas de las tablas nuevas.
+  - `pos 0011`: módulo de menú.
+  - `tenancy 0005`: acciones de auditoría.
+- El registro ya no asigna 001-001. `insert_test_data` (solo demostración) deja la configuración confirmada.
+
+### Archivos
+- **Nuevos:**
+  - `core/configuracion/`: `servicios.py`, `forms.py`, `views.py`, `urls.py`, `context_processors.py` y las plantillas `asistente.html`, `_campos.html`, `_aviso.html` y `_resumen_compania.html`.
+  - Migraciones `pos 0008–0011` y `tenancy 0005`.
+  - `tests/test_configuracion_facturacion.py` y `tests/test_zz_secuencias_concurrencia_pg.py`.
+- **Modificados:**
+  - Modelos y vistas: `core/pos/models.py`, `core/pos/forms.py` y las vistas de venta, nota de crédito, comprobantes y compañía.
+  - Plantillas y JS: `core/pos/templates/company/create.html`, `receipt/list.html`, `receipt/js/list.js`, `templates/vtc_body.html` y `templates/hzt_body.html`.
+  - Configuración y comandos: `config/settings.py`, `config/urls.py`, `core/login/registro.py`, `core/tenancy/{models,roles}.py`, `start_installation`, `insert_test_data`, `tests/helpers.py` y `static/css/facturaporaqui.css` (bloque mínimo `.fp-config`).
+- **Commits** `db184cd` y `5175401`.
+
+### Pruebas (empresas ficticias; sin emitir documentos reales)
+- **PostgreSQL 16:** 217 aprobadas. **SQLite:** 212 aprobadas y 5 omitidas (solo PostgreSQL).
+- `tests/test_configuracion_facturacion.py`:
+  - **Empresa nueva:** empieza en el paso 1 y conserva el inventario; la emisión se bloquea con el mensaje exacto y el enlace.
+  - **Flujo completo:** establecimiento 002 con ceros conservados; sin confirmar los códigos no avanza; factura desde otro sistema (125 → 002-001-000000126); nota de crédito desde 000000001; Pruebas; confirmación. Después, emitir sin firma solo exige la firma en la emisión electrónica.
+  - **Progreso:** se retoma donde quedó.
+  - **Validaciones:** códigos `1`, `01`, `0001`, `000` y `A01` rechazados; establecimiento y punto duplicados; formatos y rangos del último número, incluido uno de otro punto; empezar en 1 exige confirmación.
+  - **Empresa existente:** no se reinicia ni retrocede (980 → «no puede ser menor que 000000980»); `mantener` deja el próximo en 981; avanzar a 1200 queda auditado. Una secuencia usada solo avanza.
+  - **Migración de datos:** no cambia los números; la empresa que ya emitía queda confirmada; la que no tenía secuencias no recibe 001-001.
+  - **Independencia:** factura y nota de crédito tienen secuencias separadas, y Pruebas y Producción también. La reserva salta números ya usados y la base rechaza un número duplicado.
+  - **Cambio a Producción:** exige confirmación, numeración propia y volver a confirmar; mientras tanto, la emisión se bloquea.
+  - **Permisos:** Propietario y Administrador sí; Vendedor y Consulta reciben 403.
+  - **Aislamiento:** una empresa no puede desactivar el punto de otra (404) ni lo ve en `estado.json`.
+  - **Pantallas unificadas:** Comprobantes es solo consulta y muestra 003-002-000000042; Compañía no tiene los campos y muestra el resumen. El aviso aparece con plan pagado.
+- `tests/test_zz_secuencias_concurrencia_pg.py` (PostgreSQL, transacciones reales, 8 hilos):
+  - Seis emisiones simultáneas de la empresa A continúan desde 125 con 126–131, sin huecos ni repetidos, y la empresa B tiene sus propios 1–2.
+  - **Comprobación por mutación:** sin el bloqueo de `reservar_numero()`, la prueba falla con `IntegrityError` (`venta_numero_unico_por_secuencia`). La restricción única es la segunda barrera.
+- **Recorrido en la vista previa local** (SQLite, datos ficticios, Playwright a 1366 px), una empresa nueva de punta a punta por la interfaz:
+  - El aviso «Para emitir facturas completa la configuración de facturación (paso 1).» lleva al paso 1.
+  - Paso 2 sin confirmar: «Confirma que estos códigos son los que el SRI asignó a tu RUC.».
+  - Paso 3: factura con último 002-001-000000125 y próximo 002-001-000000126; nota de crédito con próximo 002-001-000000001.
+  - Paso 5: tabla de revisión y «Configuración confirmada.».
+  - Compañía y Comprobantes muestran los mismos valores. 0 errores de JavaScript y 0 peticiones fallidas.
+
+### Capturas
+`configuracion-paso1.png` … `configuracion-paso5.png` y `configuracion-comprobantes-consulta.png`, de la vista previa local con datos ficticios. El estilo es mínimo; el diseño final es de Codex.
+
+### Pendientes
+- **Despliegue** en app.facturaporaqui.com: pendiente de autorización. Al desplegar, las tres empresas actuales quedan con la configuración pendiente y deben completar el asistente. El cliente real (empresa 6) no tenía secuencias y no podía registrar ventas; el asistente lo resuelve. No se cambia ninguna numeración existente.
+- **Codex:** diseño del asistente, del aviso y de los resúmenes según el contrato de HANDOFF.md.
+- **Futuro:** elegir el punto de emisión al vender (hoy se emite desde el punto predeterminado), retenciones (etapa 3) y cifrado de claves.
