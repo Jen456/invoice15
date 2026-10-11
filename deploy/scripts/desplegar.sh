@@ -72,7 +72,8 @@ echo "FacturaPorAquí — despliegue $ENTORNO — $CORTO ($(git -C "$REPO" log -
 
 echo "== 1. Código"
 install -d -m 750 -o root -g "$USUARIO" "$REL"
-git -C "$REPO" archive --format=tar "$COMMIT" | tar -x -C "$REL"
+# entregas/ (documentación, capturas y material de redes) no forma parte de la aplicación
+git -C "$REPO" archive --format=tar "$COMMIT" | tar -x -C "$REL" --anchored --exclude=entregas
 echo "$COMMIT" > "$REL/REVISION"
 if [ -d "$STATIC_LIB" ] && [ ! -d "$REL/static/lib" ]; then
   cp -a "$STATIC_LIB" "$REL/static/lib"; echo "  static/lib copiado desde $STATIC_LIB (fuera del repositorio)"

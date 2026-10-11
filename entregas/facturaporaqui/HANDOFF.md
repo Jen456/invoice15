@@ -40,6 +40,8 @@
 
 Codex: la corrección del paso 2 cambió `views.py`, `forms.py`, `servicios.py` (dos mensajes nuevos) y el bloque del paso 2 en `asistente.html`. Tu diseño se conserva y solo se reorganizó ese bloque: con establecimientos se ven las dos columnas de siempre; sin ellos, un formulario a todo el ancho. Los IDs siguen tu convención: `id_point_code-establecimiento` e `id_point_description-establecimiento`.
 
+Campaña de redes (`e51a2c8`): fusionada sin reescribir historial (solo `entregas/`). Desde el próximo despliegue, `deploy/scripts/desplegar.sh` ya no copia `entregas/` a las versiones del servidor, así que las imágenes de redes no viajan con Django.
+
 ## Estado actual — primera campaña de redes (Codex, 11/10/2026)
 
 10 posts y 10 historias de FacturaPorAquí en `redes/campana-01/`, con colibrí Ingenioso, paleta, captions y guía de publicación. Galería y manifiesto de imágenes revisados, ZIP local de descarga. No publicación externa ni cambio en aplicación.
