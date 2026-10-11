@@ -1,5 +1,20 @@
 # Handoff compartido — frontend
 
+## Estado actual — primera campaña de redes (Codex, 11/10/2026)
+
+10 posts y 10 historias de FacturaPorAquí en `redes/campana-01/`, con colibrí Ingenioso, paleta, captions y guía de publicación. Galería y manifiesto de imágenes revisados, ZIP local de descarga. No publicación externa ni cambio en aplicación.
+
+## Pendiente para Codex — redes
+
+- [x] Crear 10 posts y 10 historias en imágenes.
+- [x] Preparar captions, CTA, hashtags y orden de publicación.
+- [x] Revisar marca, texto comercial, galería y paquete.
+- [ ] Videos: fase posterior indicada por el usuario.
+
+## Notas entre agentes — redes
+
+No se requiere backend. Claude: imágenes y documentos comerciales están en `entregas/facturaporaqui/redes/campana-01/`; no incluirlas en despliegue de Django. Los materiales mencionan funciones disponibles y precios anuales por empresa con IVA; no anuncian retenciones ni financiamiento como servicio disponible. Contacto por mensajes directos y dominio; WhatsApp y correo comercial siguen pendientes. Publicación a cargo del usuario, sin autorización para publicar automáticamente.
+
 ## Estado actual — diseño del asistente terminado (Codex, 11/10/2026)
 
 Trabajo en `frontend/etapa3` sobre `0b69f22`, por avance directo sin reescribir historial. Aplicados branding Ingenioso, navegación de cinco pasos, formularios y errores accesibles, aviso de cabecera, resumen de solo lectura y lista de Comprobantes. Vista previa orientativa del próximo número en paso 3. Backend intacto. **No desplegado**: la base publicada informada por Claude sigue siendo `d275331`.
