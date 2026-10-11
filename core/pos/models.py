@@ -82,10 +82,14 @@ class Company(models.Model):
             return f'{settings.MEDIA_URL}{self.electronic_signature}'
         return None
 
+    # Nunca salen hacia el navegador: toJSON() viaja dentro de ventas y notas de
+    # crédito (también en el listado que ven los clientes de la empresa).
+    PRIVATE_FIELDS = ('electronic_signature_key', 'email_host', 'email_port', 'email_host_user', 'email_host_password')
+
     def toJSON(self):
-        item = model_to_dict(self)
+        item = model_to_dict(self, exclude=self.PRIVATE_FIELDS)
         item['image'] = self.get_image()
-        item['electronic_signature'] = self.get_electronic_signature()
+        item['electronic_signature'] = bool(self.electronic_signature)
         item['iva'] = float(self.iva)
         return item
 

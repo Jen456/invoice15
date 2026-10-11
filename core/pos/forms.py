@@ -376,12 +376,18 @@ class CompanyForm(forms.ModelForm):
     # Se pueden guardar los datos de la empresa sin firma ni correo propio;
     # la firma (.p12) solo se acepta con un plan pagado vigente.
     OPCIONALES = ('electronic_signature', 'electronic_signature_key', 'email_host_user', 'email_host_password')
+    # Claves guardadas: nunca se devuelven al navegador y un campo vacío conserva la anterior.
+    SECRETOS = ('electronic_signature_key', 'email_host_password')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['business_name'].widget.attrs['autofocus'] = True
         for name in self.OPCIONALES:
             self.fields[name].required = False
+        for name in self.SECRETOS:
+            if self.instance.pk is not None and getattr(self.instance, name):
+                self.fields[name].widget.attrs['placeholder'] = 'Guardada. Déjala vacía para conservarla'
+                self.fields[name].help_text = 'Por seguridad no se muestra. Escribe una nueva solo si quieres cambiarla.'
         for i in self.visible_fields():
             if type(i.field) in [forms.CharField, forms.ImageField, forms.FileField, forms.IntegerField]:
                 i.field.widget.attrs.update({
@@ -412,12 +418,24 @@ class CompanyForm(forms.ModelForm):
             'description': forms.TextInput(attrs={'placeholder': 'Ingrese una descripción'}),
             'iva': forms.TextInput(),
             'vat_percentage': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
-            'electronic_signature_key': forms.TextInput(attrs={'placeholder': 'Ingrese la clave de la firma electrónica'}),
+            'electronic_signature_key': forms.PasswordInput(render_value=False, attrs={'placeholder': 'Ingrese la clave de la firma electrónica'}),
             'email_host': forms.TextInput(attrs={'placeholder': 'Ingrese el servidor de correo'}),
             'email_port': forms.TextInput(attrs={'placeholder': 'Ingrese el puerto de servidor de correo'}),
             'email_host_user': forms.TextInput(attrs={'placeholder': 'Ingrese el username del servidor de correo'}),
-            'email_host_password': forms.TextInput(attrs={'placeholder': 'Ingrese el password del servidor de correo'}),
+            'email_host_password': forms.PasswordInput(render_value=False, attrs={'placeholder': 'Ingrese el password del servidor de correo'}),
         }
+
+    def _conservar_secreto(self, name):
+        valor = self.cleaned_data.get(name) or ''
+        if not valor and self.instance.pk is not None:
+            return getattr(self.instance, name) or ''
+        return valor
+
+    def clean_electronic_signature_key(self):
+        return self._conservar_secreto('electronic_signature_key')
+
+    def clean_email_host_password(self):
+        return self._conservar_secreto('email_host_password')
 
     def clean_electronic_signature(self):
         archivo = self.cleaned_data.get('electronic_signature')

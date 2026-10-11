@@ -37,7 +37,8 @@ class CompanyUpdateView(GroupPermissionMixin, UpdateView):
                 instance = self.get_object()
                 if not tiene_plan(instance):
                     raise ValueError('Para cargar tu firma electrónica (.p12) primero activa un plan en «Plan y pagos».')
-                electronic_signature_key = request.POST['electronic_signature_key']
+                # Sin clave escrita se usa la guardada (el formulario ya no la muestra).
+                electronic_signature_key = request.POST.get('electronic_signature_key', '') or instance.electronic_signature_key
                 archive = None
                 if 'certificate' in request.FILES:
                     archive = request.FILES['certificate'].file
