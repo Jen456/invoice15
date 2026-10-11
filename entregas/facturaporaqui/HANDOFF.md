@@ -1,5 +1,45 @@
 # Handoff compartido — frontend
 
+## Estado actual — diseño del asistente publicado `3348345` (Claude, 11/10/2026)
+
+- **Publicado:** `3348345` en app.facturaporaqui.com el 11/10/2026 a las 23:36 UTC.
+  - Incluye el diseño de Codex `7ae6eb7`, integrado por avance directo sobre `0b69f22`, y la corrección del paso 2 `3348345` (ver «Paso 2» del contrato).
+  - Sin migraciones. Respaldo previo: `pre-20261011-233635-33483456.dump`. Salud 200.
+  - Revertir: `bash deploy/scripts/desplegar.sh pruebas --revertir` (vuelve a `d275331`, compatible).
+- **Corrección del paso 2:**
+  - El primer establecimiento se registra junto con su punto de emisión, en un solo formulario.
+  - Antes, el cliente real (empresa 6) no podía escribir su punto: la lista de establecimientos estaba vacía y el error decía «Este campo es obligatorio».
+  - Al publicar, la empresa 6 aún no tenía establecimientos ni puntos.
+- **Pruebas:**
+  - PostgreSQL: **219 aprobadas**, incluidas las de concurrencia.
+  - SQLite: **214 aprobadas y 5 omitidas** (solo PostgreSQL).
+  - `check` sin problemas y sin migraciones pendientes; `node --check` de los dos JS.
+- **Verificación en el dominio** con empresas ficticias. DEMOSTRACIÓN solo recibió envíos que el servidor rechaza; OTRA-DEMO, solo lectura. Detalle en RESULTADOS-FRONTEND.md.
+  - Los cinco pasos muestran sus errores con el texto del servidor.
+  - «Continuar configuración» lleva al paso 4.
+  - El resumen de Compañía es de solo lectura y no tiene campos editables.
+  - Comprobantes no tiene acciones; crear una secuencia responde 403.
+  - Vista previa 125 → 001-001-000000126, y el servidor rechaza el retroceso.
+  - La clave de la firma va vacía, y la firma está bloqueada sin plan.
+  - A 360, 390, 768, 1024 y 1440 px no hay desbordes. Foco visible con teclado. 0 errores de consola y 0 respuestas ≥ 400.
+  - Los estáticos se sirven con huella, incluido `js/configuracion.<hash>.js`.
+  - Numeración de DEMOSTRACIÓN intacta: 001-001-001051714 / 001-001-001016492.
+- **Siguen pendientes:**
+  - Teléfono físico.
+  - PNG de marca (~500 KB).
+  - Revisión adicional de Plan y pagos.
+  - Que el cliente real complete el asistente.
+
+## Pendiente para Codex — tras la publicación de `3348345`
+
+- [ ] Opcional: revisar el diseño del formulario conjunto del paso 2 (`.fp-config-primer-punto`, dentro de `.fp-config-grid`). Las capturas `asistente-publicado-*.png` muestran cómo quedó.
+- [ ] Opcional: la vista previa del paso 3 no conoce el mínimo de la numeración. Con «Ya emití en otro sistema» muestra 126 aunque la numeración vaya por 1051713, y el servidor lo rechaza al guardar. Puede bastar con un aviso; no cambies la validación.
+- [ ] Pendientes anteriores: optimizar `isotipo.png` y `favicon.png`, revisar Plan y pagos, y probar la barra de guardado en un teléfono físico.
+
+## Notas entre agentes — publicación `3348345`
+
+Codex: la corrección del paso 2 cambió `views.py`, `forms.py`, `servicios.py` (dos mensajes nuevos) y el bloque del paso 2 en `asistente.html`. Tu diseño se conserva y solo se reorganizó ese bloque: con establecimientos se ven las dos columnas de siempre; sin ellos, un formulario a todo el ancho. Los IDs siguen tu convención: `id_point_code-establecimiento` e `id_point_description-establecimiento`.
+
 ## Estado actual — diseño del asistente terminado (Codex, 11/10/2026)
 
 Trabajo en `frontend/etapa3` sobre `0b69f22`, por avance directo sin reescribir historial. Aplicados branding Ingenioso, navegación de cinco pasos, formularios y errores accesibles, aviso de cabecera, resumen de solo lectura y lista de Comprobantes. Vista previa orientativa del próximo número en paso 3. Backend intacto. **No desplegado**: la base publicada informada por Claude sigue siendo `d275331`.
@@ -101,10 +141,22 @@ Los atributos `name`, acciones paso 2, prefijos 01/04, parámetros de ambiente, 
 - **RUC no válido:** «Ingresa un RUC válido de 13 dígitos.».
 
 ### Paso 2 — Establecimientos y puntos de emisión
-- **Contexto:** `establecimientos` (con `points`), `form_establecimiento` (`code`, `name`, `address`), `form_punto` (`establishment` = id, `code`, `description`) y `form_confirmar` (`point` = id, `confirm`).
+- **Contexto:**
+  - `establecimientos` (con `points`).
+  - `form_establecimiento`: `code`, `point_code`, `address`, `name`, `point_description`. Así quedan juntos los dos códigos, como en 001-002.
+  - `form_punto`: `establishment` = id, `code`, `description`.
+  - `form_confirmar`: `point` = id, `confirm`.
+  - `puede_agregar_punto` (bool): hay al menos un establecimiento activo. *(3348345)*
+- **Sin establecimientos (`puede_agregar_punto` falso):**
+  - Se muestra un único formulario, «Agrega tu establecimiento y su punto de emisión» (`.fp-config-primer-punto`); el formulario de punto suelto no se muestra.
+  - `point_code` es obligatorio y su error es `mensajes.falta_codigo_punto`.
+  - Con establecimientos, `point_code` es opcional y su etiqueta dice «(opcional)».
+  - Un cliente real se bloqueó con el formulario de punto y la lista vacía, que solo decía «Este campo es obligatorio».
 - **POST, campo `action`:**
-  - `agregar_establecimiento` → 302 `paso/2/` y aviso «Establecimiento 002 agregado.».
+  - `agregar_establecimiento` → 302 `paso/2/`. Con `point_code`, crea también el punto en la misma transacción. Avisos: «Establecimiento 001 y punto de emisión 001-002 agregados.» o «Establecimiento 002 agregado.».
   - `agregar_punto` → 302 `paso/2/` y aviso «Punto de emisión 002-001 agregado.».
+    - Sin establecimiento elegido: `mensajes.elige_establecimiento`.
+    - Si la empresa no tiene ninguno (página abierta antes): 302 `paso/2/` con ese mismo aviso.
   - `desactivar_punto` (+ `point`) → 302 `paso/2/`. No se puede con el punto predeterminado ni con uno de numeración usada.
   - `confirmar` (+ `point`, `confirm=on`) → 302 `paso/3/`, aviso «Emitirás desde 002-001.» y Compañía alineada.
   - Otro valor → 404.
@@ -157,6 +209,8 @@ Los atributos `name`, acciones paso 2, prefijos 01/04, parámetros de ambiente, 
 - `confirmar_codigos`: «Confirma que estos códigos son los que el SRI asignó a tu RUC.»
 - `establecimiento_duplicado`: «Ya existe el establecimiento {codigo}.»
 - `punto_duplicado`: «El punto {codigo} ya existe en el establecimiento {establecimiento}.»
+- `falta_codigo_punto`: «Escribe también el código del punto de emisión de este establecimiento.» *(3348345)*
+- `elige_establecimiento`: «Elige el establecimiento al que pertenece el punto. Si no aparece en la lista, agrégalo primero.» *(3348345)*
 - `punto_en_uso`: «Este punto de emisión ya tiene numeración usada o es el punto con el que emites; no se puede desactivar.»
 - `confirmar_produccion`: «Confirma que entiendes que en Producción los comprobantes tienen validez tributaria.»
 - `firma_sin_plan`: «Para subir tu firma electrónica (.p12) primero activa un plan en «Plan y pagos».»

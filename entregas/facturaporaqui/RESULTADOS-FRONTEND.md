@@ -595,3 +595,78 @@ Inspeccionadas capturas de escritorio del paso 1 y móvil del paso 3. Capturas d
 ### Pendientes y publicación
 
 No desplegado. Claude publica con respaldo y collectstatic, incluyendo el nuevo JS. No hacen falta cambios backend para el diseño. PostgreSQL no ejecutado por Codex; pruebas de concurrencia permanecen omitidas localmente. No prueba de lector de pantalla ni teléfono físico. Optimización de PNG y revisión adicional de Plan y pagos quedan como tareas opcionales posteriores; no se tocaron en esta entrega.
+
+
+## 11/10/2026 — Publicación del diseño del asistente y corrección del paso 2: `3348345` (Claude)
+
+### Qué se publicó
+- **`7ae6eb7` (Codex):** diseño de los cinco pasos, colibrí, progreso, formularios y errores accesibles, aviso de cabecera, resumen de Compañía, Comprobantes de solo consulta y vista previa del próximo número (`static/js/configuracion.js`). Integrado por avance directo sobre `0b69f22`, sin reescribir historial.
+- **`3348345` (Claude): corrección del paso 2.**
+  - **Problema:** la propietaria no pudo escribir el punto de emisión del cliente real (empresa 6). El formulario «Agregar punto de emisión» tenía la lista de establecimientos vacía y el único error era «Este campo es obligatorio».
+  - **Ahora, sin establecimientos:** el paso 2 muestra un único formulario, «Agrega tu establecimiento y su punto de emisión». Pide el código del establecimiento, el del punto (obligatorio), la dirección, el nombre y la descripción, e incluye el ejemplo «en 001-002-000000125 el establecimiento es 001 y el punto de emisión es 002». Crea ambos en una transacción y deja dos registros de auditoría.
+  - **Con establecimientos:** vuelven las dos columnas. El código del punto en «Agregar establecimiento» pasa a ser opcional.
+  - **Página abierta antes de publicar:** si se envía el formulario de punto sin establecimientos, vuelve al paso 2 con el aviso «Elige el establecimiento al que pertenece el punto. Si no aparece en la lista, agrégalo primero.».
+
+### Revisión del commit de Codex
+- No cambió vistas, formularios, servicios, modelos ni migraciones. Los `name`, `action`, prefijos 01/04, `?ambiente`, CSRF y multipart siguen intactos.
+- Los IDs con sufijo (`-establecimiento`, `-punto`) evitan duplicados en el paso 2.
+- `assets_body` está vacío en `vtc_body.html` y `hzt_body.html`, así que el script nuevo no desplaza otros recursos.
+- Las variables CSS usadas (`--fp-ink`, `--fp-coral`, `--fp-border`, `--fp-muted`) están definidas.
+- La lista de Comprobantes escapa los valores con `$.fn.dataTable.render.text()`, disponible en DataTables 1.10.25.
+- La expresión regular de la vista previa acepta exactamente lo mismo que `interpretar_ultimo` (rango 1–999999998).
+- **Observación** (pasada a Codex como opcional): la vista previa no conoce el mínimo de la numeración, y el servidor rechaza el retroceso al guardar.
+
+### Pruebas
+- PostgreSQL: **219 aprobadas**, incluidas las de concurrencia `test_zz_*`. SQLite: **214 aprobadas y 5 omitidas** (solo PostgreSQL).
+- `check` sin problemas y sin migraciones pendientes. `node --check` de `configuracion.js` y `receipt/js/list.js`; `git diff --check` limpio.
+- Pruebas nuevas:
+  - `test_primer_establecimiento_pide_su_punto_en_el_mismo_formulario`: formulario conjunto, error sin punto, creación de 001-002 con auditoría, formulario de punto visible después y segundo establecimiento sin punto.
+  - `test_punto_sin_establecimiento_explica_que_hacer`.
+- `completar_pasos_1_y_2` ahora usa el formulario conjunto.
+
+### Vista previa local (empresa ficticia nueva, `/root/capturas/fpa-asistente-v2.mjs`)
+- **Recorrido completo:**
+  - Paso 1: RUC inválido.
+  - Paso 2: formulario conjunto sin punto suelto; error sin punto; «Establecimiento 001 y punto de emisión 001-002 agregados.»; duplicado; falta de confirmación de los códigos.
+  - Paso 3: vista previa 125 → 001-002-000000126, «001-002-000000125» → …126; otro punto → vista oculta; nota de crédito nueva → …001. El servidor rechaza otro punto y la falta de confirmación.
+  - Paso 4: clave vacía tipo `password`; Producción sin confirmar → error.
+  - Paso 5: sin confirmar → error; luego «Configuración confirmada.» y el aviso desaparece.
+- Comprobantes: tres filas, 0 acciones.
+- Sin desbordes a 360/390/768/1024/1440 px en los cinco pasos, Comprobantes y Compañía. 0 errores de consola y 0 respuestas ≥ 400. Navegador con movimiento reducido.
+
+### Verificación en app.facturaporaqui.com (`/root/capturas/fpa-asistente-dominio-v2.mjs`)
+Empresas ficticias. **DEMOSTRACIÓN** solo recibió envíos que el servidor rechaza; **OTRA-DEMO**, solo lectura. Sin pagos ni comprobantes emitidos, y ninguna numeración real tocada.
+
+| Comprobación | Resultado |
+|---|---|
+| Paso 1 | «Ingresa un RUC válido de 13 dígitos.» |
+| Paso 2 | Dos columnas (ya tiene 001-001). Duplicado: «Ya existe el establecimiento 001.» Punto sin establecimiento: «Elige el establecimiento al que pertenece el punto…». Sin confirmar: «Confirma que estos códigos son los que el SRI asignó a tu RUC.» |
+| Paso 3 | Vista previa inicial 001-001-001051714 («mantener»). Con «Ya emití en otro sistema» y 125: **001-001-000000126**. Al guardar, el servidor responde «El último número no puede ser menor que 001051713…». |
+| Paso 4 | Clave de la firma `password`, vacía y habilitada (con plan). Producción sin confirmar: error del servidor. OTRA-DEMO (sin plan): archivo y clave **bloqueados**, vacíos, con «Podrás subir tu firma electrónica cuando actives un plan.» |
+| Paso 5 | Revisión de las tres numeraciones. Sin confirmar: «Confirma que estos son los números con los que debes continuar.» |
+| Continuar configuración | En DEMOSTRACIÓN, «…sube tu firma electrónica (.p12) y su clave (paso 4). Continuar configuración» lleva a `/paso/4/`. OTRA-DEMO no tiene aviso porque no tiene plan pagado (comportamiento previsto). |
+| Compañía | Resumen «Tu configuración de emisión · Solo lectura»; 0 campos editables de establecimiento, punto, ambiente o dirección. |
+| Comprobantes | Introducción «Solo consulta» y tres filas «Confirmada»; 0 acciones; `POST /pos/receipt/add/` → 403. |
+| Numeración | `estado.json` igual antes y después: factura 001-001-001051714, nota de crédito 001-001-001016492, ticket 001-001-000000002. |
+| Teclado | Tab recorre radios, último número, confirmación y botón. Foco visible en los campos (`solid 3px`); los botones conservan el anillo de Bootstrap. |
+| Responsive | Sin desbordes a 360/390/768/1024/1440 px en los cinco pasos, Comprobantes, Compañía y Panel. |
+| Estáticos y consola | `css/facturaporaqui.3daeeb4d2ac1.css`, `js/configuracion.17d19e760f65.js`, `receipt/js/list.d83ee4ba33c3.js` e `img/brand/isotipo.edbb16e2e7fb.png` → 200. 0 errores de consola y 0 respuestas ≥ 400. |
+
+**Capturas** (`capturas/asistente-publicado-*.png`):
+- primer punto (vista previa local);
+- paso 2 con errores;
+- paso 2 a 390 px;
+- paso 3 con la vista previa 125;
+- paso 4 sin plan;
+- aviso;
+- Comprobantes.
+
+Muestran nombres de usuario de demostración; ninguna contraseña ni token.
+
+### Incidencias
+- Las contraseñas de las dos cuentas de demostración aparecieron en una salida de consola al leer el archivo de credenciales. Se cambiaron en el acto sin mostrarlas y siguen solo en `credenciales/demo-pruebas.txt`.
+
+### Pendientes
+- **Cliente real (empresa 6):** completar el asistente. Al publicar no tenía establecimientos ni puntos y ahora verá el formulario conjunto.
+- **Opcionales (Codex):** pulir el formulario conjunto; aviso de mínimo en la vista previa; optimizar los PNG de marca; revisar Plan y pagos.
+- **Teléfono físico:** probar la barra de guardado.
