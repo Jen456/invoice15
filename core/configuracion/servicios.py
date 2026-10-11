@@ -46,6 +46,8 @@ MENSAJES = {
     'confirmar_codigos': 'Confirma que estos códigos son los que el SRI asignó a tu RUC.',
     'establecimiento_duplicado': 'Ya existe el establecimiento {codigo}.',
     'punto_duplicado': 'El punto {codigo} ya existe en el establecimiento {establecimiento}.',
+    'falta_codigo_punto': 'Escribe también el código del punto de emisión de este establecimiento.',
+    'elige_establecimiento': 'Elige el establecimiento al que pertenece el punto. Si no aparece en la lista, agrégalo primero.',
     'punto_en_uso': 'Este punto de emisión ya tiene numeración usada o es el punto con el que emites; no se puede desactivar.',
     'confirmar_produccion': 'Confirma que entiendes que en Producción los comprobantes tienen validez tributaria.',
     'firma_sin_plan': 'Para subir tu firma electrónica (.p12) primero activa un plan en «Plan y pagos».',

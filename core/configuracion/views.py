@@ -1,5 +1,6 @@
 """Asistente de configuración de facturación: /configuracion/facturacion/ (Propietario y Administrador)."""
 from django.contrib import messages
+from django.db import transaction
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.views.generic import TemplateView
 
@@ -72,6 +73,7 @@ class PasoView(ConfiguracionAccessMixin, TemplateView):
             context['establecimientos'] = Establishment.all_companies.filter(company=company).prefetch_related('points')
             context.setdefault('form_establecimiento', EstablecimientoForm(company=company))
             context.setdefault('form_punto', PuntoForm(company=company))
+            context['puede_agregar_punto'] = context['form_punto'].fields['establishment'].queryset.exists()
             punto = estado['punto']
             context.setdefault('form_confirmar', ConfirmarPuntoForm(company=company, initial={'point': punto.pk if punto else None}))
         elif paso == 3:
@@ -124,12 +126,27 @@ class PasoView(ConfiguracionAccessMixin, TemplateView):
             form = EstablecimientoForm(request.POST, company=company)
             if not form.is_valid():
                 return self.render_to_response(self.get_context_data(form_establecimiento=form))
-            est = Establishment(company=company, **form.cleaned_data)
-            est.save()
+            datos = form.cleaned_data
+            with transaction.atomic():
+                est = Establishment(company=company, code=datos['code'], name=datos['name'], address=datos['address'])
+                est.save()
+                punto = None
+                if datos['point_code']:
+                    punto = EmissionPoint(company=company, establishment=est, code=datos['point_code'],
+                                          description=datos['point_description'])
+                    punto.save()
             audit(request, 'billing_point_change', company=company, establecimiento=est.code, accion='agregar')
-            avisar(request, messages.SUCCESS, f'Establecimiento {est.code} agregado.')
+            if punto:
+                audit(request, 'billing_point_change', company=company, punto=punto.full_code, accion='agregar')
+                avisar(request, messages.SUCCESS, f'Establecimiento {est.code} y punto de emisión {punto.full_code} agregados.')
+            else:
+                avisar(request, messages.SUCCESS, f'Establecimiento {est.code} agregado.')
         elif accion == 'agregar_punto':
             form = PuntoForm(request.POST, company=company)
+            if not form.fields['establishment'].queryset.exists():
+                # Página abierta antes de tener establecimientos: el formulario de punto ya no se muestra
+                avisar(request, messages.ERROR, sv.MENSAJES['elige_establecimiento'])
+                return HttpResponseRedirect(f'{sv.URL}paso/2/')
             if not form.is_valid():
                 return self.render_to_response(self.get_context_data(form_punto=form))
             punto = EmissionPoint(company=company, **form.cleaned_data)

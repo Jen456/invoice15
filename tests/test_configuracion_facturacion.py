@@ -33,8 +33,8 @@ def cliente(client, dueno, nueva):
     return client
 
 
-def paso(cliente, n, datos):
-    return cliente.post(f'{URL}paso/{n}/', datos)
+def paso(cliente, n, datos, **kwargs):
+    return cliente.post(f'{URL}paso/{n}/', datos, **kwargs)
 
 
 def completar_pasos_1_y_2(cliente, empresa, estab='002', punto='001'):
@@ -43,12 +43,10 @@ def completar_pasos_1_y_2(cliente, empresa, estab='002', punto='001'):
         'retention_agent', 'mobile', 'phone', 'email')[0].items()}
     datos['ruc'] = '0991234567001'   # RUC de sociedad con formato válido (el de los datos ficticios no lo es)
     assert paso(cliente, 1, datos)['Location'] == f'{URL}paso/2/'
-    paso(cliente, 2, {'action': 'agregar_establecimiento', 'code': estab, 'name': 'Matriz', 'address': 'Av. 9 de Octubre 100'})
+    paso(cliente, 2, {'action': 'agregar_establecimiento', 'code': estab, 'name': 'Matriz', 'address': 'Av. 9 de Octubre 100',
+                      'point_code': punto, 'point_description': 'Caja 1'})
     with company_context(empresa):
-        est = Establishment.objects.get(code=estab)
-    paso(cliente, 2, {'action': 'agregar_punto', 'establishment': est.pk, 'code': punto, 'description': 'Caja 1'})
-    with company_context(empresa):
-        pto = EmissionPoint.objects.get(establishment=est, code=punto)
+        pto = EmissionPoint.objects.get(establishment__code=estab, code=punto)
     return pto
 
 
@@ -140,6 +138,30 @@ class TestValidaciones:
             assert 'Usa tres dígitos, por ejemplo 001 (000 no es válido).' in respuesta.content.decode()
         with company_context(nueva):
             assert not Establishment.objects.exists()
+
+    def test_primer_establecimiento_pide_su_punto_en_el_mismo_formulario(self, cliente, nueva):
+        pagina = cliente.get(f'{URL}paso/2/').content.decode()
+        assert 'Agrega tu establecimiento y su punto de emisión' in pagina
+        assert 'value="agregar_punto"' not in pagina   # sin establecimientos no hay lista vacía que elegir
+        respuesta = paso(cliente, 2, {'action': 'agregar_establecimiento', 'code': '001', 'address': 'x'})
+        assert sv.MENSAJES['falta_codigo_punto'] in respuesta.content.decode()
+        with company_context(nueva):
+            assert not Establishment.objects.exists()
+        paso(cliente, 2, {'action': 'agregar_establecimiento', 'code': '001', 'address': 'x', 'point_code': '002'})
+        with company_context(nueva):
+            assert [p.full_code for p in EmissionPoint.objects.all()] == ['001-002']
+        assert AuditLog.objects.filter(action='billing_point_change', company=nueva).count() == 2
+        pagina = cliente.get(f'{URL}paso/2/').content.decode()
+        assert 'value="agregar_punto"' in pagina and 'Código del punto de emisión (opcional)' in pagina
+        # Un segundo establecimiento puede agregarse sin punto; el punto se elige después
+        paso(cliente, 2, {'action': 'agregar_establecimiento', 'code': '003', 'address': 'y'})
+        with company_context(nueva):
+            assert Establishment.objects.filter(code='003', points__isnull=True).exists()
+
+    def test_punto_sin_establecimiento_explica_que_hacer(self, cliente, nueva):
+        respuesta = paso(cliente, 2, {'action': 'agregar_punto', 'code': '002'}, follow=True)
+        pagina = respuesta.content.decode()
+        assert sv.MENSAJES['elige_establecimiento'] in pagina and 'Agrega tu establecimiento y su punto de emisión' in pagina
 
     def test_duplicados(self, cliente, nueva):
         pto = completar_pasos_1_y_2(cliente, nueva, estab='001', punto='001')
@@ -297,7 +319,7 @@ class TestPermisosYAislamiento:
         usuario = helpers.crear_usuario(f'u.{rol.lower()}', nueva, rol)
         helpers.iniciar_sesion(client, usuario, empresa=nueva)
         assert (client.get(f'{URL}paso/1/').status_code == 200) == permitido
-        respuesta = client.post(f'{URL}paso/2/', {'action': 'agregar_establecimiento', 'code': '009', 'address': 'x'})
+        respuesta = client.post(f'{URL}paso/2/', {'action': 'agregar_establecimiento', 'code': '009', 'address': 'x', 'point_code': '001'})
         with company_context(nueva):
             assert Establishment.objects.filter(code='009').exists() == permitido
         if not permitido:
