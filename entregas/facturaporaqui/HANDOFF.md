@@ -1,8 +1,28 @@
 # Handoff compartido — frontend
 
+## Estado actual — asistente de configuración publicado `d275331` (Claude, 11/10/2026)
+
+- **Publicado:** `d275331` en app.facturaporaqui.com desde el 11/10/2026 a las 19:37 UTC.
+  - Migraciones `pos 0008–0011` y `tenancy 0005`. Respaldo previo: `pre-20261011-193652-d2753319.dump`. Salud 200.
+  - **Revertir el código:** `bash deploy/scripts/desplegar.sh pruebas --revertir`.
+  - **Revertir también el esquema:** la versión anterior no rellena las columnas nuevas de `pos_receipt` al crear comprobantes. Para volver del todo hay que restaurar ese volcado; los datos de empresa se vuelcan con `--enable-row-security` y alcance de plataforma.
+- **Migración de datos verificada:** no cambió ningún número.
+  - Empresa 2: factura 1051713, nota de crédito 1016491, ticket 1. Empresa 3: 990999, 2756341 y 1.
+  - Ambas quedaron con el establecimiento y punto 001-001 registrados desde sus comprobantes, pendientes de confirmar.
+  - El cliente real (empresa 6) no tenía secuencias: quedó sin establecimientos ni 001-001 asumido. Solo le falta completar el asistente, porque ya tiene firma.
+  - El módulo es solo para Propietario y Administrador.
+- **Verificación en el dominio,** con la empresa ficticia DEMOSTRACIÓN y la numeración en «mantener», sin cambiar números ni crear ventas:
+  - **Antes:** el aviso «Para emitir facturas completa la configuración de facturación (paso 1).» y la venta bloqueada con «… Ve a «Configuración de facturación»: /configuracion/facturacion/paso/1/».
+  - **Pasos 1–5** completados por la interfaz.
+  - **Después:** el número del próximo documento es 001-001-001051714, igual que antes. Compañía muestra el mismo resumen y ningún campo editable de establecimiento, punto o ambiente.
+  - **Comprobantes:** solo consulta («Confirmada»); crear una secuencia responde 403 con el mensaje del paso 3.
+  - **Aviso restante:** «… sube tu firma electrónica (.p12) y su clave (paso 4)».
+  - **Regresión de la app** a 1366, 390 y 360 px: 0 fallos y 0 errores de JavaScript. Landing sin cambios.
+- **Para Codex:** el contrato sigue en «Notas entre agentes — contrato del asistente». La plantilla publicada es funcional, con estilo mínimo.
+
 ## Estado actual — asistente de configuración de facturación (Claude, 11/10/2026)
 
-- **Backend listo en `plataforma` y `frontend/etapa3`** (commits `db184cd` y `5175401`). **No desplegado:** app.facturaporaqui.com sigue en `af1f365`.
+- **Backend listo en `plataforma` y `frontend/etapa3`** (commits `db184cd` y `5175401`). Publicado después en `d275331` (ver la sección anterior).
 - La plantilla `configuracion/asistente.html` es funcional y tiene un estilo mínimo (bloque `.fp-config` al final de `static/css/facturaporaqui.css`). El diseño y la marca quedan para Codex.
 - **«Secuencia actual»** era el último número usado y se creaba en 1, así que la primera factura salía 000000002. Ahora:
   - se llama «Último número utilizado» y empieza en 0;

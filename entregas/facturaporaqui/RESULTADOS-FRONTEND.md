@@ -527,3 +527,39 @@ Sin desbordamiento horizontal ni errores en ningún ancho, ni en la vista previa
 - **Despliegue** en app.facturaporaqui.com: pendiente de autorización. Al desplegar, las tres empresas actuales quedan con la configuración pendiente y deben completar el asistente. El cliente real (empresa 6) no tenía secuencias y no podía registrar ventas; el asistente lo resuelve. No se cambia ninguna numeración existente.
 - **Codex:** diseño del asistente, del aviso y de los resúmenes según el contrato de HANDOFF.md.
 - **Futuro:** elegir el punto de emisión al vender (hoy se emite desde el punto predeterminado), retenciones (etapa 3) y cifrado de claves.
+
+## 11/10/2026 — Publicación del asistente de configuración `d275331` (Claude)
+
+### Publicación
+- `bash deploy/scripts/desplegar.sh pruebas d275331` el 11/10/2026 a las 19:37 UTC.
+- Migraciones aplicadas: `pos.0008_configuracion_facturacion`, `0009_configuracion_datos_existentes`, `0010_rls_configuracion`, `0011_modulo_configuracion` y `tenancy.0005_configuracion_facturacion`.
+- Respaldo previo: `pre-20261011-193652-d2753319.dump`. Salud `/login/` → 200.
+- **Revertir el código:** `bash deploy/scripts/desplegar.sh pruebas --revertir`.
+- **Revertir también el esquema:** restaurar el volcado. La versión anterior no sabe rellenar las columnas nuevas de `pos_receipt` al crear comprobantes.
+
+### Datos tras la migración (solo cifras)
+- **Empresa 2:** 001-001 registrado y pendiente de confirmar. Factura 1051713 → próximo 001-001-001051714; nota de crédito 1016491; ticket 1. Origen «existente».
+- **Empresa 3:** igual, con 990999, 2756341 y 1.
+- **Empresa 6** (cliente real): sin establecimientos ni secuencias, y sin 001-001 asumido. Requisito pendiente: «configuración (paso 1)».
+- **Módulo** «Configuración de facturación»: grupos Propietario y Administrador.
+
+### Verificación en el dominio (sin emitir)
+- **DEMOSTRACIÓN (ficticia), con la numeración en «mantener»:**
+  - Aviso y bloqueo de la venta con el mensaje y el enlace al paso 1.
+  - Pasos 1→5 completados por la interfaz; «Configuración confirmada.».
+  - `estado.json`: completo, punto 001-001, próximos 001-001-001051714 (factura), 001-001-001016492 (nota de crédito) y 001-001-000000002 (ticket). Solo falta la firma.
+  - El formulario de venta muestra 001-001-001051714 como próximo número.
+  - Compañía muestra el resumen y 0 campos editables de establecimiento, punto o ambiente.
+  - Comprobantes: tres filas «Confirmada». Crear una secuencia → 403 con el mensaje del paso 3; es el único 403 del recorrido y fue provocado a propósito.
+- **Regresión completa** (`fpa-despliegue.mjs`) a 1366, 390 y 360 px:
+  - Login, selector con dos empresas (membresía temporal borrada al terminar) y panel con 2 gráficos.
+  - Menú móvil con Escape; compañía con 5 secciones, firma bloqueada sin plan y claves sin `value`.
+  - Ventas redirige a planes en la empresa gratuita; cambio de empresa; retorno de PayPhone.
+  - 0 fallos, 0 errores de JavaScript, 0 peticiones externas y 309 estáticos. Landing: 200 y `www` → dominio principal.
+
+### Capturas
+`publicado-configuracion-paso5.png` (revisión de DEMOSTRACIÓN en el dominio) y `publicado-configuracion-compania.png` (resumen de solo lectura en Compañía). Datos ficticios.
+
+### Pendientes
+- **Cliente real (empresa 6):** debe completar el asistente para poder vender y emitir. Sugerencia: avisarle que lo encontrará en «Configuración de facturación».
+- **Codex:** diseño del asistente según el contrato de HANDOFF.md.
