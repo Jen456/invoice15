@@ -385,3 +385,67 @@ Los avisos de consola (un 400 y `requestStorageAccess`) se producen dentro del c
 - **Propietaria:** confirmar la interpretación del plazo (mejora con un mes o más; renovación con menos). Si era al revés, basta con cambiar la regla.
 - **Codex:** validar en el dominio el tema con la cotización real (sin pagar).
 - **Claude:** cifrar las claves en la base, permitir borrar una clave guardada, respaldo diario de la base y etapa 3.
+
+## 11/10/2026 — «Plan y pagos»: renovación con ilimitado, tarjetas equilibradas y mejora desde 30 días; publicado `af1f365` (Claude)
+
+### Qué se hizo
+1. **«Renovar con ilimitado por $85.00».** El botón de cambio al vencer hacia ilimitado usaba «Cambiar desde el…». Ahora el precio sale de `Plan.price_cents` en el servidor y debajo se muestra «Nuevo período anual: del {inicio} al {fin}. Es una renovación separada de la mejora.». El cambio de ilimitado a Plan 1000 al vencer conserva «Cambiar desde el…».
+2. **Tarjetas equilibradas sin cambiar la marca:**
+   - Recuadro `fp-current-summary` en la tarjeta del plan actual: vence el, días restantes, usados, disponibles, barra de consumo y aviso de la mejora cuando aplica.
+   - Columnas `fp-plan-col`: lado a lado desde 1360 px, apiladas por debajo.
+   - Resumen de la mejora en dos columnas desde 1360 px. Se mantienen colores, tipografía y estructura de Codex.
+3. **Mejora por $35:**
+   - Se conserva tal cual: mismo vencimiento y ningún año nuevo.
+   - La vigencia mínima pasa de «1 mes» (`min_months`) a **30 días de calendario** (`min_days`, migración `0005`), contados con fechas locales de Ecuador. Así, un plan que vence en 30 días mejora todo el día.
+   - `EstadoPlan.dias_restantes` usa la misma cuenta: el resumen superior decía 29 cuando quedaban 30.
+
+### Archivos
+- Modificados: `core/suscripciones/templates/suscripciones/plan.html`, `static/css/facturaporaqui.css`, `core/suscripciones/{models,servicios,views,admin}.py` y `tests/test_mejora_plan.py`.
+- Nueva: la migración `0005_mejora_por_dias`.
+- Commit `af1f365`.
+
+### Medición del diseño
+Vista previa local con SQLite y datos ficticios, y luego el dominio publicado. Empresa con Plan 1000 que vence en 30 días. «Vacío» es el espacio entre la lista de la tarjeta Plan 1000 y su primer bloque inferior:
+
+| Ancho | Antes (67f353a) | Después (af1f365) |
+|---|---|---|
+| 360 / 390 | apiladas, 16 px | apiladas, 16 px |
+| 768 | lado a lado, 480 px | apiladas, 40 px |
+| 1024 | lado a lado, 507 px | apiladas, 40 px |
+| 1280 | (sin medir) | apiladas, 40 px |
+| 1366 | (sin medir) | lado a lado, 93 px, alturas iguales |
+| 1440 | lado a lado, 415 px | lado a lado, 72 px, alturas iguales |
+| 1920 | (sin medir) | lado a lado, 92 px |
+
+Sin desbordamiento horizontal ni errores en ningún ancho, ni en la vista previa ni en el dominio.
+
+### Pruebas (pagos simulados)
+- **PostgreSQL 16:** 190 aprobadas. **SQLite:** 186 aprobadas y 4 omitidas.
+- Nuevas o ajustadas en `tests/test_mejora_plan.py`:
+  - 30 días justos sí y 29 no.
+  - Cuenta por día de calendario: creado a las 10:00, sigue disponible a las 23:59 y deja de estarlo a las 00:01 del día siguiente.
+  - **Escenario de 30 días de punta a punta:** $35 y vencimiento en la tarjeta; «Renovar con ilimitado por $85.00» y su nuevo período anual; el cuerpo enviado a PayPhone lleva `amount` 3500, `amountWithTax` 3043 y `tax` 457, aunque el navegador envíe otro importe; nada cambia antes de confirmar; la confirmación duplicada aplica una vez; un solo período; tras la mejora, la renovación anual sigue disponible aparte.
+
+### Publicación y verificación
+- `af1f365` en app.facturaporaqui.com desde el 11/10/2026 a las 18:40 UTC.
+  - Migración `0005` aplicada. Respaldo `pre-20261011-183959-af1f365c.dump`. Salud 200.
+  - Revertir: `bash deploy/scripts/desplegar.sh pruebas --revertir`.
+- **Simulación en el servidor publicado,** en una transacción deshecha que no deja datos ni envía nada a PayPhone:
+  - Cotización disponible: 3500, vence el 10/11/2026.
+  - Prepare enviado: `{'amount': 3500, 'amountWithTax': 3043, 'tax': 457, 'amountWithoutTax': 0, 'currency': 'USD'}`.
+  - Antes de confirmar, el plan sigue en Plan 1000. Después: aprobado, ilimitado, mismo vencimiento y 250 usados.
+  - 1 llamada a Confirm y 1 mejora con el retorno duplicado; 1 período.
+  - Renovación aparte: 10/11/2026 → 10/11/2027 por $85.00.
+- **Dominio,** con OTRA-DEMO y un período Plan 1000 temporal de 30 días:
+  - Tarjeta con «Paga solo la diferencia $35.00» y «Conservas tu vencimiento 10/11/2026».
+  - Botones «Renovar desde el 10/11/2026», «Mejorar por $35.00» y «Renovar con ilimitado por $85.00».
+  - El checkout oficial dice «Pagar a Suprohosting $35.00». **No se pagó.**
+  - Tras abrir el checkout, el período seguía en Plan 1000 con un pago `mejora` de 3500 «redirigido».
+  - Limpieza: período anulado, pago cancelado, ningún pago aprobado y OTRA-DEMO otra vez gratuita.
+
+### Capturas
+`publicado-plan-tarjetas-1440.png`, `publicado-plan-tarjetas-1024.png`, `publicado-plan-tarjetas-390.png` y `publicado-mejora-30dias-checkout.png` (checkout vacío). Datos ficticios y sin credenciales.
+
+### Pendientes
+- **Codex:** revisar el recuadro «Tu plan actual» y los puntos de corte (1360 px) con su criterio visual. Si cambia las clases, mantener los textos que comprueban las pruebas.
+- **Claude:** asistente de configuración inicial de facturación (siguiente tarea), cifrado de claves, respaldo diario y etapa 3.

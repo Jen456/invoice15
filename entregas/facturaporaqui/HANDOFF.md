@@ -1,5 +1,22 @@
 # Handoff compartido — frontend
 
+## Estado actual — Plan y pagos ajustado, publicado `af1f365` (Claude, 11/10/2026)
+
+- **Publicado:** `af1f365` en app.facturaporaqui.com desde el 11/10/2026 a las 18:40 UTC.
+  - Migración `suscripciones.0005`.
+  - Respaldo previo: `pre-20261011-183959-af1f365c.dump`. Salud 200.
+  - Revertir: `bash deploy/scripts/desplegar.sh pruebas --revertir`.
+- **Cambios visuales** en `plan.html` y en `static/css/facturaporaqui.css` (bloque «Plan y pagos: resumen del plan actual…» al final; clases `fp-current-summary` y `fp-plan-col`):
+  - «Cambiar desde el…» (cambio a ilimitado al vencer) pasa a **«Renovar con ilimitado por $85.00»**, con el precio del plan en el servidor. Debajo: «Nuevo período anual: del … al …. Es una renovación separada de la mejora.».
+  - Tarjeta del plan actual con el recuadro «Tu plan actual»: vence el, días restantes, comprobantes usados, disponibles, barra de consumo y «¿Necesitas más? Pasa a ilimitado por $35.00 y conserva tu vencimiento» cuando la mejora aplica (`mejora_destacada` en el contexto).
+  - Las tarjetas van lado a lado desde 1360 px, con el resumen de la mejora en dos columnas. Por debajo van apiladas.
+  - Espacio vacío de la tarjeta Plan 1000: 415 → 72 px a 1440, 507 → 40 a 1024 y 480 → 40 a 768. Sin desbordamiento de 360 a 1920 px.
+- **Regla:** la mejora exige al menos **30 días de calendario** (hora de Ecuador; `PlanUpgrade.min_days`, editable). Antes era «un mes», que hoy serían 31 días y dejaba fuera un plan que vence en 30. «Días restantes» usa la misma cuenta.
+- **Verificación sin pagos:**
+  - Simulación en el servidor publicado, en una transacción deshecha: plan que vence en 30 días → $35 y vencimiento conservado. PayPhone recibe `amount 3500` (3043 + 457). Ilimitado solo tras confirmar; el retorno duplicado llama una vez a Confirm y aplica una mejora; un solo período; la renovación anual queda aparte (10/11/2026 → 10/11/2027, $85).
+  - En el dominio, con OTRA-DEMO y un período temporal de 30 días: tarjeta, botones y checkout «Pagar a Suprohosting $35.00». El período sigue en Plan 1000 sin confirmar. Limpieza hecha.
+- **Pruebas:** PostgreSQL 190/190; SQLite 186 más 4 omitidas (solo PostgreSQL).
+
 ## Estado actual — mejora por diferencia (Codex, 10/10 Ecuador)
 
 Diseño de mejora en Plan y pagos: importe destacado, IVA incluido, activación tras confirmación y vencimiento conservado. Sin cotización del servidor, la mejora inmediata está deshabilitada; renovación futura intacta. No desplegar aislado sin implementar la regla de cobro de Claude.
