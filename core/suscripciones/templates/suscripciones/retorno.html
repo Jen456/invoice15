@@ -7,7 +7,11 @@
             <p class="fpa-subtitle">El enlace no corresponde a ningún pago de FacturaPorAquí. Si se descontó dinero de tu tarjeta, escríbenos a bill@facturaporaqui.com con el comprobante de PayPhone.</p>
         {% elif pago.status == 'aprobado' %}
             <h1 class="fpa-title" id="titulo-pago">¡Pago aprobado!</h1>
+            {% if pago.mode == 'mejora' %}
+            <p class="fpa-subtitle">Tu plan pasó a <strong>{{ pago.plan.name }}</strong>{% if periodo %} hasta el {{ periodo.ends_at|date:"d/m/Y" }}, tu mismo vencimiento{% endif %}.
+            {% else %}
             <p class="fpa-subtitle">Tu <strong>{{ pago.plan.name }}</strong> quedó registrado{% if periodo %} del {{ periodo.starts_at|date:"d/m/Y" }} al {{ periodo.ends_at|date:"d/m/Y" }}{% endif %}.
+            {% endif %}
                 Total ${{ pago.amount|floatformat:2 }} (IVA incluido). Referencia {{ pago.client_tx_id }}.</p>
         {% elif pago.status == 'cancelado' %}
             <h1 class="fpa-title" id="titulo-pago">Pago cancelado</h1>

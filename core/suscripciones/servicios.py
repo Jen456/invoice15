@@ -5,8 +5,11 @@
   comprobantes AUTORIZADOS en producción (ver cupo.py).
 - Renovación sin prorrateo (D6): la anticipada empieza al terminar el período
   actual; con el Plan 1000 agotado se puede renovar o mejorar al instante; la
-  mejora a ilimitado puede ser inmediata o al vencer; la bajada solo al vencer;
-  sin días de gracia.
+  bajada solo al vencer; sin días de gracia.
+- Mejora por diferencia (PlanUpgrade): con al menos un mes de vigencia, el Plan
+  1000 pasa a ilimitado pagando un importe fijo ($35 con IVA), conservando el
+  vencimiento y el consumo; no inicia otro año. Con menos de un mes el cambio se
+  hace como renovación (al vencer o, con el cupo agotado, un año nuevo).
 - Un pago solo activa el plan cuando PayPhone lo confirma desde el servidor;
   importe, moneda y referencia se comprueban contra lo guardado al prepararlo.
 """
@@ -21,7 +24,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.suscripciones import payphone
-from core.suscripciones.models import IvaRate, Payment, PaymentEvent, Plan, SubscriptionPeriod
+from core.suscripciones.models import IvaRate, Payment, PaymentEvent, Plan, PlanUpgrade, SubscriptionPeriod
 from core.suscripciones.reglas import (DIAS_AVISO_VENCIMIENTO, LIMITES_GRATUITO_POR_DEFECTO, MINUTOS_PAGO_PENDIENTE,
                                        PLAN_GRATUITO, PORCENTAJE_AVISO_CUPO, sumar_meses)
 
@@ -144,13 +147,61 @@ def _documentos(limite):
     return float('inf') if limite is None else limite
 
 
-def _modos(actual, agotado, plan):
-    """Modos permitidos para contratar `plan` con el período `actual` en curso."""
+def regla_de_mejora(actual, plan):
+    """PlanUpgrade activo del plan del período `actual` a `plan`, o None."""
+    if actual is None or _documentos(plan.document_limit) <= _documentos(actual.document_limit):
+        return None
+    return PlanUpgrade.objects.filter(from_plan_id=actual.plan_id, to_plan=plan, is_active=True).first()
+
+
+def mejora_en_plazo(actual, regla, ahora=None):
+    """Le queda al período al menos la vigencia mínima de la regla (por defecto, un mes)."""
+    ahora = ahora or timezone.now()
+    return actual.ends_at >= sumar_meses(ahora, regla.min_months)
+
+
+def _modos(actual, agotado, plan, ahora=None):
+    """Modos permitidos para contratar `plan` con el período `actual` en curso.
+
+    «inmediato» hacia un plan superior es la mejora por diferencia cuando le
+    queda al período la vigencia mínima; con menos, el cambio es una renovación
+    al vencer. Con el cupo agotado siempre se puede actuar al instante (D6).
+    """
     if actual is None or agotado:
         return ['inmediato']
     if _documentos(plan.document_limit) > _documentos(actual.document_limit):
-        return ['inmediato', 'programado']   # mejora: ahora o al vencer
+        regla = regla_de_mejora(actual, plan)
+        if regla is not None and mejora_en_plazo(actual, regla, ahora):
+            return ['inmediato', 'programado']   # mejora ahora (diferencia) o cambio al vencer
+        return ['programado']
     return ['programado']                    # renovación anticipada o bajada: al vencer
+
+
+def cotizar_mejora(company, plan, ahora=None, estado=None):
+    """Cotización de la mejora del período en curso a `plan` (contrato de /suscripcion/: o.mejora).
+
+    disponible: se puede pagar ahora la diferencia; amount_cents: importe con IVA
+    calculado en el servidor; ends_at: vencimiento que se conserva; renovacion:
+    con el cupo agotado y menos de la vigencia mínima, «inmediato» es un año
+    nuevo a precio completo; motivo: texto cuando no está disponible.
+    """
+    ahora = ahora or timezone.now()
+    estado = estado or estado_empresa(company, ahora)
+    actual = estado.periodo
+    cotizacion = {'disponible': False, 'amount_cents': None, 'ends_at': None, 'renovacion': False, 'motivo': '',
+                  'periodo': None, 'regla': None}
+    regla = regla_de_mejora(actual, plan)
+    if regla is None:
+        return cotizacion
+    cotizacion.update(ends_at=actual.ends_at, periodo=actual, regla=regla)
+    if not mejora_en_plazo(actual, regla, ahora):
+        cotizacion['renovacion'] = estado.codigo == 'cupo_agotado'
+        meses = 'un mes' if regla.min_months == 1 else f'{regla.min_months} meses'
+        cotizacion['motivo'] = (f'Tu {actual.plan.name} vence el {timezone.localtime(actual.ends_at):%d/%m/%Y}. Con menos de '
+                                f'{meses} de vigencia, el cambio a {plan.name} se hace como renovación.')
+        return cotizacion
+    cotizacion.update(disponible=True, amount_cents=regla.price_cents)
+    return cotizacion
 
 
 def modos_de_pago(company, plan, ahora=None):
@@ -162,7 +213,7 @@ def modos_de_pago(company, plan, ahora=None):
         raise ReglaPlan(f'Ya tienes el {estado.programado.plan.name} programado desde el '
                         f'{timezone.localtime(estado.programado.starts_at):%d/%m/%Y}. '
                         'Podrás contratar otro cuando empiece.')
-    return _modos(estado.periodo, estado.codigo == 'cupo_agotado', plan)
+    return _modos(estado.periodo, estado.codigo == 'cupo_agotado', plan, ahora)
 
 
 def fechas_del_nuevo_periodo(company, plan, modo, ahora=None):
@@ -182,22 +233,30 @@ def _evento(pago, clase, /, **detalle):
     PaymentEvent.objects.create(payment=pago, kind=clase, detail=detalle)
 
 
-def nuevo_pago(company, plan, usuario, modo, metodo='payphone', ahora=None):
-    """Crea el pago con el precio y el IVA del servidor (nunca del navegador)."""
+def nuevo_pago(company, plan, usuario, modo, metodo='payphone', ahora=None, precio_cents=None, periodo_objetivo=None):
+    """Crea el pago con el precio y el IVA del servidor (nunca del navegador).
+
+    Una mejora lleva el importe de su PlanUpgrade y el período que mejora; la
+    cotización queda guardada en el pago y en su evento «creado».
+    """
     ahora = ahora or timezone.now()
     tarifa = IvaRate.current(timezone.localdate(ahora))
     if tarifa is None:
         raise ReglaPlan('No hay una tarifa de IVA vigente configurada.')
-    base, iva = IvaRate.breakdown(plan.price_cents, tarifa.rate)
+    total = plan.price_cents if precio_cents is None else precio_cents
+    base, iva = IvaRate.breakdown(total, tarifa.rate)
     prefijo = 'FPA' if metodo == 'payphone' else 'MAN'
     pago = Payment.objects.create(
-        company=company, plan=plan, user=usuario, method=metodo, mode=modo,
+        company=company, plan=plan, user=usuario, method=metodo, mode=modo, target_period=periodo_objetivo,
         client_tx_id=f'{prefijo}{company.pk}-{secrets.token_hex(8)}',
-        amount_cents=plan.price_cents, base_cents=base, iva_cents=iva, iva_rate=tarifa.rate, currency='USD',
+        amount_cents=total, base_cents=base, iva_cents=iva, iva_rate=tarifa.rate, currency='USD',
         created_at=ahora,
     )
-    _evento(pago, 'creado', plan=plan.code, modo=modo, total=plan.price_cents, base=base, iva=iva,
-            tarifa=str(tarifa.rate))
+    detalle = dict(plan=plan.code, modo=modo, total=total, base=base, iva=iva, tarifa=str(tarifa.rate))
+    if periodo_objetivo is not None:
+        detalle.update(periodo=periodo_objetivo.pk, plan_actual=periodo_objetivo.plan.code,
+                       vencimiento=periodo_objetivo.ends_at.isoformat())
+    _evento(pago, 'creado', **detalle)
     return pago
 
 
@@ -205,10 +264,22 @@ def iniciar_pago_payphone(company, plan, usuario, modo, url_respuesta, url_cance
     """Prepara el cobro en PayPhone y devuelve (pago, enlace al formulario de pago)."""
     if modo not in modos_de_pago(company, plan):
         raise ReglaPlan('Esa forma de inicio no está disponible para este plan.')
-    recientes = Payment.objects.filter(company=company, created_at__gte=timezone.now() - timedelta(minutes=10)).count()
+    ahora = timezone.now()
+    recientes = Payment.objects.filter(company=company, created_at__gte=ahora - timedelta(minutes=10)).count()
     if recientes >= 5:
         raise ReglaPlan('Demasiados intentos de pago seguidos. Espera unos minutos y vuelve a intentarlo.')
-    pago = nuevo_pago(company, plan, usuario, modo)
+    cotizacion = cotizar_mejora(company, plan, ahora) if modo == 'inmediato' else None
+    if cotizacion and cotizacion['disponible']:
+        # Mejora por diferencia del período en curso (mismo vencimiento, sin año nuevo).
+        en_curso = Payment.objects.filter(target_period=cotizacion['periodo'], mode='mejora',
+                                          status__in=('creado', 'redirigido', 'error_comunicacion'),
+                                          created_at__gte=ahora - timedelta(minutes=MINUTOS_PAGO_PENDIENTE)).exists()
+        if en_curso:
+            raise ReglaPlan('Ya hay un pago de esta mejora en curso. Espera unos minutos antes de intentarlo de nuevo.')
+        pago = nuevo_pago(company, plan, usuario, 'mejora', ahora=ahora, precio_cents=cotizacion['amount_cents'],
+                          periodo_objetivo=cotizacion['periodo'])
+    else:
+        pago = nuevo_pago(company, plan, usuario, modo, ahora=ahora)
     referencia = f'FacturaPorAqui {plan.name} - RUC {company.ruc}'
     url_cancelacion = f'{url_cancelacion}?ref={pago.client_tx_id}'
     try:
@@ -241,6 +312,17 @@ def confirmar_pago(client_tx_id, transaccion_id):
         pago = Payment.objects.select_for_update().filter(client_tx_id=client_tx_id, method='payphone').first()
         if pago is None or pago.status not in ESTADOS_CONFIRMABLES:
             return pago
+        if pago.mode == 'mejora':
+            # Se comprueba antes de confirmar: si la mejora ya no aplica (período vencido, ya
+            # mejorado por otro pago...), no se confirma y PayPhone reversa el cobro solo.
+            motivo = mejora_no_aplicable(pago)
+            if motivo:
+                pago.status = 'rechazado'
+                pago.note = (f'Mejora no aplicada: {motivo}. No se confirmó con PayPhone, '
+                             'que reversa automáticamente el cobro.')[:300]
+                pago.save(update_fields=['status', 'note'])
+                _evento(pago, 'mejora_no_aplicable', transaccion=transaccion_id, motivo=motivo)
+                return pago
         try:
             datos = payphone.confirmar(transaccion_id, client_tx_id)
         except payphone.PayPhoneSinRespuesta as e:
@@ -293,9 +375,54 @@ def confirmar_pago(client_tx_id, transaccion_id):
             return pago
         pago.status = 'aprobado'
         pago.save()
-        activar_periodo(pago)
+        if pago.mode == 'mejora':
+            aplicar_mejora(pago)
+        else:
+            activar_periodo(pago)
         transaction.on_commit(lambda: notificar_pago_aprobado(pago.pk))
         return pago
+
+
+def mejora_no_aplicable(pago, ahora=None):
+    """Motivo por el que la mejora de `pago` ya no se puede aplicar, o '' si se puede.
+
+    Bloquea la empresa y el período: dos confirmaciones simultáneas se aplican en
+    orden y la segunda ve el período ya mejorado.
+    """
+    from core.pos.models import Company
+    ahora = ahora or timezone.now()
+    Company.objects.select_for_update().filter(pk=pago.company_id).first()
+    periodo = SubscriptionPeriod.objects.select_for_update().filter(pk=pago.target_period_id).first()
+    if periodo is None or periodo.company_id != pago.company_id:
+        return 'el período no corresponde a la empresa'
+    if periodo.upgrade_payment_id is not None:
+        return 'el período ya fue mejorado con otro pago'
+    if periodo.status != 'activa' or not (periodo.starts_at <= ahora < periodo.ends_at):
+        return 'el período ya no está vigente'
+    if regla_de_mejora(periodo, pago.plan) is None:
+        return 'la mejora ya no está disponible para ese plan'
+    return ''
+
+
+def aplicar_mejora(pago, ahora=None):
+    """Pasa el período al plan de `pago` conservando inicio, vencimiento y consumo.
+
+    Se llama con la empresa y el período bloqueados (mejora_no_aplicable) y el
+    pago ya aprobado por PayPhone; no crea un período nuevo.
+    """
+    ahora = ahora or timezone.now()
+    periodo = SubscriptionPeriod.objects.select_for_update().get(pk=pago.target_period_id)
+    anterior = periodo.plan
+    periodo.plan_original = periodo.plan_original or anterior
+    periodo.plan = pago.plan
+    periodo.document_limit = pago.plan.document_limit
+    periodo.upgraded_at = ahora
+    periodo.upgrade_payment = pago
+    periodo.note = (f'{periodo.note} · Mejorado a {pago.plan.name} con el pago {pago.client_tx_id}').strip(' ·')[:300]
+    periodo.save(update_fields=['plan_original', 'plan', 'document_limit', 'upgraded_at', 'upgrade_payment', 'note'])
+    _evento(pago, 'mejora_aplicada', periodo=periodo.pk, de=anterior.code, a=pago.plan.code,
+            vencimiento=periodo.ends_at.isoformat(), usados=periodo.documents_used)
+    return periodo
 
 
 def activar_periodo(pago, ahora=None):
@@ -307,7 +434,7 @@ def activar_periodo(pago, ahora=None):
     plan = pago.plan
     actual = periodo_vigente(company, ahora, bloquear=True)
     agotado = actual is not None and actual.document_limit is not None and actual.available == 0
-    modo = pago.mode if pago.mode in _modos(actual, agotado, plan) else 'programado'
+    modo = pago.mode if pago.mode in _modos(actual, agotado, plan, ahora) else 'programado'
     if modo == 'inmediato':
         if actual is not None:
             actual.status = 'reemplazada'
@@ -396,10 +523,13 @@ def _resumen(pago):
 
 
 def notificar_pago_aprobado(pago_id):
-    pago = Payment.objects.select_related('company', 'plan', 'user').get(pk=pago_id)
+    pago = Payment.objects.select_related('company', 'plan', 'user', 'target_period').get(pk=pago_id)
     periodo = getattr(pago, 'period', None)
     vigencia = ''
-    if periodo is not None:
+    if pago.mode == 'mejora' and pago.target_period is not None:
+        vigencia = (f'Mejora aplicada: comprobantes ilimitados hasta el '
+                    f'{timezone.localtime(pago.target_period.ends_at):%d/%m/%Y} (se conserva tu vencimiento).\n')
+    elif periodo is not None:
         vigencia = (f'Vigencia: {timezone.localtime(periodo.starts_at):%d/%m/%Y} al '
                     f'{timezone.localtime(periodo.ends_at):%d/%m/%Y}\n')
     cuerpo = _resumen(pago) + vigencia

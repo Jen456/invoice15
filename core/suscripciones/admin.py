@@ -6,7 +6,8 @@ from django.shortcuts import redirect, render
 from django.urls import path, reverse
 
 from core.pos.models import Company
-from core.suscripciones.models import IvaRate, Payment, PaymentEvent, Plan, QuotaReservation, SubscriptionPeriod
+from core.suscripciones.models import (IvaRate, Payment, PaymentEvent, Plan, PlanUpgrade, QuotaReservation,
+                                       SubscriptionPeriod)
 from core.suscripciones.servicios import ReglaPlan, activar_manual, fechas_del_nuevo_periodo
 from core.tenancy.admin import plataforma
 from core.tenancy.models import audit
@@ -22,6 +23,15 @@ class PlanAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         # El código identifica el plan en los pagos; el precio cobrado se congela en cada pago.
         return ('code',) if obj is not None else ()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PlanUpgrade, site=plataforma)
+class PlanUpgradeAdmin(admin.ModelAdmin):
+    list_display = ('from_plan', 'to_plan', 'price_cents', 'min_months', 'is_active')
+    list_editable = ('is_active',)
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -49,7 +59,7 @@ class PaymentEventInline(admin.TabularInline):
 class ActivacionManualForm(forms.Form):
     company = forms.ModelChoiceField(Company.objects.filter(is_active=True).order_by('business_name'), label='Empresa')
     plan = forms.ModelChoiceField(Plan.objects.filter(includes_billing=True, price_cents__gt=0), label='Plan')
-    mode = forms.ChoiceField(choices=Payment.MODES, label='Inicio del período')
+    mode = forms.ChoiceField(choices=[m for m in Payment.MODES if m[0] != 'mejora'], label='Inicio del período')
     note = forms.CharField(label='Motivo / comprobante del pago recibido', max_length=300,
                            widget=forms.TextInput(attrs={'size': 80}))
 
@@ -109,7 +119,8 @@ class SubscriptionPeriodAdmin(admin.ModelAdmin):
                     'document_limit')
     list_filter = ('status', 'plan')
     search_fields = ('company__business_name', 'company__ruc')
-    readonly_fields = ('company', 'plan', 'payment', 'documents_used', 'documents_reserved', 'created_at', 'replaced_at')
+    readonly_fields = ('company', 'plan', 'payment', 'documents_used', 'documents_reserved', 'created_at', 'replaced_at',
+                       'plan_original', 'upgraded_at', 'upgrade_payment')
     actions = ('anular',)
 
     def has_add_permission(self, request):

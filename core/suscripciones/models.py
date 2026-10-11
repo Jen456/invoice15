@@ -43,6 +43,27 @@ class Plan(models.Model):
         return Decimal(self.price_cents) / 100
 
 
+class PlanUpgrade(models.Model):
+    """Mejora del período en curso pagando un importe fijo (no inicia otro año).
+
+    Solo se ofrece si al período le queda al menos `min_months` de vigencia; con
+    menos tiempo el cambio de plan se hace como una renovación normal.
+    """
+    from_plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name='+', verbose_name='Desde el plan')
+    to_plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name='+', verbose_name='Al plan')
+    price_cents = models.PositiveIntegerField(verbose_name='Importe con IVA (centavos)')
+    min_months = models.PositiveSmallIntegerField(default=1, verbose_name='Vigencia mínima restante (meses)')
+    is_active = models.BooleanField(default=True, verbose_name='Disponible')
+
+    class Meta:
+        verbose_name = 'Mejora de plan'
+        verbose_name_plural = 'Mejoras de plan'
+        constraints = [models.UniqueConstraint(fields=['from_plan', 'to_plan'], name='mejora_unica_por_planes')]
+
+    def __str__(self):
+        return f'{self.from_plan} → {self.to_plan} (${self.price_cents / 100:.2f})'
+
+
 class IvaRate(models.Model):
     rate = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Tarifa (%)')
     valid_from = models.DateField(verbose_name='Vigente desde')
@@ -81,7 +102,8 @@ class Payment(models.Model):
         ('reversado', 'Reversado'),
     )
     FINAL = ('aprobado', 'cancelado', 'rechazado', 'expirado', 'en_revision', 'reversado')
-    MODES = (('inmediato', 'Empieza al confirmar el pago'), ('programado', 'Empieza al terminar el período actual'))
+    MODES = (('inmediato', 'Empieza al confirmar el pago'), ('programado', 'Empieza al terminar el período actual'),
+             ('mejora', 'Mejora el período actual (paga la diferencia, conserva el vencimiento)'))
     METHODS = (('payphone', 'PayPhone'), ('manual', 'Registro manual de la plataforma'))
 
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
@@ -90,6 +112,8 @@ class Payment(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', verbose_name='Usuario')
     method = models.CharField(max_length=20, choices=METHODS, default='payphone', verbose_name='Medio')
     mode = models.CharField(max_length=20, choices=MODES, default='inmediato', verbose_name='Inicio del período')
+    target_period = models.ForeignKey('SubscriptionPeriod', null=True, blank=True, on_delete=models.PROTECT,
+                                      related_name='mejoras', verbose_name='Período que mejora')
     client_tx_id = models.CharField(max_length=50, unique=True, verbose_name='Referencia interna')
     amount_cents = models.PositiveIntegerField(verbose_name='Total (centavos)')
     base_cents = models.PositiveIntegerField(verbose_name='Base imponible (centavos)')
@@ -158,6 +182,11 @@ class SubscriptionPeriod(models.Model):
     note = models.CharField(max_length=300, blank=True, verbose_name='Observación')
     created_at = models.DateTimeField(default=timezone.now)
     replaced_at = models.DateTimeField(null=True, blank=True, verbose_name='Reemplazada el')
+    plan_original = models.ForeignKey(Plan, null=True, blank=True, on_delete=models.PROTECT, related_name='+',
+                                      verbose_name='Plan antes de la mejora')
+    upgraded_at = models.DateTimeField(null=True, blank=True, verbose_name='Mejorado el')
+    upgrade_payment = models.OneToOneField(Payment, null=True, blank=True, on_delete=models.PROTECT,
+                                           related_name='mejora_aplicada', verbose_name='Pago de la mejora')
 
     class Meta:
         verbose_name = 'Período de suscripción'

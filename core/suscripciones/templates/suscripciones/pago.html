@@ -20,6 +20,7 @@
                     <dt class="col-sm-4">Medio</dt><dd class="col-sm-8">{{ pago.get_method_display }}{% if pago.card_brand %} · {{ pago.card_brand }}{% endif %}{% if pago.last_digits %} terminada en {{ pago.last_digits }}{% endif %}</dd>
                     <dt class="col-sm-4">Referencia</dt><dd class="col-sm-8">{{ pago.client_tx_id }}</dd>
                     {% if pago.payphone_transaction_id %}<dt class="col-sm-4">Transacción PayPhone</dt><dd class="col-sm-8">{{ pago.payphone_transaction_id }}{% if pago.authorization_code %} · autorización {{ pago.authorization_code }}{% endif %}</dd>{% endif %}
+                    {% if pago.mode == 'mejora' %}<dt class="col-sm-4">Operación</dt><dd class="col-sm-8">Mejora a {{ pago.plan.name }} del período en curso{% if periodo %} hasta el {{ periodo.ends_at|date:"d/m/Y" }}{% endif %}; se conserva el vencimiento</dd>{% endif %}
                     {% if periodo %}<dt class="col-sm-4">Vigencia</dt><dd class="col-sm-8">{{ periodo.starts_at|date:"d/m/Y" }} al {{ periodo.ends_at|date:"d/m/Y" }} ({{ periodo.get_status_display|lower }})</dd>{% endif %}
                     {% if pago.invoice_number %}<dt class="col-sm-4">Factura</dt><dd class="col-sm-8">{{ pago.invoice_number }}</dd>{% endif %}
                 </dl>

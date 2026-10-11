@@ -89,7 +89,7 @@
                                             <p class="small mb-0">Disfruta de comprobantes ilimitados hasta esa fecha. Esta mejora no renueva tu suscripción por otro año.</p>
                                         {% else %}
                                             <h4>Mejora con pago de diferencia</h4>
-                                            <p class="mb-0">La mejora estará disponible cuando podamos confirmar su importe y vigencia. Puedes renovar para el siguiente período.</p>
+                                            <p class="mb-0">{% if o.mejora.motivo %}{{ o.mejora.motivo }}{% else %}La mejora estará disponible cuando podamos confirmar su importe y vigencia. Puedes renovar para el siguiente período.{% endif %}</p>
                                         {% endif %}
                                     </aside>
                                 {% endif %}
@@ -98,15 +98,16 @@
                                         {% csrf_token %}
                                         <input type="hidden" name="plan" value="{{ o.plan.code }}">
                                         <input type="hidden" name="modo" value="{{ modo }}">
-                                        <button type="submit" class="btn btn-block {% if forloop.first %}fpa-btn-pagar{% else %}btn-outline-secondary{% endif %}"{% if not payphone_listo %} disabled{% elif modo == 'inmediato' and estado.pagado and o.plan.unlimited and estado.periodo.document_limit and not o.mejora.disponible %} disabled{% endif %}>
+                                        <button type="submit" class="btn btn-block {% if forloop.first %}fpa-btn-pagar{% else %}btn-outline-secondary{% endif %}"{% if not payphone_listo %} disabled{% elif modo == 'inmediato' and estado.pagado and o.plan.unlimited and estado.periodo.document_limit and not o.mejora.disponible and not o.mejora.renovacion %} disabled{% endif %}>
                                             {% if modo == 'inmediato' %}
-                                                {% if estado.pagado %}{% if o.plan.unlimited and estado.periodo.document_limit %}{% if o.mejora.disponible %}Mejorar por {{ o.mejora.amount_cents|dolares }}{% else %}Mejora pendiente de habilitar{% endif %}{% else %}Renovar ahora{% endif %}{% else %}Pagar con PayPhone{% endif %}
+                                                {% if estado.pagado %}{% if o.plan.unlimited and estado.periodo.document_limit %}{% if o.mejora.disponible %}Mejorar por {{ o.mejora.amount_cents|dolares }}{% elif o.mejora.renovacion %}Renovar ahora con {{ o.plan.name }}{% else %}Mejora pendiente de habilitar{% endif %}{% else %}Renovar ahora{% endif %}{% else %}Pagar con PayPhone{% endif %}
                                             {% elif o.actual %}Renovar desde el {{ inicio|date:"d/m/Y" }}
                                             {% elif estado.pagado %}Cambiar desde el {{ inicio|date:"d/m/Y" }}
                                             {% else %}Pagar y empezar el {{ inicio|date:"d/m/Y" }}{% endif %}
                                         </button>
                                         {% if modo == 'inmediato' and estado.pagado and o.plan.unlimited and estado.periodo.document_limit %}
-                                            {% if o.mejora.disponible %}<small class="d-block text-muted">Mantienes tu vencimiento: {{ o.mejora.ends_at|date:"d/m/Y" }}. No empieza un nuevo año.</small>{% endif %}
+                                            {% if o.mejora.disponible %}<small class="d-block text-muted">Mantienes tu vencimiento: {{ o.mejora.ends_at|date:"d/m/Y" }}. No empieza un nuevo año.</small>
+                                            {% elif o.mejora.renovacion %}<small class="d-block text-muted">Vigencia: {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}. Tu plan actual termina hoy, sin prorrateo.</small>{% endif %}
                                         {% else %}
                                         <small class="d-block text-muted">Vigencia: {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}.{% if modo == 'inmediato' and estado.pagado %} Tu plan actual termina hoy, sin prorrateo.{% endif %}</small>
                                         {% endif %}

@@ -16,9 +16,10 @@ from core.security.mixins import SessionGroupMixin
 from core.suscripciones import payphone
 from core.suscripciones.models import Payment, Plan
 from core.suscripciones.reglas import URL_SUSCRIPCION
-from core.suscripciones.servicios import (ReglaPlan, cancelar_por_usuario, confirmar_pago, estado_empresa,
-                                          fechas_del_nuevo_periodo, iniciar_pago_payphone, limites_gratuito,
-                                          modos_de_pago, planes_de_pago, solicitar_factura, vencer_pendientes)
+from core.suscripciones.servicios import (ReglaPlan, cancelar_por_usuario, confirmar_pago, cotizar_mejora,
+                                          estado_empresa, fechas_del_nuevo_periodo, iniciar_pago_payphone,
+                                          limites_gratuito, modos_de_pago, planes_de_pago, solicitar_factura,
+                                          vencer_pendientes)
 from core.tenancy.models import Membership, audit
 
 
@@ -59,10 +60,13 @@ class PlanView(PlanAccessMixin, TemplateView):
                 modos = modos_de_pago(company, plan)
             except ReglaPlan as e:
                 modos, bloqueo = [], str(e)
+            cotizacion = cotizar_mejora(company, plan, estado=estado)
             opciones.append({
                 'plan': plan,
                 'modos': [(m, *fechas_del_nuevo_periodo(company, plan, m)) for m in modos],
                 'actual': estado.periodo is not None and estado.periodo.plan_id == plan.pk,
+                # Contrato con el frontend (HANDOFF): importe y vencimiento calculados en el servidor.
+                'mejora': {k: cotizacion[k] for k in ('disponible', 'amount_cents', 'ends_at', 'renovacion', 'motivo')},
             })
         context.update({
             'title': 'Plan y pagos',
@@ -114,7 +118,9 @@ class RetornoView(View):
         pago = confirmar_pago(referencia, request.GET.get('id')) if referencia else None
         propio = pago is not None and request.user.is_authenticated and (
             request.user.is_superuser or Membership.objects.active().filter(user=request.user, company=pago.company_id).exists())
-        periodo = getattr(pago, 'period', None) if pago is not None and pago.status == 'aprobado' else None
+        periodo = None
+        if pago is not None and pago.status == 'aprobado':
+            periodo = pago.target_period if pago.mode == 'mejora' else getattr(pago, 'period', None)
         return render(request, 'suscripciones/retorno.html', {
             'pago': pago, 'periodo': periodo, 'propio': propio, 'reintentar': request.get_full_path(),
         })
@@ -156,7 +162,8 @@ class PagoDetalleView(PlanAccessMixin, TemplateView):
         company = self.request.company
         inicial = pago.invoice_data or {'razon_social': company.business_name, 'identificacion': company.ruc,
                                         'direccion': company.main_address, 'correo': company.email}
-        context.update({'title': 'Detalle del pago', 'pago': pago, 'periodo': getattr(pago, 'period', None),
+        periodo = pago.target_period if pago.mode == 'mejora' else getattr(pago, 'period', None)
+        context.update({'title': 'Detalle del pago', 'pago': pago, 'periodo': periodo,
                         'form': kwargs.get('form') or FacturaForm(initial=inicial)})
         return context
 
