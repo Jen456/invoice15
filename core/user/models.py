@@ -30,11 +30,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['email']
 
     def toJSON(self):
-        item = model_to_dict(self, exclude=['last_login', 'email_reset_token', 'password', 'user_permissions'])
+        item = model_to_dict(self, exclude=['last_login', 'email_reset_token', 'password', 'user_permissions',
+                                            'email_verified_at'])
         item['image'] = self.get_image()
         item['date_joined'] = self.date_joined.strftime('%Y-%m-%d')
         item['groups'] = [{'id': i.id, 'name': i.name} for i in self.groups.all()]
         item['last_login'] = None if self.last_login is None else self.last_login.strftime('%Y-%m-%d')
+        # Fecha y hora de confirmación del correo (registro propio): se envía como texto para que el JSON sea válido.
+        item['email_verified_at'] = None if self.email_verified_at is None else self.email_verified_at.strftime('%Y-%m-%d')
         return item
 
     def get_full_name(self):
