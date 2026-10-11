@@ -68,3 +68,13 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-upgrade-summary>dl{grid-column:2;grid-row:2/span 2;grid-template-columns:1fr;gap:2px;margin:10px 0}
 .fp-upgrade-summary>dl dd{text-align:left;margin-bottom:8px}
 }
+
+/* Asistente de configuración de facturación: estilo mínimo funcional (Claude, 11/10). Codex aplicará el diseño final. */
+.fp-config{max-width:1100px;color:var(--fp-ink,#163B50)}
+.fp-config .fpa-btn-pagar{background:var(--fp-coral,#CA462C);border-color:var(--fp-coral,#CA462C);color:#fff;min-height:48px;font-weight:600}
+.fp-config .fpa-btn-pagar:hover{background:var(--fp-coral-hover,#a8381f);color:#fff}
+.fp-config-paso a{display:inline-block;padding:6px 12px;border:1px solid var(--fp-border,#d6e4ec);border-radius:999px;background:#fff}
+.fp-config-paso-completo a{border-color:#44BADD;background:#E5F1F6}
+.fp-config-paso-actual a{border-color:var(--fp-coral,#CA462C);font-weight:700}
+.fp-config-campo .form-check{margin-bottom:6px}
+.fp-config-secuencia{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);gap:4px 16px}

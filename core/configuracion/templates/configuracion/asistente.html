@@ -14,7 +14,7 @@
     <nav aria-label="Pasos de la configuración">
         <ol class="fp-config-pasos list-unstyled d-flex flex-wrap">
             {% for p in estado.pasos %}
-                <li class="fp-config-paso{% if p.completo %} fp-config-paso-completo{% endif %}{% if p.numero == paso %} fp-config-paso-actual{% endif %}" {% if p.numero == paso %}aria-current="step"{% endif %}>
+                <li class="fp-config-paso mr-3 mb-2{% if p.completo %} fp-config-paso-completo{% endif %}{% if p.numero == paso %} fp-config-paso-actual{% endif %}" {% if p.numero == paso %}aria-current="step"{% endif %}>
                     <a href="{% url 'configuracion_paso' p.numero %}">{{ p.numero }}. {{ p.titulo }}</a>
                     <span class="sr-only">{% if p.completo %}(completo){% else %}(pendiente){% endif %}</span>
                 </li>

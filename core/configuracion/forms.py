@@ -77,7 +77,7 @@ class SecuenciaForm(forms.Form):
     MODOS = (('nuevo', 'Nunca he emitido este documento: empezar en 000000001'),
              ('otro_sistema', 'Ya emití en otro sistema: indicar el último número usado'),
              ('mantener', 'Mantener la numeración registrada'))
-    mode = forms.ChoiceField(choices=MODOS, label='Numeración')
+    mode = forms.ChoiceField(choices=MODOS, label='Numeración', widget=forms.RadioSelect(attrs={'class': 'form-check-input'}))
     last_number = forms.CharField(label='Último número utilizado', required=False, max_length=20,
                                   help_text='Por ejemplo 001-002-000000125 (el próximo será 001-002-000000126).')
     confirm = forms.BooleanField(label='Confirmo la numeración indicada', required=False)

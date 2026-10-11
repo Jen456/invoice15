@@ -1,6 +1,6 @@
 {% load widget_tweaks %}
 {% for field in form.visible_fields %}
-    <div class="form-group fp-field" data-campo="{{ field.html_name }}">
+    <div class="form-group fp-config-campo" data-campo="{{ field.html_name }}">
         {% if field.field.widget.input_type == 'checkbox' %}
             <div class="form-check">
                 {% render_field field class="form-check-input" %}
