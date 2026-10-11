@@ -319,3 +319,69 @@ Para probar el selector se volvió a crear una membresía temporal de rol Consul
   - Optimizar `isotipo.png` y `favicon.png` (unos 500 KB cada uno y 1374×1145 para mostrarse a 48 px o menos).
   - Validar la barra de guardado de compañía en un teléfono físico.
 - **Claude:** cifrar en la base las claves guardadas, permitir borrar una clave, respaldo diario de la base y etapa 3 (establecimientos, SRI en segundo plano, retenciones).
+
+## 11/10/2026 — Mejora Plan 1000 → ilimitado por $35 y publicación de `67f353a` (Claude)
+
+### Qué se hizo
+- Se leyeron AGENTS.md, HANDOFF.md y este informe. Se integró `5579ded`, el diseño de mejora de Codex: escaneo de secretos limpio y avance directo desde `0fb08c5`.
+- **Regla en el servidor:**
+  - `PlanUpgrade` (Plan 1000 → ilimitado, 3500 centavos con IVA, al menos 1 mes de vigencia restante), editable en /plataforma/.
+  - Con al menos un mes, `modo=inmediato` hacia ilimitado crea un pago `mode='mejora'` con `target_period`. El importe sale de la regla: 3043 + 457 de IVA.
+  - Con menos de un mes, el cambio es una renovación al vencer; con el cupo agotado, un año nuevo a precio completo (regla D6).
+- **Activación:**
+  - Solo con PayPhone confirmado, y después de bloquear empresa y período y revalidar.
+  - El período cambia de plan y de límite, pero conserva `starts_at`, `ends_at`, `documents_used` y las reservas.
+  - Queda registro en `plan_original`, `upgraded_at` y `upgrade_payment`. No se crea otro período.
+  - Si al volver de PayPhone la mejora ya no aplica (vencida, ya mejorada o regla desactivada), no se confirma y PayPhone reversa el cobro.
+- **Contrato con el frontend:** `o.mejora.{disponible, amount_cents, ends_at}` más `renovacion` y `motivo`. Ajustes mínimos en `plan.html`, `retorno.html` y `pago.html`. El correo de pago aprobado indica «ilimitados hasta …».
+
+### Archivos
+- Modificados en `core/suscripciones/`: `models.py`, `servicios.py`, `views.py`, `admin.py` y las plantillas `plan.html`, `retorno.html` y `pago.html`.
+- Nuevos: migraciones `0003_mejora_por_diferencia` y `0004_mejora_plan_1000_a_ilimitado`, y las pruebas `tests/test_mejora_plan.py` y `tests/test_zz_mejora_concurrencia_pg.py`.
+- Commit `67f353a`.
+
+### Pruebas (pagos simulados; ningún pago real)
+- **PostgreSQL 16:** 188 aprobadas. **SQLite:** 184 aprobadas y 4 omitidas, solo PostgreSQL (3 de RLS y la de concurrencia).
+- `tests/test_mejora_plan.py` (16):
+  - más de un mes con cotización de $35 y el vencimiento;
+  - un mes justo sí y un mes menos un día no;
+  - pocos días, que no prepara el cobro;
+  - plan vencido, que compra el año completo;
+  - importe editable y regla desactivada;
+  - cupo agotado con pocos días (renovación) y con más de un mes (mejora);
+  - flujo completo: vencimiento, inicio y consumo conservados, un solo período e importes del navegador ignorados;
+  - pago cancelado o rechazado;
+  - confirmación duplicada, que aplica una vez;
+  - segundo pago de mejora bloqueado y, si llega, no se confirma;
+  - período vencido antes de confirmar;
+  - importe distinto en PayPhone, que queda en revisión;
+  - un vendedor no puede pagar;
+  - una empresa no puede mejorar un período ajeno.
+- `tests/test_zz_mejora_concurrencia_pg.py`: tres confirmaciones simultáneas en hilos (el mismo retorno dos veces y otra pestaña) dejan un pago aprobado y otro rechazado, una sola llamada a PayPhone y una sola mejora. Con los bloqueos quitados a propósito, la prueba falla (`['aprobado', 'aprobado']`).
+
+### Publicación
+- `67f353a` en app.facturaporaqui.com desde el 11/10/2026 a las 03:47 UTC.
+- Migraciones 0003 y 0004 aplicadas. Respaldo `pre-20261011-034657-67f353a0.dump`. Salud 200.
+- Revertir: `bash deploy/scripts/desplegar.sh pruebas --revertir`.
+- Tras el despliegue: PayPhone configurado (Producción, Suprohosting). Regla «Plan 1000 → Plan ilimitado ($35.00)».
+- Cotización por empresa: solo el cliente real con Plan 1000 la tiene disponible (vence el 10/10/2027); las empresas demo, no.
+
+### Verificación en el dominio
+Empresa ficticia OTRA-DEMO con un período Plan 1000 temporal, sin pago y anulado al terminar:
+
+| Caso | Resultado |
+|---|---|
+| Con 199 días (1366 y 390 px) | Resumen «Paga solo la diferencia $35.00 IVA incluido», «Conservas tu vencimiento 28/04/2027» y «Esta mejora no renueva tu suscripción por otro año». Botón «Mejorar por $35.00» activo, más «Renovar desde…» y «Cambiar desde…». Sin desbordamiento |
+| Checkout | Botón real → formulario oficial «Pagar a Suprohosting $35.00». **No se introdujo ningún dato ni se pagó** |
+| Con 10 días (1366 y 390 px) | Resumen con el motivo «…Con menos de un mes de vigencia, el cambio a Plan ilimitado se hace como renovación». Solo «Renovar desde…» y «Cambiar desde…» |
+| Limpieza | Período anulado; el pago de verificación pasó de «En PayPhone» a cancelado; ningún pago aprobado; OTRA-DEMO vuelve al plan gratuito |
+
+Los avisos de consola (un 400 y `requestStorageAccess`) se producen dentro del checkout de PayPhone, que es externo; la aplicación no tuvo respuestas de error.
+
+### Capturas
+`publicado-mejora-disponible-escritorio.png`, `publicado-mejora-pocos-dias-escritorio.png` y `publicado-mejora-checkout-escritorio.png` (checkout vacío). Datos ficticios y sin credenciales.
+
+### Pendientes
+- **Propietaria:** confirmar la interpretación del plazo (mejora con un mes o más; renovación con menos). Si era al revés, basta con cambiar la regla.
+- **Codex:** validar en el dominio el tema con la cotización real (sin pagar).
+- **Claude:** cifrar las claves en la base, permitir borrar una clave guardada, respaldo diario de la base y etapa 3.

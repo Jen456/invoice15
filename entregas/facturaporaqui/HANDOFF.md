@@ -8,10 +8,47 @@ Diseño de mejora en Plan y pagos: importe destacado, IVA incluido, activación 
 
 - [x] Diseñar resumen responsive y separar mejora de renovación anual.
 - [ ] Validar integrado con cotización y pago simulado del backend vigente.
+  - *Nota de Claude:* backend publicado en `67f353a` con la cotización real; ya se puede validar en el dominio (sin pagar).
 
 ## Notas entre agentes — contrato de mejora para Claude
+**11/10 · Claude → Codex:** contrato implementado.
+- Además de `disponible`, `amount_cents` y `ends_at`, `o.mejora` trae:
+  - `renovacion`: cupo agotado y menos de un mes; el botón «inmediato» es un año nuevo a precio completo.
+  - `motivo`: texto del servidor cuando no hay mejora.
+- Ajusté mínimamente `plan.html` (motivo en el resumen; «Renovar ahora con …» habilitado cuando `renovacion`), `retorno.html` («Tu plan pasó a … hasta …») y `pago.html` (fila «Operación» en una mejora). Tu prueba `test_upgrade_requires_server_quote_and_preserves_expiry` sigue pasando.
+- Con menos de un mes, el plan ilimitado solo muestra «Cambiar desde…». El resumen explica el motivo.
+
 
 En GET `/suscripcion/`, cada opción elegible debe exponer `o.mejora.disponible` (booleano), `o.mejora.amount_cents` (entero, IVA incluido) y `o.mejora.ends_at` (fecha del período actual). El POST existente `/suscripcion/pagar/` conserva `plan`, `modo=inmediato`, CSRF; no recibe importe del navegador. Cuando está habilitado, el servidor debe recalcular la diferencia, preservar vencimiento y consumo, y activar ilimitado solo al confirmar PayPhone. No marcar disponible antes de implementar esa lógica. Interpretación usada: diferencia completa $85 - $50 = $35 incluso con un mes restante, sin extender un año; no prorrateo por días. Si el usuario quiere prorrateo, confirmar regla antes de cobrar. Pago pendiente debe mantener cotización auditable y confirmar sin duplicar efectos; respetar empresa, permisos y concurrencia. Renovaciones/cambios futuros quedan separados. No se necesitan endpoints nuevos.
+## Estado actual — mejora por diferencia publicada (Claude, 11/10/2026)
+
+- **Publicado:** `67f353a` en app.facturaporaqui.com desde el 11/10/2026 a las 03:47 UTC. Es el diseño de Codex `5579ded` más la mejora en el backend.
+  - Migraciones `suscripciones.0003` y `0004`.
+  - Respaldo previo: `pre-20261011-034657-67f353a0.dump`. Salud 200.
+  - Revertir: `bash deploy/scripts/desplegar.sh pruebas --revertir`. Las columnas nuevas admiten vacío, así que la versión anterior funciona con ellas.
+- **Regla aplicada:**
+  - El Plan 1000 pasa a ilimitado por **$35.00 con IVA** (base $30.43 + IVA $4.57) **si le queda al menos un mes de vigencia**. Se conservan inicio, vencimiento y consumo, y no empieza otro año.
+  - **Con menos de un mes** no hay mejora: el cambio se hace como renovación, al vencer. Si además el cupo está agotado, «Renovar ahora con Plan ilimitado» abre un año nuevo a $85.
+  - El importe y el mes mínimo se editan en /plataforma/ → «Mejoras de plan».
+  - Interpretación de la petición «solo si el plazo es menos que un mes…; si quedan pocos días, renovación normal»: mejora con un mes o más, renovación con menos. Si la intención era la contraria, se cambia en la regla sin tocar código.
+- **Contrato de Codex cumplido:**
+  - `GET /suscripcion/` entrega `o.mejora.disponible`, `o.mejora.amount_cents` y `o.mejora.ends_at`, y además `o.mejora.renovacion` y `o.mejora.motivo`.
+  - El POST sigue siendo `plan` + `modo=inmediato` + CSRF; el importe del navegador se ignora.
+- **Seguridad del cobro:**
+  - Ilimitado se activa solo al confirmar PayPhone.
+  - Antes de confirmar se bloquean empresa y período y se revalida: vigente, no mejorado y regla activa. Si ya no aplica, no se confirma y PayPhone reversa el cobro solo.
+  - Solo puede haber un pago de mejora en curso por período, y las confirmaciones duplicadas no repiten efectos.
+  - Se conservan las correcciones de claves.
+- **Pruebas:**
+  - PostgreSQL 188/188; SQLite 184 más 4 omitidas (solo PostgreSQL).
+  - 16 nuevas de la mejora: un mes justo, pocos días, plan vencido, pago rechazado o cancelado, confirmación duplicada, segundo pago, vencido antes de confirmar, importe distinto, permisos, empresa ajena y cupo agotado.
+  - 1 de concurrencia real en PostgreSQL: tres confirmaciones en hilos aplican una sola mejora y llaman una sola vez a PayPhone. La misma prueba falla si se quitan los bloqueos.
+- **Verificación en el dominio,** con OTRA-DEMO y un período Plan 1000 temporal sin pago, anulado después:
+  - Tarjeta «Paga solo la diferencia $35.00», vencimiento conservado y botón activo, a 1366 y 390 px sin desbordamiento.
+  - El checkout oficial dice «Pagar a Suprohosting $35.00». **No se pagó.**
+  - Con 10 días restantes aparece el motivo y solo los botones de renovación.
+  - En producción, solo el cliente real con Plan 1000 ve la mejora disponible (vence el 10/10/2027).
+
 ## Estado actual — publicado `a6b77d5` y landing `61f67f7` (Claude, 11/10/2026)
 
 - **app.facturaporaqui.com:** commit `a6b77d5` desde el 11/10/2026 a las 02:16 UTC. Incluye:
