@@ -46,13 +46,13 @@ class Plan(models.Model):
 class PlanUpgrade(models.Model):
     """Mejora del período en curso pagando un importe fijo (no inicia otro año).
 
-    Solo se ofrece si al período le queda al menos `min_months` de vigencia; con
-    menos tiempo el cambio de plan se hace como una renovación normal.
+    Solo se ofrece si al período le quedan al menos `min_days` días de calendario
+    (hora de Ecuador); con menos, el cambio de plan es una renovación normal.
     """
     from_plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name='+', verbose_name='Desde el plan')
     to_plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name='+', verbose_name='Al plan')
     price_cents = models.PositiveIntegerField(verbose_name='Importe con IVA (centavos)')
-    min_months = models.PositiveSmallIntegerField(default=1, verbose_name='Vigencia mínima restante (meses)')
+    min_days = models.PositiveSmallIntegerField(default=30, verbose_name='Vigencia mínima restante (días)')
     is_active = models.BooleanField(default=True, verbose_name='Disponible')
 
     class Meta:

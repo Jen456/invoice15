@@ -94,17 +94,27 @@ class TestCotizacion:
         html = client.get('/suscripcion/').content.decode()
         assert 'Mejorar por $35.00' in html and 'Esta mejora no renueva tu suscripción por otro año' in html
 
-    def test_un_mes_justo_si_y_menos_es_renovacion(self, empresa1000):
-        ahora = datetime(2026, 11, 15, 10, 0, tzinfo=GYE)
+    def test_treinta_dias_justos_si_y_29_es_renovacion(self, empresa1000):
+        ahora = datetime(2026, 10, 11, 10, 0, tzinfo=GYE)
         with time_machine.travel(ahora, tick=False):
-            periodo = helpers.dar_plan(empresa1000, 'plan-1000', inicio=ahora - timedelta(days=330),
-                                       ends_at=sumar_meses(ahora, 1))
+            periodo = helpers.dar_plan(empresa1000, 'plan-1000', inicio=ahora - timedelta(days=335),
+                                       ends_at=ahora + timedelta(days=30))
             assert cotizar_mejora(empresa1000, plan('ilimitado'))['disponible'] is True
             assert modos_de_pago(empresa1000, plan('ilimitado')) == ['inmediato', 'programado']
-            SubscriptionPeriod.objects.filter(pk=periodo.pk).update(ends_at=sumar_meses(ahora, 1) - timedelta(days=1))
+            SubscriptionPeriod.objects.filter(pk=periodo.pk).update(ends_at=ahora + timedelta(days=29))
             cotizacion = cotizar_mejora(empresa1000, plan('ilimitado'))
-            assert cotizacion['disponible'] is False and 'menos de un mes' in cotizacion['motivo']
+            assert cotizacion['disponible'] is False and 'menos de 30 días' in cotizacion['motivo']
             assert modos_de_pago(empresa1000, plan('ilimitado')) == ['programado']   # renovación al vencer
+
+    def test_treinta_dias_cuenta_por_dia_de_calendario(self, empresa1000):
+        # Creado a las 10:00 para vencer en 30 días: sigue disponible a las 23:59 del mismo día.
+        ahora = datetime(2026, 10, 11, 10, 0, tzinfo=GYE)
+        helpers.dar_plan(empresa1000, 'plan-1000', inicio=ahora - timedelta(days=335), ends_at=ahora + timedelta(days=30))
+        with time_machine.travel(datetime(2026, 10, 11, 23, 59, tzinfo=GYE), tick=False):
+            assert cotizar_mejora(empresa1000, plan('ilimitado'))['disponible'] is True
+            assert estado_empresa(empresa1000).dias_restantes == 30
+        with time_machine.travel(datetime(2026, 10, 12, 0, 1, tzinfo=GYE), tick=False):
+            assert cotizar_mejora(empresa1000, plan('ilimitado'))['disponible'] is False
 
     def test_pocos_dias_no_permite_pagar_la_diferencia(self, client, empresa1000, dueno):
         periodo_1000(empresa1000, restante=timedelta(days=10))
@@ -113,7 +123,7 @@ class TestCotizacion:
         assert respuesta['Location'] == '/suscripcion/' and not preparar.called
         assert not Payment.objects.filter(company=empresa1000).exists()
         html = client.get('/suscripcion/').content.decode()
-        assert 'se hace como renovación' in html and 'Cambiar desde el' in html
+        assert 'se hace como renovación' in html and 'Renovar con ilimitado por $85.00' in html and 'Mejorar por' not in html
 
     def test_plan_vencido_no_tiene_mejora_y_compra_normal(self, client, empresa1000, dueno):
         helpers.dar_plan(empresa1000, 'plan-1000', inicio=timezone.now() - timedelta(days=400))
@@ -146,6 +156,42 @@ class TestCotizacion:
 # ---------------------------------------------------------------- pago y activación
 
 class TestPagoDeMejora:
+
+    def test_escenario_treinta_dias_de_punta_a_punta(self, client, empresa1000, dueno):
+        """Empresa ficticia cuyo plan vence en 30 días: $35 exactos, PayPhone recibe 3500 centavos,
+        ilimitado solo tras confirmar, sin doble aplicación y renovación anual aparte."""
+        periodo = periodo_1000(empresa1000, restante=timedelta(days=30), usados=250)
+        fin = periodo.ends_at
+        helpers.iniciar_sesion(client, dueno, empresa=empresa1000)
+        html = client.get('/suscripcion/').content.decode()
+        assert 'Mejorar por $35.00' in html and f'Conservas tu vencimiento' in html
+        assert timezone.localtime(fin).strftime('%d/%m/%Y') in html
+        renovar = f'Renovar con ilimitado por $85.00'
+        assert renovar in html and 'Cambiar desde el' not in html
+        assert (f'Nuevo período anual: del {timezone.localtime(fin):%d/%m/%Y} al '
+                f'{timezone.localtime(sumar_meses(fin, 12)):%d/%m/%Y}') in html
+
+        with mock.patch('core.suscripciones.payphone.requests.post') as post:
+            post.return_value.status_code = 200
+            post.return_value.json.return_value = {'paymentId': 'pp-30', 'payWithCard': ENLACE}
+            respuesta = client.post('/suscripcion/pagar/', {'plan': 'ilimitado', 'modo': 'inmediato', 'amount': '100'})
+        assert respuesta['Location'] == ENLACE
+        cuerpo = post.call_args.kwargs['json']
+        assert (cuerpo['amount'], cuerpo['amountWithTax'], cuerpo['tax'], cuerpo['amountWithoutTax']) == (3500, 3043, 457, 0)
+        pago = Payment.objects.get(company=empresa1000)
+        assert (pago.mode, pago.amount_cents, pago.target_period_id) == ('mejora', 3500, periodo.pk)
+        periodo.refresh_from_db()
+        assert periodo.plan.code == 'plan-1000' and periodo.document_limit == 1000   # aún sin confirmar
+
+        _, primera = retorno(client, pago, aprobado(pago))
+        _, segunda = retorno(client, pago, aprobado(pago))
+        periodo.refresh_from_db()
+        assert primera.call_count == 1 and segunda.call_count == 0
+        assert (periodo.plan.code, periodo.document_limit, periodo.ends_at, periodo.documents_used) == ('ilimitado', None, fin, 250)
+        assert pago.events.filter(kind='mejora_aplicada').count() == 1
+        assert SubscriptionPeriod.objects.filter(company=empresa1000).count() == 1
+        # La renovación anual sigue disponible como operación aparte: empieza al vencer y dura 12 meses.
+        assert modos_de_pago(empresa1000, plan('ilimitado')) == ['programado']
 
     def test_flujo_completo_conserva_vencimiento_y_consumo(self, client, empresa1000, dueno, django_capture_on_commit_callbacks):
         periodo = periodo_1000(empresa1000, usados=120)

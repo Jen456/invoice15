@@ -50,3 +50,21 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-upgrade-summary dl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;font-size:16px}
 .fp-upgrade-summary dd{margin:0;text-align:right}
 @media(max-width:575px){.fp-upgrade-summary dl{grid-template-columns:1fr}.fp-upgrade-summary dd{text-align:left;margin-bottom:8px}}
+
+/* Plan y pagos: resumen del plan actual y tarjetas equilibradas en escritorio (Claude, 11/10). */
+.fp-current-summary{background:#fff;border:1px solid var(--fp-border,#d6e4ec);border-radius:12px;padding:16px 20px;margin-bottom:18px}
+.fp-current-summary dl{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:10px 0 0;font-size:16px}
+.fp-current-summary dt{font-weight:600}
+.fp-current-summary dd{margin:0;text-align:right}
+.fp-current-summary .fpa-progreso{margin-top:10px;max-width:none}
+.fpa-plan .fpa-plan-tarjeta .fpa-incluye{margin-bottom:12px}
+/* Las dos tarjetas van lado a lado solo cuando hay ancho para el resumen compacto. */
+@media(min-width:1360px){
+.fpa-plan .fp-plan-col{flex:0 0 50%;max-width:50%}
+.fp-upgrade-summary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);column-gap:20px;align-items:start;padding:18px 20px}
+.fp-upgrade-summary>.fp-eyebrow,.fp-upgrade-summary>p.small{grid-column:1/-1}
+.fp-upgrade-summary>h4{grid-column:1;font-size:20px;margin:8px 0 0}
+.fp-upgrade-summary>.fp-upgrade-amount{grid-column:1;margin:6px 0 10px}
+.fp-upgrade-summary>dl{grid-column:2;grid-row:2/span 2;grid-template-columns:1fr;gap:2px;margin:10px 0}
+.fp-upgrade-summary>dl dd{text-align:left;margin-bottom:8px}
+}

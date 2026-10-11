@@ -65,7 +65,7 @@
         {% endif %}
         <div class="row">
             {% for o in opciones %}
-                <div class="col-12 col-md-6 mb-3">
+                <div class="col-12 fp-plan-col mb-3">
                     <article class="card h-100 fpa-plan-tarjeta{% if o.plan.unlimited %} fpa-plan-destacado{% endif %}">
                         <div class="card-body d-flex flex-column">
                             <p class="fp-eyebrow">Plan anual por empresa</p>
@@ -79,6 +79,21 @@
                                 <li>Inventario sin límites</li>
                             </ul>
                             <div class="mt-auto">
+                                {% if o.actual and estado.periodo %}
+                                    <aside class="fp-current-summary" aria-label="Resumen de tu plan actual">
+                                        <span class="fp-eyebrow">Tu plan actual</span>
+                                        <dl>
+                                            <dt>Vence el</dt><dd>{{ estado.periodo.ends_at|date:"d/m/Y" }}</dd>
+                                            <dt>Días restantes</dt><dd>{{ estado.dias_restantes }}</dd>
+                                            {% if estado.periodo.document_limit %}<dt>Comprobantes usados</dt><dd>{{ estado.periodo.documents_used }} de {{ estado.periodo.document_limit }}</dd>
+                                            <dt>Disponibles</dt><dd>{{ estado.periodo.available }}</dd>{% endif %}
+                                        </dl>
+                                        {% if estado.periodo.document_limit %}
+                                            <div class="progress fpa-progreso" role="progressbar" aria-valuemin="0" aria-valuemax="{{ estado.periodo.document_limit }}" aria-valuenow="{{ estado.periodo.documents_used }}" aria-label="Comprobantes usados del plan actual"><div class="progress-bar" style="width: {% widthratio estado.periodo.documents_used estado.periodo.document_limit 100 %}%"></div></div>
+                                        {% endif %}
+                                        {% if mejora_destacada %}<p class="small mb-0 mt-2">¿Necesitas más? Pasa a {{ mejora_destacada.plan.name|cut:"Plan "|lower }} por {{ mejora_destacada.mejora.amount_cents|dolares }} y conserva tu vencimiento.</p>{% endif %}
+                                    </aside>
+                                {% endif %}
                                 {% if estado.pagado and o.plan.unlimited and estado.periodo.document_limit %}
                                     <aside class="fp-upgrade-summary" aria-label="Resumen de mejora de plan">
                                         <span class="fp-eyebrow">Mejora tu plan actual</span>
@@ -102,12 +117,15 @@
                                             {% if modo == 'inmediato' %}
                                                 {% if estado.pagado %}{% if o.plan.unlimited and estado.periodo.document_limit %}{% if o.mejora.disponible %}Mejorar por {{ o.mejora.amount_cents|dolares }}{% elif o.mejora.renovacion %}Renovar ahora con {{ o.plan.name }}{% else %}Mejora pendiente de habilitar{% endif %}{% else %}Renovar ahora{% endif %}{% else %}Pagar con PayPhone{% endif %}
                                             {% elif o.actual %}Renovar desde el {{ inicio|date:"d/m/Y" }}
+                                            {% elif estado.pagado and o.plan.unlimited %}Renovar con {{ o.plan.name|cut:"Plan "|lower }} por {{ o.plan.price_cents|dolares }}
                                             {% elif estado.pagado %}Cambiar desde el {{ inicio|date:"d/m/Y" }}
                                             {% else %}Pagar y empezar el {{ inicio|date:"d/m/Y" }}{% endif %}
                                         </button>
                                         {% if modo == 'inmediato' and estado.pagado and o.plan.unlimited and estado.periodo.document_limit %}
                                             {% if o.mejora.disponible %}<small class="d-block text-muted">Mantienes tu vencimiento: {{ o.mejora.ends_at|date:"d/m/Y" }}. No empieza un nuevo año.</small>
                                             {% elif o.mejora.renovacion %}<small class="d-block text-muted">Vigencia: {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}. Tu plan actual termina hoy, sin prorrateo.</small>{% endif %}
+                                        {% elif modo == 'programado' and estado.pagado and o.plan.unlimited and not o.actual %}
+                                        <small class="d-block text-muted">Nuevo período anual: del {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}. Es una renovación separada de la mejora.</small>
                                         {% else %}
                                         <small class="d-block text-muted">Vigencia: {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}.{% if modo == 'inmediato' and estado.pagado %} Tu plan actual termina hoy, sin prorrateo.{% endif %}</small>
                                         {% endif %}

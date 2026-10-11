@@ -30,7 +30,7 @@ class PlanAdmin(admin.ModelAdmin):
 
 @admin.register(PlanUpgrade, site=plataforma)
 class PlanUpgradeAdmin(admin.ModelAdmin):
-    list_display = ('from_plan', 'to_plan', 'price_cents', 'min_months', 'is_active')
+    list_display = ('from_plan', 'to_plan', 'price_cents', 'min_days', 'is_active')
     list_editable = ('is_active',)
 
     def has_delete_permission(self, request, obj=None):

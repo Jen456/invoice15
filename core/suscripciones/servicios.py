@@ -6,10 +6,10 @@
 - Renovación sin prorrateo (D6): la anticipada empieza al terminar el período
   actual; con el Plan 1000 agotado se puede renovar o mejorar al instante; la
   bajada solo al vencer; sin días de gracia.
-- Mejora por diferencia (PlanUpgrade): con al menos un mes de vigencia, el Plan
+- Mejora por diferencia (PlanUpgrade): con al menos 30 días de vigencia, el Plan
   1000 pasa a ilimitado pagando un importe fijo ($35 con IVA), conservando el
-  vencimiento y el consumo; no inicia otro año. Con menos de un mes el cambio se
-  hace como renovación (al vencer o, con el cupo agotado, un año nuevo).
+  vencimiento y el consumo; no inicia otro año. Con menos días el cambio se hace
+  como renovación (al vencer o, con el cupo agotado, un año nuevo).
 - Un pago solo activa el plan cuando PayPhone lo confirma desde el servidor;
   importe, moneda y referencia se comprueban contra lo guardado al prepararlo.
 """
@@ -83,7 +83,7 @@ class EstadoPlan:
     def dias_restantes(self):
         if self.periodo is None:
             return None
-        return max((self.periodo.ends_at - self.ahora).days, 0)
+        return max(dias_restantes(self.periodo, self.ahora), 0)
 
     @property
     def por_vencer(self):
@@ -154,10 +154,14 @@ def regla_de_mejora(actual, plan):
     return PlanUpgrade.objects.filter(from_plan_id=actual.plan_id, to_plan=plan, is_active=True).first()
 
 
+def dias_restantes(actual, ahora=None):
+    """Días de calendario (hora de Ecuador) desde hoy hasta el vencimiento del período."""
+    return (timezone.localdate(actual.ends_at) - timezone.localdate(ahora or timezone.now())).days
+
+
 def mejora_en_plazo(actual, regla, ahora=None):
-    """Le queda al período al menos la vigencia mínima de la regla (por defecto, un mes)."""
-    ahora = ahora or timezone.now()
-    return actual.ends_at >= sumar_meses(ahora, regla.min_months)
+    """Le quedan al período al menos los días mínimos de la regla (por defecto, 30)."""
+    return dias_restantes(actual, ahora) >= regla.min_days
 
 
 def _modos(actual, agotado, plan, ahora=None):
@@ -196,9 +200,8 @@ def cotizar_mejora(company, plan, ahora=None, estado=None):
     cotizacion.update(ends_at=actual.ends_at, periodo=actual, regla=regla)
     if not mejora_en_plazo(actual, regla, ahora):
         cotizacion['renovacion'] = estado.codigo == 'cupo_agotado'
-        meses = 'un mes' if regla.min_months == 1 else f'{regla.min_months} meses'
         cotizacion['motivo'] = (f'Tu {actual.plan.name} vence el {timezone.localtime(actual.ends_at):%d/%m/%Y}. Con menos de '
-                                f'{meses} de vigencia, el cambio a {plan.name} se hace como renovación.')
+                                f'{regla.min_days} días de vigencia, el cambio a {plan.name} se hace como renovación.')
         return cotizacion
     cotizacion.update(disponible=True, amount_cents=regla.price_cents)
     return cotizacion

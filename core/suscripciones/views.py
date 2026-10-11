@@ -70,6 +70,7 @@ class PlanView(PlanAccessMixin, TemplateView):
             })
         context.update({
             'title': 'Plan y pagos',
+            'mejora_destacada': next((o for o in opciones if o['mejora']['disponible']), None),
             'estado': estado,
             'opciones': opciones,
             'bloqueo': bloqueo,
