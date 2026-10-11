@@ -7,7 +7,7 @@
 #                                                sin correo ni zona DNS) + plantilla
 #   bash publicar-landing.sh --certificado       Let's Encrypt para raíz y www
 #   bash publicar-landing.sh --https             plantilla fpa-landing, HTTPS forzado, HSTS
-#   bash publicar-landing.sh --publicar <ref>    copia landing/index.html de <ref>
+#   bash publicar-landing.sh --publicar <ref>    copia landing/index.html y landing/assets/ de <ref>
 #
 # No toca la aplicación (app.facturaporaqui.com), el DNS ni otros dominios.
 # Recarga (no reinicia) nginx y Apache tras comprobar su configuración.
@@ -89,16 +89,34 @@ case "$MODO" in
   controles
   ;;
 --publicar)
+  # Publica landing/index.html y landing/assets/ de <ref>. Los .md de landing/
+  # (notas de marca) no se publican. Copia de seguridad previa en private/.
   REF="${2:?Falta la referencia git}"
   COMMIT=$(git -C "$REPO" rev-parse --verify "$REF^{commit}")
   TMPD=$(mktemp -d); trap 'rm -rf "$TMPD"' EXIT
-  git -C "$REPO" archive "$COMMIT" landing/index.html | tar -x -C "$TMPD"
+  PRIV=/home/$USUARIO/web/$DOMINIO/private
+  RESPALDO="$PRIV/landing-antes-$(date +%Y%m%d%H%M%S).tar.gz"
+  tar -czf "$RESPALDO" -C "$DOCROOT" . && chown "$USUARIO:$USUARIO" "$RESPALDO" && ok "copia previa: $RESPALDO"
+  RUTAS=(landing/index.html)
+  git -C "$REPO" ls-tree -d --name-only "$COMMIT" landing/assets | grep -q . && RUTAS+=(landing/assets)
+  git -C "$REPO" archive "$COMMIT" "${RUTAS[@]}" | tar -x -C "$TMPD"
+  if [ -d "$TMPD/landing/assets" ]; then
+    find "$TMPD/landing/assets" -type f ! -iregex '.*\.\(png\|jpe?g\|webp\|svg\|ico\|css\|js\|woff2?\)$' -print -delete | sed 's/^/  [AVISO] no se publica: /'
+    rsync -r --delete --chmod=D755,F644 --chown="$USUARIO:$USUARIO" "$TMPD/landing/assets/" "$DOCROOT/assets/"
+    ok "assets/ publicado ($(find "$DOCROOT/assets" -type f | wc -l) archivos)"
+  fi
   install -m 644 -o "$USUARIO" -g "$USUARIO" "$TMPD/landing/index.html" "$DOCROOT/.index.html.nuevo"
   mv -f "$DOCROOT/.index.html.nuevo" "$DOCROOT/index.html"
-  echo "${COMMIT}" > "$TMPD/REVISION" && install -m 644 -o "$USUARIO" -g "$USUARIO" "$TMPD/REVISION" "/home/$USUARIO/web/$DOMINIO/private/landing-REVISION"
+  echo "${COMMIT}" > "$TMPD/REVISION" && install -m 644 -o "$USUARIO" -g "$USUARIO" "$TMPD/REVISION" "$PRIV/landing-REVISION"
   LOCAL=$(sha256sum "$DOCROOT/index.html" | cut -d' ' -f1)
   SERVIDO=$(curl -s --resolve "$DOMINIO:443:$IPWEB" "https://$DOMINIO/" | sha256sum | cut -d' ' -f1)
   [ "$LOCAL" = "$SERVIDO" ] && ok "index.html publicado (${COMMIT:0:8}) y servido idéntico (sha256 ${LOCAL:0:12})" || mal "lo servido no coincide con lo publicado"
+  # Cada recurso local citado por index.html debe responder 200 en el origen.
+  for r in $(grep -oE '(src|href)="[^"#:]+\.(png|jpe?g|webp|svg|ico|css|js)"' "$DOCROOT/index.html" | cut -d'"' -f2 | sort -u); do
+    c=$(curl -s -o /dev/null -w '%{http_code}' --resolve "$DOMINIO:443:$IPWEB" "https://$DOMINIO/${r#/}")
+    [ "$c" = 200 ] && ok "recurso $r → 200" || mal "recurso $r → $c"
+  done
+  echo "  revertir: tar -xzf $RESPALDO -C $DOCROOT (como $USUARIO)"
   ;;
 *) echo "Modo no válido: $MODO"; exit 2;;
 esac
