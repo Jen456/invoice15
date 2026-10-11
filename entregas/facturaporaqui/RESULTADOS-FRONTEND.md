@@ -170,3 +170,72 @@ Modificados frente a la entrega frontend anterior: core/login/templates/login/lo
 Capturas en capturas/: integracion-login.png, integracion-plan-gratuito.png, integracion-plan-activo.png, integracion-dashboard.png, integracion-company-movil.png, integracion-cancelado-movil.png. Son del entorno local con datos ficticios, no evidencias de publicación.
 
 No se accedió ni modificó ensayo-integracion del servidor. No se desplegó a app.facturaporaqui.com. Sigue pendiente que Claude deje de devolver claves guardadas al navegador. No se alteraron ni probaron fondos/pagos reales. Los botones deshabilitados en capturas corresponden a la configuración local, no al estado de PayPhone en producción.
+
+## 2026-10-11 — Backend (Claude): claves fuera del navegador y publicación de `7eb9bd0`
+
+### Qué se hizo
+- Se revisó la integración de Codex `5cb91f1`. Es descendiente directo de `plataforma` `817be35` y, frente a esa base, solo cambia plantillas, CSS/JS, documentación, capturas y una prueba.
+- Se comprobó que conserva:
+  - el aviso del plan, el candado, el filtro de mensajes `plan` y `aviso.css`;
+  - la firma bloqueada sin plan, ahora en `company/field.html`, y la ausencia de `is_active`;
+  - el selector de empresa;
+  - Chart.js, sin Highcharts ni el instalador antiguo.
+- El escaneo de secretos de los 110 objetos nuevos no encontró nada. `plataforma` avanzó a `5cb91f1` sin conflictos.
+- **Corrección de backend pendiente:**
+  - La clave de la firma `.p12` y la del SMTP ya no se devuelven al navegador: `PasswordInput` sin valor. Vacío conserva la guardada; texto nuevo la reemplaza.
+  - Aviso «Guardada. Déjala vacía para conservarla» en el `placeholder` y en el texto de ayuda.
+  - «Ver certificado» usa la clave guardada si no se escribe otra.
+- **Fuga adicional encontrada y corregida:**
+  - `Company.toJSON()` se incrustaba en cada venta y nota de crédito de los listados AJAX (personal, reportes y el listado de compras que ven los clientes de la empresa) con la clave de la firma y la configuración SMTP.
+  - Ahora excluye `electronic_signature_key`, `email_host`, `email_port`, `email_host_user` y `email_host_password`, y la ruta del `.p12` pasa a ser `true`/`false`.
+  - Ningún JavaScript usaba esos datos.
+
+### Archivos
+- Modificados: `core/pos/forms.py`, `core/pos/models.py`, `core/pos/views/company/views.py`.
+- Nuevos: `tests/test_secretos_empresa.py` y las capturas `capturas/despliegue-*.png`.
+- Commit `7eb9bd0`, sobre `5cb91f1`.
+
+### Pruebas
+- **PostgreSQL 16:** 167 aprobadas, sin omitidas.
+- **SQLite:** 164 aprobadas y 3 omitidas (solo PostgreSQL).
+- `manage.py check` sin avisos; `makemigrations --check` sin cambios.
+- Nuevas: el HTML de compañía no contiene las claves; vacío conserva; valor nuevo reemplaza; empresa sin claves guarda vacío; el JSON de ventas no lleva secretos (personal y cliente); «Ver certificado» con la clave guardada.
+
+### Despliegue
+- **Publicado:** `7eb9bd0` en app.facturaporaqui.com, con `deploy/scripts/desplegar.sh pruebas 7eb9bd0`, el 11/10/2026 a las 01:36 UTC.
+- Respaldo previo de la base: `pre-20261011-013604-7eb9bd01.dump` (212 KB). Sin migraciones nuevas. Salud `/login/` → 200.
+- Revertir: `bash deploy/scripts/desplegar.sh pruebas --revertir`.
+- Tras el reinicio:
+  - PayPhone sigue configurado (Producción, tienda Suprohosting).
+  - Los planes no cambiaron: el cliente real conserva su Plan 1000, la demostración su período de demostración y OTRA-DEMO el plan gratuito.
+- GitHub: `plataforma` y `frontend/etapa3` en `7eb9bd0`. Este registro va en el commit siguiente, que solo añade documentación.
+
+### Verificación en el dominio
+Playwright a 1366×900, 390×844 y 360×780, a través de Cloudflare, con empresas ficticias:
+
+| Comprobación | Resultado |
+|---|---|
+| Login | Colibrí cargado, «Bienvenido de nuevo», enlace de registro, sin desbordamiento |
+| Selector de empresa | Lista DEMOSTRACIÓN y OTRA-DEMO con sus roles; elegir lleva al panel; el cambio desde la cabecera funciona |
+| Panel | 2 gráficos de Chart.js dibujados, aviso del plan gratuito y 14 candados |
+| Menú móvil | Se abre con el botón y se cierra con Escape (390 y 360 px) |
+| Compañía | 5 secciones, firma deshabilitada sin plan, claves de tipo `password` **sin atributo `value`**, sin `is_active` |
+| Planes | Ventas redirige a «Plan y pagos» con el aviso en línea; $50.00 y $85.00 IVA incluido; botones de PayPhone activos y **no pulsados** |
+| Cambio a DEMOSTRACIÓN (rol Consulta) | Ventas abre (200); «Plan y pagos» no está disponible para Consulta, que vuelve al panel, como corresponde |
+| Retorno de PayPhone sin sesión | 200, colibrí, «No encontramos ese pago» |
+| Landing facturaporaqui.com | 200, «FacturaPorAquí — Tu negocio, en orden», 2 enlaces a la aplicación, `www` → dominio principal |
+| Recursos | 0 respuestas ≥400, 0 errores de JavaScript, 0 peticiones a dominios externos y 309 estáticos por vista |
+
+- No se completó ningún pago ni se envió nada al SRI.
+- Para probar el selector se añadió una membresía temporal de rol Consulta, en DEMOSTRACIÓN, al propietario de OTRA-DEMO. Se borró al terminar.
+
+### Capturas
+En `capturas/`: `despliegue-login-movil.png`, `despliegue-selector-movil.png`, `despliegue-panel-escritorio.png`, `despliegue-menu-movil.png`, `despliegue-compania-escritorio.png` y `despliegue-landing-movil.png`. Son del dominio publicado, con empresas ficticias y sin credenciales.
+
+### Pendientes
+- **Frontend (Codex), estéticos:** leyenda del pastel cortada en escritorio, rol cortado en la barra lateral, ruta interna en el campo del logotipo, barra fija de «Guardar» en la captura móvil y color del enlace «Cerrar sesión» del selector. Detalle en HANDOFF.md.
+- **Backend (Claude):**
+  - Las claves siguen guardadas en texto plano en la base; cifrarlas queda para la pantalla de firma de la etapa 3.
+  - Falta una forma explícita de borrar una clave guardada.
+  - Respaldo diario de la base, ahora que el dominio cobra dinero real.
+  - Etapa 3: establecimientos y secuencias, envío al SRI en segundo plano y retenciones.

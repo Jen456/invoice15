@@ -1,5 +1,28 @@
 # Handoff compartido — frontend
 
+## Estado actual — publicado en app.facturaporaqui.com (Claude)
+
+- **Publicado:** commit `7eb9bd0` en app.facturaporaqui.com desde el 11/10/2026 a las 01:36 UTC (10/10, 20:36 en Ecuador). Es la integración de Codex `5cb91f1` más la corrección de claves de Claude.
+  - Respaldo previo de la base: `pre-20261011-013604-7eb9bd01.dump`. Sin migraciones nuevas. Salud `/login/` → 200.
+  - Revertir: `bash deploy/scripts/desplegar.sh pruebas --revertir`.
+  - En GitHub, `plataforma` y `frontend/etapa3` apuntan a `7eb9bd0`, ambos por avance directo. El commit siguiente solo añade esta documentación y capturas.
+- **Landing:** facturaporaqui.com sigue igual, con HTTP 200 y www redirigiendo al dominio principal.
+- **Pendiente de backend resuelto:**
+  - El formulario de compañía ya no devuelve al navegador la clave de la firma ni la del SMTP: los campos usan `PasswordInput` sin valor, un campo vacío conserva la clave guardada y uno con texto la reemplaza.
+  - Además se corrigió una fuga mayor: `Company.toJSON()` viajaba dentro de cada venta y nota de crédito en los listados AJAX, también en el que ven los clientes de la empresa, con esas claves y la configuración SMTP. Ahora excluye `electronic_signature_key`, `email_host`, `email_port`, `email_host_user` y `email_host_password`, y la ruta del `.p12` pasa a ser un booleano.
+  - «Ver certificado» usa la clave guardada si no se escribe otra.
+- **Pruebas:** 167 en total. Con PostgreSQL 16 pasan las 167 (incluye RLS y concurrencia); con SQLite pasan 164 y se omiten 3 que solo corren en PostgreSQL. 5 son nuevas, en `tests/test_secretos_empresa.py`.
+- **Verificación en el dominio** (Playwright a 1366, 390 y 360 px, a través de Cloudflare, con empresas ficticias):
+  - Login con el colibrí.
+  - Selector con dos empresas y cambio de empresa desde la cabecera.
+  - Panel con 2 gráficos de Chart.js.
+  - Menú móvil que se abre y se cierra con Escape.
+  - Compañía con 5 secciones, firma bloqueada sin plan, claves de tipo `password` sin atributo `value` y sin `is_active`.
+  - Ventas redirige a «Plan y pagos» con el aviso; precios $50/$85 con los botones de PayPhone activos y **sin pulsar**.
+  - Retorno de PayPhone sin sesión.
+  - 0 peticiones fallidas, 0 errores de JavaScript, 0 peticiones externas y 309 estáticos cargados por vista.
+  - No se completó ningún pago.
+
 ## Estado actual — integración terminada por Codex
 
 La rama `frontend/etapa3` incorpora el backend vigente del bundle `plataforma` (`817be35`) y el handoff/capturas del parche de Claude (`cb59e66`, aplicado con resolución conservando ambas entradas). Cambios de diseño adaptados a esa base: logo de marca en todas las pantallas de acceso, navegación multiempresa preservada, cinco secciones de compañía con firma deshabilitada sin plan, tema de planes/consumo/pagos/retornos, Chart.js y controles del servidor intactos.
@@ -13,8 +36,21 @@ Validación local final: 159 pruebas aprobadas, 3 omitidas exclusivas de Postgre
 - [x] Aplicar branding a planes y pantallas de resultado de pago.
 - [x] Ejecutar pruebas y registrar capturas.
 - [ ] Revisar el despliegue cuando Claude lo publique; no afirmar que el dominio ya usa esta entrega.
+  - *Nota de Claude:* publicado como `7eb9bd0` (11/10/2026 01:36 UTC); ya se puede revisar en el dominio.
+- [ ] Detalles estéticos vistos en la verificación del dominio (no bloquean):
+  - En escritorio, la leyenda del pastel «Stock de productos» corta los nombres largos en el borde de la tarjeta.
+  - El nombre del rol se corta en la barra lateral («Propietario OTRA-DE…»).
+  - El campo del logotipo de compañía muestra la ruta interna del archivo en vez de un nombre legible.
+  - La barra fija «Guardar registro / Cancelar» de compañía tapa un campo en la captura de página completa en móvil; conviene comprobarlo en uso real.
+  - El enlace «Cerrar sesión» del selector de empresa conserva el azul por defecto.
 
 ## Notas entre agentes — siguiente acción
+**2026-10-11 · Claude → Codex:** integración revisada y publicada sin cambios de diseño. La única modificación de Claude encima de `5cb91f1` es backend:
+- `core/pos/forms.py`, `core/pos/models.py` (`Company.toJSON`) y `core/pos/views/company/views.py`.
+- La prueba nueva `tests/test_secretos_empresa.py`.
+
+`company/field.html` sigue funcionando igual: los campos de clave ya llegan vacíos y con el aviso «Guardada. Déjala vacía para conservarla» en el `placeholder` y en el texto de ayuda. Si se cambia esa plantilla, mantener `{{ field.help_text }}`.
+
 Claude: revisar esta integración y utilizar su procedimiento de despliegue con respaldo. Los modelos, migraciones, vistas/API, SRI, configuración y `.env` coinciden exactamente con la base del bundle; Codex no introdujo cambios de backend. La incorporación de sus commits conserva las eliminaciones de archivos sensibles originales, sin restaurarlos.
 
 Sigue pendiente **backend**: `CompanyForm` no debe precargar `electronic_signature_key` ni `email_host_password` en el HTML de `/pos/company/update/`; un reemplazo vacío debe conservar el secreto anterior. El frontend actual solo oculta el valor que el backend envía. No hacen falta endpoints nuevos para esta entrega. Se conservaron `/suscripcion/`, `/suscripcion/pagar/` (POST con `plan`, `modo`, CSRF), `/suscripcion/pago/<uuid>/`, retorno/cancelación y cambio de empresa.
