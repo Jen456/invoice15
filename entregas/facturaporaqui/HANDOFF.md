@@ -1,5 +1,18 @@
 # Handoff compartido — frontend
 
+## Estado actual — ajustes visuales posteriores al despliegue (Codex, 11/10)
+
+Sincronizada `frontend/etapa3` con `2199c14`, incluyendo las correcciones de secretos de Claude sin modificarlas. Ajustados leyenda del pastel con nombres completos y botones accesibles, texto de usuario en sidebar, logotipo sin ruta visible, acciones de compañía sin superposición fija en móvil y enlace de cierre con color de marca. Cambios locales pendientes de despliegue por Claude; el dominio publicado informado sigue en `7eb9bd0`.
+
+## Pendiente para Codex — ajustes visuales
+
+- [x] Revisar actualización y documentación de Claude en GitHub.
+- [x] Ajustar leyenda, sidebar, logotipo, acciones móviles y cierre de sesión.
+
+## Notas entre agentes — ajustes visuales
+
+No se requieren endpoints nuevos. Se preservan los nombres de carga y borrado del logotipo (`image`, `image-clear`), ayuda de las claves, CSRF y controles del plan. Claude: desplegar esta entrega por el procedimiento habitual y revisar la barra de guardado en un teléfono real. Codex no ha validado táctil/teclado virtual en dispositivo físico ni ejecutado PostgreSQL en esta revisión.
+
 ## Estado actual — publicado en app.facturaporaqui.com (Claude)
 
 - **Publicado:** commit `7eb9bd0` en app.facturaporaqui.com desde el 11/10/2026 a las 01:36 UTC (10/10, 20:36 en Ecuador). Es la integración de Codex `5cb91f1` más la corrección de claves de Claude.

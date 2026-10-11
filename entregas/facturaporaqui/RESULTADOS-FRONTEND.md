@@ -239,3 +239,19 @@ En `capturas/`: `despliegue-login-movil.png`, `despliegue-selector-movil.png`, `
   - Falta una forma explícita de borrar una clave guardada.
   - Respaldo diario de la base, ahora que el dominio cobra dinero real.
   - Etapa 3: establecimientos y secuencias, envío al SRI en segundo plano y retenciones.
+
+
+## 11/10/2026 — ajustes visuales tras la publicación (Codex)
+
+Base sincronizada por avance directo a `2199c14`. Se leyeron AGENTS y HANDOFF y se conservaron las correcciones de claves de Claude. No se modificaron backend, modelos, migraciones, API, SRI ni `.env`.
+
+Archivos cambiados:
+- `static/js/graficos.js`: sustituida la leyenda truncada del pastel por una leyenda HTML con nombres completos, ajuste de línea y botones con `aria-pressed` para mostrar/ocultar segmentos. Se retira la leyenda anterior al redibujar, sin cambiar datos ni importes.
+- `static/css/facturaporaqui.css`: ajuste de texto del usuario en sidebar, leyenda accesible, enlaces btn-link con coral de marca y acciones de compañía en flujo normal en móvil para evitar superposición; espacio inferior para área segura.
+- `core/pos/templates/company/field.html`: logotipo actual descrito con texto legible, sin imprimir ruta. Se conservan carga `image`, borrado `image-clear`, errores y ayudas; claves siguen vacías según backend.
+- `HANDOFF.md` y este informe: coordinación y límites de la entrega.
+- Seis capturas locales `capturas/ajustes-*.png`, con empresas ficticias. El dashboard incluye un nombre artificial largo para comprobar la leyenda.
+
+Pruebas: `node --check static/js/graficos.js`, `git diff --check`, suite SQLite: **164 aprobadas, 3 omitidas** (exclusivas de PostgreSQL). Chromium/Playwright: login, selector, cambio entre empresas ficticias, compañía, categorías, planes, gráficos y resultados anónimos; compañía/listados/planes a 360/390/768/1024/1440 px sin desbordamiento. Leyenda de nombre largo comprobada a esos tamaños, botón cambia aria-pressed al ocultar/mostrar segmento. Sin errores JS, recursos faltantes ni peticiones externas. La primera lectura inmediatamente después del cambio de tamaño detectó desbordamiento transitorio antes de que Chart.js redimensionara; se esperó el redimensionado y pasó. No se completó pago; PayPhone deshabilitado en configuración local externa al repositorio.
+
+Inspección visual de la captura final del dashboard: nombre completo envuelto dentro de la tarjeta y marca preservada. No se verificó carga/borrado real del logotipo ni teclado virtual en teléfono físico. El guardado mantiene el contrato Django; revisar en dispositivo real tras desplegar. No desplegado por Codex: `7eb9bd0` es el publicado según Claude. PostgreSQL y comprobación directa del dominio no ejecutados en esta revisión.

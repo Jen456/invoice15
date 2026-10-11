@@ -19,6 +19,7 @@
     function lienzo(id, descripcion) {
         var contenedor = document.getElementById(id);
         if (!contenedor || typeof window.Chart === 'undefined') { return null; }
+        if (contenedor.nextElementSibling && contenedor.nextElementSibling.classList.contains('fp-chart-legend')) { contenedor.nextElementSibling.remove(); }
         if (instancias[id]) { instancias[id].destroy(); delete instancias[id]; }
         contenedor.innerHTML = '';
         contenedor.classList.add('fpa-grafico');
@@ -52,12 +53,7 @@
             options: {
                 cutout: '55%',
                 plugins: {
-                    legend: {position: window.innerWidth < 576 ? 'bottom' : 'right', labels: {boxWidth: 14, generateLabels: function (chart) {
-                        // Nombres largos acortados en la leyenda; el texto emergente muestra el nombre completo.
-                        var items = Chart.overrides.doughnut.plugins.legend.labels.generateLabels(chart);
-                        items.forEach(function (item) { if (item.text.length > 30) { item.text = item.text.slice(0, 29) + '…'; } });
-                        return items;
-                    }}},
+                    legend: {display: false},
                     tooltip: {callbacks: {label: function (ctx) {
                         var porcentaje = total ? (ctx.parsed * 100 / total) : 0;
                         return ' ' + ctx.label + ': ' + formatear(ctx.parsed, opciones.formato) + ' (' + numero.format(porcentaje) + ' %)';
@@ -65,6 +61,30 @@
                 }
             }
         });
+        var leyenda = document.createElement('ul');
+        leyenda.className = 'fp-chart-legend';
+        leyenda.setAttribute('aria-label', 'Leyenda del gráfico');
+        etiquetas.forEach(function (etiqueta, i) {
+            var item = document.createElement('li');
+            var boton = document.createElement('button');
+            boton.type = 'button';
+            boton.setAttribute('aria-pressed', 'true');
+            var muestra = document.createElement('span');
+            muestra.className = 'fp-chart-swatch';
+            muestra.style.backgroundColor = PALETA[i % PALETA.length];
+            muestra.setAttribute('aria-hidden', 'true');
+            boton.appendChild(muestra);
+            boton.appendChild(document.createTextNode(etiqueta));
+            boton.addEventListener('click', function () {
+                var grafico = instancias[id];
+                grafico.toggleDataVisibility(i);
+                boton.setAttribute('aria-pressed', String(grafico.getDataVisibility(i)));
+                grafico.update();
+            });
+            item.appendChild(boton);
+            leyenda.appendChild(item);
+        });
+        canvas.parentNode.insertAdjacentElement('afterend', leyenda);
         return instancias[id];
     }
 
