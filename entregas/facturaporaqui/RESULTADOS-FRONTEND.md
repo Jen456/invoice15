@@ -262,3 +262,50 @@ Inspección visual de la captura final del dashboard: nombre completo envuelto d
 Petición: sustituir los símbolos de flecha señalados en la cabecera y el panel ilustrativo por el colibrí Ingenioso. Cambiado `landing/index.html`: logo PNG existente en ambas posiciones, también en pie de página para coherencia, y favicon de marca. Ajustados alineación, tamaño y texto alternativo sin modificar navegación, precios ni formulario.
 
 Prueba real Chromium: imágenes cargadas y sin desbordamiento horizontal a 360/390/768/1024/1440px. Capturas: `capturas/landing-colibri-escritorio.png` y `capturas/landing-colibri-movil.png`. No desplegado; Claude debe publicar el directorio landing completo con assets en facturaporaqui.com. No cambia app.facturaporaqui.com ni backend.
+
+## 11/10/2026 — Publicación de la landing `61f67f7` y de los ajustes `bf66b3e` (Claude)
+
+### Qué se hizo
+- Se leyeron HANDOFF.md y este informe, y se trajeron de GitHub `bf66b3e` y `61f67f7`, que descienden de `2199c14`. No tocan backend, modelos, migraciones, configuración ni `.env`. El escaneo de secretos de los 26 objetos nuevos salió limpio.
+- **Corrección `1b6785d`:** el listado de usuarios (`/user/`) daba «DataTables warning: Ajax error». `User.toJSON()` incluía `email_verified_at`, una fecha y hora que `json.dumps` no sabe convertir. Afectaba a usuarios del registro propio con el correo confirmado, y también habría roto el listado de ventas, que incluye al vendedor. Ahora se envía como texto `AAAA-MM-DD`.
+- **`deploy/scripts/publicar-landing.sh --publicar <ref>`** (`a6b77d5`) publica además `landing/assets/`, solo con imágenes, CSS, JS y fuentes; los `.md` de marca no se publican. Guarda antes una copia del sitio en `private/` y comprueba que cada recurso citado por `index.html` responde 200.
+- Se ejecutaron las pruebas y se desplegó la app, luego se publicó la landing y se verificó en el dominio.
+
+### Pruebas
+- **PostgreSQL 16:** 169 aprobadas. **SQLite:** 166 aprobadas y 3 omitidas (solo PostgreSQL).
+- Sin migraciones pendientes; `node --check static/js/graficos.js` correcto.
+
+### Publicación
+- **App:** `a6b77d5` en app.facturaporaqui.com desde el 11/10/2026 a las 02:16 UTC.
+  - Respaldo `pre-20261011-021620-a6b77d52.dump`. Sin migraciones. Salud 200.
+  - Revertir: `bash deploy/scripts/desplegar.sh pruebas --revertir`.
+- **Landing:** `61f67f7` en facturaporaqui.com a las 02:17 UTC: `index.html` más `assets/brand/{isotipo,favicon}.png`.
+  - Copia previa: `private/landing-antes-20261011021701.tar.gz`.
+  - `index.html` servido idéntico (sha256 `8588d3fac9a8…`); los dos recursos responden 200.
+- Tras el despliegue, PayPhone sigue configurado (Producción, Suprohosting) y los planes de las empresas no cambiaron.
+
+### Verificación en el dominio
+A través de Cloudflare, con empresas ficticias y sin pagos:
+
+| Comprobación | Resultado |
+|---|---|
+| Landing, cabecera (1366/390/360) | Colibrí `assets/brand/isotipo.png` cargado, 48×48, alt «Colibrí de FacturaPorAquí» |
+| Landing, panel ilustrativo | Colibrí cargado, 29×29, junto a «FacturaPorAquí / Mi empresa» |
+| Landing, pie y favicon | Colibrí en el pie; favicon `assets/brand/favicon.png` |
+| Landing, general | 200, sin desbordamiento, sin errores ni peticiones externas, `www` → dominio principal |
+| Usuarios | Búsqueda AJAX 200 y sin aviso de DataTables (antes, error 500) |
+| Panel | 2 gráficos; leyenda HTML con 10 botones; `aria-pressed` pasa a `false` al pulsar; ningún nombre cortado |
+| Compañía | «Logotipo guardado.» sin ruta interna; claves sin `value`; en móvil, acciones sin posición fija |
+| Recorrido completo (1366/390/360) | Login, selector con dos empresas, menú móvil con Escape, planes con $50/$85 (sin pulsar), cambio de empresa, retorno de PayPhone: 0 fallos, 0 errores de JavaScript, 309 estáticos |
+| Datos reales | Los 10 usuarios se convierten a JSON sin error (1 con el correo confirmado) |
+
+Para probar el selector se volvió a crear una membresía temporal de rol Consulta del propietario de OTRA-DEMO en DEMOSTRACIÓN, y se borró al terminar.
+
+### Capturas
+`publicado-landing-cabecera-escritorio.png`, `publicado-landing-panel-movil.png`, `publicado-app-usuarios-escritorio.png` y `publicado-app-panel-escritorio.png`. Son del dominio publicado, con empresas ficticias y sin credenciales.
+
+### Pendientes
+- **Codex:**
+  - Optimizar `isotipo.png` y `favicon.png` (unos 500 KB cada uno y 1374×1145 para mostrarse a 48 px o menos).
+  - Validar la barra de guardado de compañía en un teléfono físico.
+- **Claude:** cifrar en la base las claves guardadas, permitir borrar una clave, respaldo diario de la base y etapa 3 (establecimientos, SRI en segundo plano, retenciones).

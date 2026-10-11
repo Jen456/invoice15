@@ -1,5 +1,26 @@
 # Handoff compartido — frontend
 
+## Estado actual — publicado `a6b77d5` y landing `61f67f7` (Claude, 11/10/2026)
+
+- **app.facturaporaqui.com:** commit `a6b77d5` desde el 11/10/2026 a las 02:16 UTC. Incluye:
+  - los ajustes visuales de Codex `bf66b3e` (leyenda del pastel, barra lateral, logotipo sin ruta, acciones de compañía en móvil y enlace de cierre);
+  - la landing de `61f67f7`;
+  - la corrección `1b6785d` del listado de usuarios: daba error 500 de DataTables cuando un usuario había confirmado su correo, porque la fecha no se convertía a JSON en `User.toJSON`;
+  - la mejora del guion de publicación de la landing (`a6b77d5`).
+
+  Se mantienen la corrección de claves (`7eb9bd0`) y PayPhone en Producción.
+  - Respaldo previo: `pre-20261011-021620-a6b77d52.dump`. Sin migraciones. Salud 200.
+  - Revertir: `bash deploy/scripts/desplegar.sh pruebas --revertir`.
+- **facturaporaqui.com:** landing de `61f67f7` con `assets/brand/isotipo.png` y `favicon.png`, publicada a las 02:17 UTC con `deploy/scripts/publicar-landing.sh --publicar 61f67f7`. El guion publica ahora también `landing/assets/` (sin los `.md`).
+  - Copia previa del sitio: `private/landing-antes-20261011021701.tar.gz`.
+  - `index.html` servido idéntico al del commit; cada recurso citado responde 200.
+- **GitHub:** `plataforma` y `frontend/etapa3` apuntan al commit que registra esta publicación (solo documentación sobre `a6b77d5`).
+- **Pruebas:** PostgreSQL 169/169; SQLite 166 más 3 omitidas. 2 nuevas en `tests/test_usuarios_json.py`.
+- **Verificación en el dominio,** a través de Cloudflare y sin completar pagos:
+  - Landing a 1366, 390 y 360 px: el colibrí carga en la cabecera (48×48), en el panel ilustrativo (29×29) y en el pie, con el favicon de marca. Sin desbordamiento, errores ni peticiones externas.
+  - App, recorrido completo a las tres medidas: login, selector con dos empresas, panel con 2 gráficos, menú móvil con Escape, compañía con 5 secciones y claves vacías, planes con $50/$85 (botones no pulsados), cambio de empresa y retorno de PayPhone. 0 fallos, 0 errores de JavaScript y 309 estáticos por vista.
+  - Además: el listado de usuarios responde 200 sin el aviso de DataTables; la leyenda nueva del pastel tiene 10 botones con `aria-pressed` que cambian al pulsar y ningún nombre cortado; el logotipo de compañía dice «Logotipo guardado.» sin ruta; los 10 usuarios reales se convierten a JSON sin error.
+
 ## Estado actual — colibrí de la landing (Codex)
 
 `landing/index.html` usa el logo Ingenioso en cabecera, panel ilustrativo y pie, más favicon. Probado localmente a cinco anchos. Pendiente de publicación por Claude en facturaporaqui.com.
@@ -9,6 +30,10 @@
 - [x] Incorporar el colibrí en los dos sitios señalados y comprobar responsive.
 
 ## Notas entre agentes — publicación de landing
+**11/10 · Claude → Codex:** landing de `61f67f7` y ajustes de `bf66b3e` publicados (app en `a6b77d5`). Pendientes visuales:
+- `isotipo.png` y `favicon.png` pesan unos 500 KB cada uno (1374×1145) y se muestran a 48 px y menos. Conviene una versión optimizada (WebP o PNG de unos 96 px) y un favicon de 32/180 px.
+- La barra de guardado en un teléfono real sigue sin validar en un dispositivo físico. En la prueba automática a 390 px las acciones ya no son fijas.
+
 
 Claude: publicar `landing/` completo, conservando `assets/brand/isotipo.png` y `assets/brand/favicon.png` en rutas relativas. No se necesita endpoint ni cambio del backend. Los ajustes visuales anteriores de la app están en `bf66b3e`; ambos cambios quedan en frontend/etapa3.
 
