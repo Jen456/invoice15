@@ -1,28 +1,37 @@
 {% load widget_tweaks %}
+{% with grupo=grupo|default:"" %}
 {% for field in form.visible_fields %}
+{% with control_id=field.auto_id|add:grupo|default:field.auto_id %}
+{% with feedback_id=control_id|add:"-feedback" %}
     <div class="form-group fp-config-campo" data-campo="{{ field.html_name }}">
         {% if field.field.widget.input_type == 'checkbox' %}
             <div class="form-check">
-                {% render_field field class="form-check-input" %}
-                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {% render_field field class="form-check-input" id=control_id %}
+                <label class="form-check-label" for="{{ control_id }}">{{ field.label }}</label>
             </div>
         {% elif field.field.widget.input_type == 'radio' or field.name == 'mode' %}
-            <span class="font-weight-bold d-block">{{ field.label }}</span>
+            <fieldset class="fp-config-opciones"><legend>{{ field.label }}</legend>
             {% for opcion in field %}
                 <div class="form-check">{{ opcion.tag }} <label class="form-check-label" for="{{ opcion.id_for_label }}">{{ opcion.choice_label }}</label></div>
             {% endfor %}
+            </fieldset>
         {% else %}
-            <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+            <label for="{{ control_id }}" class="font-weight-bold">{{ field.label }}</label>
             {% if deshabilitar_firma and field.name == 'electronic_signature' or deshabilitar_firma and field.name == 'electronic_signature_key' %}
                 {% render_field field class="form-control" disabled="disabled" %}
             {% elif field.errors %}
-                {% render_field field class="form-control is-invalid" %}
+                {% render_field field class="form-control is-invalid" aria-invalid="true" aria-describedby=feedback_id id=control_id %}
             {% else %}
-                {% render_field field class="form-control" %}
+                {% render_field field class="form-control" aria-describedby=feedback_id id=control_id %}
             {% endif %}
         {% endif %}
+        <div id="{{ feedback_id }}">
         {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
         {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+        </div>
     </div>
+{% endwith %}{% endwith %}
 {% endfor %}
 {% for error in form.non_field_errors %}{% if not form.prefix %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}{% endfor %}
+
+{% endwith %}

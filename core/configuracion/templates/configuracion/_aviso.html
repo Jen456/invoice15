@@ -1,6 +1,6 @@
 {% if fpa_config_pendiente %}
     <div class="fpa-aviso-plan fp-aviso-configuracion" role="status">
-        <i class="fas fa-list-check" aria-hidden="true"></i>
+        <span class="fp-config-notice-icon" aria-hidden="true"><i class="fas fa-list-check"></i></span>
         <span>{{ fpa_config_pendiente.mensaje }}</span>
         <a href="{{ fpa_config_pendiente.url }}" class="fpa-aviso-accion">Continuar configuración</a>
     </div>

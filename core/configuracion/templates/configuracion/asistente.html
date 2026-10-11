@@ -1,21 +1,25 @@
 {% extends 'skin.html' %}
-{% load widget_tweaks %}
+{% load widget_tweaks static %}
+{% block assets_body %}
+    <script src="{% static 'js/configuracion.js' %}" defer></script>
+{% endblock %}
 {% block breadcrumb_li %}
     <li class="breadcrumb-item active" aria-current="page"><a href="{% url 'configuracion_facturacion' %}"><i class="fas fa-list-check"></i> Configuración de facturación</a></li>
 {% endblock %}
 {% block content %}
 <div class="fp-config" data-paso="{{ paso }}">
     <header class="fp-config-header">
+        <img src="{% static 'img/brand/isotipo.png' %}" alt="Colibrí Ingenioso de FacturaPorAquí" width="72" height="72" class="fp-config-mascota">
         <p class="fp-eyebrow">Configuración de facturación</p>
         <h1 class="h3">Paso {{ paso }} de 5 · {{ titulo_paso }}</h1>
         <p class="text-muted">Tu avance se guarda en cada paso; puedes salir y retomarlo cuando quieras. Mientras tanto puedes seguir usando el inventario.</p>
     </header>
 
     <nav aria-label="Pasos de la configuración">
-        <ol class="fp-config-pasos list-unstyled d-flex flex-wrap">
+        <ol class="fp-config-pasos list-unstyled">
             {% for p in estado.pasos %}
-                <li class="fp-config-paso mr-3 mb-2{% if p.completo %} fp-config-paso-completo{% endif %}{% if p.numero == paso %} fp-config-paso-actual{% endif %}" {% if p.numero == paso %}aria-current="step"{% endif %}>
-                    <a href="{% url 'configuracion_paso' p.numero %}">{{ p.numero }}. {{ p.titulo }}</a>
+                <li class="fp-config-paso{% if p.completo %} fp-config-paso-completo{% endif %}{% if p.numero == paso %} fp-config-paso-actual{% endif %}" {% if p.numero == paso %}aria-current="step"{% endif %}>
+                    <a href="{% url 'configuracion_paso' p.numero %}"><span class="fp-config-numero" aria-hidden="true">{% if p.completo %}<i class="fas fa-check"></i>{% else %}{{ p.numero }}{% endif %}</span><span>{{ p.titulo }}<small>{% if p.numero == paso %}Estás aquí{% elif p.completo %}Completado{% else %}Pendiente{% endif %}</small></span></a>
                     <span class="sr-only">{% if p.completo %}(completo){% else %}(pendiente){% endif %}</span>
                 </li>
             {% endfor %}
@@ -26,11 +30,12 @@
         <div class="alert {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'warning' %}alert-warning{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
     {% endif %}{% endfor %}
 
-    <section class="card"><div class="card-body">
+    <section class="card fp-config-panel"><div class="card-body">
+    <div class="fp-config-panel-heading"><span class="fp-eyebrow">Paso {{ paso }} de 5</span><h2>{{ titulo_paso }}</h2></div>
     {% if paso == 1 %}
         <form method="post" novalidate>
             {% csrf_token %}
-            {% include 'configuracion/_campos.html' with form=form %}
+            <div class="fp-config-grid">{% include 'configuracion/_campos.html' with form=form %}</div>
             <button type="submit" class="btn fpa-btn-pagar">Guardar y continuar</button>
         </form>
 
@@ -57,17 +62,17 @@
             <p class="text-muted">Aún no registras ningún establecimiento.</p>
         {% endif %}
         <div class="row">
-            <div class="col-12 col-lg-6">
+            <div class="col-12 col-lg-6 fp-config-add">
                 <h3 class="h6">Agregar establecimiento</h3>
                 <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="agregar_establecimiento">
-                    {% include 'configuracion/_campos.html' with form=form_establecimiento %}
+                    {% include 'configuracion/_campos.html' with form=form_establecimiento grupo="-establecimiento" %}
                     <button type="submit" class="btn btn-outline-secondary">Agregar establecimiento</button>
                 </form>
             </div>
-            <div class="col-12 col-lg-6">
+            <div class="col-12 col-lg-6 fp-config-add">
                 <h3 class="h6">Agregar punto de emisión</h3>
                 <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="agregar_punto">
-                    {% include 'configuracion/_campos.html' with form=form_punto %}
+                    {% include 'configuracion/_campos.html' with form=form_punto grupo="-punto" %}
                     <button type="submit" class="btn btn-outline-secondary">Agregar punto</button>
                 </form>
             </div>
@@ -92,7 +97,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="ambiente" value="{{ ambiente }}">
                 {% for d in documentos %}
-                    <fieldset class="fp-form-section" data-tipo="{{ d.tipo }}">
+                    <fieldset class="fp-form-section fp-config-documento" data-tipo="{{ d.tipo }}" data-punto="{{ punto.full_code }}" data-proximo="{{ d.proximo|default:'' }}">
                         <legend>{{ d.nombre }}</legend>
                         {% if d.secuencia %}
                             <dl class="fp-config-secuencia">
@@ -105,6 +110,7 @@
                         {% endif %}
                         {% for error in d.form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
                         {% include 'configuracion/_campos.html' with form=d.form %}
+                        <div class="fp-config-preview" aria-live="polite" hidden><span>Número del próximo documento</span><strong></strong><small>Vista previa. El servidor valida la numeración al guardar.</small></div>
                     </fieldset>
                 {% endfor %}
                 <button type="submit" class="btn fpa-btn-pagar">Guardar numeración</button>
@@ -122,7 +128,7 @@
 
     {% elif paso == 5 %}
         <p>Revisa con qué número continuará cada documento en <strong>{{ estado.ambiente.nombre }}</strong> desde <strong>{{ estado.punto_codigo|default:"(sin punto)" }}</strong>.</p>
-        <table class="table table-sm">
+        <div class="table-responsive fp-config-review" tabindex="0" role="region" aria-label="Revisión de numeración"><table class="table table-sm">
             <thead><tr><th scope="col">Documento</th><th scope="col">Último número utilizado</th><th scope="col">Número del próximo documento</th><th scope="col">Estado</th></tr></thead>
             <tbody>
             {% for d in estado.documentos %}
@@ -130,14 +136,14 @@
                     <td>{% if not d.existe %}Se creará al confirmar{% elif d.confirmado %}Confirmada{% else %}Por confirmar{% endif %}</td></tr>
             {% endfor %}
             </tbody>
-        </table>
+        </table></div>
         {% if estado.requisitos.factura %}
             <h2 class="h6">Pendiente para emitir</h2>
             <ul>{% for r in estado.requisitos.factura %}<li>{{ r.mensaje }} <a href="{{ r.url }}">Resolver</a></li>{% endfor %}</ul>
         {% endif %}
         <form method="post" novalidate>
             {% csrf_token %}
-            {% include 'configuracion/_campos.html' with form=form %}
+            <div class="fp-config-grid">{% include 'configuracion/_campos.html' with form=form %}</div>
             <button type="submit" class="btn fpa-btn-pagar">Confirmar configuración</button>
         </form>
     {% endif %}

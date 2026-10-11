@@ -563,3 +563,35 @@ Sin desbordamiento horizontal ni errores en ningún ancho, ni en la vista previa
 ### Pendientes
 - **Cliente real (empresa 6):** debe completar el asistente para poder vender y emitir. Sugerencia: avisarle que lo encontrará en «Configuración de facturación».
 - **Codex:** diseño del asistente según el contrato de HANDOFF.md.
+
+
+## 11/10/2026 — diseño del asistente de configuración (Codex)
+
+### Base y alcance
+
+Leídos AGENTS, HANDOFF (estado publicado d275331 y contrato) y este informe. Rama frontend/etapa3 actualizada por avance directo a 0b69f22. Solo presentación; no se modificaron backend, modelos, formularios Python, servicios, migraciones, SRI ni .env. No despliegue.
+
+### Archivos y decisiones
+
+- `core/configuracion/templates/configuracion/asistente.html`: colibrí Ingenioso, jerarquía de títulos y cinco tarjetas de progreso con estado escrito (no solo color), columnas adaptables, formularios de establecimiento/punto separados, numeración por documento y tabla de revisión con desplazamiento local accesible. Conservados nombres, acciones, CSRF, prefijos 01/04, ambiente y multipart.
+- `_campos.html`: grupos de opciones con fieldset/legend, etiquetas asociadas, IDs distintos en los dos códigos del paso 2, errores invalid-feedback conservados, aria-invalid y asociaciones de ayuda en campos de texto. Mensajes del servidor sin reformular; clave sigue PasswordInput sin valor.
+- `_aviso.html`: aviso Continuar configuración con icono y tema celeste.
+- `_resumen_compania.html`: jerarquía visual para solo lectura, números legibles y enlace al asistente; misma fuente única.
+- `static/css/facturaporaqui.css`: reemplazado bloque mínimo fp-config por diseño completo coral/celeste/azul oscuro; foco visible, controles amplios, móvil sin desbordamiento y texto de enlaces largo envuelto. Se corrigió el nowrap heredado que hacía desbordar el enlace de Compañía a 360 px.
+- `static/js/configuracion.js`: vista previa de último + 1 para otro sistema, 1 para nuevo y dato del servidor para mantener. Oculta vista si formato/rango/punto no coincide. No cambia datos POST ni numeración real; servidor recalcula y valida.
+- `core/pos/templates/receipt/list.html` y `core/pos/static/receipt/js/list.js`: introducción Solo consulta y acceso al asistente, estado con badge, valores de tabla escapados y ningún botón de creación/edición. Columnas Último número utilizado / Número del próximo documento conservadas.
+- HANDOFF y este informe, capturas `asistente-diseno-*.png`.
+
+### Validación ejecutada
+
+Suite completa SQLite: **212 aprobadas, 5 omitidas** en 19,14 s; las omitidas necesitan PostgreSQL. Node --check para ambos JS y git diff --check sin incidencias.
+
+Chromium/Playwright local (servidor 8013, configuración externa al repo con PayPhone vacío): empresa ficticia nueva sin numeración preparada con helpers, no insert_test_data; sesión real de propietario y pasos 1–5 completados por interfaz. No se ejercitó registro/correo en esta tarea. Establecimiento 002, punto 001; factura desde último 125, nota de crédito nueva, Pruebas, revisión y confirmación: próximo 002-001-000000126. Error por no confirmar códigos mostrado con texto del servidor; clave de firma vacía. No se subió firma ni se emitió comprobante ni se completó pago.
+
+Pasos 1–5 y Comprobantes a 360/390/768/1024/1440 px sin overflow de documento; tabla ancha permanece en su contenedor. Vista previa y resumen Compañía a los mismos tamaños, sin overflow final. Vista previa 125 → 126 y rechazo visual de código de otro punto. Navegación Tab y orden del paso 2 comprobados, IDs sin duplicados en esa pantalla, controles radio/checkbox operados; contexto de navegador con movimiento reducido. Sin errores JS ni recursos HTTP fallidos en recorrido completo. Al incorporar el JS se reinició servidor local para descartar plantillas cacheadas antes de verificarlo.
+
+Inspeccionadas capturas de escritorio del paso 1 y móvil del paso 3. Capturas de los cinco pasos en escritorio/móvil, error del paso 2, Comprobantes y Compañía. Datos ficticios únicamente; no claves ni tokens.
+
+### Pendientes y publicación
+
+No desplegado. Claude publica con respaldo y collectstatic, incluyendo el nuevo JS. No hacen falta cambios backend para el diseño. PostgreSQL no ejecutado por Codex; pruebas de concurrencia permanecen omitidas localmente. No prueba de lector de pantalla ni teléfono físico. Optimización de PNG y revisión adicional de Plan y pagos quedan como tareas opcionales posteriores; no se tocaron en esta entrega.

@@ -1,5 +1,27 @@
 # Handoff compartido — frontend
 
+## Estado actual — diseño del asistente terminado (Codex, 11/10/2026)
+
+Trabajo en `frontend/etapa3` sobre `0b69f22`, por avance directo sin reescribir historial. Aplicados branding Ingenioso, navegación de cinco pasos, formularios y errores accesibles, aviso de cabecera, resumen de solo lectura y lista de Comprobantes. Vista previa orientativa del próximo número en paso 3. Backend intacto. **No desplegado**: la base publicada informada por Claude sigue siendo `d275331`.
+
+Validación final: **212 pruebas SQLite aprobadas, 5 omitidas exclusivas de PostgreSQL**. Chromium a 360/390/768/1024/1440px, recorrido local completo con datos ficticios, teclado, movimiento reducido, errores de paso 2, contraseña vacía, numeración 125 → 126 y nota de crédito desde 1. Sin pagos ni emisiones. Capturas `asistente-diseno-*.png`.
+
+## Pendiente para Codex — entrega de diseño
+
+- [x] Diseñar asistente, campos, progreso y errores sin alterar contratos.
+- [x] Diseñar aviso y resumen de Compañía.
+- [x] Revisar Comprobantes como consulta.
+- [x] Vista previa orientativa de numeración; validación definitiva del servidor preservada.
+- [x] Documentar pruebas y capturas.
+- [ ] Pendientes opcionales anteriores: optimización de imágenes y revisión adicional de Plan y pagos.
+- [ ] Validar barra de guardado en teléfono físico (no disponible en este entorno).
+
+## Notas entre agentes — entrega para publicar
+
+Claude: no se requieren datos ni endpoints nuevos. Publicar cuando revise por su procedimiento con respaldo. Incluir `static/js/configuracion.js` en collectstatic; el asistente lo carga con defer. El cálculo visual no reserva números ni acepta cambios por sí mismo: mantiene POST y validación del servidor.
+
+Los atributos `name`, acciones paso 2, prefijos 01/04, parámetros de ambiente, CSRF y multipart permanecen intactos. Solo se diferencian IDs DOM de los campos de establecimiento/punto (`-establecimiento`, `-punto`) para evitar duplicados y asociar etiquetas correctamente; nombres POST originales intactos. Mensajes configuracion y ayudas del backend conservados. No se cambiaron vistas, formularios, servicios, modelos ni migraciones.
+
 ## Estado actual — asistente de configuración publicado `d275331` (Claude, 11/10/2026)
 
 - **Publicado:** `d275331` en app.facturaporaqui.com desde el 11/10/2026 a las 19:37 UTC.
@@ -31,10 +53,10 @@
 
 ## Pendiente para Codex — asistente de configuración
 
-- [ ] Diseñar `core/configuracion/templates/configuracion/asistente.html` y `_campos.html` (pasos, formularios, errores y progreso) siguiendo el contrato de abajo. Conservar los `name` de los campos, `action`, CSRF y los textos de error del servidor.
-- [ ] Diseñar el aviso `configuracion/_aviso.html` (cabecera) y el resumen de solo lectura `configuracion/_resumen_compania.html` (sección «Establecimiento y punto de emisión» de Compañía).
-- [ ] Revisar la lista de Comprobantes (solo consulta: `receipt/list.html` y `receipt/js/list.js`).
-- [ ] Opcional: vista previa del «Número del próximo documento» en el paso 3 mientras se escribe. El servidor recalcula y valida igual.
+- [x] Diseñar `core/configuracion/templates/configuracion/asistente.html` y `_campos.html` (pasos, formularios, errores y progreso) siguiendo el contrato de abajo. Conservar los `name` de los campos, `action`, CSRF y los textos de error del servidor.
+- [x] Diseñar el aviso `configuracion/_aviso.html` (cabecera) y el resumen de solo lectura `configuracion/_resumen_compania.html` (sección «Establecimiento y punto de emisión» de Compañía).
+- [x] Revisar la lista de Comprobantes (solo consulta: `receipt/list.html` y `receipt/js/list.js`).
+- [x] Opcional: vista previa del «Número del próximo documento» en el paso 3 mientras se escribe. El servidor recalcula y valida igual.
 
 ## Notas entre agentes — contrato del asistente (Claude → Codex)
 

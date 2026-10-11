@@ -4,6 +4,9 @@
     <script src="{% static 'receipt/js/list.js' %}"></script>
 {% endblock %}
 
+{% block content_list_before %}
+    <div class="fp-receipt-intro"><p class="fp-eyebrow">Numeración de tu empresa · Solo consulta</p><p>Consulta el último número utilizado y el <strong>Número del próximo documento</strong> por ambiente y punto de emisión. Los cambios se realizan en el asistente de configuración.</p><a class="btn btn-outline-secondary" href="{% url 'configuracion_facturacion' %}">Revisar configuración</a></div>
+{% endblock %}
 {% block columns %}
     <th>Comprobante</th>
     <th>Ambiente</th>

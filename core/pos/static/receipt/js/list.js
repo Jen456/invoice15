@@ -26,18 +26,20 @@ var receipt = {
                 {"data": "confirmed"},
             ],
             columnDefs: [
+                {targets: [0], render: $.fn.dataTable.render.text()},
                 {
                     targets: [1, 2, 3, 4, 5],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return data || '—';
+                        return $.fn.dataTable.render.text().display(data || '—');
                     }
                 },
                 {
                     targets: [-1],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return data ? 'Confirmada' : 'Por confirmar';
+                        if (type !== 'display') { return data ? 'Confirmada' : 'Por confirmar'; }
+                        return '<span class="badge fpa-badge">' + (data ? 'Confirmada' : 'Por confirmar') + '</span>';
                     }
                 },
             ],

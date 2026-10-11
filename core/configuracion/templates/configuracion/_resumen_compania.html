@@ -1,5 +1,6 @@
 {# Solo lectura en «Compañía»: la fuente única es el asistente de configuración de facturación. #}
 <div class="fp-config-resumen" data-config-completo="{{ config.completo|yesno:'true,false' }}">
+    <p class="fp-eyebrow">Tu configuración de emisión · Solo lectura</p>
     <dl class="row mb-2">
         <dt class="col-sm-5">Punto con el que emites</dt><dd class="col-sm-7">{{ config.punto_codigo|default:"Sin configurar" }}</dd>
         <dt class="col-sm-5">Dirección del establecimiento</dt><dd class="col-sm-7">{{ config.punto.establishment.address|default:"Sin configurar" }}</dd>
