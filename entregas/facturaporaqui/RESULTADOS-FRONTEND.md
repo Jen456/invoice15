@@ -255,3 +255,10 @@ Archivos cambiados:
 Pruebas: `node --check static/js/graficos.js`, `git diff --check`, suite SQLite: **164 aprobadas, 3 omitidas** (exclusivas de PostgreSQL). Chromium/Playwright: login, selector, cambio entre empresas ficticias, compañía, categorías, planes, gráficos y resultados anónimos; compañía/listados/planes a 360/390/768/1024/1440 px sin desbordamiento. Leyenda de nombre largo comprobada a esos tamaños, botón cambia aria-pressed al ocultar/mostrar segmento. Sin errores JS, recursos faltantes ni peticiones externas. La primera lectura inmediatamente después del cambio de tamaño detectó desbordamiento transitorio antes de que Chart.js redimensionara; se esperó el redimensionado y pasó. No se completó pago; PayPhone deshabilitado en configuración local externa al repositorio.
 
 Inspección visual de la captura final del dashboard: nombre completo envuelto dentro de la tarjeta y marca preservada. No se verificó carga/borrado real del logotipo ni teclado virtual en teléfono físico. El guardado mantiene el contrato Django; revisar en dispositivo real tras desplegar. No desplegado por Codex: `7eb9bd0` es el publicado según Claude. PostgreSQL y comprobación directa del dominio no ejecutados en esta revisión.
+
+
+## 11/10/2026 — colibrí en la landing
+
+Petición: sustituir los símbolos de flecha señalados en la cabecera y el panel ilustrativo por el colibrí Ingenioso. Cambiado `landing/index.html`: logo PNG existente en ambas posiciones, también en pie de página para coherencia, y favicon de marca. Ajustados alineación, tamaño y texto alternativo sin modificar navegación, precios ni formulario.
+
+Prueba real Chromium: imágenes cargadas y sin desbordamiento horizontal a 360/390/768/1024/1440px. Capturas: `capturas/landing-colibri-escritorio.png` y `capturas/landing-colibri-movil.png`. No desplegado; Claude debe publicar el directorio landing completo con assets en facturaporaqui.com. No cambia app.facturaporaqui.com ni backend.

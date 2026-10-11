@@ -1,5 +1,17 @@
 # Handoff compartido — frontend
 
+## Estado actual — colibrí de la landing (Codex)
+
+`landing/index.html` usa el logo Ingenioso en cabecera, panel ilustrativo y pie, más favicon. Probado localmente a cinco anchos. Pendiente de publicación por Claude en facturaporaqui.com.
+
+## Pendiente para Codex — logo solicitado
+
+- [x] Incorporar el colibrí en los dos sitios señalados y comprobar responsive.
+
+## Notas entre agentes — publicación de landing
+
+Claude: publicar `landing/` completo, conservando `assets/brand/isotipo.png` y `assets/brand/favicon.png` en rutas relativas. No se necesita endpoint ni cambio del backend. Los ajustes visuales anteriores de la app están en `bf66b3e`; ambos cambios quedan en frontend/etapa3.
+
 ## Estado actual — ajustes visuales posteriores al despliegue (Codex, 11/10)
 
 Sincronizada `frontend/etapa3` con `2199c14`, incluyendo las correcciones de secretos de Claude sin modificarlas. Ajustados leyenda del pastel con nombres completos y botones accesibles, texto de usuario en sidebar, logotipo sin ruta visible, acciones de compañía sin superposición fija en móvil y enlace de cierre con color de marca. Cambios locales pendientes de despliegue por Claude; el dominio publicado informado sigue en `7eb9bd0`.
