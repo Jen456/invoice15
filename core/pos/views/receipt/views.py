@@ -1,11 +1,28 @@
+"""Comprobantes: consulta de las secuencias. Se configuran solo en el asistente (/configuracion/facturacion/)."""
 import json
 
-from django.http import HttpResponse
+from django.contrib import messages
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView, TemplateView
 
 from core.pos.forms import Receipt, ReceiptForm
 from core.security.mixins import GroupPermissionMixin
+
+AVISO_ASISTENTE = ('La numeración de comprobantes se configura en «Configuración de facturación» (paso 3), '
+                   'para que establecimiento, punto de emisión, ambiente y secuencias no se contradigan.')
+
+
+class SoloAsistenteMixin:
+    """Crear, editar o borrar secuencias desde aquí podría reiniciarlas o duplicarlas: se redirige al asistente."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return super().dispatch(request, *args, **kwargs)
+        if request.method == 'GET':
+            messages.warning(request, AVISO_ASISTENTE, extra_tags='configuracion')
+            return HttpResponseRedirect('/configuracion/facturacion/paso/3/')
+        return JsonResponse({'error': AVISO_ASISTENTE}, status=403)
 
 
 class ReceiptListView(GroupPermissionMixin, TemplateView):
@@ -29,11 +46,11 @@ class ReceiptListView(GroupPermissionMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Listado de Comprobantes'
-        context['create_url'] = reverse_lazy('receipt_create')
+        context['config_url'] = '/configuracion/facturacion/paso/3/'
         return context
 
 
-class ReceiptCreateView(GroupPermissionMixin, CreateView):
+class ReceiptCreateView(SoloAsistenteMixin, GroupPermissionMixin, CreateView):
     model = Receipt
     template_name = 'receipt/create.html'
     form_class = ReceiptForm
@@ -68,7 +85,7 @@ class ReceiptCreateView(GroupPermissionMixin, CreateView):
         return context
 
 
-class ReceiptUpdateView(GroupPermissionMixin, UpdateView):
+class ReceiptUpdateView(SoloAsistenteMixin, GroupPermissionMixin, UpdateView):
     model = Receipt
     template_name = 'receipt/create.html'
     form_class = ReceiptForm
@@ -107,7 +124,7 @@ class ReceiptUpdateView(GroupPermissionMixin, UpdateView):
         return context
 
 
-class ReceiptDeleteView(GroupPermissionMixin, DeleteView):
+class ReceiptDeleteView(SoloAsistenteMixin, GroupPermissionMixin, DeleteView):
     model = Receipt
     template_name = 'delete.html'
     success_url = reverse_lazy('receipt_list')

@@ -9,6 +9,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, FormView
 
 from core.pos.forms import CreditNoteForm, CreditNote, CreditNoteDetail, Company, Sale, Receipt, SaleDetail, VOUCHER_TYPE, INVOICE_STATUS, IDENTIFICATION_TYPE
+from core.configuracion.servicios import receipt_para_emitir, requisitos_de_emision
 from core.pos.utilities.sri import SRI
 from core.reports.forms import ReportForm
 from core.security.mixins import GroupPermissionMixin
@@ -76,7 +77,7 @@ class CreditNoteCreateView(GroupPermissionMixin, CreateView):
                     credit_note.motive = request.POST['motive']
                     credit_note.company = company
                     credit_note.environment_type = credit_note.company.environment_type
-                    credit_note.receipt = Receipt.objects.get(voucher_type=VOUCHER_TYPE[1][0], establishment_code=credit_note.company.establishment_code, issuing_point_code=credit_note.company.issuing_point_code)
+                    credit_note.receipt = receipt_para_emitir(company, VOUCHER_TYPE[1][0], electronica='create_electronic_invoice' in request.POST)
                     credit_note.voucher_number = credit_note.generate_voucher_number()
                     credit_note.voucher_number_full = credit_note.get_voucher_number_full()
                     credit_note.iva = iva
@@ -120,10 +121,10 @@ class CreditNoteCreateView(GroupPermissionMixin, CreateView):
         return HttpResponse(json.dumps(data), content_type='application/json')
 
     def get(self, request, *args, **kwargs):
-        try:
-            self.voucher_number_full = CreditNote().generate_voucher_number_full()
-        except Receipt.DoesNotExist:
-            messages.error(request, 'Configura primero el comprobante de Nota de Crédito (Comprobantes) para tu establecimiento y punto de emisión.')
+        self.voucher_number_full = CreditNote().generate_voucher_number_full()
+        if not self.voucher_number_full:
+            faltan = requisitos_de_emision(request.company, VOUCHER_TYPE[1][0], electronica=False)
+            messages.error(request, faltan[0]['mensaje'] if faltan else 'Configura la numeración de notas de crédito.')
             return HttpResponseRedirect(self.success_url)
         return super().get(request, *args, **kwargs)
 

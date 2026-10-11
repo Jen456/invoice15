@@ -101,3 +101,25 @@ def crear_venta(empresa, cliente, empleado, producto, cantidad=2):
                                   subtotal=producto.pvp * cantidad, total=producto.pvp * cantidad)
         venta.calculate_invoice()
         return venta
+
+
+def configurar_facturacion(empresa, estab='001', punto='001', ultimo_factura=0, ultimo_nota=0, ambiente=None):
+    """Configuración de facturación confirmada (como al terminar el asistente), sin pasar por las pantallas."""
+    from django.utils import timezone
+
+    from core.pos.models import BillingSetup, EmissionPoint, Establishment
+    ambiente = ambiente or empresa.environment_type
+    with company_context(empresa):
+        est, _ = Establishment.objects.get_or_create(code=estab, defaults={'address': 'Av. Ficticia 1'})
+        pto, _ = EmissionPoint.objects.get_or_create(establishment=est, code=punto, defaults={'is_default': True})
+        ahora = timezone.now()
+        for tipo, ultimo in (('01', ultimo_factura), ('04', ultimo_nota), ('08', 0)):
+            Receipt.objects.update_or_create(voucher_type=tipo, environment_type=ambiente, establishment_code=estab,
+                                             issuing_point_code=punto, defaults={'sequence': ultimo, 'emission_point': pto,
+                                                                                 'origin': 'nuevo', 'confirmed_at': ahora})
+        setup, _ = BillingSetup.objects.get_or_create()
+        setup.completed_steps, setup.current_step, setup.completed_at = [1, 2, 3, 4, 5], 5, ahora
+        setup.save()
+    Company.objects.filter(pk=empresa.pk).update(establishment_code=estab, issuing_point_code=punto, environment_type=ambiente)
+    empresa.refresh_from_db()
+    return pto

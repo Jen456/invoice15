@@ -1,0 +1,10 @@
+{# Solo lectura en «Compañía»: la fuente única es el asistente de configuración de facturación. #}
+<div class="fp-config-resumen" data-config-completo="{{ config.completo|yesno:'true,false' }}">
+    <dl class="row mb-2">
+        <dt class="col-sm-5">Punto con el que emites</dt><dd class="col-sm-7">{{ config.punto_codigo|default:"Sin configurar" }}</dd>
+        <dt class="col-sm-5">Dirección del establecimiento</dt><dd class="col-sm-7">{{ config.punto.establishment.address|default:"Sin configurar" }}</dd>
+        <dt class="col-sm-5">Ambiente</dt><dd class="col-sm-7">{{ config.ambiente.nombre }}</dd>
+        {% for d in config.documentos %}{% if d.tipo != '08' %}<dt class="col-sm-5">Próxima {{ d.nombre|lower }}</dt><dd class="col-sm-7">{{ d.proximo_completo|default:"Sin configurar" }}</dd>{% endif %}{% endfor %}
+    </dl>
+    <p class="mb-0"><a href="/configuracion/facturacion/" class="fpa-aviso-accion">{% if config.completo %}Cambiar en Configuración de facturación{% else %}Continuar la configuración de facturación (paso {{ config.paso_actual }}){% endif %}</a></p>
+</div>

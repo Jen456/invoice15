@@ -63,4 +63,6 @@ class CompanyUpdateView(GroupPermissionMixin, UpdateView):
         context['list_url'] = self.success_url
         context['action'] = 'create_or_edit'
         context['firma_habilitada'] = tiene_plan(self.request.company)
+        from core.configuracion.servicios import estado
+        context['config_facturacion'] = estado(self.request.company)
         return context

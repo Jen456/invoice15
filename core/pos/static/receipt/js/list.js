@@ -15,31 +15,29 @@ var receipt = {
                 },
                 dataSrc: ""
             },
+            // Solo consulta: la numeración se configura en el asistente (/configuracion/facturacion/).
             columns: [
-                {"data": "id"},
-                {"data": "voucher_type.id"},
                 {"data": "voucher_type.name"},
+                {"data": "environment_type.name"},
                 {"data": "establishment_code"},
                 {"data": "issuing_point_code"},
-                {"data": "sequence"},
-                {"data": "id"},
+                {"data": "last_number_full"},
+                {"data": "next_number_full"},
+                {"data": "confirmed"},
             ],
             columnDefs: [
                 {
-                    targets: [-2, -3, -4, -5, -6],
+                    targets: [1, 2, 3, 4, 5],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return data;
+                        return data || '—';
                     }
                 },
                 {
                     targets: [-1],
                     class: 'text-center',
-                    orderable: false,
                     render: function (data, type, row) {
-                        var buttons = '<a href="' + pathname + 'update/' + row.id + '/" data-toggle="tooltip" title="Editar" class="btn btn-warning btn-xs btn-flat"><i class="fas fa-edit"></i></a> ';
-                        buttons += '<a href="' + pathname + 'delete/' + row.id + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
-                        return buttons;
+                        return data ? 'Confirmada' : 'Por confirmar';
                     }
                 },
             ],

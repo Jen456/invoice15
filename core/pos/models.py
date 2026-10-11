@@ -13,7 +13,8 @@ from barcode import writer
 from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
 from django.core.files.base import ContentFile
-from django.db import models
+from django.core.validators import RegexValidator
+from django.db import models, transaction
 from django.db.models import FloatField
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
@@ -347,11 +348,88 @@ class Client(TenantModel):
         verbose_name_plural = 'Clientes'
 
 
+# Códigos del SRI: tres dígitos con ceros iniciales (001, 002...). 000 no es válido.
+codigo_sri = RegexValidator(r'^(?!000)\d{3}$', 'Usa tres dígitos, por ejemplo 001 (000 no es válido).')
+MAX_SECUENCIAL = 999999999
+
+
+class Establishment(TenantModel):
+    """Establecimiento registrado en el SRI (estab del comprobante)."""
+    code = models.CharField(max_length=3, validators=[codigo_sri], verbose_name='Código del establecimiento')
+    name = models.CharField(max_length=100, blank=True, verbose_name='Nombre del establecimiento')
+    address = models.CharField(max_length=200, verbose_name='Dirección del establecimiento')
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        verbose_name = 'Establecimiento'
+        verbose_name_plural = 'Establecimientos'
+        ordering = ('code',)
+        constraints = [models.UniqueConstraint(fields=['company', 'code'], name='establecimiento_unico_por_empresa')]
+
+    def __str__(self):
+        return f'{self.code} · {self.name or self.address}'
+
+
+class EmissionPoint(TenantModel):
+    """Punto de emisión de un establecimiento (ptoEmi del comprobante)."""
+    establishment = models.ForeignKey(Establishment, on_delete=models.PROTECT, related_name='points', verbose_name='Establecimiento')
+    code = models.CharField(max_length=3, validators=[codigo_sri], verbose_name='Código del punto de emisión')
+    description = models.CharField(max_length=100, blank=True, verbose_name='Descripción')
+    is_default = models.BooleanField(default=False, verbose_name='Punto con el que se emite')
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        verbose_name = 'Punto de emisión'
+        verbose_name_plural = 'Puntos de emisión'
+        ordering = ('establishment__code', 'code')
+        constraints = [
+            models.UniqueConstraint(fields=['establishment', 'code'], name='punto_unico_por_establecimiento'),
+            models.UniqueConstraint(fields=['company'], condition=models.Q(is_default=True), name='un_punto_predeterminado_por_empresa'),
+        ]
+
+    def __str__(self):
+        return f'{self.establishment.code}-{self.code}'
+
+    @property
+    def full_code(self):
+        return f'{self.establishment.code}-{self.code}'
+
+
+class BillingSetup(TenantModel):
+    """Progreso del asistente de configuración de facturación (uno por empresa)."""
+    current_step = models.PositiveSmallIntegerField(default=1, verbose_name='Paso actual')
+    completed_steps = models.JSONField(default=list, blank=True, verbose_name='Pasos completados')
+    production_confirmed = models.BooleanField(default=False, verbose_name='Producción confirmada')
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Configuración confirmada el')
+    completed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuración de facturación'
+        verbose_name_plural = 'Configuraciones de facturación'
+        constraints = [models.UniqueConstraint(fields=['company'], name='una_configuracion_por_empresa')]
+
+
 class Receipt(TenantModel):
+    """Secuencia de numeración por empresa, ambiente, establecimiento, punto de emisión y tipo.
+
+    `sequence` es el ÚLTIMO número utilizado: el próximo documento lleva
+    sequence + 1 y se reserva con reservar_numero() bajo bloqueo de fila.
+    """
+    ORIGINS = (('nuevo', 'Empieza en 000000001'), ('otro_sistema', 'Continúa la numeración de otro sistema'),
+               ('existente', 'Existente antes del asistente'))
     voucher_type = models.CharField(max_length=10, choices=VOUCHER_TYPE, verbose_name='Tipo de Comprobante')
     establishment_code = models.CharField(max_length=3, verbose_name='Código del Establecimiento Emisor')
     issuing_point_code = models.CharField(max_length=3, verbose_name='Código del Punto de Emisión')
-    sequence = models.PositiveIntegerField(default=1, verbose_name='Secuencia actual')
+    sequence = models.PositiveIntegerField(default=0, verbose_name='Último número utilizado')
+    environment_type = models.PositiveIntegerField(choices=ENVIRONMENT_TYPE, default=1, verbose_name='Ambiente')
+    emission_point = models.ForeignKey(EmissionPoint, null=True, blank=True, on_delete=models.PROTECT,
+                                       related_name='sequences', verbose_name='Punto de emisión')
+    origin = models.CharField(max_length=20, choices=ORIGINS, default='existente', verbose_name='Origen de la numeración')
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name='Numeración confirmada el')
+    confirmed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
 
     def __str__(self):
         return f'{self.name} - {self.establishment_code} - {self.issuing_point_code}'
@@ -369,15 +447,71 @@ class Receipt(TenantModel):
     def get_sequence(self):
         return f'{self.sequence:09d}'
 
+    @property
+    def next_number(self):
+        return self.sequence + 1
+
+    def next_number_full(self):
+        return f'{self.establishment_code}-{self.issuing_point_code}-{self.next_number:09d}'
+
+    def last_number_full(self):
+        return f'{self.establishment_code}-{self.issuing_point_code}-{self.sequence:09d}' if self.sequence else ''
+
+    def max_used(self):
+        """Mayor secuencial ya registrado en esta secuencia (ventas y notas de crédito)."""
+        numeros = [m.all_companies.filter(receipt_id=self.pk).aggregate(n=models.Max('voucher_number'))['n']
+                   for m in (Sale, CreditNote)]
+        return max([int(n) for n in numeros if n] or [0])
+
+    @property
+    def is_used(self):
+        return Sale.all_companies.filter(receipt_id=self.pk).exists() or CreditNote.all_companies.filter(receipt_id=self.pk).exists()
+
+    def reservar_numero(self):
+        """Reserva el próximo secuencial de forma atómica (bloqueo de la fila).
+
+        Dentro de la transacción de la venta: el bloqueo dura hasta su fin, así
+        dos emisiones simultáneas reciben números distintos y, si la venta se
+        deshace, el número vuelve a quedar libre. Nunca reutiliza un número ya
+        registrado en esta secuencia.
+        """
+        with transaction.atomic():
+            fila = Receipt.all_companies.select_for_update().get(pk=self.pk)
+            numero = fila.sequence + 1
+            usados = set()
+            for modelo in (Sale, CreditNote):
+                usados.update(modelo.all_companies.filter(receipt_id=fila.pk, voucher_number__gte=f'{numero:09d}')
+                              .values_list('voucher_number', flat=True))
+            while f'{numero:09d}' in usados:
+                numero += 1
+            if numero > MAX_SECUENCIAL:
+                raise ValueError('La numeración de este comprobante llegó a 999999999. Configura un nuevo punto de emisión.')
+            fila.sequence = numero
+            fila.save(update_fields=['sequence'])
+        self.sequence = numero
+        return f'{numero:09d}'
+
+    def registrar_usado(self, numero):
+        """Tras guardar un comprobante con número dado: la secuencia nunca retrocede."""
+        Receipt.all_companies.filter(pk=self.pk, sequence__lt=int(numero)).update(sequence=int(numero))
+
     def toJSON(self):
-        item = model_to_dict(self)
+        item = model_to_dict(self, exclude=['confirmed_by'])
         item['name'] = self.name
         item['voucher_type'] = {'id': self.voucher_type, 'name': self.get_voucher_type_display()}
+        item['environment_type'] = {'id': self.environment_type, 'name': self.get_environment_type_display()}
+        item['last_number_full'] = self.last_number_full()
+        item['next_number_full'] = self.next_number_full()
+        item['confirmed'] = self.confirmed_at is not None
+        item['confirmed_at'] = self.confirmed_at.strftime('%Y-%m-%d') if self.confirmed_at else None
         return item
 
     class Meta:
         verbose_name = 'Comprobante'
         verbose_name_plural = 'Comprobantes'
+        constraints = [models.UniqueConstraint(
+            fields=['company', 'environment_type', 'voucher_type', 'establishment_code', 'issuing_point_code'],
+            name='secuencia_unica_por_ambiente_punto_y_tipo')]
 
 
 class Sale(TenantModel):
@@ -449,17 +583,22 @@ class Sale(TenantModel):
         return f'{self.receipt.establishment_code}-{self.receipt.issuing_point_code}-{self.voucher_number}'
 
     def generate_voucher_number(self, increase=True):
-        if isinstance(self.receipt.sequence, str):
-            self.receipt.sequence = int(self.receipt.sequence)
-        number = self.receipt.sequence + 1 if increase else self.receipt.sequence
-        return f'{number:09d}'
+        """increase=True reserva el próximo número (atómico); False solo muestra el último usado."""
+        if increase:
+            return self.receipt.reservar_numero()
+        return f'{int(self.receipt.sequence):09d}'
 
     def generate_voucher_number_full(self):
-        if self.receipt_id is None:
-            self.company = require_company()
-            self.receipt = Receipt.objects.get(voucher_type=VOUCHER_TYPE[0][0], establishment_code=self.company.establishment_code, issuing_point_code=self.company.issuing_point_code)
-        self.voucher_number = self.generate_voucher_number()
-        return self.get_voucher_number_full()
+        """Número del próximo documento, sin reservarlo (solo para mostrarlo)."""
+        if self.receipt_id is not None:
+            return self.receipt.next_number_full()
+        from core.configuracion.servicios import secuencia_configurada
+        self.company = require_company()
+        receipt = secuencia_configurada(self.company, VOUCHER_TYPE[0][0])
+        if receipt is None:
+            return ''
+        self.receipt = receipt
+        return receipt.next_number_full()
 
     def generate_pdf_authorized(self):
         rv = BytesIO()
@@ -608,10 +747,10 @@ class Sale(TenantModel):
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
-        if self.pk is None:
-            self.receipt.sequence = int(self.voucher_number)
-            self.receipt.save()
+        nuevo = self.pk is None
         super(Sale, self).save()
+        if nuevo:
+            self.receipt.registrar_usado(self.voucher_number)
 
     def delete(self, using=None, keep_parents=False):
         try:
@@ -650,6 +789,7 @@ class Sale(TenantModel):
     class Meta:
         verbose_name = 'Venta'
         verbose_name_plural = 'Ventas'
+        constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='venta_numero_unico_por_secuencia')]
         default_permissions = ()
         permissions = (
             ('view_sale', 'Can view Venta'),
@@ -1031,14 +1171,18 @@ class CreditNote(TenantModel):
         return f'{self.receipt.establishment_code}-{self.receipt.issuing_point_code}-{self.voucher_number}'
 
     def generate_voucher_number(self):
-        number = int(self.receipt.get_sequence()) + 1
-        return f'{number:09d}'
+        """Reserva el próximo número de nota de crédito (atómico)."""
+        return self.receipt.reservar_numero()
 
     def generate_voucher_number_full(self):
+        """Número de la próxima nota de crédito, sin reservarlo (solo para mostrarlo)."""
+        from core.configuracion.servicios import secuencia_configurada
         self.company = require_company()
-        self.receipt = Receipt.objects.get(voucher_type=VOUCHER_TYPE[1][0], establishment_code=self.company.establishment_code, issuing_point_code=self.company.issuing_point_code)
-        self.voucher_number = self.generate_voucher_number()
-        return self.get_voucher_number_full()
+        receipt = secuencia_configurada(self.company, VOUCHER_TYPE[1][0])
+        if receipt is None:
+            return ''
+        self.receipt = receipt
+        return receipt.next_number_full()
 
     def generate_pdf_authorized(self):
         rv = BytesIO()
@@ -1195,10 +1339,10 @@ class CreditNote(TenantModel):
              update_fields=None):
         if self.motive is None:
             self.motive = 'Sin detalles'
-        if self.pk is None:
-            self.receipt.sequence = int(self.voucher_number)
-            self.receipt.save()
+        nuevo = self.pk is None
         super(CreditNote, self).save()
+        if nuevo:
+            self.receipt.registrar_usado(self.voucher_number)
 
     def delete(self, using=None, keep_parents=False):
         try:
@@ -1213,6 +1357,7 @@ class CreditNote(TenantModel):
     class Meta:
         verbose_name = 'Nota de Credito'
         verbose_name_plural = 'Notas de Credito'
+        constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='nota_numero_unico_por_secuencia')]
         default_permissions = ()
         permissions = (
             ('view_credit_note', 'Can view Nota de Credito'),

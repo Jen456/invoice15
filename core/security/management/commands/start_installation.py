@@ -342,6 +342,14 @@ class Command(BaseCommand):
                 'permissions': None,
             },
             {
+                'name': 'Configuración de facturación',
+                'url': '/configuracion/facturacion/',
+                'icon': 'fas fa-list-check',
+                'description': 'Asistente para configurar establecimiento, punto de emisión, numeración, firma y ambiente',
+                'moduletype': None,
+                'permissions': None,
+            },
+            {
                 'name': 'Plan y pagos',
                 'url': '/suscripcion/',
                 'icon': 'fas fa-credit-card',

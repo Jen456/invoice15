@@ -52,6 +52,7 @@ LOCAL_APPS = [
     'core.pos',
     'core.reports',
     'core.suscripciones',
+    'core.configuracion',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + LOCAL_APPS + THIRD_PARTY_APPS
@@ -86,6 +87,7 @@ TEMPLATES = [
                 'core.security.context_processors.site_settings',
                 'core.security.context_processors.session_profile',
                 'core.suscripciones.context_processors.plan',
+                'core.configuracion.context_processors.configuracion',
             ],
         },
     },

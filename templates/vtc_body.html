@@ -43,6 +43,7 @@
             <section class="content">
                 <div class="container-fluid">
                     {% include 'suscripciones/_aviso.html' %}
+                    {% include 'configuracion/_aviso.html' %}
                     {% block content %}
 
                     {% endblock %}
@@ -55,7 +56,7 @@
     <script>
         {% if messages %}
             var errors = '';
-            {% for message in messages %}{% if 'plan' not in message.tags %}
+            {% for message in messages %}{% if 'plan' not in message.tags and 'configuracion' not in message.tags %}
                 errors += '{{ message }}\n';
             {% endif %}{% endfor %}
             // Los avisos del plan se muestran dentro de «Plan y pagos».

@@ -32,5 +32,6 @@ urlpatterns = [
     path('security/', include('core.security.urls')),
     path('user/', include('core.user.urls')),
     path('suscripcion/', include('core.suscripciones.urls')),
+    path('configuracion/facturacion/', include('core.configuracion.urls')),
     path('', DashboardView.as_view(), name='dashboard'),
 ]

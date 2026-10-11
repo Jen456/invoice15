@@ -106,7 +106,8 @@ class RegistroView(FormView):
         with transaction.atomic():
             empresa = Company.objects.create(
                 ruc=datos['identificacion'], business_name=datos['nombre'], tradename=datos['nombre'],
-                main_address='', establishment_address='', establishment_code='001', issuing_point_code='001',
+                # Sin 001-001 por defecto: el establecimiento y el punto se confirman en el asistente de facturación.
+                main_address='', establishment_address='', establishment_code='', issuing_point_code='',
                 special_taxpayer='', mobile=datos['celular'], phone='',
                 email=datos['email'] if len(datos['email']) <= 50 else '', website='', iva=Decimal('15.00'),
                 electronic_signature_key='', email_host_user='', email_host_password='')

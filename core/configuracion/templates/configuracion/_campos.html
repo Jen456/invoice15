@@ -1,0 +1,28 @@
+{% load widget_tweaks %}
+{% for field in form.visible_fields %}
+    <div class="form-group fp-field" data-campo="{{ field.html_name }}">
+        {% if field.field.widget.input_type == 'checkbox' %}
+            <div class="form-check">
+                {% render_field field class="form-check-input" %}
+                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            </div>
+        {% elif field.field.widget.input_type == 'radio' or field.name == 'mode' %}
+            <span class="font-weight-bold d-block">{{ field.label }}</span>
+            {% for opcion in field %}
+                <div class="form-check">{{ opcion.tag }} <label class="form-check-label" for="{{ opcion.id_for_label }}">{{ opcion.choice_label }}</label></div>
+            {% endfor %}
+        {% else %}
+            <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+            {% if deshabilitar_firma and field.name == 'electronic_signature' or deshabilitar_firma and field.name == 'electronic_signature_key' %}
+                {% render_field field class="form-control" disabled="disabled" %}
+            {% elif field.errors %}
+                {% render_field field class="form-control is-invalid" %}
+            {% else %}
+                {% render_field field class="form-control" %}
+            {% endif %}
+        {% endif %}
+        {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+    </div>
+{% endfor %}
+{% for error in form.non_field_errors %}{% if not form.prefix %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}{% endfor %}

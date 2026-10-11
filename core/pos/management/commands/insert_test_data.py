@@ -8,10 +8,12 @@ from os.path import basename
 from django.contrib.auth.models import Group
 from django.core.files import File
 from django.core.management import BaseCommand, CommandError
+from django.utils import timezone
 
 from config import settings
 from core.pos.choices import IDENTIFICATION_TYPE, VOUCHER_TYPE
-from core.pos.models import Category, Client, Company, Product, Provider, Purchase, PurchaseDetail, Receipt
+from core.pos.models import (BillingSetup, Category, Client, Company, EmissionPoint, Establishment, Product, Provider,
+                             Purchase, PurchaseDetail, Receipt)
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_CLIENT, Membership
 from core.user.models import User
@@ -87,10 +89,16 @@ class Command(BaseCommand):
         company.save()
 
         numbers = list(string.digits)
+        # Configuración de facturación confirmada (datos ficticios): establecimiento y punto 001-001.
+        establecimiento = Establishment.objects.create(code=company.establishment_code, address=company.establishment_address)
+        punto = EmissionPoint.objects.create(establishment=establecimiento, code=company.issuing_point_code, is_default=True)
+        BillingSetup.objects.create(completed_steps=[1, 2, 3, 4, 5], current_step=5, completed_at=timezone.now())
         for item in VOUCHER_TYPE:
-            sequence = 1 if item[0] == VOUCHER_TYPE[-1][0] else int(''.join(random.choices(numbers, k=7)))
+            sequence = 0 if item[0] == VOUCHER_TYPE[-1][0] else int(''.join(random.choices(numbers, k=7)))
             Receipt.objects.create(voucher_type=item[0], establishment_code=company.establishment_code,
-                                   issuing_point_code=company.issuing_point_code, sequence=sequence)
+                                   issuing_point_code=company.issuing_point_code, sequence=sequence,
+                                   environment_type=company.environment_type, emission_point=punto,
+                                   origin='otro_sistema', confirmed_at=timezone.now())
 
         with open(f'{settings.BASE_DIR}/deploy/json/products.json', encoding='utf8') as json_file:
             for item in json.load(json_file):

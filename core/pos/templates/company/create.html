@@ -31,6 +31,7 @@
     </fieldset>
     <fieldset class="fp-form-section" id="fp-emision">
         <legend>Establecimiento y punto de emisión</legend><p class="fp-section-description">Datos del lugar desde el que emites tus comprobantes.</p>
+        {% include 'configuracion/_resumen_compania.html' with config=config_facturacion %}
         <div class="fp-form-grid">
         {% for field in form.visible_fields %}
             {% if field.name in 'establishment_address,establishment_code,issuing_point_code' %}{% include 'company/field.html' %}{% endif %}

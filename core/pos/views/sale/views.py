@@ -12,6 +12,7 @@ from django.views.generic import CreateView, DeleteView, FormView
 
 from config import settings
 from core.pos.forms import SaleForm, ClientForm, ClientUserForm, Sale, SaleDetail, Client, Product, Company, Receipt, CreditNote, CreditNoteDetail, CtasCollect, INVOICE_STATUS, PAYMENT_TYPE, VOUCHER_TYPE
+from core.configuracion.servicios import receipt_para_emitir, requisitos_de_emision, secuencia_configurada
 from core.pos.utilities import printer
 from core.pos.utilities.access import can_print_voucher
 from core.pos.utilities.sri import SRI
@@ -57,7 +58,7 @@ class SaleListView(GroupPermissionMixin, FormView):
                     credit_note.motive = F'NOTA DE CREDITO DE LA VENTA {sale.voucher_number_full}'
                     credit_note.company = company
                     credit_note.environment_type = credit_note.company.environment_type
-                    credit_note.receipt = Receipt.objects.get(voucher_type=VOUCHER_TYPE[1][0], establishment_code=sale.company.establishment_code, issuing_point_code=sale.company.issuing_point_code)
+                    credit_note.receipt = receipt_para_emitir(company, VOUCHER_TYPE[1][0], electronica=True)
                     credit_note.voucher_number = credit_note.generate_voucher_number()
                     credit_note.voucher_number_full = credit_note.get_voucher_number_full()
                     credit_note.iva = iva
@@ -121,7 +122,9 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     sale.date_joined = request.POST['date_joined']
                     sale.company = request.company
                     sale.environment_type = sale.company.environment_type
-                    sale.receipt = Receipt.objects.get(voucher_type=request.POST['receipt'], establishment_code=sale.company.establishment_code, issuing_point_code=sale.company.issuing_point_code)
+                    # Requisitos de la configuración de facturación (numeración confirmada y, si es electrónica, firma).
+                    electronica = request.POST['receipt'] == VOUCHER_TYPE[0][0] and 'create_electronic_invoice' in request.POST
+                    sale.receipt = receipt_para_emitir(sale.company, request.POST['receipt'], electronica)
                     sale.voucher_number = sale.generate_voucher_number()
                     sale.voucher_number_full = sale.get_voucher_number_full()
                     sale.employee_id = request.user.id
@@ -209,11 +212,16 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                 for i in Client.objects.filter(Q(user__names__icontains=term) | Q(dni__icontains=term)).order_by('user__names')[0:10]:
                     data.append(i.toJSON())
             elif action == 'search_voucher_number':
+                # Número del próximo documento (sin reservarlo) o lo que falta configurar.
                 company = request.company
                 data['voucher_number'] = ''
-                receipt = Receipt.objects.filter(voucher_type=request.POST['receipt'], establishment_code=company.establishment_code, issuing_point_code=company.issuing_point_code).first()
+                receipt = secuencia_configurada(company, request.POST['receipt'])
                 if receipt:
-                    data['voucher_number'] = f'{receipt.sequence + 1:09d}'
+                    data['voucher_number'] = f'{receipt.next_number:09d}'
+                    data['voucher_number_full'] = receipt.next_number_full()
+                else:
+                    faltan = requisitos_de_emision(company, request.POST['receipt'], electronica=False)
+                    data['pending'] = faltan[0] if faltan else None
             elif action == 'validate_client':
                 data = {'valid': True}
                 pattern = request.POST['pattern']

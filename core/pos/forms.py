@@ -397,7 +397,9 @@ class CompanyForm(forms.ModelForm):
 
     class Meta:
         model = Company
-        exclude = ('is_active',)
+        # Establecimiento, punto de emisión, su dirección y ambiente se configuran solo en el asistente
+        # de facturación (fuente única, junto con la numeración); aquí se muestran en solo lectura.
+        exclude = ('is_active', 'establishment_code', 'issuing_point_code', 'establishment_address', 'environment_type')
         widgets = {
             'ruc': forms.TextInput(attrs={'placeholder': 'Ingrese un ruc'}),
             'business_name': forms.TextInput(attrs={'placeholder': 'Ingrese un nombre de razón social'}),

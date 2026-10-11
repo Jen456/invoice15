@@ -30,7 +30,7 @@ def role_modules(role, modules):
         return staff, True
     if role == ROLE_READONLY:
         return [m for m in staff if m.url not in {'/pos/product/stock/adjustment/', '/user/', '/pos/company/update/',
-                                                  '/suscripcion/'}], False
+                                                  '/suscripcion/', '/configuracion/facturacion/'}], False
     if role == ROLE_ACCOUNTANT:
         return [m for m in staff if m.url in ACCOUNTANT_URLS], False
     if role == ROLE_SELLER:
