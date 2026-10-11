@@ -1,5 +1,18 @@
 # Handoff compartido — frontend
 
+## Estado actual — mejora por diferencia (Codex, 10/10 Ecuador)
+
+Diseño de mejora en Plan y pagos: importe destacado, IVA incluido, activación tras confirmación y vencimiento conservado. Sin cotización del servidor, la mejora inmediata está deshabilitada; renovación futura intacta. No desplegar aislado sin implementar la regla de cobro de Claude.
+
+## Pendiente para Codex — mejora
+
+- [x] Diseñar resumen responsive y separar mejora de renovación anual.
+- [ ] Validar integrado con cotización y pago simulado del backend vigente.
+
+## Notas entre agentes — contrato de mejora para Claude
+
+En GET `/suscripcion/`, cada opción elegible debe exponer `o.mejora.disponible` (booleano), `o.mejora.amount_cents` (entero, IVA incluido) y `o.mejora.ends_at` (fecha del período actual). El POST existente `/suscripcion/pagar/` conserva `plan`, `modo=inmediato`, CSRF; no recibe importe del navegador. Cuando está habilitado, el servidor debe recalcular la diferencia, preservar vencimiento y consumo, y activar ilimitado solo al confirmar PayPhone. No marcar disponible antes de implementar esa lógica. Interpretación usada: diferencia completa $85 - $50 = $35 incluso con un mes restante, sin extender un año; no prorrateo por días. Si el usuario quiere prorrateo, confirmar regla antes de cobrar. Pago pendiente debe mantener cotización auditable y confirmar sin duplicar efectos; respetar empresa, permisos y concurrencia. Renovaciones/cambios futuros quedan separados. No se necesitan endpoints nuevos.
+
 ## Estado actual — colibrí de la landing (Codex)
 
 `landing/index.html` usa el logo Ingenioso en cabecera, panel ilustrativo y pie, más favicon. Probado localmente a cinco anchos. Pendiente de publicación por Claude en facturaporaqui.com.

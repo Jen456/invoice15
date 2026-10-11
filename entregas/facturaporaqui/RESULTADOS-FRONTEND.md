@@ -262,3 +262,14 @@ Inspección visual de la captura final del dashboard: nombre completo envuelto d
 Petición: sustituir los símbolos de flecha señalados en la cabecera y el panel ilustrativo por el colibrí Ingenioso. Cambiado `landing/index.html`: logo PNG existente en ambas posiciones, también en pie de página para coherencia, y favicon de marca. Ajustados alineación, tamaño y texto alternativo sin modificar navegación, precios ni formulario.
 
 Prueba real Chromium: imágenes cargadas y sin desbordamiento horizontal a 360/390/768/1024/1440px. Capturas: `capturas/landing-colibri-escritorio.png` y `capturas/landing-colibri-movil.png`. No desplegado; Claude debe publicar el directorio landing completo con assets en facturaporaqui.com. No cambia app.facturaporaqui.com ni backend.
+
+
+## 10/10/2026 (Ecuador) — diseño de mejora de suscripción
+
+Petición: que un suscriptor pueda mejorar pagando la diferencia incluso a un mes del vencimiento. Interpretación para coordinar: $35 IVA incluido de Plan 1000 a ilimitado y conservar fin del período; no nuevo año ni cálculo por días.
+
+Cambios: `core/suscripciones/templates/suscripciones/plan.html` incorpora resumen con importe/vencimiento desde `o.mejora`, elimina aviso de terminar hoy para esa mejora y bloquea CTA mientras no exista cotización del backend; conserva formularios y renovación futura. `static/css/facturaporaqui.css`: tarjeta celeste, importe destacado y resumen adaptable con colores de marca. `tests/test_frontend_integracion.py`: pruebas de cotización presente/ausente y texto de vigencia. HANDOFF describe contrato exacto para Claude. No cambios backend, .env ni SRI.
+
+Chromium local: planes, compañía y categorías sin overflow a 360/390/768/1024/1440px; login, cambio de empresas, gráficos y resultados anónimos, sin errores JS ni recursos fallidos. Captura `capturas/mejora-plan-pendiente.png`: estado real sin backend nuevo. La variante $35 está validada por renderizado con contexto ficticio; no implementa ni verifica cobro real. PayPhone local deshabilitado, no se paga ni se despliega. Pendiente integrar cálculo/activación backend y verificar el flujo completo con dobles de pago.
+
+Pruebas finales: **61 aprobadas** (frontend y suscripciones). `git diff --check` sin incidencias.

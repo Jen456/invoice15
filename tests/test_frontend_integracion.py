@@ -64,3 +64,27 @@ def test_payment_result_has_brand_without_session(client, path):
     response = client.get(path)
     assert response.status_code == 200
     assert 'img/brand/isotipo.png' in response.content.decode()
+
+@pytest.mark.parametrize('available', [False, True])
+def test_upgrade_requires_server_quote_and_preserves_expiry(client, settings, available):
+    from django.template.loader import render_to_string
+    settings.PAYPHONE_TOKEN = 'local-test-double'
+    settings.PAYPHONE_STORE_ID = 'local-test-double'
+    company = helpers.crear_empresa('MEJORA', plan='plan-1000')
+    owner = helpers.crear_usuario('frontend.upgrade', company)
+    helpers.iniciar_sesion(client, owner, empresa=company)
+    response = client.get('/suscripcion/')
+    context = response.context[0].flatten()
+    option = next(o for o in context['opciones'] if o['plan'].unlimited)
+    end = context['estado'].periodo.ends_at
+    option['mejora'] = {'disponible': available, 'amount_cents': 3500, 'ends_at': end}
+    html = render_to_string('suscripciones/plan.html', context, request=response.wsgi_request)
+    elements = Elements(html)
+    upgrade = next(attrs for tag, attrs in elements.tags if tag == 'button' and 'fpa-btn-pagar' in attrs.get('class', '') and ('disabled' in attrs or available)) if not available else None
+    if available:
+        assert 'Mejorar por $35.00' in html
+        assert 'Esta mejora no renueva tu suscripción por otro año' in html
+        assert 'Tu plan actual termina hoy, sin prorrateo' not in html
+    else:
+        assert 'Mejora pendiente de habilitar' in html
+        assert 'disabled' in upgrade
