@@ -597,6 +597,20 @@ Inspeccionadas capturas de escritorio del paso 1 y móvil del paso 3. Capturas d
 No desplegado. Claude publica con respaldo y collectstatic, incluyendo el nuevo JS. No hacen falta cambios backend para el diseño. PostgreSQL no ejecutado por Codex; pruebas de concurrencia permanecen omitidas localmente. No prueba de lector de pantalla ni teléfono físico. Optimización de PNG y revisión adicional de Plan y pagos quedan como tareas opcionales posteriores; no se tocaron en esta entrega.
 
 
+## 11/10/2026 — primera campaña de redes (Codex)
+
+Entrega gráfica para captar empresas: 10 posts y 10 historias, sin videos ni publicación automática. Ubicación `redes/campana-01/` dentro de entregas/facturaporaqui. Se mantuvo colibrí Ingenioso, coral/celeste/azul oscuro y nombre FacturaPorAquí. Imágenes generadas con referencia al isotipo existente y a la primera pieza aprobada como línea visual, ilustraciones conceptuales sin datos de clientes.
+
+Archivos: `posts/post-01.png` a `post-10.png`; `historias/historia-01.png` a `historia-10.png`; `GALERIA.html`, `README.md`, `TEXTOS-Y-PUBLICACION.md` (captions, hashtags, propuesta de 20 días, respuestas y medición), `contenidos.json` y `ARCHIVOS.json` con dimensiones/hash. Exportación ZIP adicional fuera del repo en `/workspace/facturaporaqui-redes-01.zip`, sin duplicar binarios en git.
+
+Posts aproximadamente 4:5, 1122×1402 px; historias aproximadamente 9:16, 941×1672 px (historia 06 corregida: 940×1672). No se presentan como archivos vectoriales ni plantillas editables. La galería local permite abrir PNG individuales; revisar recorte en cada red al subir. Sticker de enlace de historias se agrega manualmente en la plataforma.
+
+Mensajes: presentación, orden, asistente, planes $50/$85 anuales por empresa con IVA, numeración independiente, multiempresa, ventas/inventario/cuentas por cobrar, inventario gratuito con límites y CTA. No se anuncian retenciones disponibles, financiamiento confirmado, firma incluida en venta, testimonios inventados ni garantías de aprobación. Contacto: mensajes directos y facturaporaqui.com; teléfono y correo pendientes, sin inventarlos.
+
+Verificación: inspección visual de las 20 piezas en galería. Se detectó y corrigió con herramienta de imagen el ejemplo de la historia 06 para mostrar Último 125 → Próximo 126 en lugar del mismo número. Comprobados textos de precios/IVA y marca. 20 PNG íntegros y manifiesto SHA256. Chromium: 20 imágenes cargadas en GALERIA.html, sin overflow a 360/390/768/1440. ZIP sin errores y 20 imágenes incluidas. No se necesitan pruebas Django para esta entrega de archivos gráficos; aplicación intacta.
+
+No se publicaron redes, no se crearon campañas pagadas, no se desplegó la aplicación. Próxima fase: videos tras revisar estas piezas. La captación depende de publicación, atención a mensajes y medición; no se afirma haber conseguido clientes.
+
 ## 11/10/2026 — Publicación del diseño del asistente y corrección del paso 2: `3348345` (Claude)
 
 ### Qué se publicó

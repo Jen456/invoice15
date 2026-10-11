@@ -1,0 +1,135 @@
+{
+  "marca": "FacturaPorAquí",
+  "posts": [
+    {
+      "numero": 1,
+      "titulo": "Tu negocio,\nen orden.",
+      "texto_imagen": "Facturas, inventario y cuentas por cobrar.\nTodo desde una misma aplicación.",
+      "cta": "Conoce FacturaPorAquí",
+      "caption": "Tu negocio crece mejor cuando su información está en orden. Con FacturaPorAquí puedes gestionar facturas y notas de crédito, inventario, clientes y cuentas por cobrar desde una misma aplicación. ¿Quieres conocer cómo se adapta a tu empresa? Escríbenos «ORDEN».",
+      "hashtags": "#FacturaPorAquí #FacturaciónElectrónica #EmprendedoresEcuador #NegociosEcuador",
+      "historia": [
+        "Tu negocio\nmerece orden.",
+        "Conoce FacturaPorAquí.\nFacturación para empresas en Ecuador.",
+        "Visita facturaporaqui.com"
+      ]
+    },
+    {
+      "numero": 2,
+      "titulo": "¿Cuánto tiempo\npierdes buscando?",
+      "texto_imagen": "Organiza clientes, productos y ventas\nen un solo lugar.",
+      "cta": "Escríbenos «ORDEN»",
+      "caption": "¿Buscas un cliente en un archivo, un producto en otro y tus ventas en una hoja aparte? Dale a la información de tu empresa un mismo lugar. Conoce FacturaPorAquí y cuéntanos qué necesitas organizar. Envíanos «ORDEN» por mensaje.",
+      "hashtags": "#FacturaPorAquí #FacturaciónElectrónica #EmprendedoresEcuador #NegociosEcuador",
+      "historia": [
+        "Clientes. Productos.\nVentas.",
+        "Organiza la información de tu empresa\nen un mismo lugar.",
+        "Escríbenos «ORDEN»"
+      ]
+    },
+    {
+      "numero": 3,
+      "titulo": "Tu facturación\nempieza por aquí.",
+      "texto_imagen": "Crea tu cuenta y configura tu empresa\ncon un asistente de 5 pasos.",
+      "cta": "Visita facturaporaqui.com",
+      "caption": "Crear tu cuenta es el primer paso. Nuestro asistente te guía para revisar los datos de tu empresa, establecimiento, punto de emisión, numeración, firma y ambiente. Tú confirmas los datos; la aplicación te ayuda a seguir el proceso. Escríbenos «AYUDA» para conocer el recorrido.",
+      "hashtags": "#FacturaPorAquí #FacturaciónElectrónica #EmprendedoresEcuador #NegociosEcuador",
+      "historia": [
+        "No tienes que\nconfigurarlo a ciegas.",
+        "Un asistente de 5 pasos te ayuda\na preparar tu facturación.",
+        "Escríbenos «AYUDA»"
+      ]
+    },
+    {
+      "numero": 4,
+      "titulo": "1000 documentos.\nUn año de tranquilidad.",
+      "texto_imagen": "Plan 1000 · $50 al año\nIVA incluido · Por empresa",
+      "cta": "Escríbenos «PLAN 1000»",
+      "caption": "Plan 1000: $50 por empresa al año, IVA incluido. Incluye hasta 1000 comprobantes electrónicos autorizados durante el período anual, actualmente facturas y notas de crédito. Gestiona también ventas, clientes, cuentas por cobrar, reportes e inventario. Para emitir electrónicamente necesitas tu firma vigente y completar la configuración. Escríbenos «PLAN 1000».",
+      "hashtags": "#FacturaPorAquí #FacturaciónElectrónica #EmprendedoresEcuador #NegociosEcuador",
+      "historia": [
+        "Plan 1000\n$50 al año",
+        "1000 comprobantes autorizados.\nIVA incluido · Por empresa",
+        "Escríbenos «PLAN 1000»"
+      ]
+    },
+    {
+      "numero": 5,
+      "titulo": "Más movimiento.\nSin límite de documentos.",
+      "texto_imagen": "Plan ilimitado · $85 al año\nIVA incluido · Por empresa",
+      "cta": "Escríbenos «ILIMITADO»",
+      "caption": "¿Tu empresa necesita emitir más documentos? El Plan ilimitado cuesta $85 por empresa al año, IVA incluido, y no tiene límite de cantidad de comprobantes durante el período anual. Actualmente incluye facturas y notas de crédito. La firma electrónica es la de tu empresa; no vendemos ni emitimos certificados. Escríbenos «ILIMITADO».",
+      "hashtags": "#FacturaPorAquí #FacturaciónElectrónica #EmprendedoresEcuador #NegociosEcuador",
+      "historia": [
+        "Plan ilimitado\n$85 al año",
+        "Comprobantes sin límite de cantidad.\nIVA incluido · Por empresa",
+        "Escríbenos «ILIMITADO»"
+      ]
+    },
+    {
+      "numero": 6,
+      "titulo": "Factura y nota de crédito:\ncada una con su número.",
+      "texto_imagen": "Configura establecimiento, punto de emisión\ny numeración independiente.",
+      "cta": "Te guiamos al comenzar",
+      "caption": "Factura y nota de crédito tienen numeraciones independientes. Al configurar tu empresa, revisa los códigos asignados a tu RUC y el último número utilizado de cada documento. Si vienes de otro sistema, no empieces nuevamente sin comprobar tu numeración. Nuestro asistente te permite revisar el próximo número antes de confirmar. Escríbenos «NUMERACIÓN».",
+      "hashtags": "#FacturaPorAquí #FacturaciónElectrónica #EmprendedoresEcuador #NegociosEcuador",
+      "historia": [
+        "¿Vienes de\notro sistema?",
+        "Configura el último número utilizado\ny revisa el próximo documento.",
+        "Escríbenos «NUMERACIÓN»"
+      ]
+    },
+    {
+      "numero": 7,
+      "titulo": "Varias empresas.\nUna cuenta.",
+      "texto_imagen": "Cambia de empresa y trabaja con sus datos,\nusuarios y permisos.",
+      "cta": "Escríbenos «EMPRESAS»",
+      "caption": "¿Trabajas con varias empresas? En FacturaPorAquí puedes cambiar de empresa desde tu cuenta, según tus membresías y permisos. Cada una conserva sus datos y su configuración. Los planes se contratan por empresa. Envíanos «EMPRESAS» y cuéntanos cómo trabajas.",
+      "hashtags": "#FacturaPorAquí #FacturaciónElectrónica #EmprendedoresEcuador #NegociosEcuador",
+      "historia": [
+        "¿Gestionas\nmás de una empresa?",
+        "Cambia de empresa desde tu cuenta.\nDatos y permisos por empresa.",
+        "Escríbenos «EMPRESAS»"
+      ]
+    },
+    {
+      "numero": 8,
+      "titulo": "Lo que vendes.\nLo que tienes.\nLo que te deben.",
+      "texto_imagen": "Ventas, inventario y cuentas por cobrar\npara entender tu negocio.",
+      "cta": "Escríbenos «DEMO»",
+      "caption": "Vender también implica saber qué tienes y qué te deben. Consulta ventas, inventario y cuentas por cobrar para conocer la actividad de tu empresa. ¿Quieres ver el recorrido de la aplicación? Escríbenos «DEMO» para solicitar una explicación.",
+      "hashtags": "#FacturaPorAquí #FacturaciónElectrónica #EmprendedoresEcuador #NegociosEcuador",
+      "historia": [
+        "¿Qué necesita\nordenar tu negocio?",
+        "Inventario · Ventas · Cuentas por cobrar",
+        "Cuéntanos por mensaje"
+      ]
+    },
+    {
+      "numero": 9,
+      "titulo": "Empieza por\nordenar tu inventario.",
+      "texto_imagen": "Inventario gratuito con límites.\nActiva un plan para facturar y vender.",
+      "cta": "Crea tu cuenta",
+      "caption": "Puedes comenzar con inventario gratuito con límites de uso. La facturación electrónica y las ventas se activan con un plan anual pagado. Crea tu cuenta y revisa las opciones que necesita tu empresa: facturaporaqui.com.",
+      "hashtags": "#FacturaPorAquí #FacturaciónElectrónica #EmprendedoresEcuador #NegociosEcuador",
+      "historia": [
+        "Empieza con\ninventario gratuito.",
+        "Con límites. Facturación y ventas\nse activan con un plan anual.",
+        "Crea tu cuenta"
+      ]
+    },
+    {
+      "numero": 10,
+      "titulo": "Tu próxima factura\npuede empezar aquí.",
+      "texto_imagen": "Planes anuales desde $50 por empresa.\nIVA incluido.",
+      "cta": "Escríbenos «QUIERO EMPEZAR»",
+      "caption": "Tu negocio, en orden. Conoce nuestros planes anuales: Plan 1000 a $50 o ilimitado a $85 por empresa, IVA incluido. Escríbenos «QUIERO EMPEZAR» y cuéntanos el nombre de tu negocio, qué actividad realiza y qué necesitas organizar. También puedes visitar facturaporaqui.com.",
+      "hashtags": "#FacturaPorAquí #FacturaciónElectrónica #EmprendedoresEcuador #NegociosEcuador",
+      "historia": [
+        "¿Listo para\ndar el primer paso?",
+        "Planes anuales desde $50.\nIVA incluido · Por empresa",
+        "Escríbenos «QUIERO EMPEZAR»"
+      ]
+    }
+  ]
+}
