@@ -3,7 +3,6 @@ import os.path
 import random
 import smtplib
 import string
-import subprocess
 from datetime import datetime
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
@@ -14,11 +13,13 @@ from tempfile import NamedTemporaryFile
 
 import requests
 from django.core.files import File
+from django.utils import timezone
 from lxml import etree
 from suds.client import Client
 
 from config import settings
 from core.pos.choices import VOUCHER_STAGE, INVOICE_STATUS
+from core.pos.utilities.firma import ErrorFirma, firmar_xml
 
 
 class SRI:
@@ -45,8 +46,9 @@ class SRI:
     def generate_number(self, amount=8):
         return ''.join(random.choices(list(string.digits), k=amount))
 
-    def create_access_key(self, instance):
-        password_48 = f"{datetime.now().strftime('%d%m%Y')}{instance.receipt.voucher_type}{instance.company.ruc}{instance.company.environment_type}{instance.receipt.establishment_code}{instance.receipt.issuing_point_code}{instance.voucher_number}{self.generate_number()}{instance.company.emission_type}"
+    def create_access_key(self, instance, fecha=None):
+        fecha = fecha or timezone.localdate()
+        password_48 = f"{fecha.strftime('%d%m%Y')}{instance.receipt.voucher_type}{instance.company.ruc}{instance.company.environment_type}{instance.receipt.establishment_code}{instance.receipt.issuing_point_code}{instance.voucher_number}{self.generate_number()}{instance.company.emission_type}"
         module11 = self.compute_mod11(pass_key_48=password_48)
         if len(module11):
             return f'{password_48}{module11}'
@@ -106,37 +108,21 @@ class SRI:
         return response
 
     def firm_xml(self, instance, xml):
+        """Firma XAdES-BES en el propio proceso (core.pos.utilities.firma)."""
         response = {'resp': False, 'stage': VOUCHER_STAGE[1][0]}
-        file_temp_name = ''
         try:
-            with NamedTemporaryFile(suffix='.xml', delete=False) as file_temp:
-                file_temp.write(xml.encode())
-                file_temp.flush()
-                file_temp_name = file_temp.name
-                jar_path = self.get_absolute_path(os.path.join(os.path.dirname(self.base_dir), 'resources/jar/sri.jar'))
-                certificate_path = self.get_absolute_path(f'{settings.BASE_DIR}/{instance.company.get_electronic_signature()}')
-                certificate_key = instance.company.electronic_signature_key
-                xml_name = f'{instance.voucher_number}.xml'
-                commands = ['java', '-jar', jar_path, certificate_path, certificate_key, file_temp.name, self.base_dir, xml_name]
-                procedure = subprocess.run(args=commands, capture_output=True)
-                if procedure.returncode == 0:
-                    error = procedure.stdout.decode('utf-8')
-                    if error.__contains__('Error'):
-                        response['error'] = error
-                    else:
-                        generated_xml_path = os.path.join(self.base_dir, xml_name)
-                        with open(generated_xml_path, 'rb') as file:
-                            response['resp'] = True
-                            response['xml'] = file.read().decode('utf-8')
-                        if os.path.exists(generated_xml_path):
-                            os.remove(generated_xml_path)
-                else:
-                    response['error'] = procedure.stderr.decode('utf-8')
-        except Exception as e:
+            company = instance.company
+            if not company.electronic_signature:
+                raise ErrorFirma('Sube tu firma electrónica (.p12) en «Configuración de facturación», paso 4.')
+            with company.electronic_signature.open('rb') as archivo:
+                contenido = archivo.read()
+            response['xml'] = firmar_xml(xml, contenido, company.electronic_signature_key)
+            response['resp'] = True
+        except ErrorFirma as e:
             response['error'] = str(e)
+        except Exception as e:
+            response['error'] = f'No se pudo firmar el comprobante ({e.__class__.__name__}).'
         finally:
-            if os.path.exists(file_temp_name):
-                os.remove(file_temp_name)
             if 'error' in response:
                 self.create_voucher_errors(instance, response)
         return response
@@ -227,11 +213,11 @@ class SRI:
                 content += f'AUTORIZACIÓN: {instance.access_code}'
                 part = MIMEText(content)
                 message.attach(part)
-                with open(f'{settings.BASE_DIR}{instance.get_pdf_authorized()}', 'rb') as file:
+                with instance.pdf_authorized.open('rb') as file:
                     part = MIMEApplication(file.read())
                     part.add_header('Content-Disposition', 'attachment', filename=f'{instance.access_code}.pdf')
                     message.attach(part)
-                with open(f'{settings.BASE_DIR}{instance.get_xml_authorized()}', 'rb') as file:
+                with instance.xml_authorized.open('rb') as file:
                     part = MIMEApplication(file.read())
                     part.add_header('Content-Disposition', 'attachment', filename=f'{instance.access_code}.xml')
                     message.attach(part)

@@ -612,7 +612,8 @@ class Sale(TenantModel):
             self.pdf_authorized.save(name=f'{self.receipt.get_name_xml()}_{self.access_code}.pdf', content=File(file_temp))
 
     def generate_xml(self):
-        access_key = SRI().create_access_key(self)
+        fecha_emision = timezone.localdate()   # la misma fecha (de Ecuador) para la clave de acceso y fechaEmision
+        access_key = SRI().create_access_key(self, fecha_emision)
         root = ElementTree.Element('factura', id="comprobante", version="1.0.0")
         # infoTributaria
         xml_tax_info = ElementTree.SubElement(root, 'infoTributaria')
@@ -629,7 +630,7 @@ class Sale(TenantModel):
         ElementTree.SubElement(xml_tax_info, 'dirMatriz').text = self.company.main_address
         # infoFactura
         xml_info_invoice = ElementTree.SubElement(root, 'infoFactura')
-        ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = datetime.now().strftime('%d/%m/%Y')
+        ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = fecha_emision.strftime('%d/%m/%Y')
         ElementTree.SubElement(xml_info_invoice, 'dirEstablecimiento').text = self.company.establishment_address
         ElementTree.SubElement(xml_info_invoice, 'obligadoContabilidad').text = self.company.obligated_accounting
         ElementTree.SubElement(xml_info_invoice, 'tipoIdentificacionComprador').text = self.client.identification_type
@@ -1196,7 +1197,8 @@ class CreditNote(TenantModel):
             self.pdf_authorized.save(name=f'{self.receipt.get_name_xml()}_{self.access_code}.pdf', content=File(file_temp))
 
     def generate_xml(self):
-        access_key = SRI().create_access_key(self)
+        fecha_emision = timezone.localdate()   # la misma fecha (de Ecuador) para la clave de acceso y fechaEmision
+        access_key = SRI().create_access_key(self, fecha_emision)
         root = ElementTree.Element('notaCredito', id="comprobante", version="1.1.0")
         # infoTributaria
         xml_tax_info = ElementTree.SubElement(root, 'infoTributaria')
@@ -1215,7 +1217,7 @@ class CreditNote(TenantModel):
             ElementTree.SubElement(xml_tax_info, 'agenteRetencion').text = '1'
         # infoNotaCredito
         xml_info_invoice = ElementTree.SubElement(root, 'infoNotaCredito')
-        ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = datetime.now().strftime('%d/%m/%Y')
+        ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = fecha_emision.strftime('%d/%m/%Y')
         ElementTree.SubElement(xml_info_invoice, 'dirEstablecimiento').text = self.company.establishment_address
         ElementTree.SubElement(xml_info_invoice, 'tipoIdentificacionComprador').text = self.sale.client.identification_type
         ElementTree.SubElement(xml_info_invoice, 'razonSocialComprador').text = self.sale.client.user.names
