@@ -31,3 +31,47 @@
         }
     });
 })();
+
+/* Mobile document lines: retain original cells, inputs and event handlers. */
+(function () {
+    function enhanceForms() {
+        document.querySelectorAll('#frmForm table').forEach(function (table) {
+            if (!table.querySelector('thead')) { table.classList.add('fp-form-totals'); return; }
+            table.classList.add('fp-mobile-lines');
+            var titles = Array.from(table.querySelectorAll('thead th')).map(function (th) { return th.textContent.trim(); });
+            table.querySelectorAll('tbody tr').forEach(function (row) {
+                if (row.children.length !== titles.length) { return; }
+                Array.from(row.children).forEach(function (cell, i) { cell.dataset.label = titles[i];
+                    cell.querySelectorAll('input,select').forEach(function (input) {
+                        if (!input.hasAttribute('aria-label')) { input.setAttribute('aria-label', titles[i]); }
+                    });
+                    cell.querySelectorAll('a[rel="remove"]').forEach(function (button) {
+                        button.setAttribute('role', 'button'); button.tabIndex = 0;
+                        button.setAttribute('aria-label', 'Eliminar producto');
+                    }); });
+            });
+        });
+        document.querySelectorAll('#frmForm label:not([for])').forEach(function (label) {
+            var group = label.closest('.form-group');
+            var input = group && group.querySelector('input[id],select[id],textarea[id]');
+            if (input) { label.htmlFor = input.id; }
+        });
+    }
+    function start() {
+        enhanceForms();
+        var form = document.getElementById('frmForm');
+        if (!form) { return; }
+        form.addEventListener('keydown', function (event) {
+            if (event.target.matches('a[rel="remove"]') && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault(); event.target.click();
+            }
+        });
+        var scheduled = false;
+        new MutationObserver(function () {
+            if (scheduled) { return; }
+            scheduled = true;
+            requestAnimationFrame(function () { scheduled = false; enhanceForms(); });
+        }).observe(form, {childList: true, subtree: true});
+    }
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', start); } else { start(); }
+})();
