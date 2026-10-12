@@ -120,7 +120,8 @@ class PromotionsUpdateView(GroupPermissionMixin, UpdateView):
     permission_required = 'change_promotions'
 
     def dispatch(self, request, *args, **kwargs):
-        self.object = self.get_object()
+        if request.user.is_authenticated:   # sin sesión, el mixin lleva al login (antes: error 500)
+            self.object = self.get_object()
         return super().dispatch(request, *args, **kwargs)
 
     def get_form(self, form_class=None):

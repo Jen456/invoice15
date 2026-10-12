@@ -93,7 +93,8 @@ class ReceiptUpdateView(SoloAsistenteMixin, GroupPermissionMixin, UpdateView):
     permission_required = 'change_receipt'
 
     def dispatch(self, request, *args, **kwargs):
-        self.object = self.get_object()
+        if request.user.is_authenticated:   # sin sesión, el mixin lleva al login (antes: error 500)
+            self.object = self.get_object()
         return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
