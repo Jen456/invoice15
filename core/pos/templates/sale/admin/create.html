@@ -309,7 +309,10 @@
         $(function () {
             sale.listProducts();
             {% if final_consumer %}
-                select_client.select2('trigger', 'select', {data: {{ final_consumer|safe }}});
+                var finalConsumer = {{ final_consumer|safe }};
+                if (finalConsumer && finalConsumer.id !== undefined) {
+                    select_client.select2('trigger', 'select', {data: finalConsumer});
+                }
             {% endif %}
         });
     </script>

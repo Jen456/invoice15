@@ -684,3 +684,21 @@ Muestran nombres de usuario de demostración; ninguna contraseña ni token.
 - **Cliente real (empresa 6):** completar el asistente. Al publicar no tenía establecimientos ni puntos y ahora verá el formulario conjunto.
 - **Opcionales (Codex):** pulir el formulario conjunto; aviso de mínimo en la vista previa; optimizar los PNG de marca; revisar Plan y pagos.
 - **Teléfono físico:** probar la barra de guardado.
+
+
+## 11/10/2026 (Ecuador) — formularios de aplicación responsive
+
+Base sincronizada por avance directo a `9835933`; se leyó la publicación del asistente y corrección de Claude. Solo cambios frontend en frontend/etapa3; backend intacto. No desplegado.
+
+Archivos:
+- `templates/form.html`: clase de alcance fp-responsive-form en la base de formularios, sin alterar action, names, CSRF o enctype.
+- `static/css/facturaporaqui.css`: límites de ancho, columnas en móvil, Select2 con textos largos, TouchSpin, botones de acción apilados, totales y modales. Líneas de documento como fichas en móvil, tabla normal en escritorio; cabeceras preservadas ocultas visualmente. No se fuerza ocultar overflow del documento para disimular problemas.
+- `static/js/facturaporaqui.js`: etiquetas de celdas tomadas de encabezados y actualizadas al redibujar DataTables, labels asociados e inputs con nombre accesible. Conserva celdas/inputs originales y eventos. Eliminar producto permite teclado sin alterar lógica de eliminación. Observador limitado a frmForm y cambios childList, sin bucle por atributos.
+- `core/pos/templates/sale/admin/create.html`: guardia de selección inicial para no pasar `{}` a Select2 si una empresa nueva no tiene Consumidor final. El error reproducido fue reading toString of undefined; corregido en presentación, sin crear cliente automáticamente ni modificar backend.
+- AGENTS documenta la convención; HANDOFF y este informe; 9 capturas formulario-*.png (venta, compra, nota de crédito y producto en escritorio/móvil, y modal cliente móvil).
+
+Validación Chromium con usuario/empresa ficticios locales, plan ilimitado asignado por helper y configuración confirmada, sin firma: 12 rutas de creación HTTP200 con formulario real: ventas, compras, notas de crédito, clientes, productos, proveedores, categorías, gastos, tipos de gasto, promociones, cuentas por pagar y por cobrar. Las 12 sin overflow de documento a 360/390/768/1024/1440px. Venta con producto ficticio inyectado solo en memoria del navegador para ejercer el mismo addProduct/listProducts: $25 con IVA15%; cantidad1 total28,75 y cantidad2 total57,50. Edición y valor conservados tras resize; no se envió venta. Modal Crear cliente abierto por interfaz a390 sin overflow; no guardado. Movimiento reducido activado, Tab verificado, nuevas etiquetas y controles operables. Sin errores JS al final. Captura de venta móvil inspeccionada: fichas, totales y botones apilados, sin desplazamiento horizontal. El aviso de firma pendiente y validación de efectivo continúan visibles.
+
+Node --check y git diff --check sin incidencias. Suite SQLite ejecutada completa; resultado final registrado debajo. No pagos ni emisiones reales, modelos/migraciones/vistas/API/.env/SRI sin cambios. No pruebas de dispositivo físico, lector de pantalla ni de guardado. Formularios de compras/notas de crédito probados en su estado inicial; solo venta ejercitada con línea y cálculo. Las tablas de búsqueda en modales conservan desplazamiento local cuando sea necesario.
+
+Resultado final SQLite: **214 aprobadas, 5 omitidas** exclusivas de PostgreSQL, en 19,78 s.

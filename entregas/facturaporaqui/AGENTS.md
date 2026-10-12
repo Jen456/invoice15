@@ -6,3 +6,5 @@
 - Probar interfaces a 360/390/768/1024/1440px, etiquetas, teclado y movimiento reducido. No afirmar guardado/emisión verificados con pruebas solo visuales.
 - No sobrescribir la implementación multiempresa con el checkout original. Mantener campos, CSRF, selector de empresa y permisos.
 - Nunca registrar secretos en documentación, capturas ni commits. Ocultar un campo no corrige la exposición de su valor en HTML: coordinar esto con backend.
+
+- Formularios compartidos usan `.fp-responsive-form`. En móvil las líneas de documento se presentan con `.fp-mobile-lines` y `data-label`, conservando las celdas e inputs originales (sin clones) para no romper eventos ni cálculos. Verificar filas con productos y edición de cantidad, además del formulario vacío.

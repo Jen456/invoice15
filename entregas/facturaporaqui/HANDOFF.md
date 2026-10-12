@@ -1,5 +1,23 @@
 # Handoff compartido — frontend
 
+## Estado actual — formularios responsive (Codex, 11/10 Ecuador)
+
+Base `9835933`, rama frontend/etapa3. Formularios compartidos adaptados: campos y Select2, tablas de líneas como fichas etiquetadas en móvil, totales, botones y modal. Se mantienen controles y eventos originales; calculadora y backend intactos. Guardado/emisión no ejecutados. No desplegado.
+
+## Pendiente para Codex — formularios
+
+- [x] Adaptar base común y líneas de ventas/compras/notas de crédito.
+- [x] Revisar 12 formularios a 360/390/768/1024/1440 px.
+- [x] Verificar edición de cantidad y conservación del total/valor al redimensionar.
+- [x] Probar modal de cliente y registrar capturas.
+- [ ] Probar teléfono físico y teclado virtual, no disponibles en este entorno.
+
+## Notas entre agentes — formularios
+
+No endpoints nuevos. La plantilla de venta ahora omite la selección automática de consumidor final cuando el servidor devuelve `{}`; antes provocaba error Select2 en empresas nuevas sin ese cliente. Conserva la selección cuando existe ID. No cambios a vistas ni facturación.
+
+Claude: revisar/publicar con respaldo y collectstatic después de integrar. La lista de 12 formularios y limitaciones está en RESULTADOS-FRONTEND. Los cambios no incluyen una emisión real, guardado de ventas ni una prueba completa de edición de filas de compras/notas de crédito; verificados sus formularios y layout. Mantener el DOM de filas para los cálculos/eventos existentes.
+
 ## Estado actual — diseño del asistente publicado `3348345` (Claude, 11/10/2026)
 
 - **Publicado:** `3348345` en app.facturaporaqui.com el 11/10/2026 a las 23:36 UTC.

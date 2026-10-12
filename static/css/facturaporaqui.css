@@ -85,3 +85,37 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-receipt-intro{margin:0 0 24px}.fp-receipt-intro p{max-width:800px}.fp-config-campo input:focus-visible,.fp-config-campo select:focus-visible,.fp-config-paso a:focus-visible{outline:3px solid #176581;outline-offset:3px}
 .fp-config-preview{padding:16px;background:#E5F1F6;border-left:4px solid #44BADD;border-radius:8px;margin-top:14px}.fp-config-preview span,.fp-config-preview strong,.fp-config-preview small{display:block}.fp-config-preview strong{font-size:20px;margin:6px 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.fp-config-preview small{color:var(--fp-muted)}
 .fp-config-resumen .fpa-aviso-accion,.fp-aviso-configuracion .fpa-aviso-accion{white-space:normal;overflow-wrap:anywhere;max-width:100%}
+
+/* Responsive shared forms: fields, document lines, totals and touch targets. */
+.fp-responsive-form,.fp-responsive-form .row>[class*=col-]{min-width:0}
+.fp-responsive-form .form-control,.fp-responsive-form select,.fp-responsive-form textarea{max-width:100%}
+.fp-responsive-form .input-group{max-width:100%;min-width:0}
+.fp-responsive-form .input-group>.select2-container{flex:1 1 0;width:0!important;min-width:0}
+.fp-responsive-form .select2-container .select2-selection__rendered{white-space:normal;overflow-wrap:anywhere;padding-right:26px;line-height:1.4}
+.fp-responsive-form .select2-selection--single{height:auto!important;min-height:46px}
+.fp-responsive-form .bootstrap-touchspin{width:100%!important;min-width:0}
+.fp-responsive-form .fp-form-totals td{vertical-align:middle;overflow-wrap:anywhere}
+.fp-responsive-form .fp-form-totals td:first-child{width:42%}
+@media(max-width:767px){
+.fp-responsive-form .card-body>.container-fluid{padding:0}
+.fp-responsive-form .row{margin-left:-8px;margin-right:-8px}
+.fp-responsive-form .row>[class*=col-]{padding-left:8px;padding-right:8px;width:100%;max-width:100%;flex:0 0 100%}
+.fp-responsive-form .form-group{margin-bottom:18px}
+.fp-responsive-form input,.fp-responsive-form select,.fp-responsive-form textarea{font-size:16px!important}
+.fp-responsive-form .input-group>.form-control{min-width:0}
+.fp-responsive-form .btn{min-height:44px}
+.fp-responsive-form .card-footer{display:flex;flex-wrap:wrap;gap:10px;position:static}
+.fp-responsive-form .card-footer>.btn{width:100%;margin:0}
+.fp-responsive-form .fp-mobile-lines{display:block!important;width:100%!important;min-width:0!important;border:0;table-layout:auto}
+.fp-responsive-form .fp-mobile-lines thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.fp-responsive-form .fp-mobile-lines tbody{display:block;width:100%}
+.fp-responsive-form .fp-mobile-lines tbody tr{display:block;border:1px solid var(--fp-border);border-radius:12px;margin:14px 0;padding:12px;background:white}
+.fp-responsive-form .fp-mobile-lines tbody td{display:block!important;width:100%!important;max-width:100%;border:0;text-align:left!important;padding:8px 0!important;overflow-wrap:anywhere}
+.fp-responsive-form .fp-mobile-lines tbody td[data-label]::before{content:attr(data-label);display:block;font-size:14px;font-weight:650;color:var(--fp-muted);margin-bottom:6px}
+.fp-responsive-form .fp-mobile-lines .input-group{width:100%!important}
+.fp-responsive-form .dataTables_scroll{overflow:visible}
+.fp-responsive-form .fp-form-totals{width:100%;table-layout:fixed}
+.fp-responsive-form .fp-form-totals td{padding:10px 8px;font-size:14px}
+.modal-dialog{margin:12px}.modal-content{max-width:100%}.modal-body{overflow-x:auto}.modal-footer .btn{min-height:44px}
+}
+@media(max-width:767px){.fp-responsive-form .card-footer>.btn{flex:0 0 100%}.fp-responsive-form .form-group>.input-group{width:100%!important}.fp-responsive-form .select2-selection__placeholder{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
