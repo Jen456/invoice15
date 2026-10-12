@@ -1,5 +1,6 @@
 import json
 import logging
+from decimal import Decimal
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Group
@@ -8,16 +9,21 @@ from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse_lazy
 from django.views import View
+from django.utils import timezone
 from django.views.generic import CreateView, DeleteView, FormView
 
 from config import settings
 from core.pos.forms import SaleForm, ClientForm, ClientUserForm, Sale, SaleDetail, Client, Product, Company, Receipt, CreditNote, CreditNoteDetail, CtasCollect, INVOICE_STATUS, PAYMENT_TYPE, VOUCHER_TYPE
 from core.configuracion.servicios import receipt_para_emitir, requisitos_de_emision, secuencia_configurada
+from core.pos import emision
+from core.pos.clientes import consumidor_final, usuario_de_cliente
+from core.pos.notas_credito import crear as crear_nota_credito, es_consumidor_final
 from core.pos.utilities import printer
 from core.pos.utilities.access import can_print_voucher
 from core.pos.utilities.sri import SRI
 from core.reports.forms import ReportForm
 from core.security.mixins import GroupPermissionMixin
+from core.security.session import get_group
 
 
 logger = logging.getLogger(__name__)
@@ -49,41 +55,17 @@ class SaleListView(GroupPermissionMixin, FormView):
                 sale = Sale.objects.get(pk=request.POST['id'])
                 data = sale.generate_electronic_invoice()
             elif action == 'create_credit_note':
-                with transaction.atomic():
+                # Nota de crédito por todo lo pendiente de la factura: mismo permiso que la pantalla de notas.
+                group = get_group(request)
+                if group is None or not group.permissions.filter(codename='add_credit_note').exists():
+                    data['error'] = 'Tu perfil no puede emitir notas de crédito.'
+                else:
                     sale = Sale.objects.get(pk=request.POST['id'])
-                    company = sale.company
-                    iva = float(company.iva) / 100
-                    credit_note = CreditNote()
-                    credit_note.sale_id = sale.id
-                    credit_note.motive = F'NOTA DE CREDITO DE LA VENTA {sale.voucher_number_full}'
-                    credit_note.company = company
-                    credit_note.environment_type = credit_note.company.environment_type
-                    credit_note.receipt = receipt_para_emitir(company, VOUCHER_TYPE[1][0], electronica=True)
-                    credit_note.voucher_number = credit_note.generate_voucher_number()
-                    credit_note.voucher_number_full = credit_note.get_voucher_number_full()
-                    credit_note.iva = iva
-                    credit_note.save()
-                    for sale_detail in sale.saledetail_set.all():
-                        detail = CreditNoteDetail()
-                        detail.credit_note_id = credit_note.id
-                        detail.sale_detail_id = sale_detail.id
-                        detail.product_id = sale_detail.product_id
-                        detail.cant = sale_detail.cant
-                        detail.price = sale_detail.price
-                        detail.dscto = sale_detail.dscto
-                        detail.save()
-                        credit_note.calculate_detail()
-                        detail.product.stock += detail.cant
-                        detail.product.save()
-                    credit_note.calculate_invoice()
+                    with transaction.atomic():
+                        credit_note = crear_nota_credito(request.company, sale.pk, None,
+                                                         f'DEVOLUCIÓN TOTAL DE LA FACTURA {sale.voucher_number_full}')
+                        emision.preparar(credit_note)
                     data = credit_note.generate_electronic_invoice()
-                    if not data['resp']:
-                        transaction.set_rollback(True)
-                    else:
-                        sale.status = INVOICE_STATUS[3][0]
-                        sale.save()
-                if 'error' in data:
-                    SRI().create_voucher_errors(credit_note, data)
             elif action == 'send_invoice_by_email':
                 sale = Sale.objects.get(pk=request.POST['id'])
                 xml_electronic_signature = SRI()
@@ -108,22 +90,39 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
     success_url = reverse_lazy('sale_admin_list')
     permission_required = 'add_sale'
 
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        if self.request.company.environment_type == emision.PRODUCCION:
+            # El ticket de venta no es comprobante del SRI: en Producción solo se emiten facturas.
+            form.fields['receipt'].choices = [(c, n) for c, n in form.fields['receipt'].choices if c != VOUCHER_TYPE[2][0]]
+        return form
+
     def get_first_final_consumer(self):
-        client = Client.objects.filter(dni='9999999999999').first()
-        return client.toJSON() if client else dict()
+        return consumidor_final(self.request.company).toJSON()
+
+    def validar_consumidor_final(self, sale):
+        if not es_consumidor_final(sale.client):
+            return
+        if sale.client.dni != '9999999999999' or sale.client.identification_type != '07':
+            raise ValueError('El consumidor final usa el tipo «Venta a consumidor final» y la identificación 9999999999999.')
+        if Decimal(str(round(float(sale.total), 2))) > Decimal('50.00'):
+            raise ValueError('Una factura a consumidor final no puede superar USD 50,00 (ficha técnica del SRI, 9.10). '
+                             'Registra los datos del comprador.')
 
     def post(self, request, *args, **kwargs):
         action = request.POST['action']
         data = {}
         try:
             if action == 'add':
+                if request.POST['receipt'] == VOUCHER_TYPE[2][0] and request.company.environment_type == emision.PRODUCCION:
+                    raise ValueError('El ticket de venta no está disponible en Producción: emite una factura.')
                 with transaction.atomic():
                     sale = Sale()
-                    sale.date_joined = request.POST['date_joined']
+                    sale.date_joined = timezone.localdate()   # la fecha de emisión es la de hoy; no se elige
                     sale.company = request.company
                     sale.environment_type = sale.company.environment_type
-                    # Requisitos de la configuración de facturación (numeración confirmada y, si es electrónica, firma).
-                    electronica = request.POST['receipt'] == VOUCHER_TYPE[0][0] and 'create_electronic_invoice' in request.POST
+                    # Toda factura es electrónica y se transmite al emitirla (Res. NAC-DGERCGC25-00000014).
+                    electronica = request.POST['receipt'] == VOUCHER_TYPE[0][0]
                     sale.receipt = receipt_para_emitir(sale.company, request.POST['receipt'], electronica)
                     sale.voucher_number = sale.generate_voucher_number()
                     sale.voucher_number_full = sale.get_voucher_number_full()
@@ -144,7 +143,7 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     if sale.receipt.voucher_type == VOUCHER_TYPE[0][0]:
                         sale.time_limit = int(request.POST['time_limit'])
                         sale.payment_method = request.POST['payment_method']
-                        sale.create_electronic_invoice = 'create_electronic_invoice' in request.POST
+                        sale.create_electronic_invoice = True
                     if sale.payment_type == PAYMENT_TYPE[0][0]:
                         sale.cash = float(request.POST['cash'])
                         sale.change = float(request.POST['change'])
@@ -167,6 +166,8 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                             detail.product.save()
                     sale.calculate_detail()
                     sale.calculate_invoice()
+                    if sale.create_electronic_invoice:
+                        self.validar_consumidor_final(sale)
                     if sale.payment_type == PAYMENT_TYPE[1][0]:
                         ctas_collect = CtasCollect()
                         ctas_collect.sale_id = sale.id
@@ -177,11 +178,11 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                         ctas_collect.save()
                     data = {'print_url': str(reverse_lazy('sale_admin_print_invoice', kwargs={'pk': sale.id}))}
                     if sale.create_electronic_invoice:
-                        data = sale.generate_electronic_invoice()
-                        if not data['resp']:
-                            transaction.set_rollback(True)
-                if 'error' in data:
-                    SRI().create_voucher_errors(sale, data)
+                        # Firma y guarda el XML con su fecha y clave. Si falla, la venta se deshace: nada salió al SRI.
+                        emision.preparar(sale)
+                if sale.create_electronic_invoice:
+                    # Ya confirmada la venta: un fallo desde aquí nunca la borra ni libera su número.
+                    data = sale.generate_electronic_invoice()
             elif action == 'search_product':
                 ids = json.loads(request.POST['ids'])
                 data = []
@@ -238,11 +239,7 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     form1 = ClientUserForm(self.request.POST, self.request.FILES)
                     form2 = ClientForm(request.POST)
                     if form1.is_valid() and form2.is_valid():
-                        user = form1.save(commit=False)
-                        user.username = form2.cleaned_data['dni']
-                        user.set_password(user.username)
-                        user.save()
-                        user.groups.add(Group.objects.get(pk=settings.GROUPS['client']))
+                        user = usuario_de_cliente(form1, form2.cleaned_data['dni'])
                         form_client = form2.save(commit=False)
                         form_client.user = user
                         form_client.save()
@@ -278,7 +275,12 @@ class SaleDeleteView(GroupPermissionMixin, DeleteView):
     def post(self, request, *args, **kwargs):
         data = {}
         try:
-            self.get_object().delete()
+            sale = self.get_object()
+            if sale.status in emision.BLOQUEAN_BORRADO:
+                data['error'] = ('Esta factura ya fue enviada al SRI y no se puede eliminar. Para dejarla sin efecto, anúlala en '
+                                 '«SRI en línea» (hasta el día 7 del mes siguiente) o emite una nota de crédito.')
+            else:
+                sale.delete()
         except Exception as e:
             data['error'] = str(e)
         return HttpResponse(json.dumps(data), content_type='application/json')

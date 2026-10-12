@@ -1,0 +1,31 @@
+# FacturaPorAquí — consulta en el SRI los comprobantes «En proceso» y envía los firmados que no llegaron
+# a enviarse (manage.py consultar_sri). Lo lanza facturaporaqui-sri@%i.timer. Instancia = entorno.
+[Unit]
+Description=FacturaPorAquí (%i) - consulta de comprobantes en el SRI
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=facturaporaqui
+Group=facturaporaqui
+WorkingDirectory=/opt/facturaporaqui/%i/current
+EnvironmentFile=/etc/facturaporaqui/%i.env
+Environment=XDG_CACHE_HOME=/tmp
+ExecStart=/opt/facturaporaqui/%i/current/.venv/bin/python manage.py consultar_sri
+TimeoutStartSec=15min
+UMask=0027
+MemoryMax=600M
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/facturaporaqui/datos/%i/archivos /home/facturaporaqui/datos/%i/firmas /home/facturaporaqui/logs/%i
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+CapabilityBoundingSet=

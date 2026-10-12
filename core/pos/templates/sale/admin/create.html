@@ -56,7 +56,9 @@
         <div class="col-lg-2">
             <div class="form-group">
                 <label>{{ form.create_electronic_invoice.label }}:</label><br>
-                {{ form.create_electronic_invoice }}
+                {# Toda factura es electrónica y se transmite al emitirla (Res. NAC-DGERCGC25-00000014). #}
+                <input type="hidden" name="create_electronic_invoice" value="on">
+                <span class="badge badge-success">Sí, siempre</span>
             </div>
         </div>
         <div class="col-lg-7">

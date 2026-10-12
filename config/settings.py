@@ -216,6 +216,11 @@ FPA_URL_APP = env('FPA_URL_APP', default='')
 # Buzón que recibe los avisos de pagos y las solicitudes de factura de la suscripción.
 FPA_CORREO_FACTURACION = env('FPA_CORREO_FACTURACION', default='bill@facturaporaqui.com')
 
+# RUC del proveedor del sistema de facturación electrónica: el SRI lo exige como campo adicional
+# «RUC Proveedor» en cada comprobante (ficha técnica, Anexo 26; Res. NAC-DGERCGC26-00000027).
+# Vacío: no se emite en Producción.
+FPA_RUC_PROVEEDOR = env('FPA_RUC_PROVEEDOR', default='')
+
 # Sesiones y cookies. El JavaScript existente lee la cookie csrftoken, por eso
 # CSRF_COOKIE_HTTPONLY queda en False.
 SESSION_COOKIE_NAME = 'fpa_sesion'

@@ -196,7 +196,7 @@
             </tbody>
         </table>
         <br>
-        {% if sale.additional_info %}
+        {% if sale.additional_info or sale.get_ruc_proveedor %}
             <table class="details" style="width: 100%;">
                 <thead>
                 <tr>
@@ -204,12 +204,18 @@
                 </tr>
                 </thead>
                 <tbody>
-                {% for additional_info in sale.additional_info %}
+                {% for additional_info in sale.additional_info %}{% if additional_info.value %}
                     <tr>
                         <td class="text-left"><b>{{ additional_info.name }}</b></td>
                         <td class="text-center">{{ additional_info.value }}</td>
                     </tr>
-                {% endfor %}
+                {% endif %}{% endfor %}
+                {% if sale.get_ruc_proveedor %}
+                    <tr>
+                        <td class="text-left"><b>RUC Proveedor</b></td>
+                        <td class="text-center">{{ sale.get_ruc_proveedor }}</td>
+                    </tr>
+                {% endif %}
                 </tbody>
             </table>
         {% endif %}

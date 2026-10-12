@@ -47,6 +47,11 @@ var credit_note = {
                         switch (row.status.id) {
                             case "without_authorizing":
                                 return '<span class="badge badge-warning badge-pill">' + name + '</span>';
+                            case "in_process":
+                                return '<span class="badge badge-info badge-pill">' + name + '</span>';
+                            case "returned":
+                            case "not_authorized":
+                                return '<span class="badge badge-danger badge-pill">' + name + '</span>';
                             case "authorized":
                             case "authorized_and_sent_by_email":
                                 return '<span class="badge badge-success badge-pill">' + name + '</span> ';
@@ -72,8 +77,10 @@ var credit_note = {
                         buttons += '<button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fas fa-list"></i> Opciones</button>';
                         buttons += '<div class="dropdown-menu dropdown-menu-right">';
                         buttons += '<a class="dropdown-item" rel="detail"><i class="fas fa-folder-open"></i> Detalle de productos</a>';
-                        if (row.status.id === 'without_authorizing') {
-                            buttons += '<a rel="generate_invoice" class="dropdown-item"><i class="fas fa-clipboard-check"></i> Generar factura electrónica</a>';
+                        if (row.status.id === 'in_process') {
+                            buttons += '<a rel="generate_invoice" class="dropdown-item"><i class="fas fa-sync-alt"></i> Consultar autorización en el SRI</a>';
+                        } else if (['without_authorizing', 'returned', 'not_authorized'].includes(row.status.id)) {
+                            buttons += '<a rel="generate_invoice" class="dropdown-item"><i class="fas fa-clipboard-check"></i> Enviar al SRI</a>';
                         } else if (['authorized', 'authorized_and_sent_by_email'].includes(row.status.id)) {
                             buttons += '<a rel="send_invoice_by_email" class="dropdown-item"><i class="fas fa-envelope"></i> Enviar comprobantes por email</a>';
                             buttons += '<a href="' + row.pdf_authorized + '" target="_blank" class="dropdown-item"><i class="fa-solid fa-file-pdf"></i> Imprimir pdf</a>';
@@ -159,11 +166,11 @@ $(function () {
             params.append('id', row.id);
             var args = {
                 'params': params,
-                'content': '¿Estas seguro de generar la factura electrónica?',
+                'content': row.status.id === 'in_process' ? '¿Consultar en el SRI la autorización de esta nota de crédito?' : '¿Enviar esta nota de crédito al SRI?',
                 'success': function (request) {
                     alert_sweetalert({
-                        'message': 'Factura generada correctamente',
-                        'timer': 2000,
+                        'message': request.mensaje || 'Nota de crédito autorizada por el SRI',
+                        'timer': request.en_proceso ? 9000 : 2500,
                         'callback': function () {
                             tblCreditNote.ajax.reload();
                         }
@@ -184,7 +191,7 @@ $(function () {
                 'content': '¿Estas seguro de enviar la factura pdf/xml por email?',
                 'success': function (request) {
                     alert_sweetalert({
-                        'message': 'Se ha enviado la factura pdf/xml por email',
+                        'message': request.mensaje || 'Se envió la nota de crédito (PDF y XML) por correo',
                         'timer': 2000,
                         'callback': function () {
                             tblCreditNote.ajax.reload();

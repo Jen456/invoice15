@@ -9,6 +9,7 @@ from django.views.generic import CreateView, UpdateView, DeleteView, TemplateVie
 from config import settings
 from core.pos.forms import ClientForm, Client, ClientUserForm
 from core.pos.utilities.sri import SRI
+from core.pos.clientes import usuario_de_cliente
 from core.security.mixins import GroupModuleMixin, GroupPermissionMixin
 
 
@@ -59,11 +60,7 @@ class ClientCreateView(GroupPermissionMixin, CreateView):
                     form1 = self.get_form_user()
                     form2 = self.get_form()
                     if form1.is_valid() and form2.is_valid():
-                        user = form1.save(commit=False)
-                        user.username = form2.cleaned_data['dni']
-                        user.set_password(user.username)
-                        user.save()
-                        user.groups.add(Group.objects.get(pk=settings.GROUPS['client']))
+                        user = usuario_de_cliente(form1, form2.cleaned_data['dni'])
                         form_client = form2.save(commit=False)
                         form_client.user = user
                         form_client.save()

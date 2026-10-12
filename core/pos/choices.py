@@ -60,6 +60,7 @@ PAYMENT_METHOD = (
     ('16', 'TARJETA DE DÉBITO'),
     ('17', 'DINERO ELECTRÓNICO'),
     ('18', 'TARJETA PREPAGO'),
+    ('19', 'TARJETA DE CRÉDITO'),
     ('20', 'OTROS CON UTILIZACION DEL SISTEMA FINANCIERO'),
     ('21', 'ENDOSO DE TÍTULOS'),
 )
@@ -78,4 +79,8 @@ INVOICE_STATUS = (
     ('authorized_and_sent_by_email', 'Autorizada y enviada por email'),
     ('canceled', 'Anulado'),
     ('sequential_registered_error', 'Error de secuencial registrado'),
+    # Emisión en dos fases (auditoría SRI, oct-2026): el comprobante se guarda firmado antes de enviarlo.
+    ('in_process', 'En proceso en el SRI'),
+    ('returned', 'Devuelta por el SRI'),
+    ('not_authorized', 'No autorizada por el SRI'),
 )

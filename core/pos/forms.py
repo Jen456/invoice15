@@ -1,6 +1,9 @@
+import re
+
 from django import forms
 
 from .models import *
+from core.login.identificacion import cedula_valida, ruc_valido
 
 
 class ProviderForm(forms.ModelForm):
@@ -217,6 +220,24 @@ class PaymentsDebtsPayForm(forms.ModelForm):
 class ClientForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    def clean(self):
+        """La identificación debe corresponder a su tipo (tabla 6 de la ficha técnica del SRI)."""
+        datos = super().clean()
+        tipo = datos.get('identification_type')
+        dni = re.sub(r'\s', '', datos.get('dni') or '').upper()
+        if tipo == '05' and not cedula_valida(dni):
+            self.add_error('dni', 'La cédula no es válida: revisa los 10 dígitos.')
+        elif tipo == '04' and not ruc_valido(dni):
+            self.add_error('dni', 'El RUC no es válido: revisa los 13 dígitos.')
+        elif tipo == '07' and dni != '9999999999999':
+            self.add_error('dni', 'Para consumidor final la identificación es 9999999999999.')
+        elif tipo in ('06', '08') and not re.fullmatch(r'[A-Z0-9]{3,13}', dni):
+            self.add_error('dni', 'El pasaporte o la identificación del exterior admite de 3 a 13 letras y números.')
+        if tipo and tipo != '07' and dni == '9999999999999':
+            self.add_error('identification_type', 'El 9999999999999 solo se usa con «Venta a consumidor final».')
+        datos['dni'] = dni
+        return datos
 
     class Meta:
         model = Client
