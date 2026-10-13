@@ -12,7 +12,8 @@
 - **Bloqueo intencional:** en Producción no se emite hasta configurar `FPA_RUC_PROVEEDOR`, el RUC de Suprohosting como proveedor (Anexo 26). Lo confirma la propietaria.
   - Al configurarlo, la primera factura de la empresa 6 será la 001-002-000000271 (el número no se consumió en el intento fallido).
 - **Pruebas:** PostgreSQL 257 y SQLite 252 + 5 solo PostgreSQL. `tests/test_emision_sri.py` usa un SRI simulado.
-- **Rama:** se fusionó `3fc3104` de Codex (formularios móviles) sin reescribir historial. **Aún no está publicado**; sale en el próximo despliegue.
+- **13/10/2026, 15:24 UTC — publicado `f787684`:** incluye `3fc3104` de Codex (formularios móviles) y la corrección del error 500 en 12 vistas de edición, que sin sesión cargaban el registro antes de comprobarla (visto en `/pos/client/update/8/`); ahora llevan al login. Respaldo `pre-20261013-152429-f7876848.dump`.
+- **Fernando sigue bloqueado en Producción** solo por `FPA_RUC_PROVEEDOR`: falta el RUC de Suprohosting (el usuario recibe el mensaje «La plataforma aún no tiene configurado el RUC del proveedor…»).
 
 ## Pendiente para Codex — tras la Etapa A
 

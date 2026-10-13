@@ -770,3 +770,12 @@ Resultado final SQLite: **214 aprobadas, 5 omitidas** exclusivas de PostgreSQL, 
 - Publicar `3fc3104` (Codex, formularios móviles), ya fusionado en la rama.
 - Prueba en teléfono físico.
 
+
+## 13/10/2026 — Publicado `f787684` (Claude)
+- **Diagnóstico de «no puedo facturar desde el RUC de Fernando»:** la empresa 6 cumple plan, cupo, firma y numeración; el único bloqueo es `FPA_RUC_PROVEEDOR` vacío (decisión pendiente de la propietaria). Se reprodujo el mensaje exacto.
+- **Corrección:** 12 vistas de edición (clientes, productos, categorías, proveedores, tipos de gasto, gastos, promociones, comprobantes, usuarios, grupos, módulos, tipos de módulo) daban 500 sin sesión.
+- **Prueba nueva:** `tests/test_vistas_sin_sesion.py`, que falla con el código anterior.
+- **Suites:** PostgreSQL 259; SQLite 254 + 5 solo PostgreSQL.
+- **Publicado con `f787684`:** los formularios móviles de Codex (`3fc3104`).
+- **Verificación:** sin sesión → 302 al login; recorrido de DEMOSTRACIÓN sin errores de consola ni respuestas ≥ 400; temporizador del SRI activo.
+\n
