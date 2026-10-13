@@ -778,4 +778,3 @@ Resultado final SQLite: **214 aprobadas, 5 omitidas** exclusivas de PostgreSQL, 
 - **Suites:** PostgreSQL 259; SQLite 254 + 5 solo PostgreSQL.
 - **Publicado con `f787684`:** los formularios móviles de Codex (`3fc3104`).
 - **Verificación:** sin sesión → 302 al login; recorrido de DEMOSTRACIÓN sin errores de consola ni respuestas ≥ 400; temporizador del SRI activo.
-\n
