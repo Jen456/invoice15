@@ -94,7 +94,7 @@
         <div class="text-content"><p><b>Matriz:</b> {{ credit_note.company.main_address }}</p></div>
         <div class="text-content"><p><b>Correo:</b> {{ credit_note.company.email }}</p></div>
         <div class="text-content"><p><b>Obligado a llevar contabilidad:</b> {{ credit_note.company.obligated_accounting }}</p></div>
-        <div class="text-content"><p><b>Contribuyente Especial No.:</b> {{ credit_note.company.special_taxpayer }}</p></div>
+        {% if credit_note.company.special_taxpayer and credit_note.company.special_taxpayer != '000' %}<div class="text-content"><p><b>Contribuyente Especial No.:</b> {{ credit_note.company.special_taxpayer }}</p></div>{% endif %}
     </div>
     <div class="col-50">
         <div class="text-content">
@@ -195,12 +195,24 @@
                 <td class="text-left"><b>Dirección</b></td>
                 <td class="text-center">{{ credit_note.sale.client.address }}</td>
             </tr>
-            {% if credit_note.get_ruc_proveedor %}
-            <tr>
-                <td class="text-left"><b>RUC Proveedor</b></td>
-                <td class="text-center">{{ credit_note.get_ruc_proveedor }}</td>
-            </tr>
-            {% endif %}
+            {% with proveedor=credit_note.get_proveedor %}{% if proveedor %}
+                    <tr>
+                        <td class="text-left"><b>RUC Proveedor</b></td>
+                        <td class="text-center">{{ proveedor.ruc }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-left"><b>Proveedor</b></td>
+                        <td class="text-center">{{ proveedor.nombre }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-left"><b>Email proveedor</b></td>
+                        <td class="text-center">{{ proveedor.email }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-left"><b>Dirección proveedor</b></td>
+                        <td class="text-center">{{ proveedor.direccion }}</td>
+                    </tr>
+                {% endif %}{% endwith %}
             </tbody>
         </table>
     </div>

@@ -95,7 +95,7 @@
         <div class="text-content"><p><b>Matriz:</b> {{ sale.company.main_address }}</p></div>
         <div class="text-content"><p><b>Correo:</b> {{ sale.company.email }}</p></div>
         <div class="text-content"><p><b>Obligado a llevar contabilidad:</b> {{ sale.company.obligated_accounting }}</p></div>
-        <div class="text-content"><p><b>Contribuyente Especial No.:</b> {{ sale.company.special_taxpayer }}</p></div>
+        {% if sale.company.special_taxpayer and sale.company.special_taxpayer != '000' %}<div class="text-content"><p><b>Contribuyente Especial No.:</b> {{ sale.company.special_taxpayer }}</p></div>{% endif %}
     </div>
     <div class="col-50">
         <div class="text-content">
@@ -210,12 +210,24 @@
                         <td class="text-center">{{ additional_info.value }}</td>
                     </tr>
                 {% endif %}{% endfor %}
-                {% if sale.get_ruc_proveedor %}
+                {% with proveedor=sale.get_proveedor %}{% if proveedor %}
                     <tr>
                         <td class="text-left"><b>RUC Proveedor</b></td>
-                        <td class="text-center">{{ sale.get_ruc_proveedor }}</td>
+                        <td class="text-center">{{ proveedor.ruc }}</td>
                     </tr>
-                {% endif %}
+                    <tr>
+                        <td class="text-left"><b>Proveedor</b></td>
+                        <td class="text-center">{{ proveedor.nombre }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-left"><b>Email proveedor</b></td>
+                        <td class="text-center">{{ proveedor.email }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-left"><b>Dirección proveedor</b></td>
+                        <td class="text-center">{{ proveedor.direccion }}</td>
+                    </tr>
+                {% endif %}{% endwith %}
                 </tbody>
             </table>
         {% endif %}

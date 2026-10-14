@@ -806,6 +806,10 @@ class Sale(TenantModel):
         from core.pos.emision import ruc_proveedor
         return ruc_proveedor()
 
+    def get_proveedor(self):
+        from core.pos.emision import datos_proveedor
+        return datos_proveedor()
+
     class Meta:
         verbose_name = 'Venta'
         verbose_name_plural = 'Ventas'
@@ -1329,6 +1333,10 @@ class CreditNote(TenantModel):
     def get_ruc_proveedor(self):
         from core.pos.emision import ruc_proveedor
         return ruc_proveedor()
+
+    def get_proveedor(self):
+        from core.pos.emision import datos_proveedor
+        return datos_proveedor()
 
     def calculate_detail(self):
         for detail in self.creditnotedetail_set.filter():

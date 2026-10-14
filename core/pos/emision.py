@@ -65,6 +65,15 @@ def ruc_proveedor():
     return ruc
 
 
+def datos_proveedor():
+    """Proveedor del sistema para los documentos impresos (None si aún no hay RUC Proveedor)."""
+    ruc = ruc_proveedor()
+    if not ruc:
+        return None
+    return {'ruc': ruc, 'nombre': settings.FPA_PROVEEDOR_NOMBRE, 'email': settings.FPA_PROVEEDOR_EMAIL,
+            'direccion': settings.FPA_PROVEEDOR_DIRECCION}
+
+
 def _nombre(comprobante):
     return f'{comprobante.receipt.name.lower()} {comprobante.voucher_number_full}'
 

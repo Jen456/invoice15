@@ -220,6 +220,10 @@ FPA_CORREO_FACTURACION = env('FPA_CORREO_FACTURACION', default='bill@facturapora
 # «RUC Proveedor» en cada comprobante (ficha técnica, Anexo 26; Res. NAC-DGERCGC26-00000027).
 # Vacío: no se emite en Producción.
 FPA_RUC_PROVEEDOR = env('FPA_RUC_PROVEEDOR', default='')
+# Datos del proveedor que se imprimen junto al RUC Proveedor en el RIDE y en el ticket (sin teléfono).
+FPA_PROVEEDOR_NOMBRE = env('FPA_PROVEEDOR_NOMBRE', default='FACTURAPORAQUI')
+FPA_PROVEEDOR_EMAIL = env('FPA_PROVEEDOR_EMAIL', default='soporte@facturaporaqui.com')
+FPA_PROVEEDOR_DIRECCION = env('FPA_PROVEEDOR_DIRECCION', default='Milagro, Manta y Rumiñahui')
 
 # Sesiones y cookies. El JavaScript existente lee la cookie csrftoken, por eso
 # CSRF_COOKIE_HTTPONLY queda en False.

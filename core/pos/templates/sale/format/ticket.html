@@ -96,7 +96,7 @@
         {% endif %}
         Teléfono: {{ sale.company.phone }} / Celular: {{ sale.company.mobile }}
     </p>
-    <p class="text-center head-voucher-number">TICKET N° {{ sale.voucher_number }}</p>
+    <p class="text-center head-voucher-number">{% if sale.is_invoice %}FACTURA N° {{ sale.voucher_number_full }}{% else %}TICKET N° {{ sale.voucher_number }}{% endif %}</p>
     <p class="head-data">
         {% if sale.is_invoice %}
             <b>Fecha de autorización:</b> {{ sale.get_authorization_date }}<br>
@@ -104,12 +104,12 @@
         {% endif %}
         {% if sale.is_invoice %}
             <b>Factura:</b> {{ sale.voucher_number_full }}<br>
-            <b>Ambiente:</b> {{ sale.company.get_environment_type_display }}<br>
+            <b>Ambiente:</b> {{ sale.get_environment_type_display }}<br>
             <b>Emisión:</b> {{ sale.company.get_emission_type_display }}<br>
             <b>Clave de acceso:</b> {{ sale.access_code }}<br>
         {% endif %}
         <b>Cliente:</b> {{ sale.client.user.names }}<br>
-        <b>Número de cédula:</b> {{ sale.client.dni }}<br>
+        <b>Identificación:</b> {{ sale.client.dni }}<br>
         {% if sale.is_invoice %}
             <b>Método de pago:</b> {{ sale.get_payment_method_display }}
         {% endif %}
@@ -153,7 +153,7 @@
             <td class="text-right">{{ sale.total_dscto|floatformat:2 }}</td>
         </tr>
         <tr>
-            <td class="float-right font-weight-bold">Subtotal {{ sale.get_iva_percent }}%%</td>
+            <td class="float-right font-weight-bold">Subtotal {{ sale.get_iva_percent }}%</td>
             <td class="text-right">{{ sale.subtotal_12|floatformat:2 }}</td>
         </tr>
         <tr>
@@ -187,10 +187,13 @@
     </table>
     {% if sale.is_invoice %}
         <p class="terms">
-            Contribuyente Especial No.: {{ sale.company.special_taxpayer }}<br>
-            Para acceder a sus documentos electrónicos debe ingresar al portal {{ sale.company.website }}<br>
-            Con su usuario {{ sale.client.user.username }} y clave {{ sale.client.user.username }}.<br>
-            Si tiene dificultad para ingresar o descargar sus comprobantes puede comunicarse al correo {{ sale.company.email }}
+            {% if sale.company.special_taxpayer and sale.company.special_taxpayer != '000' %}Contribuyente Especial No.: {{ sale.company.special_taxpayer }}<br>{% endif %}
+            {# Sin usuario ni clave del portal (se exponía la cédula como clave); el portal genérico queda para más adelante. #}
+            {% with proveedor=sale.get_proveedor %}{% if proveedor %}
+            Sistema de facturación electrónica: {{ proveedor.nombre }} · RUC Proveedor: {{ proveedor.ruc }}<br>
+            {{ proveedor.email }} · {{ proveedor.direccion }}<br>
+            {% endif %}{% endwith %}
+            Consultas sobre este comprobante: {{ sale.company.email }}
         </p>
     {% endif %}
 </div>
