@@ -23,7 +23,8 @@ TARIFAS_IVA = (('15.00', '15 %'), ('5.00', '5 %'), ('0.00', '0 % (sin IVA)'))
 class CodigoChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
         impuesto = 'Renta' if obj.impuesto == '1' else 'IVA'
-        return f'{impuesto} · {obj.codigo} · {obj.concepto[:90]} ({obj.porcentaje:g} %)'
+        porcentaje = f'{obj.porcentaje.normalize():f}'.replace('.', ',')
+        return f'{impuesto} · {obj.codigo} · {obj.concepto[:90]} ({porcentaje} %)'
 
 
 class DocumentoSustentoForm(forms.Form):
@@ -31,7 +32,7 @@ class DocumentoSustentoForm(forms.Form):
                                        help_text='Con establecimiento y punto: 001-001-000000123.')
     aut_doc_sustento = forms.CharField(label='Autorización de la factura (clave de acceso)', max_length=49,
                                        help_text='49 dígitos (o 10 / 37 en comprobantes antiguos).')
-    fecha_doc_sustento = forms.DateField(label='Fecha de emisión de la factura', widget=forms.DateInput(attrs={'type': 'date'}))
+    fecha_doc_sustento = forms.DateField(label='Fecha de emisión de la factura', widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'))   # <input type=date> solo acepta ISO
     base_0 = forms.DecimalField(label='Base 0 %', required=False, min_value=0, decimal_places=2, max_digits=12)
     base_iva = forms.DecimalField(label='Base gravada con IVA', required=False, min_value=0, decimal_places=2, max_digits=12)
     tarifa_iva = forms.ChoiceField(label='Tarifa de IVA', choices=TARIFAS_IVA, initial='15.00')

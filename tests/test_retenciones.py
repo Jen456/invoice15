@@ -158,6 +158,11 @@ class TestNumeracion:
         respuesta = web.post(f'{LISTA}nueva/{compra.pk}/', {**formulario([(codigos['bienes'], '', '')]), 'action': 'emitir'})
         assert 'Otros comprobantes' in respuesta.content.decode() and not leer(compra.company, lambda: Retencion.objects.exists())
 
+    def test_formulario_trae_la_fecha_de_la_compra_en_iso(self, web, compra, codigos):
+        html = web.get(f'{LISTA}nueva/{compra.pk}/').content.decode()
+        assert f'value="{compra.date_joined:%Y-%m-%d}"' in html
+        assert 'Renta · 312 · Transferencia de bienes muebles de naturaleza corporal (2 %)' in html
+
     def test_configuracion_enlaza_otros_comprobantes(self, web, empresa):
         assert 'href="/configuracion/facturacion/otros/"' in web.get('/configuracion/facturacion/', follow=True).content.decode()
 
