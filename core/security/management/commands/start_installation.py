@@ -272,6 +272,14 @@ class Command(BaseCommand):
                 'permissions': list(Permission.objects.filter(content_type__app_label='comprobantes', content_type__model='retencion'))
             },
             {
+                'name': 'Liquidaciones de compra',
+                'url': '/comprobantes/liquidaciones/',
+                'icon': 'fas fa-file-signature',
+                'description': 'Liquidaciones de compra electrónicas emitidas desde Compras',
+                'moduletype': moduletype,
+                'permissions': list(Permission.objects.filter(content_type__app_label='comprobantes', content_type__model='liquidacioncompra'))
+            },
+            {
                 'name': 'Errores de Comprob.',
                 'url': '/pos/voucher/errors/',
                 'icon': 'fas fa-file-archive',

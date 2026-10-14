@@ -5,4 +5,6 @@ from core.comprobantes import views
 urlpatterns = [
     path('retenciones/', views.RetencionListView.as_view(), name='comprobantes_retenciones'),
     path('retenciones/nueva/<int:compra>/', views.RetencionCrearView.as_view(), name='comprobantes_retencion_nueva'),
+    path('liquidaciones/', views.LiquidacionListView.as_view(), name='comprobantes_liquidaciones'),
+    path('liquidaciones/nueva/<int:compra>/', views.LiquidacionCrearView.as_view(), name='comprobantes_liquidacion_nueva'),
 ]

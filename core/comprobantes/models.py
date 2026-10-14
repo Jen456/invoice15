@@ -186,3 +186,81 @@ class RetencionDetalle(TenantModel):
         verbose_name_plural = 'Detalles de retención'
         ordering = ('impuesto', 'id')
         default_permissions = ()
+
+
+class LiquidacionCompra(ComprobanteElectronico):
+    """Liquidación de compra de bienes y prestación de servicios (codDoc 03, XML 1.1.0) sobre una compra registrada.
+
+    La emite el comprador cuando el vendedor no puede emitir factura (sin RUC, RUC suspendido o no residente).
+    """
+    TIPO_IDENTIFICACION = (('05', 'Cédula'), ('06', 'Pasaporte'), ('08', 'Identificación del exterior'), ('04', 'RUC (suspendido)'))
+
+    purchase = models.ForeignKey('pos.Purchase', on_delete=models.PROTECT, related_name='liquidaciones', verbose_name='Compra')
+    provider = models.ForeignKey('pos.Provider', on_delete=models.PROTECT, related_name='liquidaciones', verbose_name='Proveedor')
+    # Proveedor (copia al emitir: el XML no cambia si luego se edita el proveedor)
+    tipo_identificacion = models.CharField(max_length=2, choices=TIPO_IDENTIFICACION, verbose_name='Tipo de identificación')
+    identificacion = models.CharField(max_length=20, verbose_name='Identificación')
+    razon_social = models.CharField(max_length=300, verbose_name='Nombres o razón social')
+    direccion = models.CharField(max_length=300, blank=True, verbose_name='Dirección del proveedor')
+    correo = models.CharField(max_length=254, blank=True, verbose_name='Correo del proveedor')
+    forma_pago = models.CharField(max_length=2, default='01', verbose_name='Forma de pago')
+    concepto = models.CharField(max_length=300, blank=True, verbose_name='Concepto')
+    total_sin_impuestos = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='Total sin impuestos')
+    total_descuento = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='Total descuento')
+    total_iva = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='IVA')
+    importe_total = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='Importe total')
+
+    class Meta:
+        verbose_name = 'Liquidación de compra'
+        verbose_name_plural = 'Liquidaciones de compra'
+        ordering = ('-id',)
+        default_permissions = ()
+        permissions = (('view_liquidacioncompra', 'Puede ver liquidaciones de compra'),
+                       ('add_liquidacioncompra', 'Puede emitir liquidaciones de compra'),
+                       ('delete_liquidacioncompra', 'Puede eliminar liquidaciones de compra no enviadas'))
+        constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='liquidacion_numero_unico_por_secuencia')]
+
+    def __str__(self):
+        return f'Liquidación de compra {self.voucher_number_full} · {self.razon_social}'
+
+    @property
+    def total(self):
+        """Importe del correo de envío (core/pos/utilities/sri.py)."""
+        return self.importe_total
+
+    def impuestos_por_tarifa(self):
+        """[(tarifa, base, iva)] ordenado por tarifa: totalConImpuestos del XML y subtotales del RIDE."""
+        grupos = {}
+        for d in self.detalles.all():
+            base, iva = grupos.get(d.tarifa_iva, (Decimal('0'), Decimal('0')))
+            grupos[d.tarifa_iva] = (base + d.precio_total_sin_impuesto, iva + d.valor_iva)
+        return [(t, redondear(b), redondear(v)) for t, (b, v) in sorted(grupos.items())]
+
+    def get_destinatario(self):
+        return self.razon_social, self.correo, bool(self.correo)
+
+    def generate_xml(self):
+        from core.comprobantes.xml_liquidacion import generar_xml
+        return generar_xml(self)
+
+    def generate_pdf_authorized(self):
+        from core.comprobantes.ride import guardar_ride
+        guardar_ride(self, 'comprobantes/liquidacion/ride.html')
+
+
+class LiquidacionDetalle(TenantModel):
+    liquidacion = models.ForeignKey(LiquidacionCompra, on_delete=models.CASCADE, related_name='detalles')
+    codigo = models.CharField(max_length=25, blank=True, verbose_name='Código')
+    descripcion = models.CharField(max_length=300, verbose_name='Descripción')
+    cantidad = models.DecimalField(max_digits=18, decimal_places=6, verbose_name='Cantidad')
+    precio_unitario = models.DecimalField(max_digits=18, decimal_places=6, verbose_name='Precio unitario')
+    descuento = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='Descuento')
+    precio_total_sin_impuesto = models.DecimalField(max_digits=14, decimal_places=2, verbose_name='Precio total sin impuesto')
+    tarifa_iva = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Tarifa de IVA')
+    valor_iva = models.DecimalField(max_digits=14, decimal_places=2, verbose_name='Valor del IVA')
+
+    class Meta:
+        verbose_name = 'Detalle de liquidación de compra'
+        verbose_name_plural = 'Detalles de liquidación de compra'
+        ordering = ('id',)
+        default_permissions = ()

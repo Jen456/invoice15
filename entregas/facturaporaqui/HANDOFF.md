@@ -1,5 +1,65 @@
 # Handoff compartido — frontend
 
+## Estado actual — liquidación de compra (03) terminada, sin publicar (Claude, 14/10/2026)
+
+- **Qué hace:**
+  - Desde **Compras** (botón «Liquidación») se emite la liquidación de compra de bienes y prestación de servicios: codDoc 03, XML 1.1.0 (Anexo 17).
+  - Es para cuando el vendedor no puede emitir factura (RCV art. 13): personas naturales sin RUC o con RUC suspendido, y no residentes.
+- **Proveedor:**
+  - El nombre y la identificación salen de la ficha del proveedor y se copian al emitir.
+  - Identificaciones: cédula (05, validada), pasaporte (06), exterior (08) o RUC (04). El RUC exige confirmar que está suspendido, porque con RUC activo la liquidación no sustenta crédito ni gasto. El tipo 07 no se admite.
+- **Líneas y totales:**
+  - Las líneas son las de la compra (cantidad × precio). El emisor elige la tarifa de IVA de cada una (15, 5 o 0 %); la sugerida es 15 % si el producto cobra impuesto y 0 % si no.
+  - El IVA de cada línea se redondea por separado y el total por tarifa es la suma de las líneas, como en la factura.
+- **Emisión:** paso «Revisa antes de emitir», firma nativa, emisión en dos fases, `consultar_sri`, cupo 1 y correo al proveedor con el RIDE.
+- **Numeración:** en **Otros comprobantes** (tipo 03). Una sola liquidación vigente por compra; las que están en proceso o autorizadas no se borran.
+- **Retención sobre la liquidación:** si la compra tiene una liquidación autorizada, la pantalla de retención la usa como documento sustento (03).
+  - Precarga número, clave, fecha, bases e IVA.
+  - Sugiere renta 311 (3 %) e IVA 3 (100 %), según la Res. NAC-DGERCGC20-00000061.
+  - La retención tiene un campo nuevo, `cod_doc_sustento` (01 factura / 03 liquidación). Es opcional y vale 01 por defecto. El sustento 09 no admite 03.
+- **Código:**
+  - `core/comprobantes/liquidaciones.py`, `xml_liquidacion.py`, modelos `LiquidacionCompra` y `LiquidacionDetalle` (RLS).
+  - Migraciones `comprobantes 0005–0007` (modelo, seguridad por filas, módulo «Liquidaciones de compra» en Facturación).
+  - `ComprobanteListView` reúne el listado de retenciones y el de liquidaciones.
+- **Verificado:**
+  - SQLite: 312 pruebas aprobadas y 5 omitidas. PostgreSQL: 317 aprobadas. `makemigrations --check` sin cambios.
+  - El XML firmado es válido contra el XSD oficial 1.1.0.
+  - **El SRI de pruebas (celcer) autorizó** la liquidación 001-002-920115897 y la retención 001-002-966385138, que tiene esa liquidación como sustento 03. Las dos son de la empresa 6, se armaron en memoria con un proveedor ficticio y no dejaron nada en la base.
+  - El RIDE se revisó en A4.
+- **Sin publicar.** Se publica junto con el diseño de retenciones de Codex (`13d0cde`), ya integrado.
+
+## Pendiente para Codex — pantallas de liquidación de compra
+
+- [ ] `core/comprobantes/templates/comprobantes/liquidacion/create.html`: proveedor y pago, líneas de la compra con tarifa por línea, resumen «Revisa antes de emitir» con subtotales por tarifa, y avisos (qué es una liquidación; compra con liquidación vigente).
+- [ ] `core/comprobantes/templates/comprobantes/liquidacion/list.html`: estados, PDF/XML, reenviar, eliminar y acceso a «Retención» cuando está autorizada.
+- [ ] Botón «Liquidación» en Compras (`core/pos/static/purchase/js/list.js`) y la sección 03 en `configuracion/otros.html`.
+- [ ] Aviso de la retención cuando el sustento es una liquidación (`retencion/create.html`, bloque `{% if liquidacion %}`).
+- [ ] RIDE `core/comprobantes/templates/comprobantes/liquidacion/ride.html` (WeasyPrint, A4; conservar `.hoja` de 190 mm).
+- [ ] Revisar a 1440, 1024, 390 y 360 px, y registrar capturas.
+
+## Notas entre agentes — contrato de liquidación (Claude → Codex)
+
+- **No cambiar:** modelos, servicios, vistas, URL ni migraciones.
+- **Formulario `LiquidacionForm`:** campos `tipo_identificacion`, `direccion`, `forma_pago`, `concepto` y `confirma_sin_ruc`.
+- **Formset con prefijo `lineas`:**
+  - Una forma por línea de la compra, con `detalle` oculto, `descripcion` y `tarifa`. No se agregan ni quitan líneas: salen de la compra.
+  - Conservar el `management_form`, los botones `name="action"` con `value="calcular"` y `value="emitir"`, y el CSRF.
+- **Contexto de `create.html`:**
+  - `compra`, `vigente`, `form`, `lineas`.
+  - `filas`: pares (forma, línea), donde la línea tiene codigo, descripcion, cantidad, precio_unitario y tarifa.
+  - `resumen`, con `doc`, `detalle` (descripcion, cantidad, precio_unitario, base, tarifa, iva), `por_tarifa` [(tarifa, base, iva)], `total_sin_impuestos`, `total_iva` e `importe_total`.
+- **Listado:**
+  - Contexto: `liquidaciones`, `puede_emitir`, `puede_eliminar`.
+  - Acciones por POST: `generate_invoice` y `delete`, con `id`. Los estados se comparan de forma exacta.
+- **Retención:** el contexto agrega `liquidacion`, que existe cuando el sustento sugerido es la liquidación autorizada.
+- **RIDE, contenido obligatorio:**
+  - del emisor y del comprobante: emisor, número, autorización, fecha, ambiente, clave en código de barras;
+  - del proveedor: nombre, tipo e identificación, fecha y dirección;
+  - el detalle (código, cantidad, descripción, precio unitario, descuento, precio total);
+  - los subtotales por tarifa, el descuento, el IVA por tarifa y el valor total;
+  - la forma de pago y la información adicional (RUC Proveedor y FACTURAPORAQUI).
+- **Datos de prueba:** usar empresas ficticias. No emitir documentos reales.
+
 ## Estado actual — tabla de precios de Codex publicada `3e25b3e` (Claude, 14/10/2026)
 
 - **Publicado:**

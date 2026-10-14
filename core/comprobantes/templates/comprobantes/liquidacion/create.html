@@ -1,0 +1,73 @@
+{% extends 'skin.html' %}
+{% load widget_tweaks %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item"><a href="{% url 'comprobantes_liquidaciones' %}"><i class="fas fa-file-signature"></i> Liquidaciones de compra</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Emitir</li>
+{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-retencion-nueva fp-liquidacion-nueva">
+    <header class="fp-welcome"><span class="fp-eyebrow">Liquidación de compra de bienes y prestación de servicios</span><h1>Liquidación de la compra #{{ compra.pk }}</h1>
+        <p>Proveedor: <strong>{{ compra.provider.name }}</strong> · {{ compra.provider.ruc }}{% if compra.provider.email %} · {{ compra.provider.email }}{% endif %}</p></header>
+    {% if vigente %}
+        <div class="alert alert-warning">Esta compra ya tiene la liquidación <strong>{{ vigente.voucher_number_full }}</strong> ({{ vigente.get_status_display }}). <a href="{% url 'comprobantes_liquidaciones' %}">Ver liquidaciones</a></div>
+    {% else %}
+    <div class="alert alert-info">La liquidación reemplaza a la factura cuando el vendedor no puede emitirla: personas naturales sin RUC o con RUC suspendido (por ejemplo, pequeños productores) y servicios de no residentes. Para que sustente crédito tributario o gasto, emite después la retención del 100 % del IVA y de la renta que corresponda.</div>
+    <form method="post" class="fp-retencion-form" novalidate>{% csrf_token %}
+        {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+        <section class="card fp-retencion-panel mb-3"><div class="card-body">
+            <span class="fp-eyebrow">Paso 1 · Proveedor y pago</span><h2 class="h5">Datos del proveedor</h2><p class="text-muted">El nombre y la identificación salen de la ficha del proveedor; si están mal, corrígelos en Proveedores.</p>
+            <div class="row">
+                {% for field in form %}
+                    <div class="form-group col-12 {% if field.name == 'confirma_sin_ruc' or field.name == 'concepto' %}col-lg-12{% else %}col-md-6 col-lg-4{% endif %}">
+                        {% if field.field.widget.input_type == 'checkbox' %}
+                            <div class="form-check">{% render_field field class="form-check-input" %}<label for="{{ field.id_for_label }}" class="form-check-label font-weight-bold">{{ field.label }}</label></div>
+                        {% else %}
+                            <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                            {% render_field field class="form-control" %}
+                        {% endif %}
+                        {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                        {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div></section>
+        <section class="card fp-retencion-panel mb-3"><div class="card-body">
+            <span class="fp-eyebrow">Paso 2 · Detalle</span><h2 class="h5">Lo que compraste</h2><p class="text-muted">Cantidades y precios son los de la compra. Elige la tarifa de IVA de cada línea (los productos agrícolas sin procesar suelen ser 0 %).</p>
+            {{ lineas.management_form }}{% for error in lineas.non_form_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+            {% for f, linea in filas %}
+                <fieldset class="row fp-retencion-linea"><legend>{% if linea %}{{ linea.descripcion }}{% else %}Línea {{ forloop.counter }}{% endif %}</legend>
+                    {{ f.detalle }}
+                    {% if linea %}<p class="col-12 text-muted mb-2">Código {{ linea.codigo|default:"—" }} · {{ linea.cantidad|floatformat:"-6" }} × ${{ linea.precio_unitario|floatformat:2 }}</p>{% endif %}
+                    {% for field in f.visible_fields %}
+                        <div class="form-group col-12 {% if field.name == 'descripcion' %}col-lg-8{% else %}col-md-6 col-lg-4{% endif %}">
+                            <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                            {% render_field field class="form-control" %}
+                            {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                            {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                        </div>
+                    {% endfor %}
+                </fieldset>
+            {% empty %}
+                <p class="text-muted">La compra no tiene productos.</p>
+            {% endfor %}
+        </div></section>
+        {% if resumen %}
+            <section class="card fp-retencion-revision mb-3 border-info"><div class="card-body">
+                <span class="fp-eyebrow">Paso 3 · Confirmación</span><h2 class="h5">Revisa antes de emitir</h2><p>El cálculo todavía no ha emitido un documento. Comprueba los datos antes de enviarlo al SRI.</p>
+                <p>{{ resumen.doc.razon_social }} · {{ resumen.doc.identificacion }}</p>
+                <div class="table-responsive fp-retencion-resumen"><table class="table table-sm"><thead><tr><th>Descripción</th><th class="text-right">Cantidad</th><th class="text-right">Precio</th><th class="text-right">Subtotal</th><th class="text-right">IVA</th></tr></thead><tbody>
+                    {% for d in resumen.detalle %}<tr><td>{{ d.descripcion }}</td><td class="text-right">{{ d.cantidad|floatformat:"-6" }}</td><td class="text-right">{{ d.precio_unitario|floatformat:2 }}</td><td class="text-right">{{ d.base|floatformat:2 }}</td><td class="text-right">{{ d.iva|floatformat:2 }} <small class="text-muted">({{ d.tarifa|floatformat:"-2" }} %)</small></td></tr>{% endfor %}
+                    {% for tarifa, base, iva in resumen.por_tarifa %}<tr><td colspan="3" class="text-right">Subtotal {{ tarifa|floatformat:"-2" }} %</td><td class="text-right">{{ base|floatformat:2 }}</td><td class="text-right">{{ iva|floatformat:2 }}</td></tr>{% endfor %}
+                    <tr><td colspan="4" class="text-right"><strong>Total</strong></td><td class="text-right"><strong>${{ resumen.importe_total|floatformat:2 }}</strong></td></tr>
+                </tbody></table></div>
+                <button type="submit" name="action" value="emitir" class="btn fpa-btn-pagar">Emitir liquidación al SRI</button>
+                <button type="submit" name="action" value="calcular" class="btn btn-outline-secondary">Volver a calcular</button>
+            </div></section>
+        {% else %}
+            <button type="submit" name="action" value="calcular" class="btn fpa-btn-pagar">Revisar liquidación</button>
+        {% endif %}
+        <a href="/pos/purchase/" class="btn btn-link">Cancelar</a>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

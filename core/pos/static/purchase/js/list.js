@@ -67,6 +67,8 @@ var purchase = {
                         var buttons = '<a class="btn btn-success btn-xs btn-flat" rel="detail" data-toggle="tooltip" title="Detalles" ><i class="fas fa-folder-open"></i></a> ';
                         // Comprobante de retención sobre la factura de esta compra (core/comprobantes).
                         buttons += '<a href="/comprobantes/retenciones/nueva/' + row.id + '/" data-toggle="tooltip" title="Emitir retención" class="btn btn-info btn-xs btn-flat fp-retencion-compra"><i class="fas fa-file-invoice-dollar"></i> Retención</a> ';
+                        // Liquidación de compra cuando el vendedor no puede emitir factura (core/comprobantes).
+                        buttons += '<a href="/comprobantes/liquidaciones/nueva/' + row.id + '/" data-toggle="tooltip" title="Emitir liquidación de compra" class="btn btn-info btn-xs btn-flat fp-retencion-compra"><i class="fas fa-file-signature"></i> Liquidación</a> ';
                         buttons += '<a href="' + pathname + 'delete/' + row.id + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
                         return buttons;
                     }

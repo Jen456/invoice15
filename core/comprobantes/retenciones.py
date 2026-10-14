@@ -1,7 +1,7 @@
 """Comprobante de retención (07) emitido sobre una compra: reglas en el servidor.
 
 - Datos del sujeto retenido tomados del proveedor de la compra (copiados al emitir).
-- Documento sustento: número de 15 dígitos (001-001-000000123), autorización de 10, 37 o 49 dígitos,
+- Documento sustento: la factura del proveedor (01) o la liquidación de compra que emitió la empresa (03); número de 15 dígitos (001-001-000000123), autorización de 10, 37 o 49 dígitos,
   fecha no futura, bases e IVA de la factura del proveedor.
 - Retenciones con el catálogo vigente (CodigoRetencion): renta sobre la base sin impuestos e IVA sobre el
   valor del IVA; el porcentaje sale del catálogo salvo los códigos de porcentaje variable; valor = base × % (HALF_UP).
@@ -74,9 +74,14 @@ def calcular(datos, lineas):
         'base_iva': _decimal(datos.get('base_iva'), 'Base gravada'),
         'tarifa_iva': _decimal(datos.get('tarifa_iva') or '15', 'Tarifa de IVA'),
         'cod_sustento': datos.get('cod_sustento') or '01',
+        'cod_doc_sustento': datos.get('cod_doc_sustento') or '01',
         'forma_pago': datos.get('forma_pago') or '20',
         'parte_relacionada': bool(datos.get('parte_relacionada')),
     }
+    if doc['cod_doc_sustento'] not in ('01', '03'):
+        raise ErrorRetencion('El documento sustento debe ser una factura o una liquidación de compra.')
+    if doc['cod_doc_sustento'] == '03' and doc['cod_sustento'] == '09':
+        raise ErrorRetencion('El sustento 09 (reembolso por siniestros) no admite una liquidación de compra como documento sustento.')
     if doc['fecha_doc_sustento'] is None or doc['fecha_doc_sustento'] > timezone.localdate():
         raise ErrorRetencion('La fecha de emisión de la factura del proveedor no puede ser futura.')
     valor_iva = datos.get('valor_iva')

@@ -1,6 +1,6 @@
 from django import forms
 
-from core.comprobantes.models import CodigoRetencion
+from core.comprobantes.models import CodigoRetencion, LiquidacionCompra
 from core.pos.choices import PAYMENT_METHOD
 
 # Tabla 5 del catálogo ATS: sustento tributario (los de uso más frecuente; el resto se puede agregar).
@@ -17,6 +17,7 @@ SUSTENTOS = (
     ('14', '14 · Valores facturados por socios a operadoras de transporte (que no constituyen gasto de la operadora)'),
     ('15', '15 · Pagos por consumos propios y de terceros de servicios digitales'),
 )   # tabla 5 del catálogo ATS: solo los sustentos que admiten una factura (01) como documento sustento
+DOCUMENTOS_SUSTENTO = (('01', 'Factura'), ('03', 'Liquidación de compra (emitida por ti)'))
 TARIFAS_IVA = (('15.00', '15 %'), ('5.00', '5 %'), ('0.00', '0 % (sin IVA)'))
 
 
@@ -28,11 +29,12 @@ class CodigoChoiceField(forms.ModelChoiceField):
 
 
 class DocumentoSustentoForm(forms.Form):
-    num_doc_sustento = forms.CharField(label='Número de la factura del proveedor', max_length=17,
+    cod_doc_sustento = forms.ChoiceField(label='Documento sustento', choices=DOCUMENTOS_SUSTENTO, initial='01', required=False)
+    num_doc_sustento = forms.CharField(label='Número del documento', max_length=17,
                                        help_text='Con establecimiento y punto: 001-001-000000123.')
-    aut_doc_sustento = forms.CharField(label='Autorización de la factura (clave de acceso)', max_length=49,
+    aut_doc_sustento = forms.CharField(label='Autorización (clave de acceso)', max_length=49,
                                        help_text='49 dígitos (o 10 / 37 en comprobantes antiguos).')
-    fecha_doc_sustento = forms.DateField(label='Fecha de emisión de la factura', widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'))   # <input type=date> solo acepta ISO
+    fecha_doc_sustento = forms.DateField(label='Fecha de emisión del documento', widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'))   # <input type=date> solo acepta ISO
     base_0 = forms.DecimalField(label='Base 0 %', required=False, min_value=0, decimal_places=2, max_digits=12)
     base_iva = forms.DecimalField(label='Base gravada con IVA', required=False, min_value=0, decimal_places=2, max_digits=12)
     tarifa_iva = forms.ChoiceField(label='Tarifa de IVA', choices=TARIFAS_IVA, initial='15.00')
@@ -53,3 +55,23 @@ class LineaRetencionForm(forms.Form):
 
 
 LineasRetencionFormSet = forms.formset_factory(LineaRetencionForm, extra=3, max_num=10)
+
+
+class LiquidacionForm(forms.Form):
+    tipo_identificacion = forms.ChoiceField(label='Identificación del proveedor', choices=LiquidacionCompra.TIPO_IDENTIFICACION)
+    direccion = forms.CharField(label='Dirección del proveedor', max_length=300, required=False)
+    forma_pago = forms.ChoiceField(label='Forma de pago', choices=PAYMENT_METHOD, initial='01')
+    concepto = forms.CharField(label='Concepto (opcional)', max_length=300, required=False,
+                               help_text='Se imprime en la información adicional, p. ej. «Compra de cacao en grano».')
+    confirma_sin_ruc = forms.BooleanField(label='Confirmo que el RUC del proveedor está suspendido y por eso no puede emitirme factura',
+                                          required=False)
+
+
+class LineaLiquidacionForm(forms.Form):
+    detalle = forms.IntegerField(widget=forms.HiddenInput)
+    descripcion = forms.CharField(label='Descripción', max_length=300, required=False,
+                                  help_text='Vacío: el nombre del producto de la compra.')
+    tarifa = forms.ChoiceField(label='Tarifa de IVA', choices=TARIFAS_IVA)
+
+
+LineasLiquidacionFormSet = forms.formset_factory(LineaLiquidacionForm, extra=0)

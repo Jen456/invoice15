@@ -16,7 +16,9 @@ def codigo_de_barras(clave):
 
 
 def guardar_ride(comprobante, plantilla):
+    from core.pos.choices import PAYMENT_METHOD
     contexto = {'c': comprobante, 'empresa': comprobante.company, 'proveedor': comprobante.get_proveedor(),
-                'access_code_barcode': codigo_de_barras(comprobante.access_code)}
+                'access_code_barcode': codigo_de_barras(comprobante.access_code),
+                'forma_pago': dict(PAYMENT_METHOD).get(getattr(comprobante, 'forma_pago', ''), '')}
     pdf = printer.create_pdf(context=contexto, template_name=plantilla)
     comprobante.pdf_authorized.save(f'{comprobante.receipt.get_name_xml()}_{comprobante.access_code}.pdf', ContentFile(pdf), save=False)
