@@ -1,0 +1,90 @@
+{% extends 'skin.html' %}
+{% load static widget_tweaks %}
+{% block assets_body %}
+    <link rel="stylesheet" href="{% static 'suscripciones/css/plan.css' %}">
+{% endblock %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item"><a href="{% url 'suscripcion' %}"><i class="fas fa-credit-card"></i> Plan y pagos</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Empresas del plan</li>
+{% endblock %}
+{% block content %}
+    <div class="fpa-plan fp-plan-empresas">
+        <header class="fp-welcome"><span class="fp-eyebrow">Plan multiempresa</span><h1>Empresas del plan</h1>
+            <p>Un solo pago cubre varias empresas con RUC distintos. Cada una tiene su propia firma electrónica, numeración y configuración de facturación.</p></header>
+        {% for message in messages %}
+            <div class="alert {% if message.level_tag == 'error' %}alert-danger{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
+        {% endfor %}
+
+        {% if not multiempresa %}
+            <section class="card"><div class="card-body">
+                {% if estado.titular %}
+                    <p class="mb-0">Esta empresa está incluida en el plan multiempresa de <strong>{{ estado.titular.business_name }}</strong>. Las empresas del plan las administra la empresa titular.</p>
+                {% else %}
+                    <p class="mb-2">Para administrar varias empresas (hasta 10 RUC distintos) con un solo pago, contrata el <strong>Plan Multiempresa</strong>.</p>
+                    <a class="btn fpa-btn-pagar" href="{% url 'suscripcion' %}">Ver planes</a>
+                {% endif %}
+            </div></section>
+        {% else %}
+            <section class="card fpa-plan-estado"><div class="card-body">
+                <h2 class="h5">RUC en tu plan: {{ usados }} de {{ periodo.plan.company_limit }}</h2>
+                <p class="text-muted mb-3">{{ periodo.plan.name }} vigente hasta el {{ periodo.ends_at|date:"d/m/Y" }}. Si vence, todas las empresas del plan dejan de facturar hasta renovarlo.</p>
+                <div class="table-responsive">
+                    <table class="table table-sm bg-white mb-0">
+                        <thead><tr><th scope="col">Empresa</th><th scope="col">RUC</th><th scope="col">Estado en el plan</th></tr></thead>
+                        <tbody>
+                            <tr><td>{{ request.company.business_name }}</td><td>{{ request.company.ruc }}</td><td><span class="badge fpa-badge fpa-badge-ok">Titular (paga el plan)</span></td></tr>
+                            {% for empresa, cubierta in adicionales %}
+                                <tr><td>{{ empresa.business_name }}</td><td>{{ empresa.ruc }}</td>
+                                    <td>{% if cubierta %}<span class="badge fpa-badge fpa-badge-ok">Incluida</span>{% else %}<span class="badge fpa-badge fpa-badge-alerta">Fuera del límite del plan</span>{% endif %}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div></section>
+
+            {% if propietario and usados < periodo.plan.company_limit %}
+                <div class="row mt-3">
+                    <div class="col-12 col-lg-7">
+                        <section class="card h-100"><div class="card-body">
+                            <h2 class="h5">Agregar una empresa nueva</h2>
+                            <p class="text-muted small">Se crea la empresa con su RUC y quedas como su Propietario. Después la configuras desde «Configuración de facturación».</p>
+                            <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="accion" value="nueva">
+                                {% for field in form %}
+                                    <div class="form-group">
+                                        <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                                        {% if field.errors %}{% render_field field class="form-control is-invalid" %}{% else %}{% render_field field class="form-control" %}{% endif %}
+                                        {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                                    </div>
+                                {% endfor %}
+                                <button type="submit" class="btn fpa-btn-pagar">Agregar empresa al plan</button>
+                            </form>
+                        </div></section>
+                    </div>
+                    <div class="col-12 col-lg-5 mt-3 mt-lg-0">
+                        <section class="card h-100"><div class="card-body">
+                            <h2 class="h5">Empresas que ya administras</h2>
+                            {% if vinculables %}
+                                <p class="text-muted small">Empresas registradas en FacturaPorAquí en las que eres Propietario.</p>
+                                <form method="post">{% csrf_token %}<input type="hidden" name="accion" value="vincular">
+                                    <div class="form-group">
+                                        <label for="id_empresa" class="font-weight-bold">Empresa</label>
+                                        <select name="empresa" id="id_empresa" class="form-control">
+                                            {% for empresa in vinculables %}<option value="{{ empresa.pk }}">{{ empresa.business_name }} · RUC {{ empresa.ruc }}</option>{% endfor %}
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-outline-secondary">Incluir en el plan</button>
+                                </form>
+                            {% else %}
+                                <p class="text-muted mb-0">No administras otras empresas que se puedan incluir.</p>
+                            {% endif %}
+                        </div></section>
+                    </div>
+                </div>
+            {% elif not propietario %}
+                <p class="text-muted mt-3">Solo el Propietario de la empresa titular puede agregar empresas al plan.</p>
+            {% else %}
+                <p class="text-muted mt-3">Llegaste al máximo de RUC de tu plan.</p>
+            {% endif %}
+        {% endif %}
+    </div>
+{% endblock %}

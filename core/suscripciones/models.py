@@ -19,6 +19,8 @@ class Plan(models.Model):
     price_cents = models.PositiveIntegerField(default=0, verbose_name='Precio anual con IVA (centavos)')
     document_limit = models.PositiveIntegerField(null=True, blank=True, verbose_name='Documentos por período (vacío = ilimitado)')
     months = models.PositiveSmallIntegerField(default=12, verbose_name='Duración (meses)')
+    company_limit = models.PositiveSmallIntegerField(default=1, verbose_name='RUC (empresas) que cubre',
+                                                     help_text='1 = un solo RUC. El Plan Multiempresa cubre hasta 10.')
     includes_billing = models.BooleanField(default=True, verbose_name='Incluye facturación y ventas')
     product_limit = models.PositiveIntegerField(null=True, blank=True, verbose_name='Límite de productos (solo gratuito)')
     provider_limit = models.PositiveIntegerField(null=True, blank=True, verbose_name='Límite de proveedores (solo gratuito)')
@@ -41,6 +43,10 @@ class Plan(models.Model):
     @property
     def price(self):
         return Decimal(self.price_cents) / 100
+
+    @property
+    def multiempresa(self):
+        return self.company_limit > 1
 
 
 class PlanUpgrade(models.Model):
@@ -220,3 +226,30 @@ class QuotaReservation(models.Model):
         verbose_name = 'Uso de cupo'
         verbose_name_plural = 'Usos de cupo'
         constraints = [models.UniqueConstraint(fields=['company', 'voucher_model', 'voucher_id'], name='cupo_un_registro_por_comprobante')]
+
+
+class EmpresaAdicional(models.Model):
+    """RUC adicional cubierto por el plan multiempresa de una empresa titular.
+
+    La empresa titular paga; las adicionales usan su período mientras esté vigente y el plan cubra
+    su número (los primeros `company_limit - 1` por fecha de alta). Sin plan multiempresa vigente
+    del titular, la adicional queda sin plan (salvo que tenga uno propio).
+    """
+    titular = models.ForeignKey('pos.Company', on_delete=models.PROTECT, related_name='empresas_adicionales',
+                                verbose_name='Empresa titular (paga el plan)')
+    company = models.OneToOneField('pos.Company', on_delete=models.CASCADE, related_name='cobertura_multiempresa',
+                                   verbose_name='Empresa adicional')
+    added_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name='+', verbose_name='Agregada por')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='Agregada el')
+
+    class Meta:
+        verbose_name = 'Empresa adicional (multiempresa)'
+        verbose_name_plural = 'Empresas adicionales (multiempresa)'
+        ordering = ('titular', 'created_at', 'pk')
+        constraints = [models.CheckConstraint(condition=~models.Q(titular=models.F('company')),
+                                              name='adicional_distinta_del_titular')]
+
+    def __str__(self):
+        return f'{self.company} · cubierta por {self.titular}'
+

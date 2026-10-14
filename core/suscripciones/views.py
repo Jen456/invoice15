@@ -16,11 +16,12 @@ from core.security.mixins import SessionGroupMixin
 from core.suscripciones import payphone
 from core.suscripciones.models import Payment, Plan
 from core.suscripciones.reglas import URL_SUSCRIPCION
-from core.suscripciones.servicios import (ReglaPlan, cancelar_por_usuario, confirmar_pago, cotizar_mejora,
-                                          estado_empresa, fechas_del_nuevo_periodo, iniciar_pago_payphone,
-                                          limites_gratuito, modos_de_pago, planes_de_pago, solicitar_factura,
-                                          vencer_pendientes)
-from core.tenancy.models import Membership, audit
+from core.suscripciones.servicios import (ReglaPlan, agregar_empresa, cancelar_por_usuario, confirmar_pago,
+                                          cotizar_mejora, empresas_del_plan, empresas_vinculables, estado_empresa,
+                                          fechas_del_nuevo_periodo, iniciar_pago_payphone, limites_gratuito,
+                                          modos_de_pago, planes_de_pago, solicitar_factura, vencer_pendientes,
+                                          vincular_empresa)
+from core.tenancy.models import ROLE_OWNER, Membership, audit
 
 
 class PlanAccessMixin(SessionGroupMixin):
@@ -55,7 +56,8 @@ class PlanView(PlanAccessMixin, TemplateView):
         estado = estado_empresa(company)
         opciones = []
         bloqueo = None
-        for plan in planes_de_pago():
+        cubierta = estado.titular is not None and estado.periodo is not None   # adicional de un plan multiempresa
+        for plan in ([] if cubierta else planes_de_pago()):
             try:
                 modos = modos_de_pago(company, plan)
             except ReglaPlan as e:
@@ -67,18 +69,89 @@ class PlanView(PlanAccessMixin, TemplateView):
                 'actual': estado.periodo is not None and estado.periodo.plan_id == plan.pk,
                 # Contrato con el frontend (HANDOFF): importe y vencimiento calculados en el servidor.
                 'mejora': {k: cotizacion[k] for k in ('disponible', 'amount_cents', 'ends_at', 'renovacion', 'motivo')},
+                # Hay una mejora por diferencia definida (Plan 1000 → ilimitado); el multiempresa no la tiene.
+                'es_mejora': cotizacion['regla'] is not None,
+                # Pasar de un plan de un RUC al multiempresa: año nuevo desde el pago, sin prorrateo.
+                'cambio_multiempresa': plan.multiempresa and estado.periodo is not None and not estado.periodo.plan.multiempresa,
             })
+        multiempresa = None
+        if estado.periodo is not None and estado.periodo.plan.multiempresa and estado.titular is None:
+            _, adicionales = empresas_del_plan(company)
+            multiempresa = {'usados': 1 + len(adicionales), 'limite': estado.periodo.plan.company_limit}
         context.update({
             'title': 'Plan y pagos',
             'mejora_destacada': next((o for o in opciones if o['mejora']['disponible']), None),
             'estado': estado,
             'opciones': opciones,
             'bloqueo': bloqueo,
+            'cubierta': cubierta,
+            'multiempresa': multiempresa,
             'payphone_listo': payphone.configurado(),
             'uso_gratuito': _uso_gratuito(company) if not estado.pagado else None,
             'pagos': Payment.objects.filter(company=company).select_related('plan')[:20],
         })
         return context
+
+
+class EmpresaAdicionalForm(forms.Form):
+    ruc = forms.CharField(label='RUC', max_length=13, widget=forms.TextInput(attrs={'inputmode': 'numeric', 'autocomplete': 'off'}))
+    business_name = forms.CharField(label='Razón social', max_length=50)
+    tradename = forms.CharField(label='Nombre comercial (opcional)', max_length=50, required=False)
+    main_address = forms.CharField(label='Dirección matriz', max_length=200)
+    email = forms.EmailField(label='Correo de la empresa', max_length=50)
+    mobile = forms.CharField(label='Celular', max_length=10)
+
+    def clean_ruc(self):
+        from core.login.identificacion import ruc_valido
+        ruc = solo_digitos(self.cleaned_data['ruc'])
+        if not ruc_valido(ruc):
+            raise forms.ValidationError('Escribe un RUC válido de 13 dígitos.')
+        return ruc
+
+
+class EmpresasPlanView(PlanAccessMixin, TemplateView):
+    """Plan multiempresa: empresas cubiertas y alta de RUC adicionales (solo el Propietario de la titular)."""
+    template_name = 'suscripciones/empresas.html'
+
+    def es_propietario(self):
+        membresia = getattr(self.request, 'membership', None)
+        return self.request.user.is_superuser or (membresia is not None and membresia.group.name == ROLE_OWNER)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        company = self.request.company
+        estado = estado_empresa(company)
+        periodo, adicionales = empresas_del_plan(company)
+        context.update({
+            'title': 'Empresas del plan multiempresa', 'estado': estado, 'periodo': periodo, 'adicionales': adicionales,
+            'multiempresa': periodo is not None and periodo.plan.multiempresa and estado.titular is None,
+            'usados': 1 + len(adicionales), 'propietario': self.es_propietario(),
+            'form': kwargs.get('form') or EmpresaAdicionalForm(),
+            'vinculables': empresas_vinculables(company, self.request.user) if self.es_propietario() else [],
+        })
+        return context
+
+    def post(self, request, *args, **kwargs):
+        company = request.company
+        if not self.es_propietario():
+            messages.error(request, 'Solo el Propietario de la empresa titular puede agregar RUC al plan.')
+            return HttpResponseRedirect(reverse('suscripcion_empresas'))
+        try:
+            if request.POST.get('accion') == 'vincular':
+                empresa = get_object_or_404(empresas_vinculables(company, request.user), pk=request.POST.get('empresa'))
+                vincular_empresa(company, request.user, empresa)
+            else:
+                form = EmpresaAdicionalForm(request.POST)
+                if not form.is_valid():
+                    return self.render_to_response(self.get_context_data(form=form))
+                empresa = agregar_empresa(company, request.user, form.cleaned_data)
+        except ReglaPlan as e:
+            messages.error(request, str(e))
+            return HttpResponseRedirect(reverse('suscripcion_empresas'))
+        audit(request, 'plan_company_added', company=company, empresa=empresa.pk, ruc=empresa.ruc)
+        messages.success(request, f'{empresa.business_name} (RUC {empresa.ruc}) ya está incluida en tu plan. Para configurarla '
+                                  'y facturar con ella, cámbiate de empresa desde el selector de empresas.')
+        return HttpResponseRedirect(reverse('suscripcion_empresas'))
 
 
 class PagarView(PlanAccessMixin, View):

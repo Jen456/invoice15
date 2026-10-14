@@ -69,6 +69,7 @@ class AuditLog(models.Model):
         ('plan_manual', 'Activación manual de plan'),
         ('plan_period_change', 'Cambio de período de suscripción'),
         ('plan_invoice_request', 'Solicitud de factura de la suscripción'),
+        ('plan_company_added', 'Empresa agregada al plan multiempresa'),
         ('billing_setup_step', 'Configuración de facturación: paso guardado'),
         ('billing_point_change', 'Configuración de facturación: establecimiento o punto'),
         ('billing_sequence_change', 'Configuración de facturación: numeración'),

@@ -6,8 +6,8 @@ from django.shortcuts import redirect, render
 from django.urls import path, reverse
 
 from core.pos.models import Company
-from core.suscripciones.models import (IvaRate, Payment, PaymentEvent, Plan, PlanUpgrade, QuotaReservation,
-                                       SubscriptionPeriod)
+from core.suscripciones.models import (EmpresaAdicional, IvaRate, Payment, PaymentEvent, Plan, PlanUpgrade,
+                                       QuotaReservation, SubscriptionPeriod)
 from core.suscripciones.servicios import ReglaPlan, activar_manual, fechas_del_nuevo_periodo
 from core.tenancy.admin import plataforma
 from core.tenancy.models import audit
@@ -15,7 +15,7 @@ from core.tenancy.models import audit
 
 @admin.register(Plan, site=plataforma)
 class PlanAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code', 'price_cents', 'document_limit', 'includes_billing', 'product_limit',
+    list_display = ('name', 'code', 'price_cents', 'document_limit', 'company_limit', 'includes_billing', 'product_limit',
                     'provider_limit', 'purchase_limit_month', 'is_active', 'order')
     list_editable = ('is_active', 'order')
     readonly_fields = ('code',)
@@ -156,3 +156,20 @@ class QuotaReservationAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(EmpresaAdicional, site=plataforma)
+class EmpresaAdicionalAdmin(admin.ModelAdmin):
+    """RUC adicionales de los planes multiempresa. El titular los agrega desde «Plan y pagos → Empresas del plan»;
+    aquí se pueden revisar o quitar (al quitar uno, la empresa deja de estar cubierta)."""
+    list_display = ('company', 'titular', 'added_by', 'created_at')
+    search_fields = ('company__business_name', 'company__ruc', 'titular__business_name', 'titular__ruc')
+    readonly_fields = ('titular', 'company', 'added_by', 'created_at')
+
+    def has_add_permission(self, request):
+        return False
+
+    def delete_model(self, request, obj):
+        audit(request, 'plan_period_change', company=obj.titular, empresa_quitada=obj.company_id, ruc=obj.company.ruc)
+        super().delete_model(request, obj)
+

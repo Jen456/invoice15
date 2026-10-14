@@ -21,6 +21,12 @@
                     {% elif estado.codigo == 'vencida' %}<span class="badge fpa-badge fpa-badge-alerta">Vencido</span>
                     {% else %}<span class="badge fpa-badge">Gratuito</span>{% endif %}
                 </div>
+                {% if cubierta %}
+                    <p class="mb-2 fp-plan-cubierta"><i class="fas fa-building" aria-hidden="true"></i> Esta empresa está incluida en el <strong>{{ estado.periodo.plan.name }}</strong> de <strong>{{ estado.titular.business_name }}</strong> (RUC {{ estado.titular.ruc }}). La suscripción y los pagos los gestiona esa empresa titular.</p>
+                {% endif %}
+                {% if multiempresa %}
+                    <p class="mb-2 fp-plan-multi"><i class="fas fa-building" aria-hidden="true"></i> RUC en tu plan: <strong>{{ multiempresa.usados }} de {{ multiempresa.limite }}</strong>. <a href="{% url 'suscripcion_empresas' %}">Ver y agregar empresas del plan</a></p>
+                {% endif %}
                 {% if estado.periodo %}
                     {% with p=estado.periodo %}
                         <p class="mb-2">Vigente del <strong>{{ p.starts_at|date:"d/m/Y" }}</strong> al <strong>{{ p.ends_at|date:"d/m/Y" }}</strong>
@@ -40,6 +46,8 @@
                     {% if estado.programado %}
                         <p class="mt-2 mb-0"><i class="fas fa-calendar-check" aria-hidden="true"></i> Renovación pagada: <strong>{{ estado.programado.plan.name }}</strong> desde el {{ estado.programado.starts_at|date:"d/m/Y" }}.</p>
                     {% endif %}
+                {% elif estado.titular %}
+                    <p class="mb-0">Esta empresa pertenece al plan multiempresa de <strong>{{ estado.titular.business_name }}</strong>, que no está vigente. Para volver a facturar, la empresa titular debe renovarlo (o esta empresa puede contratar su propio plan).</p>
                 {% elif estado.vencido %}
                     <p class="mb-0">Tu {{ estado.ultimo.plan.name }} venció el <strong>{{ estado.ultimo.ends_at|date:"d/m/Y" }}</strong>. Puedes consultar tus comprobantes; para volver a facturar renueva tu plan.</p>
                 {% else %}
@@ -58,7 +66,7 @@
             </div>
         </section>
 
-        <h2 class="h5 mt-4 mb-3">{% if estado.pagado %}Renovar o cambiar de plan{% else %}Elige tu plan anual{% endif %}</h2>
+        {% if not cubierta %}<h2 class="h5 mt-4 mb-3">{% if estado.pagado %}Renovar o cambiar de plan{% else %}Elige tu plan anual{% endif %}</h2>{% endif %}
         {% if bloqueo %}<div class="alert alert-info">{{ bloqueo }}</div>{% endif %}
         {% if not payphone_listo %}
             <div class="alert alert-warning">El cobro en línea con PayPhone aún no está habilitado. Para activar tu plan escríbenos a <a href="mailto:ventas@facturaporaqui.com">ventas@facturaporaqui.com</a>.</div>
@@ -66,13 +74,14 @@
         <div class="row">
             {% for o in opciones %}
                 <div class="col-12 fp-plan-col mb-3">
-                    <article class="card h-100 fpa-plan-tarjeta{% if o.plan.unlimited %} fpa-plan-destacado{% endif %}">
+                    <article class="card h-100 fpa-plan-tarjeta{% if o.plan.unlimited and not o.plan.multiempresa %} fpa-plan-destacado{% endif %}{% if o.plan.multiempresa %} fp-plan-multiempresa{% endif %}">
                         <div class="card-body d-flex flex-column">
-                            <p class="fp-eyebrow">Plan anual por empresa</p>
+                            <p class="fp-eyebrow">{% if o.plan.multiempresa %}Hasta {{ o.plan.company_limit }} RUC distintos{% else %}Plan anual para 1 RUC{% endif %}</p>
                             <h3 class="h5 mb-1">{{ o.plan.name }}{% if o.actual %} <small class="text-muted">(tu plan actual)</small>{% endif %}</h3>
                             <p class="fpa-precio mb-1">{{ o.plan.price_cents|dolares }} <small>al año, IVA incluido</small></p>
                             <p class="text-muted mb-2">{{ o.plan.description }}</p>
                             <ul class="fpa-incluye mb-3">
+                                <li>{% if o.plan.multiempresa %}Hasta {{ o.plan.company_limit }} empresas (RUC distintos) con un solo pago{% else %}Para una sola empresa (1 RUC){% endif %}</li>
                                 <li>{% if o.plan.unlimited %}Comprobantes ilimitados{% else %}{{ o.plan.document_limit }} comprobantes autorizados al año{% endif %} (facturas y notas de crédito)</li>
                                 <li>Ventas, clientes, cuentas por cobrar y reportes</li>
                                 <li>Tu firma electrónica (.p12) y envío por correo</li>
@@ -94,7 +103,7 @@
                                         {% if mejora_destacada %}<p class="small mb-0 mt-2">¿Necesitas más? Pasa a {{ mejora_destacada.plan.name|cut:"Plan "|lower }} por {{ mejora_destacada.mejora.amount_cents|dolares }} y conserva tu vencimiento.</p>{% endif %}
                                     </aside>
                                 {% endif %}
-                                {% if estado.pagado and o.plan.unlimited and estado.periodo.document_limit %}
+                                {% if estado.pagado and o.es_mejora %}
                                     <aside class="fp-upgrade-summary" aria-label="Resumen de mejora de plan">
                                         <span class="fp-eyebrow">Mejora tu plan actual</span>
                                         {% if o.mejora.disponible %}
@@ -113,18 +122,21 @@
                                         {% csrf_token %}
                                         <input type="hidden" name="plan" value="{{ o.plan.code }}">
                                         <input type="hidden" name="modo" value="{{ modo }}">
-                                        <button type="submit" class="btn btn-block {% if forloop.first %}fpa-btn-pagar{% else %}btn-outline-secondary{% endif %}"{% if not payphone_listo %} disabled{% elif modo == 'inmediato' and estado.pagado and o.plan.unlimited and estado.periodo.document_limit and not o.mejora.disponible and not o.mejora.renovacion %} disabled{% endif %}>
+                                        <button type="submit" class="btn btn-block {% if forloop.first %}fpa-btn-pagar{% else %}btn-outline-secondary{% endif %}"{% if not payphone_listo %} disabled{% elif modo == 'inmediato' and estado.pagado and o.es_mejora and not o.mejora.disponible and not o.mejora.renovacion %} disabled{% endif %}>
                                             {% if modo == 'inmediato' %}
-                                                {% if estado.pagado %}{% if o.plan.unlimited and estado.periodo.document_limit %}{% if o.mejora.disponible %}Mejorar por {{ o.mejora.amount_cents|dolares }}{% elif o.mejora.renovacion %}Renovar ahora con {{ o.plan.name }}{% else %}Mejora pendiente de habilitar{% endif %}{% else %}Renovar ahora{% endif %}{% else %}Pagar con PayPhone{% endif %}
+                                                {% if o.cambio_multiempresa %}Cambiar a {{ o.plan.name }} por {{ o.plan.price_cents|dolares }}
+                                                {% elif estado.pagado %}{% if o.es_mejora %}{% if o.mejora.disponible %}Mejorar por {{ o.mejora.amount_cents|dolares }}{% elif o.mejora.renovacion %}Renovar ahora con {{ o.plan.name }}{% else %}Mejora pendiente de habilitar{% endif %}{% else %}Renovar ahora{% endif %}{% else %}Pagar con PayPhone{% endif %}
                                             {% elif o.actual %}Renovar desde el {{ inicio|date:"d/m/Y" }}
-                                            {% elif estado.pagado and o.plan.unlimited %}Renovar con {{ o.plan.name|cut:"Plan "|lower }} por {{ o.plan.price_cents|dolares }}
+                                            {% elif estado.pagado and o.plan.unlimited and not o.plan.multiempresa %}Renovar con {{ o.plan.name|cut:"Plan "|lower }} por {{ o.plan.price_cents|dolares }}
                                             {% elif estado.pagado %}Cambiar desde el {{ inicio|date:"d/m/Y" }}
                                             {% else %}Pagar y empezar el {{ inicio|date:"d/m/Y" }}{% endif %}
                                         </button>
-                                        {% if modo == 'inmediato' and estado.pagado and o.plan.unlimited and estado.periodo.document_limit %}
+                                        {% if o.cambio_multiempresa %}
+                                        <small class="d-block text-muted">Nuevo período anual: del {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}. Tu plan actual termina hoy, sin prorrateo. Luego agregas hasta {{ o.plan.company_limit|add:"-1" }} RUC más.</small>
+                                        {% elif modo == 'inmediato' and estado.pagado and o.es_mejora %}
                                             {% if o.mejora.disponible %}<small class="d-block text-muted">Mantienes tu vencimiento: {{ o.mejora.ends_at|date:"d/m/Y" }}. No empieza un nuevo año.</small>
                                             {% elif o.mejora.renovacion %}<small class="d-block text-muted">Vigencia: {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}. Tu plan actual termina hoy, sin prorrateo.</small>{% endif %}
-                                        {% elif modo == 'programado' and estado.pagado and o.plan.unlimited and not o.actual %}
+                                        {% elif modo == 'programado' and estado.pagado and o.plan.unlimited and not o.plan.multiempresa and not o.actual %}
                                         <small class="d-block text-muted">Nuevo período anual: del {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}. Es una renovación separada de la mejora.</small>
                                         {% else %}
                                         <small class="d-block text-muted">Vigencia: {{ inicio|date:"d/m/Y" }} al {{ fin|date:"d/m/Y" }}.{% if modo == 'inmediato' and estado.pagado %} Tu plan actual termina hoy, sin prorrateo.{% endif %}</small>

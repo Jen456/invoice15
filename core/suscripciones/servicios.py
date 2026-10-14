@@ -12,6 +12,10 @@
   como renovación (al vencer o, con el cupo agotado, un año nuevo).
 - Un pago solo activa el plan cuando PayPhone lo confirma desde el servidor;
   importe, moneda y referencia se comprueban contra lo guardado al prepararlo.
+- Plan multiempresa (Plan.company_limit > 1): la empresa titular paga y cubre
+  hasta `company_limit` RUC distintos (ella incluida); las adicionales
+  (EmpresaAdicional) usan el período del titular. Pasar de un plan de un RUC al
+  multiempresa empieza un año nuevo desde el pago, sin prorrateo.
 """
 import logging
 import secrets
@@ -24,7 +28,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.suscripciones import payphone
-from core.suscripciones.models import IvaRate, Payment, PaymentEvent, Plan, PlanUpgrade, SubscriptionPeriod
+from core.suscripciones.models import (EmpresaAdicional, IvaRate, Payment, PaymentEvent, Plan, PlanUpgrade,
+                                      SubscriptionPeriod)
 from core.suscripciones.reglas import (DIAS_AVISO_VENCIMIENTO, LIMITES_GRATUITO_POR_DEFECTO, MINUTOS_PAGO_PENDIENTE,
                                        PLAN_GRATUITO, PORCENTAJE_AVISO_CUPO, sumar_meses)
 
@@ -40,18 +45,43 @@ class ReglaPlan(Exception):
 
 # ---------------------------------------------------------------- estado
 
-def periodo_vigente(company, ahora=None, bloquear=False):
-    """Período pagado en curso (o None). Activa el programado cuando llega su fecha."""
-    ahora = ahora or timezone.now()
-    queryset = SubscriptionPeriod.objects.filter(company=company, status__in=('activa', 'programada'),
-                                                 starts_at__lte=ahora, ends_at__gt=ahora)
+def _periodo_propio(company_id, ahora, bloquear=False):
+    """Período pagado por la propia empresa (o None). Activa el programado cuando llega su fecha."""
+    queryset = SubscriptionPeriod.objects.select_related('plan').filter(
+        company_id=company_id, status__in=('activa', 'programada'), starts_at__lte=ahora, ends_at__gt=ahora)
     if bloquear:
-        queryset = queryset.select_for_update()
+        queryset = queryset.select_for_update(of=('self',))
     periodo = queryset.order_by('-starts_at', '-id').first()
     if periodo is not None and periodo.status == 'programada':
         periodo.status = 'activa'
         periodo.save(update_fields=['status'])
     return periodo
+
+
+def _periodo_por_cobertura(company_id, ahora, bloquear=False):
+    """Período multiempresa del titular que cubre a esta empresa adicional (o None)."""
+    cobertura = EmpresaAdicional.objects.filter(company_id=company_id).first()
+    if cobertura is None:
+        return None
+    periodo = _periodo_propio(cobertura.titular_id, ahora, bloquear)
+    if periodo is None or not periodo.plan.multiempresa:
+        return None
+    # El titular ocupa un lugar; cubre a las primeras adicionales por fecha de alta.
+    cubiertas = EmpresaAdicional.objects.filter(titular_id=cobertura.titular_id).order_by('created_at', 'pk') \
+        .values_list('company_id', flat=True)[:periodo.plan.company_limit - 1]
+    return periodo if company_id in list(cubiertas) else None
+
+
+def periodo_vigente(company, ahora=None, bloquear=False):
+    """Período pagado en curso (propio o, para una adicional, el multiempresa de su titular) o None."""
+    ahora = ahora or timezone.now()
+    return _periodo_propio(company.pk, ahora, bloquear) or _periodo_por_cobertura(company.pk, ahora, bloquear)
+
+
+def titular_de(company):
+    """Empresa titular si `company` es una adicional de un plan multiempresa (vigente o no), si no None."""
+    cobertura = EmpresaAdicional.objects.select_related('titular').filter(company=company).first()
+    return cobertura.titular if cobertura else None
 
 
 @dataclass
@@ -62,6 +92,7 @@ class EstadoPlan:
     ultimo: SubscriptionPeriod = None
     produccion: bool = False
     ahora: object = None
+    titular: object = None      # empresa que paga, si esta es una adicional de un plan multiempresa
 
     @property
     def pagado(self):
@@ -108,13 +139,15 @@ def estado_empresa(company, ahora=None):
     produccion = company.environment_type == PRODUCCION
     periodo = periodo_vigente(company, ahora)
     if periodo is not None:
-        programado = SubscriptionPeriod.objects.filter(company=company, status='programada', starts_at__gt=ahora) \
-            .select_related('plan').order_by('starts_at').first()
+        titular = periodo.company if periodo.company_id != company.pk else None
+        programado = SubscriptionPeriod.objects.filter(company_id=periodo.company_id, status='programada',
+                                                       starts_at__gt=ahora).select_related('plan').order_by('starts_at').first()
         agotado = produccion and periodo.document_limit is not None and periodo.available == 0
-        return EstadoPlan('cupo_agotado' if agotado else 'activa', periodo, programado, None, produccion, ahora)
+        return EstadoPlan('cupo_agotado' if agotado else 'activa', periodo, programado, None, produccion, ahora, titular)
+    titular = titular_de(company)
     ultimo = SubscriptionPeriod.objects.filter(company=company, status__in=('activa', 'reemplazada'),
                                                ends_at__lte=ahora).select_related('plan').order_by('-ends_at').first()
-    return EstadoPlan('vencida' if ultimo else 'gratuito', None, None, ultimo, produccion, ahora)
+    return EstadoPlan('vencida' if ultimo else 'gratuito', None, None, ultimo, produccion, ahora, titular)
 
 
 def estado_de_peticion(request):
@@ -173,6 +206,8 @@ def _modos(actual, agotado, plan, ahora=None):
     """
     if actual is None or agotado:
         return ['inmediato']
+    if plan.company_limit > actual.plan.company_limit:
+        return ['inmediato']                 # a multiempresa: año nuevo desde el pago, sin prorrateo
     if _documentos(plan.document_limit) > _documentos(actual.document_limit):
         regla = regla_de_mejora(actual, plan)
         if regla is not None and mejora_en_plazo(actual, regla, ahora):
@@ -212,6 +247,9 @@ def modos_de_pago(company, plan, ahora=None):
     if not plan.is_active or not plan.includes_billing or plan.price_cents <= 0:
         raise ReglaPlan('Ese plan no está disponible.')
     estado = estado_empresa(company, ahora)
+    if estado.titular is not None and estado.periodo is not None:
+        raise ReglaPlan(f'Esta empresa está incluida en el {estado.periodo.plan.name} de {estado.titular.business_name}; '
+                        'la suscripción la gestiona esa empresa titular.')
     if estado.programado is not None:
         raise ReglaPlan(f'Ya tienes el {estado.programado.plan.name} programado desde el '
                         f'{timezone.localtime(estado.programado.starts_at):%d/%m/%Y}. '
@@ -477,6 +515,86 @@ def activar_manual(company, plan, usuario, modo, nota):
         pago.save(update_fields=['status', 'confirmed_at', 'note'])
         periodo = activar_periodo(pago)
     return pago, periodo
+
+
+# ---------------------------------------------------------------- plan multiempresa
+
+def empresas_del_plan(titular, ahora=None):
+    """(período multiempresa vigente del titular o None, [(empresa adicional, cubierta)]) en orden de alta."""
+    ahora = ahora or timezone.now()
+    periodo = _periodo_propio(titular.pk, ahora)
+    adicionales = list(EmpresaAdicional.objects.filter(titular=titular).select_related('company').order_by('created_at', 'pk'))
+    lugares = (periodo.plan.company_limit - 1) if periodo is not None and periodo.plan.multiempresa else 0
+    return periodo, [(a.company, i < lugares) for i, a in enumerate(adicionales)]
+
+
+def _validar_titular(titular, ahora):
+    periodo = _periodo_propio(titular.pk, ahora, bloquear=True)
+    if periodo is None or not periodo.plan.multiempresa:
+        raise ReglaPlan('Para agregar otro RUC, la empresa necesita un plan multiempresa vigente.')
+    if EmpresaAdicional.objects.filter(company=titular).exists():
+        raise ReglaPlan('Esta empresa es adicional de otro plan multiempresa; solo la titular agrega RUC.')
+    usados = 1 + EmpresaAdicional.objects.filter(titular=titular).count()
+    if usados >= periodo.plan.company_limit:
+        raise ReglaPlan(f'Tu {periodo.plan.name} cubre hasta {periodo.plan.company_limit} RUC y ya tienes {usados}.')
+    return periodo
+
+
+def agregar_empresa(titular, usuario, datos, ahora=None):
+    """Crea una empresa (RUC nuevo en la plataforma) cubierta por el plan multiempresa del titular.
+
+    `usuario` queda como Propietario de la nueva empresa. Devuelve la empresa creada; ReglaPlan si no se puede.
+    """
+    from django.contrib.auth.models import Group
+    from decimal import Decimal
+    from core.login.identificacion import ruc_valido
+    from core.pos.models import Company
+    from core.tenancy.models import ROLE_OWNER, Membership
+    ahora = ahora or timezone.now()
+    ruc = (datos.get('ruc') or '').strip()
+    if not ruc_valido(ruc):
+        raise ReglaPlan('Escribe un RUC válido de 13 dígitos.')
+    with transaction.atomic():
+        Company.objects.select_for_update().filter(pk=titular.pk).first()   # serializa las altas del titular
+        _validar_titular(titular, ahora)
+        if Company.objects.filter(ruc=ruc).exists():
+            raise ReglaPlan(f'El RUC {ruc} ya está registrado en FacturaPorAquí. Si es tuyo y lo administras con este '
+                            'usuario, agrégalo desde «Empresas que ya administras»; si no, escríbenos a soporte.')
+        nombre = datos['business_name'].strip()
+        empresa = Company.objects.create(
+            ruc=ruc, business_name=nombre, tradename=(datos.get('tradename') or nombre).strip(),
+            main_address=datos.get('main_address', '').strip(), establishment_address='', establishment_code='',
+            issuing_point_code='', special_taxpayer='', mobile=datos.get('mobile', ''), phone='',
+            email=datos.get('email', '')[:50], website='', iva=Decimal('15.00'),
+            electronic_signature_key='', email_host_user='', email_host_password='')
+        Membership.objects.create(user=usuario, company=empresa, group=Group.objects.get(name=ROLE_OWNER))
+        EmpresaAdicional.objects.create(titular=titular, company=empresa, added_by=usuario, created_at=ahora)
+    return empresa
+
+
+def empresas_vinculables(titular, usuario):
+    """Empresas que `usuario` ya administra como Propietario y podrían sumarse al plan del titular."""
+    from core.tenancy.models import ROLE_OWNER, Membership
+    ids = Membership.objects.active().filter(user=usuario, group__name=ROLE_OWNER).exclude(company=titular) \
+        .values_list('company_id', flat=True)
+    from core.pos.models import Company
+    return (Company.objects.filter(pk__in=list(ids), is_active=True)
+            .exclude(cobertura_multiempresa__isnull=False).exclude(empresas_adicionales__isnull=False)
+            .exclude(ruc=titular.ruc).order_by('business_name'))
+
+
+def vincular_empresa(titular, usuario, empresa, ahora=None):
+    """Suma al plan multiempresa una empresa que el usuario ya administra como Propietario."""
+    from core.pos.models import Company
+    ahora = ahora or timezone.now()
+    with transaction.atomic():
+        Company.objects.select_for_update().filter(pk=titular.pk).first()
+        _validar_titular(titular, ahora)
+        if not empresas_vinculables(titular, usuario).filter(pk=empresa.pk).exists():
+            raise ReglaPlan('Solo puedes agregar empresas que administras como Propietario, con un RUC distinto y que no '
+                            'pertenezcan ya a un plan multiempresa.')
+        EmpresaAdicional.objects.create(titular=titular, company=empresa, added_by=usuario, created_at=ahora)
+    return empresa
 
 
 def cancelar_por_usuario(pago):

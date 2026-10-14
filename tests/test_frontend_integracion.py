@@ -84,7 +84,9 @@ def test_upgrade_requires_server_quote_and_preserves_expiry(client, settings, av
     if available:
         assert 'Mejorar por $35.00' in html
         assert 'Esta mejora no renueva tu suscripción por otro año' in html
-        assert 'Tu plan actual termina hoy, sin prorrateo' not in html
+        # Solo en la tarjeta del ilimitado: la del multiempresa sí empieza un año nuevo (sin prorrateo).
+        tarjeta = next(a for a in html.split('<article')[1:] if 'Plan ilimitado' in a)
+        assert 'Tu plan actual termina hoy, sin prorrateo' not in tarjeta
     else:
         assert 'Mejora pendiente de habilitar' in html
         assert 'disabled' in upgrade
