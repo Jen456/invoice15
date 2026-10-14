@@ -71,7 +71,7 @@
         {% if not payphone_listo %}
             <div class="alert alert-warning">El cobro en línea con PayPhone aún no está habilitado. Para activar tu plan escríbenos a <a href="mailto:ventas@facturaporaqui.com">ventas@facturaporaqui.com</a>.</div>
         {% endif %}
-        <div class="row">
+        <div class="row fp-plan-options">
             {% for o in opciones %}
                 <div class="col-12 fp-plan-col mb-3">
                     <article class="card h-100 fpa-plan-tarjeta{% if o.plan.unlimited and not o.plan.multiempresa %} fpa-plan-destacado{% endif %}{% if o.plan.multiempresa %} fp-plan-multiempresa{% endif %}">

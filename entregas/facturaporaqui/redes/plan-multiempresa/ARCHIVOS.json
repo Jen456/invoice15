@@ -1,0 +1,26 @@
+[
+  {
+    "archivo": "historias/historia-01.png",
+    "ancho": 941,
+    "alto": 1672,
+    "sha256": "a906415094ba867257ccbf8370ada9179e9f5fc33eeb3a713cf21460940cbb7c"
+  },
+  {
+    "archivo": "historias/historia-02.png",
+    "ancho": 941,
+    "alto": 1672,
+    "sha256": "30d1d306afdc334126aca4651df33400f4f0780d7047059615c63a1af2b9a424"
+  },
+  {
+    "archivo": "posts/post-02.png",
+    "ancho": 1122,
+    "alto": 1402,
+    "sha256": "b34416ea3ac96d78953e08db5419739f46745b078a87721fe932fc50174a372c"
+  },
+  {
+    "archivo": "posts/post-01.png",
+    "ancho": 1122,
+    "alto": 1402,
+    "sha256": "5ae12b1ec1c749b941bac3ab5f2e9b50933d888037d83f9ef1e122de58c7942d"
+  }
+]

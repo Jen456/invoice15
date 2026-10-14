@@ -1,5 +1,27 @@
 # Handoff compartido — frontend
 
+## Estado actual — diseño Plan Multiempresa terminado (Codex, 14/10/2026)
+
+Trabajo en frontend/etapa3 sobre a4e8415, sin reescribir historial. Landing con tres tarjetas y Multiempresa diferenciado, tema del plan/aviso cubierto/resumen de cupos en app, página Empresas del plan responsive y acceso desde sidebar/selector para la titular con permisos de plan. Se conservan condiciones de propietario para agregar RUC. No cambios backend. No desplegado; publicado informado por Claude sigue siendo c2eb08e.
+
+Validación: 270 pruebas SQLite aprobadas y 5 omitidas exclusivas de PostgreSQL. Navegador local a 1440/1024/768/390/360px: landing, planes, empresas y cubierta sin overflow; RUC inválido muestra error del servidor, navegación Tab, empresa adicional sin tarjetas ni menú de gestión. Sin errores JS/recursos fallidos. PayPhone vacío en configuración local externa; no pagos reales.
+
+Comercial: 2 posts y 2 historias en redes/plan-multiempresa, con textos/guía/galería. Fondo continuo, zona segura invisible de 60 px, oferta $199 anual con IVA hasta 10 RUC y documentos ilimitados. ZIP local listo. No publicación de redes.
+
+## Pendiente para Codex — cierre Multiempresa
+
+- [x] Diseñar las tres tarjetas de landing conservando precios, textos, retenciones, data-plan y opciones.
+- [x] Diseñar tarjeta, cobertura y resumen en app.
+- [x] Diseñar Empresas del plan y acceso visible para titular.
+- [x] Crear 2 posts / 2 historias, textos y guía.
+- [x] Registrar pruebas y capturas.
+
+## Notas entre agentes — entrega Multiempresa
+
+Claude: no variables/endpoints nuevos. El acceso usa fpa_plan.periodo.plan.multiempresa, not fpa_plan.titular y fpa_gestiona_plan, ya disponibles. Titular con permiso puede consultar; solo Propietario agrega según backend existente. No se tocaron vistas/servicios/modelos/migraciones; names, accion, CSRF, select empresa y mensajes intactos. Publicar cuando revise con respaldo y collectstatic; redes no necesitan despliegue Django. Se mantuvo retenciones en landing por instrucción explícita del usuario.
+
+Configuración de desarrollo guardada en borrador de entorno (Python 3.12, requirements con hashes y arranque local con PayPhone deshabilitado), no publicada. No confundir publicación del entorno cloud con despliegue en Hestia. Backend/PostgreSQL y móvil físico no verificados en esta entrega.
+
 ## Estado actual — redes con fondo continuo (Codex, 13/10 Ecuador)
 
 Reemplazadas las 20 imágenes en `redes/campana-01/` para quitar el marco de la entrega anterior. Fondo y formas decorativas continuos hasta los bordes; zona segura invisible para texto/marca. Textos, precios y nombres de archivo conservados. Manifiesto y ZIP actualizados. No cambios de aplicación ni publicación externa.
@@ -11,7 +33,7 @@ Reemplazadas las 20 imágenes en `redes/campana-01/` para quitar el marco de la 
 
 ## Notas entre agentes — diseño de redes
 
-El margen de60px es una zona segura para texto/logo, no un borde uniforme. La decoración de fondo puede llegar al límite del PNG. No se requiere backend ni despliegue de aplicación. La versión anterior con marco queda en el historial de git; la carpeta vigente usa fondo continuo.
+El margen de 60 px es una zona segura para texto/logo, no un borde uniforme. La decoración de fondo puede llegar al límite del PNG. No se requiere backend ni despliegue de aplicación. La versión anterior con marco queda en el historial de git; la carpeta vigente usa fondo continuo.
 
 ## Estado actual — encuadre de redes actualizado (Codex, 13/10 Ecuador)
 
@@ -85,10 +107,10 @@ Claude: solo archivos gráficos/documentación; no necesitan despliegue de Djang
 
 ## Pendiente para Codex — Plan Multiempresa
 
-- [ ] Landing: diseño final de las tres tarjetas, con la del Multiempresa diferenciada y los textos y precios actuales.
-- [ ] Plan y pagos: estilo de la tercera tarjeta, del aviso de la empresa cubierta y del resumen de RUC de la titular.
-- [ ] Diseñar `suscripciones/empresas.html` y proponer un acceso visible a «Empresas del plan» para la titular (menú o selector de empresas); si hace falta un dato nuevo, pedirlo en HANDOFF.
-- [ ] Piezas de redes que anuncien el Plan Multiempresa, en la línea de `redes/campana-01`.
+- [x] Landing: diseño final de las tres tarjetas, con la del Multiempresa diferenciada y los textos y precios actuales.
+- [x] Plan y pagos: estilo de la tercera tarjeta, del aviso de la empresa cubierta y del resumen de RUC de la titular.
+- [x] Diseñar `suscripciones/empresas.html` y proponer un acceso visible a «Empresas del plan» para la titular (menú o selector de empresas); si hace falta un dato nuevo, pedirlo en HANDOFF.
+- [x] Piezas de redes que anuncien el Plan Multiempresa, en la línea de `redes/campana-01`.
 
 ## Pendiente para Codex — tras la Etapa A
 

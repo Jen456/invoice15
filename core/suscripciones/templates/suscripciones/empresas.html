@@ -9,7 +9,7 @@
 {% endblock %}
 {% block content %}
     <div class="fpa-plan fp-plan-empresas">
-        <header class="fp-welcome"><span class="fp-eyebrow">Plan multiempresa</span><h1>Empresas del plan</h1>
+        <header class="fp-welcome fp-multi-heading"><img src="{% static 'img/brand/isotipo.png' %}" width="64" height="64" alt="Colibrí de FacturaPorAquí"><span class="fp-eyebrow">Plan multiempresa</span><h1>Empresas del plan</h1>
             <p>Un solo pago cubre varias empresas con RUC distintos. Cada una tiene su propia firma electrónica, numeración y configuración de facturación.</p></header>
         {% for message in messages %}
             <div class="alert {% if message.level_tag == 'error' %}alert-danger{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
@@ -25,17 +25,17 @@
                 {% endif %}
             </div></section>
         {% else %}
-            <section class="card fpa-plan-estado"><div class="card-body">
+            <section class="card fpa-plan-estado fp-multi-overview"><div class="card-body">
                 <h2 class="h5">RUC en tu plan: {{ usados }} de {{ periodo.plan.company_limit }}</h2>
                 <p class="text-muted mb-3">{{ periodo.plan.name }} vigente hasta el {{ periodo.ends_at|date:"d/m/Y" }}. Si vence, todas las empresas del plan dejan de facturar hasta renovarlo.</p>
-                <div class="table-responsive">
+                <div class="table-responsive fp-multi-table" role="region" tabindex="0" aria-label="RUC incluidos en tu plan">
                     <table class="table table-sm bg-white mb-0">
                         <thead><tr><th scope="col">Empresa</th><th scope="col">RUC</th><th scope="col">Estado en el plan</th></tr></thead>
                         <tbody>
-                            <tr><td>{{ request.company.business_name }}</td><td>{{ request.company.ruc }}</td><td><span class="badge fpa-badge fpa-badge-ok">Titular (paga el plan)</span></td></tr>
+                            <tr><td data-label="Empresa">{{ request.company.business_name }}</td><td data-label="RUC">{{ request.company.ruc }}</td><td data-label="Estado en el plan"><span class="badge fpa-badge fpa-badge-ok">Titular (paga el plan)</span></td></tr>
                             {% for empresa, cubierta in adicionales %}
-                                <tr><td>{{ empresa.business_name }}</td><td>{{ empresa.ruc }}</td>
-                                    <td>{% if cubierta %}<span class="badge fpa-badge fpa-badge-ok">Incluida</span>{% else %}<span class="badge fpa-badge fpa-badge-alerta">Fuera del límite del plan</span>{% endif %}</td></tr>
+                                <tr><td data-label="Empresa">{{ empresa.business_name }}</td><td data-label="RUC">{{ empresa.ruc }}</td>
+                                    <td data-label="Estado en el plan">{% if cubierta %}<span class="badge fpa-badge fpa-badge-ok">Incluida</span>{% else %}<span class="badge fpa-badge fpa-badge-alerta">Fuera del límite del plan</span>{% endif %}</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -45,23 +45,24 @@
             {% if propietario and usados < periodo.plan.company_limit %}
                 <div class="row mt-3">
                     <div class="col-12 col-lg-7">
-                        <section class="card h-100"><div class="card-body">
+                        <section class="card h-100 fp-multi-form"><div class="card-body">
                             <h2 class="h5">Agregar una empresa nueva</h2>
                             <p class="text-muted small">Se crea la empresa con su RUC y quedas como su Propietario. Después la configuras desde «Configuración de facturación».</p>
+                            {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
                             <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="accion" value="nueva">
-                                {% for field in form %}
+                                <div class="fp-multi-fields">{% for field in form %}
                                     <div class="form-group">
                                         <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
                                         {% if field.errors %}{% render_field field class="form-control is-invalid" %}{% else %}{% render_field field class="form-control" %}{% endif %}
                                         {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
                                     </div>
-                                {% endfor %}
+                                {% endfor %}</div>
                                 <button type="submit" class="btn fpa-btn-pagar">Agregar empresa al plan</button>
                             </form>
                         </div></section>
                     </div>
                     <div class="col-12 col-lg-5 mt-3 mt-lg-0">
-                        <section class="card h-100"><div class="card-body">
+                        <section class="card h-100 fp-multi-form"><div class="card-body">
                             <h2 class="h5">Empresas que ya administras</h2>
                             {% if vinculables %}
                                 <p class="text-muted small">Empresas registradas en FacturaPorAquí en las que eres Propietario.</p>

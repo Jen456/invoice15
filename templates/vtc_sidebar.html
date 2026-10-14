@@ -15,6 +15,9 @@
         </div>
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                {% if fpa_plan.periodo.plan.multiempresa and not fpa_plan.titular and fpa_gestiona_plan %}
+                <li class="nav-item"><a class="nav-link{% if request.path == '/suscripcion/empresas/' %} active{% endif %}" href="{% url 'suscripcion_empresas' %}"><i class="nav-icon fas fa-building" aria-hidden="true"></i><p>Empresas del plan</p></a></li>
+                {% endif %}
                 <li class="nav-header">Módulos</li>
                 {% if session_group.get_session_module_types %}
                     {% for module_type in session_group.get_session_module_types %}

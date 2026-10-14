@@ -795,3 +795,27 @@ El usuario rechazó el marco visible del ajuste anterior. Se editaron las 20 im�
 Actualizados README, ARCHIVOS.json, AGENTS y HANDOFF. ZIP locales regenerados, incluido `/workspace/facturaporaqui-redes-01-sin-marco.zip`. Inspección visual de las20 piezas en galería: sin panel, precios50/85 y textos completos, ejemplo125→126 conservado. Chromium cargó las20 imágenes. ZIP íntegros con20 PNG. La prueba anterior basada en todos los píxeles oscuros ya no es adecuada: la decoración puede extenderse al borde (historia02 tiene papeles oscuros al extremo). El manifiesto ahora registra el criterio de zona segura y revisión visual, no un margen automático de todos los píxeles. No se certifica geometría idéntica entre versiones generadas; textos/marca revisados dentro de la zona solicitada.
 
 Sin publicación externa, sin cambios de app/backend y sin despliegue.
+
+
+## 14/10/2026 — diseño y campaña Plan Multiempresa (Codex)
+
+Leídos AGENTS, contrato/estado Multiempresa publicado c2eb08e y este informe. Base frontend/etapa3 a4e8415. Todo trabajo propio en esa rama; no se reescribió historial ni se desplegó.
+
+Archivos:
+- landing/index.html: diseño final3 tarjetas, Multiempresa azul oscuro/celeste/coral, Unlimited claro. Precio, etiquetas Para 1 RUC / Hasta 10 RUC distintos, textos incluida retenciones, data-plan y opciones de formulario conservados. Tres columnas escritorio, dos más una tarjeta completa en tablet, una móvil.
+- core/suscripciones/templates/suscripciones/plan.html: contenedor fp-plan-options para distribución de tres planes; contratos y condiciones o.es_mejora/o.cambio_multiempresa/cubierta preservados.
+- static/css/facturaporaqui.css: tema de fp-plan-multiempresa, fp-plan-cubierta, fp-plan-multi; página empresas, tabla como fichas móvil, formularios adaptables y foco.
+- core/suscripciones/templates/suscripciones/empresas.html: colibrí, jerarquía de estado/cupos, tabla de RUC y tarjetas de agregar/vincular, campos dos columnas o una móvil. Names, accion=nueva|vincular, empresa y CSRF intactos; errores del servidor conservados, incluyendo errores generales del formulario.
+- templates/vtc_sidebar.html y core/tenancy/templates/tenancy/company_switcher.html: acceso Empresas del plan para titular con plan Multiempresa vigente y permisos, usando contexto existente. Empresa adicional no recibe ese acceso; el backend mantiene permisos reales y rol propietario.
+- redes/plan-multiempresa: posts/post-01…02.png e historias/historia-01…02.png, TEXTOS-Y-PUBLICACION.md, GALERIA.html, ARCHIVOS.json. Oferta $199 al año, IVA incluido, hasta 10 RUCtotales incluida titular, documentos ilimitados. Sin nuevas funciones prometidas. Edición de historia2 para ampliar margen de titular. ZIP `/workspace/facturaporaqui-plan-multiempresa.zip` fuera del repo, verificado.
+- HANDOFF y este informe. Capturas multi-*.png con datos ficticios.
+
+Pruebas: Python 3.12 con requirements/base.txt/dev.txt instalados con --require-hashes, SQLite: **270 aprobadas, 5 omitidas** exclusivas PostgreSQL, 39,27 s. git diff --check limpio. Los textos/clases que verifican tests se conservaron, sin necesidad de cambiar pruebas. Sin modelos, servicios, vistas ni migraciones modificados.
+
+Chromium/Playwright local con movimiento reducido: 1440/1024/768/390/360px, sin overflow de documento en landing, Plan y pagos, Empresas del plan y cubierta. Data-plan/opción multiempresa comprobados, no submit de lead. Login/selector reales con titular/adicional/vinculable ficticias. Resumen 2 de 10, menú visible titular, adicional con aviso y sin tarjetas ni acceso de gestión. RUC inválido enviado y rechazado; error exacto visible. Tab RUC → razón social. No se creó/vinculó empresa mediante esta prueba; tests backend existentes cubren esas acciones. Sin errores JS ni respuestas HTTP >= 400 en recorrido. PayPhone deshabilitado localmente; no compras ni emisión SRI.
+
+Inspección visual: tarjetas de landing con texto y alcance legibles, app Multiempresa contrastado, cuatro PNG comerciales revisados y sin marco. Dimensiones: posts 1122×1402, historias 941×1672 aprox; imágenes conceptuales, no datos reales. Capturas de landing/planes/empresas/cubierta en escritorio/móvil, error móvil y tarjetas de landing. En prueba adicional con animación normal la captura inicial se hizo antes de completar reveal; se esperó visibilidad y se verificó opacidad 1. Prueba principal con movimiento reducido.
+
+Configuración de desarrollo reutilizable guardada con herramienta de onboarding: install_script y start_skill, estado saved, no publicación ejecutada. Entorno de navegador usa settings_frontend externo al repo y SQLite; no .env de producción. Para activar configuración cloud nueva se revisa/guarda en ajustes de entorno y se publica ese entorno; no es despliegue de app.
+
+Pendientes: revisión/publicación por Claude con respaldo; PostgreSQL, teléfono físico y lector de pantalla no probados por Codex. No publicación en redes ni publicidad pagada. No requisitos nuevos de backend.

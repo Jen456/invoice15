@@ -119,3 +119,21 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .modal-dialog{margin:12px}.modal-content{max-width:100%}.modal-body{overflow-x:auto}.modal-footer .btn{min-height:44px}
 }
 @media(max-width:767px){.fp-responsive-form .card-footer>.btn{flex:0 0 100%}.fp-responsive-form .form-group>.input-group{width:100%!important}.fp-responsive-form .select2-selection__placeholder{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+
+/* Plan Multiempresa y empresas cubiertas. */
+.fp-plan-options>[class*=col-]{min-width:0}
+.fpa-plan .fp-plan-multiempresa{background:#163B50;color:white;border:2px solid #44BADD;box-shadow:0 12px 30px #163b5018}
+.fpa-plan .fp-plan-multiempresa .fpa-precio,.fpa-plan .fp-plan-multiempresa h3,.fpa-plan .fp-plan-multiempresa li{color:white}
+.fpa-plan .fp-plan-multiempresa .fp-eyebrow{color:#8ED4EB}.fpa-plan .fp-plan-multiempresa .text-muted,.fpa-plan .fp-plan-multiempresa .fpa-precio small{color:#d8eef7!important}
+.fp-plan-multiempresa .btn-outline-secondary{color:white;border-color:#8ed4eb}.fp-plan-multiempresa .fp-current-summary{background:#ffffff10;color:white;border-color:#44badd}
+.fp-plan-multi,.fp-plan-cubierta{padding:18px 20px;border-radius:12px;border:1px solid #44BADD;background:#E5F1F6;overflow-wrap:anywhere;line-height:1.65}
+.fp-plan-multi a{display:inline-block;margin-left:12px;font-weight:700;color:#9b321e}
+.fp-plan-empresas{max-width:1200px}.fp-multi-heading{padding-right:85px;position:relative}.fp-multi-heading img{position:absolute;right:0;top:0;object-fit:contain}
+.fp-multi-overview h2{font-size:24px;font-weight:750}.fp-multi-form .card-body{padding:28px}.fp-multi-form h2{font-size:23px;font-weight:750}
+.fp-multi-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}.fp-multi-fields .form-group{min-width:0}.fp-multi-fields input{max-width:100%}
+.fp-multi-form form>.btn{min-height:48px}.fp-multi-form .invalid-feedback{font-size:15px}.fp-multi-table td{overflow-wrap:anywhere}
+.fp-plan-empresas :focus-visible{outline:3px solid #176581;outline-offset:3px}
+@media(max-width:767px){.fp-plan-multi a{display:block;margin:8px 0 0}.fp-multi-heading{padding-right:55px}.fp-multi-heading img{width:44px;height:44px}.fp-multi-fields{grid-template-columns:1fr}.fp-multi-form .card-body{padding:20px}.fp-multi-form form>.btn{width:100%}.fp-multi-table table,.fp-multi-table tbody{display:block;width:100%}.fp-multi-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.fp-multi-table tr{display:block;border:1px solid var(--fp-border);padding:12px;border-radius:10px;margin-bottom:12px}.fp-multi-table td{display:block;border:0;padding:8px 0}.fp-multi-table td::before{content:attr(data-label);display:block;font-size:14px;font-weight:650;color:var(--fp-muted);margin-bottom:4px}}
+@media(min-width:1200px){.fpa-plan .fp-plan-options .fp-plan-col{flex:0 0 33.333333%;max-width:33.333333%}}
+@media(min-width:768px) and (max-width:1199px){.fpa-plan .fp-plan-options .fp-plan-col{flex:0 0 50%;max-width:50%}.fpa-plan .fp-plan-options .fp-plan-col:last-child{flex:0 0 100%;max-width:100%}}
+@media(max-width:767px){.fpa-plan .fp-plan-options .fp-plan-col{flex:0 0 100%;max-width:100%}}
