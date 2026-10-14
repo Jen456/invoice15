@@ -1,5 +1,5 @@
 {% extends 'skin.html' %}
-{% load widget_tweaks %}
+{% load widget_tweaks static %}
 {% block breadcrumb_li %}
     <li class="breadcrumb-item"><a href="{% url 'comprobantes_retenciones' %}"><i class="fas fa-file-invoice-dollar"></i> Retenciones</a></li>
     <li class="breadcrumb-item active" aria-current="page">Emitir</li>
@@ -14,10 +14,10 @@
     {% if not es_agente %}
         <div class="alert alert-info">Tu empresa no está registrada como agente de retención. Las sociedades y los obligados a llevar contabilidad ya no retienen por sí solos: emiten retenciones los contribuyentes especiales, los agentes de retención calificados por el SRI y, en casos puntuales, cualquier contribuyente (liquidaciones de compra, pagos al exterior). Si el SRI te calificó como agente, actualiza este dato en <a href="{% url 'configuracion_facturacion' %}">Configuración de facturación</a>.</div>
     {% endif %}
-    <form method="post" novalidate>{% csrf_token %}
+    <form method="post" class="fp-retencion-form" novalidate>{% csrf_token %}
         {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
-        <section class="card mb-3"><div class="card-body">
-            <h2 class="h5">Factura del proveedor (documento sustento)</h2>
+        <section class="card fp-retencion-panel mb-3"><div class="card-body">
+            <span class="fp-eyebrow">Paso 1 · Documento sustento</span><h2 class="h5">Factura del proveedor (documento sustento)</h2><p class="text-muted">Copia los datos de la factura que recibiste. Revisa el número y la autorización antes de continuar.</p>
             <div class="row">
                 {% for field in form %}
                     <div class="form-group col-12 {% if field.name == 'cod_sustento' %}col-lg-12{% elif field.name == 'parte_relacionada' %}col-lg-12{% else %}col-md-6 col-lg-4{% endif %}">
@@ -33,27 +33,20 @@
                 {% endfor %}
             </div>
         </div></section>
-        <section class="card mb-3"><div class="card-body">
-            <h2 class="h5">Retenciones</h2>
-            {{ lineas.management_form }}
+        <section class="card fp-retencion-panel mb-3"><div class="card-body">
+            <span class="fp-eyebrow">Paso 2 · Impuestos</span><h2 class="h5">Retenciones</h2><p class="text-muted">Selecciona los códigos aplicables. Las líneas sin retención se dejan vacías; el cálculo se realiza al revisar.</p>
+            {{ lineas.management_form }}{% for error in lineas.non_form_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+            <div id="fp-retencion-lineas">
             {% for f in lineas %}
-                <div class="row border-bottom pb-2 mb-2">
-                    {% for field in f %}
-                        <div class="form-group col-12 {% if field.name == 'codigo' %}col-lg-6{% else %}col-md-6 col-lg-3{% endif %}">
-                            <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
-                            {% render_field field class="form-control" %}
-                            {% if forloop.parentloop.first and field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
-                            {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
-                        </div>
-                    {% endfor %}
-                </div>
+                {% include "comprobantes/retencion/_linea.html" with f=f numero=forloop.counter %}
             {% endfor %}
+            </div><template id="fp-retencion-linea-vacia">{% include "comprobantes/retencion/_linea.html" with f=lineas.empty_form numero="__numero__" %}</template><button type="button" id="fp-retencion-agregar" class="btn btn-outline-secondary" hidden>Agregar línea de retención</button><p id="fp-retencion-lineas-estado" class="small text-muted" role="status"></p>
         </div></section>
         {% if resumen %}
-            <section class="card mb-3 border-info"><div class="card-body">
-                <h2 class="h5">Revisa antes de emitir</h2>
+            <section class="card fp-retencion-revision mb-3 border-info"><div class="card-body">
+                <span class="fp-eyebrow">Paso 3 · Confirmación</span><h2 class="h5">Revisa antes de emitir</h2><p>El cálculo todavía no ha emitido un documento. Comprueba los datos antes de enviarlo al SRI.</p>
                 <p>Factura {{ resumen.doc.num_doc_sustento|slice:":3" }}-{{ resumen.doc.num_doc_sustento|slice:"3:6" }}-{{ resumen.doc.num_doc_sustento|slice:"6:" }} · sin impuestos ${{ resumen.total_sin_impuestos|floatformat:2 }} · IVA ${{ resumen.doc.valor_iva|floatformat:2 }} · total ${{ resumen.importe_total|floatformat:2 }}</p>
-                <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Impuesto</th><th>Código</th><th>Concepto</th><th class="text-right">Base</th><th class="text-right">%</th><th class="text-right">Retenido</th></tr></thead><tbody>
+                <div class="table-responsive fp-retencion-resumen"><table class="table table-sm"><thead><tr><th>Impuesto</th><th>Código</th><th>Concepto</th><th class="text-right">Base</th><th class="text-right">%</th><th class="text-right">Retenido</th></tr></thead><tbody>
                     {% for d in resumen.detalle %}<tr><td>{% if d.impuesto == '1' %}Renta{% else %}IVA{% endif %}</td><td>{{ d.codigo }}</td><td>{{ d.concepto }}</td><td class="text-right">{{ d.base_imponible|floatformat:2 }}</td><td class="text-right">{{ d.porcentaje|floatformat:2 }}</td><td class="text-right">{{ d.valor_retenido|floatformat:2 }}</td></tr>{% endfor %}
                     <tr><td colspan="5" class="text-right"><strong>Total retenido</strong></td><td class="text-right"><strong>${{ resumen.total|floatformat:2 }}</strong></td></tr>
                 </tbody></table></div>
@@ -68,3 +61,5 @@
     {% endif %}
 </div>
 {% endblock %}
+
+{% block assets_body %}{{ block.super }}<script src="{% static 'js/retenciones.js' %}" defer></script>{% endblock %}
