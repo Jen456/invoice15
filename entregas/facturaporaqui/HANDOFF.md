@@ -15,11 +15,22 @@
 - **13/10/2026, 15:24 UTC — publicado `f787684`:** incluye `3fc3104` de Codex (formularios móviles) y la corrección del error 500 en 12 vistas de edición, que sin sesión cargaban el registro antes de comprobarla (visto en `/pos/client/update/8/`); ahora llevan al login. Respaldo `pre-20261013-152429-f7876848.dump`.
 - **13/10/2026 — `FPA_RUC_PROVEEDOR=0941609729001` instalado** en `/etc/facturaporaqui/pruebas.env` (RUC de Suprohosting: Alava Bolaños Jenny Julizza, ACTIVO; respaldo previo en `credenciales/`) y servicio reiniciado. Validado en el SRI de PRUEBAS: factura y NC con «RUC Proveedor», AUTORIZADAS. **La emisión en Producción queda habilitada** para la empresa 6 (próxima factura 001-002-000000271).
 
+- **14/10/2026 03:41 UTC — publicado `bb4f4f2`:** comprobantes impresos.
+  - **Primera factura real de la empresa 6**, 001-002-000000271: AUTORIZADA en Producción el 13/10 y enviada por correo. El primer intento automático falló con `SMTPAuthenticationError` (SMTP propio de la empresa); el reenvío de las 16:15 salió bien.
+  - **Ticket:**
+    - sin «usuario y clave» del portal (la clave era la cédula; el portal genérico para compradores queda para más adelante);
+    - «FACTURA N° …» en vez de «TICKET N°»;
+    - «Subtotal 15%» (salía «15%%»);
+    - «Contribuyente Especial» solo si lo es.
+  - **Ticket y RIDE:** datos del proveedor sin teléfono (`FPA_PROVEEDOR_*`): FACTURAPORAQUI, soporte@facturaporaqui.com, Milagro, Manta y Rumiñahui.
+  - **Pruebas:** `tests/test_impresos.py`. PostgreSQL 261; SQLite 256 + 5 solo PostgreSQL.
+
 ## Pendiente para Codex — tras la Etapa A
 
 - [ ] Venta (`sale/admin/create.html`): la fecha la fija el servidor (hoy). Mostrar el campo de fecha como solo lectura o como texto.
 - [ ] Mensajes largos del SRI (devuelta o no autorizada) en el diálogo de error: legibles en móvil y sin desbordar.
 - [ ] Leyenda o ayuda de los estados nuevos en los listados de Ventas y Notas de crédito (ver el contrato abajo).
+- [ ] Portal genérico para que los compradores consulten sus comprobantes en línea (pedido de la propietaria para el futuro; hoy el ticket ya no muestra usuario ni clave).
 - [ ] Etapa B del RIDE (`sale/format/invoice.html` y `credit_note/format/invoice.html`):
   - razón social, dirección del establecimiento, ambiente y tipo de emisión;
   - fechas de la NC (hoy intercambiadas);
