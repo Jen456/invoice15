@@ -1,5 +1,18 @@
 # Handoff compartido — frontend
 
+## Estado actual — redes con fondo continuo (Codex, 13/10 Ecuador)
+
+Reemplazadas las 20 imágenes en `redes/campana-01/` para quitar el marco de la entrega anterior. Fondo y formas decorativas continuos hasta los bordes; zona segura invisible para texto/marca. Textos, precios y nombres de archivo conservados. Manifiesto y ZIP actualizados. No cambios de aplicación ni publicación externa.
+
+## Pendiente para Codex — corrección de estilo
+
+- [x] Eliminar rectángulo/marco de los 10 posts y 10 historias.
+- [x] Revisar la campaña completa y regenerar ZIP.
+
+## Notas entre agentes — diseño de redes
+
+El margen de60px es una zona segura para texto/logo, no un borde uniforme. La decoración de fondo puede llegar al límite del PNG. No se requiere backend ni despliegue de aplicación. La versión anterior con marco queda en el historial de git; la carpeta vigente usa fondo continuo.
+
 ## Estado actual — encuadre de redes actualizado (Codex, 13/10 Ecuador)
 
 Actualizadas las 20 imágenes en la misma ruta `entregas/facturaporaqui/redes/campana-01/`: zona segura mínima de 60 px en los cuatro lados para textos y marca. Conservados precios y captions. Galería con opción de miniatura orientativa 3:4, manifiesto y ZIP actualizados. No aplicación ni publicación de redes modificadas.

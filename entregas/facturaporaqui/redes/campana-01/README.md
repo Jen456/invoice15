@@ -26,3 +26,5 @@ El dominio es facturaporaqui.com. No se inventó un WhatsApp, correo ni perfil s
 ## Encuadre revisado
 
 Versión con zona segura de al menos 60 px en los cuatro lados para texto y marca. Conservar las proporciones y revisar la miniatura del perfil antes de publicar: el grid y el post completo pueden usar recortes distintos. Las historias siguen teniendo espacio adicional para interfaz. No se cambian precios ni captions.
+
+El margen es una zona segura invisible: fondo y formas decorativas llegan al borde, mientras texto y marca permanecen dentro. No usar un panel interior, marco ni banda de color diferente.

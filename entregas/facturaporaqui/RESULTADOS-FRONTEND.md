@@ -786,3 +786,12 @@ Validación: inspección visual de 20 PNG en pares; textos legibles, planes50/85
 - **Suites:** PostgreSQL 259; SQLite 254 + 5 solo PostgreSQL.
 - **Publicado con `f787684`:** los formularios móviles de Codex (`3fc3104`).
 - **Verificación:** sin sesión → 302 al login; recorrido de DEMOSTRACIÓN sin errores de consola ni respuestas ≥ 400; temporizador del SRI activo.
+
+
+## 13/10/2026 — corrección del marco de redes
+
+El usuario rechazó el marco visible del ajuste anterior. Se editaron las 20 imágenes con la herramienta de imagen para eliminar el panel interior/banda y extender el fondo y formas decorativas hasta los bordes. Texto, marca y CTA permanecen dentro de la zona segura invisible de60px. Se sustituyeron los mismos PNG en `redes/campana-01/posts` e `historias`; se conservaron captions y nombres de archivo.
+
+Actualizados README, ARCHIVOS.json, AGENTS y HANDOFF. ZIP locales regenerados, incluido `/workspace/facturaporaqui-redes-01-sin-marco.zip`. Inspección visual de las20 piezas en galería: sin panel, precios50/85 y textos completos, ejemplo125→126 conservado. Chromium cargó las20 imágenes. ZIP íntegros con20 PNG. La prueba anterior basada en todos los píxeles oscuros ya no es adecuada: la decoración puede extenderse al borde (historia02 tiene papeles oscuros al extremo). El manifiesto ahora registra el criterio de zona segura y revisión visual, no un margen automático de todos los píxeles. No se certifica geometría idéntica entre versiones generadas; textos/marca revisados dentro de la zona solicitada.
+
+Sin publicación externa, sin cambios de app/backend y sin despliegue.

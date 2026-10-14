@@ -10,3 +10,5 @@
 - Formularios compartidos usan `.fp-responsive-form`. En móvil las líneas de documento se presentan con `.fp-mobile-lines` y `data-label`, conservando las celdas e inputs originales (sin clones) para no romper eventos ni cálculos. Verificar filas con productos y edición de cantidad, además del formulario vacío.
 
 - Material de redes: dejar una zona segura mínima de 60 px arriba, abajo, izquierda y derecha para texto y marca; comprobar miniatura y formato completo. Las historias requieren también espacio para la interfaz de la plataforma.
+
+- La zona segura de redes es invisible: extender fondo y formas decorativas hasta el borde; no crear marcos, paneles interiores ni bandas que alteren el diseño. Mantener texto/logo al menos a 60 px.
