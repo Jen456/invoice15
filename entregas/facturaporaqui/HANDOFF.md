@@ -1,5 +1,19 @@
 # Handoff compartido — frontend
 
+## Estado actual — diseño de retenciones 07 terminado (Codex, 14/10/2026)
+
+Fusionado github/plataforma 400e459 en frontend/etapa3 con merge 6d67d81, sin reescribir historial. Resuelto únicamente HANDOFF conservando las dos secciones de entregas. Se mantiene 14d0090 (precios) pendiente de revisión/publicación por Claude. Publicado informado por la propietaria: 400e459; no se desplegó desde esta tarea.
+
+Formulario con jerarquía de sustento, líneas y revisión; hasta 10 líneas mediante mejora progresiva del formset. Listado como fichas en móvil, estados/acciones exactos conservados. Tema de Otros comprobantes, acceso en asistente, botón de Compras y RIDE A4 de 190 mm. No modificaciones propias de modelos, vistas, servicios, URL, formularios Python ni migraciones.
+
+Validación: 291 pruebas SQLite aprobadas, 5 omitidas exclusivas de PostgreSQL. Navegador 1440/1024/768/390/360 px sin desborde de documento; cálculo y errores del servidor, 10 líneas, foco y fallback sin JS. RIDE en memoria, una página A4, tres tablas dentro de 190 mm. Capturas retencion-*.png en capturas/. Ninguna emisión/pago, ninguna retención guardada ni numeración existente modificada.
+
+## Notas entre agentes — entrega visual de retenciones (Codex → Claude)
+
+No datos nuevos del backend necesarios. Incluir `static/js/retenciones.js` al ejecutar collectstatic. El JS usa empty_form y management_form de Django, conserva prefijo lineas y max 10; no calcula impuestos ni envía al SRI. Sin JS quedan las tres líneas originales. Revisión por action=calcular; action=emitir intacto y nunca pulsado en esta revisión.
+
+Las capturas de formulario/cálculo/Compras/configuración usan una empresa local ficticia nueva. El listado poblado usa objetos no guardados renderizados con la plantilla real para comprobar estados sin consumir secuencias. RIDE igualmente en memoria, con dos líneas y total $6,50. No se verificaron descargas/reenviados reales ni autorización SRI; esas acciones conservan el backend. El resumen ancho mantiene desplazamiento horizontal exclusivamente en su contenedor, como en 400e459. No publicación; Claude revisa PostgreSQL y publica con respaldo cuando corresponda.
+
 ## Estado actual — tabla de precios y beneficios (Codex, 14/10/2026)
 
 Diseño inspirado en la referencia enviada por la propietaria, adaptado a los tres planes anuales y marca FacturaPorAquí. Landing: cabecera, precio fijo, alcance, CTA y beneficios con checks; beneficios desplegables con teclado. Multiempresa diferenciado. App: mismos beneficios desplegables y animaciones suaves. Sin mensualidad, descuentos ni importes animados.
@@ -55,12 +69,12 @@ Revisar recorte móvil/escritorio al subir a Facebook. No se requieren endpoints
 
 ## Pendiente para Codex — pantallas de retenciones
 
-- [ ] `core/comprobantes/templates/comprobantes/retencion/create.html`: datos del sustento, líneas de retención (hasta 10), resumen «Revisa antes de emitir», aviso de compra con retención vigente y aviso a no agentes.
-- [ ] `core/comprobantes/templates/comprobantes/retencion/list.html`: estados, descargas de XML y PDF, reenviar y eliminar.
-- [ ] Sección «Comprobante de retención» en `core/configuracion/templates/configuracion/otros.html`.
-- [ ] Botón «Retención» en el listado de Compras (`core/pos/static/purchase/js/list.js`).
-- [ ] RIDE `core/comprobantes/templates/comprobantes/retencion/ride.html` (WeasyPrint, A4).
-- [ ] Revisar a 1440, 1024, 390 y 360 px, y registrar capturas.
+- [x] `core/comprobantes/templates/comprobantes/retencion/create.html`: datos del sustento, líneas de retención (hasta 10), resumen «Revisa antes de emitir», aviso de compra con retención vigente y aviso a no agentes.
+- [x] `core/comprobantes/templates/comprobantes/retencion/list.html`: estados, descargas de XML y PDF, reenviar y eliminar.
+- [x] Sección «Comprobante de retención» en `core/configuracion/templates/configuracion/otros.html`.
+- [x] Botón «Retención» en el listado de Compras (`core/pos/static/purchase/js/list.js`).
+- [x] RIDE `core/comprobantes/templates/comprobantes/retencion/ride.html` (WeasyPrint, A4).
+- [x] Revisar a 1440, 1024, 390 y 360 px, y registrar capturas.
 
 ## Notas entre agentes — contrato de retenciones (Claude → Codex)
 

@@ -146,3 +146,45 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-app-benefits li::before{content:'✓';position:absolute;left:0;color:#176581;font-weight:800}
 .fp-plan-multiempresa .fp-app-benefits{border-color:#ffffff30}.fp-plan-multiempresa .fp-app-benefits li{border-color:#ffffff20}.fp-plan-multiempresa .fp-app-benefits li::before{color:#8ed4eb}
 .fp-app-benefits summary:focus-visible{outline:3px solid #44badd;outline-offset:3px}
+
+/* Retenciones 07: cálculo, revisión y emisión conservan el contrato del servidor. */
+.fp-comprobantes { max-width: 1440px; margin: auto; min-width: 0; }
+.fp-comprobantes .fp-welcome { margin-bottom: 1.5rem; }
+.fp-comprobantes h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
+.fp-comprobantes .alert { border-radius: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.fp-retencion-panel, .fp-retencion-revision { border-radius: 18px; overflow: hidden; }
+.fp-retencion-panel .card-body, .fp-retencion-revision .card-body { padding: clamp(1rem, 2.5vw, 2rem); }
+.fp-retencion-form h2 { margin: .5rem 0 1rem; font-weight: 700; }
+.fp-retencion-form label { line-height: 1.5; }
+.fp-retencion-form .form-control { min-height: 46px; width: 100%; min-width: 0; font-size: 1rem; }
+.fp-retencion-form .form-group { min-width: 0; }
+.fp-retencion-linea { border: 1px solid #c9dfe8; background: #f5fafc; padding: 1rem .5rem .25rem; margin: 1rem 0; border-radius: 14px; min-width: 0; }
+.fp-retencion-linea legend { font-size: .9rem; font-weight: 700; color: #163B50; width: auto; padding: 0 .5rem; margin-left: .5rem; }
+.fp-retencion-revision { border-top: 4px solid #44BADD; }
+.fp-retencion-resumen { margin: 1.25rem 0; }
+.fp-retencion-resumen table { min-width: 640px; }
+.fp-retencion-form .btn, .fp-retencion-acciones .btn, .fp-otros-form .btn { min-height: 44px; white-space: normal; }
+.fp-retencion-form .btn { margin: .25rem .25rem .25rem 0; }
+.fp-retencion-tabla { border-radius: 14px; }
+.fp-retencion-tabla th { background: #e5f1f6; color: #163B50; padding: 1rem; }
+.fp-retencion-tabla td { padding: 1rem; vertical-align: middle; overflow-wrap: anywhere; }
+.fp-retencion-tabla .badge { white-space: normal; line-height: 1.5; }
+.fp-retencion-acciones { min-width: 160px; }
+.fp-retencion-acciones form, .fp-retencion-acciones .btn { margin: .2rem; }
+.fp-retencion-compra { background: #163B50 !important; border-color: #163B50 !important; border-radius: 8px; padding: .4rem .65rem; min-height: 36px; }
+.fp-retencion-acceso i { margin-right: .4rem; }
+.fp-config-otros .fp-config-secuencia { background: #e5f1f6; padding: 1rem; border-radius: 12px; overflow-wrap: anywhere; }
+@media (max-width: 767.98px) {
+ .fp-retencion-form .btn, .fp-otros-form .btn { display: block; width: 100%; margin: .6rem 0; }
+ .fp-retencion-tabla, .fp-retencion-tabla tbody, .fp-retencion-tabla tr, .fp-retencion-tabla td { display: block; width: 100%; }
+ .fp-retencion-tabla thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+ .fp-retencion-tabla tr { border: 1px solid #c9dfe8; border-radius: 14px; margin-bottom: 1rem; padding: .5rem; background: white; }
+ .fp-retencion-tabla td { border: 0; text-align: left !important; padding: .5rem; }
+ .fp-retencion-tabla td[data-label]::before { content: attr(data-label); display: block; font-size: .8rem; font-weight: 700; color: #526d7a; margin-bottom: .2rem; }
+ .fp-retencion-listado { overflow: visible; }
+ .fp-retencion-acciones .btn { display: inline-flex; align-items: center; justify-content: center; }
+}
+.fp-comprobantes .fpa-btn-pagar { background: #CA462C; border-color: #CA462C; color: white; font-weight: 700; }
+.fp-comprobantes .fpa-btn-pagar:hover { background: #a8381f; border-color: #a8381f; color: white; }
+.fp-comprobantes .alert-info { background: #e5f1f6; color: #163B50; border-color: #b9dce9; }
+.fp-comprobantes .alert-info a { color: #163B50; text-decoration: underline; }

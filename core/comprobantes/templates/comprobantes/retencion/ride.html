@@ -7,10 +7,10 @@
     <link rel="stylesheet" href="{% static 'lib/bootstrap-4.6.0/css/bootstrap.min.css' %}"/>
     <style>
         @page { size: A4 portrait; margin: 12mm 10mm; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; }
-        .bloque { background: #f6f6f6; padding: 6px 10px; margin-bottom: 6px; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #163B50; }
+        .bloque { background: #E5F1F6; border-top: 2px solid #44BADD; padding: 8px 10px; margin-bottom: 6px; }
         .bloque p { margin: 1px 0; }
-        .titulo { font-size: 18px; font-weight: bold; }
+        .titulo { font-size: 17px; font-weight: bold; color: #163B50; }
         /* Bootstrap fija en impresión body { min-width: 992px }, más ancho que la hoja: el contenido va en 190 mm (A4 menos márgenes) */
         .hoja { width: 190mm; }
         /* table-layout fijo y cortes en las claves de 49 dígitos: sin esto WeasyPrint ensancha las tablas más allá de la hoja */
@@ -18,9 +18,11 @@
         .clave { word-break: break-all; font-size: 10px; }
         .barcode { width: 100%; max-width: 100%; height: 60px; }
         table.detalle { border-collapse: collapse; margin-top: 8px; }
-        table.detalle th { background: #000; color: #fff; padding: 3px; font-size: 9px; text-transform: uppercase; }
-        table.detalle td { border: 1px solid #000; padding: 3px; font-size: 10px; overflow-wrap: break-word; }
+        table.detalle th { background: #163B50; color: #fff; padding: 3px; font-size: 9px; text-transform: uppercase; }
+        table.detalle td { border: 1px solid #b9cfd9; padding: 3px; font-size: 10px; overflow-wrap: break-word; }
         .num { text-align: right; }
+        .bloque, tr { break-inside: avoid; }
+        thead { display: table-header-group; }
         .logo { max-height: 90px; max-width: 100%; }
     </style>
 </head>

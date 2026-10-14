@@ -19,7 +19,7 @@
         <p>Emites desde <strong>{{ punto.full_code }}</strong> en el ambiente <strong>{{ ambiente }}</strong>.</p>
         {% for d in documentos %}
             <section class="card fp-config-panel mb-3"><div class="card-body">
-                <h2 class="h5">{{ d.nombre }}</h2>
+                <span class="fp-eyebrow">Documento {{ d.tipo }}</span><h2 class="h5">{{ d.nombre }}</h2>
                 {% if d.tipo == '07' %}<p class="text-muted small">Lo emiten los contribuyentes especiales y los agentes de retención calificados por el SRI, y cualquier contribuyente en casos puntuales (liquidaciones de compra, pagos al exterior). Se emite sobre una compra registrada, desde Compras.</p>{% endif %}
                 {% if d.secuencia %}
                     <dl class="fp-config-secuencia">
@@ -30,7 +30,7 @@
                 {% else %}
                     <p class="text-muted">Sin numeración registrada para {{ punto.full_code }}.</p>
                 {% endif %}
-                <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="tipo" value="{{ d.tipo }}">
+                <form method="post" class="fp-otros-form" novalidate>{% csrf_token %}<input type="hidden" name="tipo" value="{{ d.tipo }}">
                     {% for error in d.form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
                     {% include 'configuracion/_campos.html' with form=d.form %}
                     <button type="submit" class="btn fpa-btn-pagar">Guardar y confirmar numeración</button>

@@ -842,3 +842,29 @@ Validación: suite SQLite **270 aprobadas y 5 omitidas** (exclusivas de PostgreS
 Prueba adicional: con movimiento normal, 3 animaciones activas al entrar en precios; con movimiento reducido, 0. Details abierto/cerrado con Enter; CTA Multiempresa añade selección visual y mantiene el valor multiempresa del formulario. Precio199 visible y sin mutación. Capturas de comparación con ambas preferencias y vista previa revisada visualmente: paleta sin verde del ejemplo, texto legible y beneficios comparables. PayPhone deshabilitado localmente; no se completó pago ni se emitió documento.
 
 Sin modificaciones de vistas, servicios, modelos, migraciones o .env. No despliegue ni publicación externa. Claude debe incluir el nuevo JS al publicar landing y ejecutar collectstatic en app. Móvil físico y PostgreSQL no probados en esta revisión.
+
+
+## 14/10/2026 — pantallas de retenciones 07
+
+Leídos AGENTS, HANDOFF (pendientes y contrato de retenciones) e informe. Merge de github/plataforma 400e459 en frontend/etapa3: 6d67d81; único conflicto HANDOFF, se conservan las dos entregas completas. Backend entrante sin cambios propios; historial anterior, incluido 14d0090 de precios, conservado. No despliegue.
+
+Archivos y decisiones:
+- `core/comprobantes/templates/comprobantes/retencion/create.html`: tres secciones visibles (sustento, impuestos, revisión), textos orientativos adicionales, tarjetas, errores generales del formset; avisos de retención vigente/no agente y mensajes originales conservados. Formulario responsive; revisión no se presenta como documento ya emitido.
+- `core/comprobantes/templates/comprobantes/retencion/_linea.html`: fieldset/legend por línea, labels enlazados a IDs, ayuda y errores del servidor, utilizado también por empty_form.
+- `static/js/retenciones.js`: agregar líneas hasta máximo 10 usando empty_form, nombres lineas-N-*, management_form actualizado, foco al nuevo código, contador con role=status. No calcula importes ni hace solicitudes. Sin JS siguen las tres líneas originales; nunca se clonan valores escritos ni IDs.
+- `core/comprobantes/templates/comprobantes/retencion/list.html`: data-label para fichas móviles y acciones táctiles; estados comparados exactamente y permisos/POST originales intactos, PDF/XML con rel=noopener.
+- `core/configuracion/templates/configuracion/otros.html`: etiqueta Documento 07 y formulario de numeración con jerarquía de marca. `asistente.html`: acceso a Otros comprobantes con icono de documento, condición de configuración completa intacta.
+- `core/pos/static/purchase/js/list.js`: clase visual propia del botón Retención; permiso, destino y lógica intactos.
+- `core/comprobantes/templates/comprobantes/retencion/ride.html`: azul oscuro/celeste, bordes suaves y encabezados de tabla; datos obligatorios y logo del emisor intactos. .hoja 190 mm, table-layout fixed, clave/código de barras e información adicional conservados, sin ocultar contenido.
+- `static/css/facturaporaqui.css`: estilos fp- específicos para formularios/líneas/revisión/listado/Compras/Otros, foco y controles heredados. Acciones principales coral y aviso informativo claro con texto azul oscuro. Listado como fichas bajo 768 px. Resumen con desplazamiento propio para mantener todos los datos.
+- HANDOFF y este informe; capturas `capturas/retencion-*.png` (formulario, errores, revisión, listado vacío, estados, otros, asistente y Compras a 1440/390/360; RIDE A4).
+
+Pruebas ejecutadas:
+- Python 3.12, dependencias fijadas existentes. Migraciones nuevas aplicadas exclusivamente a SQLite local externa al repositorio. Suite completa: `python -m pytest -o addopts= -q`: **291 aprobadas, 5 omitidas**, 44,29 s; omitidas exclusivas de PostgreSQL. No pruebas modificadas ni desactivadas.
+- Chromium/Playwright, 1440/1024/768/390/360 px: formulario, errores, cálculo, listado vacío, numeración 07, acceso del asistente y Compras sin overflow del documento. Sin errores JS ni HTTP >=400 en recorrido autenticado. Movimiento reducido activo; sin animaciones nuevas.
+- Errores por campos vacíos recibidos del servidor; factura ficticia de $100 + IVA $15, código renta312 al 2%, revisión calculada sin guardar. Tab desde Volver a calcular lleva a Cancelar. Agregar hasta 10 líneas: contador/límite deshabilitado, IDs únicos, foco a lineas-9-codigo, cálculo servidor con código solo en la décima línea. Sin JavaScript: tres líneas originales y revisión por POST disponibles.
+- Listado con cuatro estados simulados en memoria (authorized, not_authorized, in_process, without_authorizing): autorizado sin enviar, no autorizado con enviar, en proceso con consultar y sin eliminar. No se ejecutó ningún POST de listado. PDF/XML siguen condiciones originales; descargas reales no verificadas.
+- WeasyPrint con datos ficticios y dos líneas ($2 renta + $4,50 IVA): PDF de una página A4 (793,70×1122,52 px CSS), caja .hoja de 190 mm verificada y tres tablas dentro del ancho. Campos obligatorios, total $6,50, código de barras e información adicional visibles. Avisos de CSS Bootstrap no soportado por WeasyPrint, sin fallo de generación. Captura rasterizada del PDF revisada visualmente.
+- `node --check` de JS propio y listado de Compras; `git diff --check` correctos.
+
+Seguridad y límites: empresa/proveedor nuevos ficticios locales; inicialización de configuración de prueba sin alterar números existentes. Tras los cálculos, cero retenciones persistidas y secuencias de factura/nota/recibo de esa empresa aún en cero. Retenciones del listado y PDF son objetos sin guardar. No firma subida, pagos, envíos SRI, numeración de clientes ni despliegue. Sin cambios propios de vistas, servicios, modelos, URL, migraciones, formularios Python o .env. PostgreSQL, teléfono físico y lector de pantalla no comprobados en esta tarea. Claude debe revisar y publicar con respaldo, incluyendo el JS nuevo y la tabla de precios 14d0090 aún pendiente.
