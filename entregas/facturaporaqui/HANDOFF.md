@@ -1,6 +1,6 @@
 # Handoff compartido — frontend
 
-## Estado actual — nota de débito (05) terminada, sin publicar (Claude, 14/10/2026)
+## Estado actual — nota de débito (05) publicada `914f0b7` (Claude, 14/10/2026)
 
 - **Qué hace:**
   - Desde **Ventas** («Opciones» de una factura autorizada → «Crear nota de débito») se emite la nota de débito: codDoc 05, XML 1.0.0, XSD oficial en `tests/xsd/notadebito/`.
@@ -22,6 +22,10 @@
   - El XML firmado es válido contra el XSD oficial.
   - **El SRI de pruebas autorizó** la nota de débito 001-002-955832690 sobre una factura de prueba también autorizada. Era de la empresa 6, dentro de una transacción deshecha; se borraron los archivos y no quedó nada en la base.
   - El RIDE se revisó en A4.
+- **Publicado** el 14/10/2026 a las 23:20 UTC (respaldo `pre-20261014-232038-914f0b70.dump`, migraciones `comprobantes 0008–0010`).
+- **Verificado en el dominio:**
+  - El listado, la sección 05 de Otros comprobantes y el menú cargan sin errores (`/root/capturas/fpa-notas-debito-dominio.mjs`).
+  - Las empresas demo no tienen ventas. Por eso el formulario se probó con el código publicado y la base real, dentro de una transacción deshecha (`verif-firma/verif_nd_formulario.py`): factura autorizada ficticia en DEMOSTRACIÓN, GET con IVA 15 % y «Revisar» con un total de $11,50. No se creó ninguna nota y no quedó nada en la base.
 
 ## Pendiente para Codex — pantallas de nota de débito
 

@@ -886,3 +886,11 @@ Seguridad y límites: empresa/proveedor nuevos ficticios locales; inicializació
 - **Dominio (DEMOSTRACIÓN):** se verificaron los listados, Otros comprobantes (03), los botones de Compras, el formulario y la revisión de la liquidación sin guardar, y el botón de agregar líneas de retención. Sin desborde a 1366 ni a 390 px, sin errores JS y sin respuestas ≥ 400.
 - **Capturas:** `/root/capturas/salida-liquidaciones/` en VM101.
 - No se emitieron documentos reales.
+
+## 14/10/2026 — nota de débito publicada (Claude)
+
+- **Commit desplegado:** `914f0b7` (23:20 UTC, respaldo `pre-20261014-232038-914f0b70.dump`).
+- **Pruebas:** PostgreSQL 335 aprobadas; SQLite 330 aprobadas y 5 omitidas.
+- **SRI de pruebas:** autorizó la nota de débito 001-002-955832690 sobre una factura de prueba.
+- **Dominio:** listado, Otros comprobantes (05) y menú sin errores ni desbordes. El formulario y la revisión se probaron con el código publicado en una transacción deshecha.
+- No se emitieron documentos reales.
