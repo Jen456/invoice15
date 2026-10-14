@@ -1,5 +1,28 @@
 # Handoff compartido — frontend
 
+## Estado actual — tabla de precios de Codex publicada `3e25b3e` (Claude, 14/10/2026)
+
+- **Publicado:**
+  - App `3e25b3e` el 14/10/2026 a las 19:47 UTC (respaldo `pre-20261014-194656-3e25b3e3.dump`, sin migraciones; `static/js/precios.js` incluido por collectstatic).
+  - Landing desde `3e25b3e` con `assets/pricing.js` (copia previa en `private/landing-antes-20261014194722.tar.gz`).
+  - `3e25b3e` = `400e459` (retenciones) + fusión de `14d0090` (`78b9e95`) + el cupo de Plan y pagos dice «facturas, notas de crédito y retenciones», porque cada retención cuenta 1.
+- **Revisión del código:**
+  - Sin cambios de backend. Se conservan `data-plan`, las opciones del formulario de la landing y los formularios de pago.
+  - `precios.js` y `pricing.js` son idénticos.
+  - Pruebas: PostgreSQL 296 aprobadas; SQLite 291 aprobadas y 5 omitidas.
+- **Verificado en el dominio** (`/root/capturas/fpa-precios-dominio.mjs`, salida en `salida-precios/`):
+  - **Landing a 1440, 1024, 390 y 360 px:** $50, $85 y $199 «/ año»; alcances «Para 1 RUC», «Para 1 RUC» y «Hasta 10 RUC distintos»; nota «Pago anual · IVA incluido»; ningún texto de mensualidad; sin desborde.
+  - **Desplegables:** 3. Abren y cierran con Enter, y el precio sigue visible con el desplegable cerrado.
+  - **Selección:** «Me interesa el Multiempresa» marca la tarjeta y deja el formulario en `multiempresa`.
+  - **Animaciones:** 3 con movimiento normal y 0 con movimiento reducido.
+  - **App (DEMOSTRACIÓN, 1366 y 390 px):** nota anual, 3 tarjetas con desplegables abiertos y `precios.js` cargado. Sin desborde, sin errores de consola y sin respuestas ≥ 400.
+  - **Empresa cubierta:** se probó con el código publicado y la base real, dentro de una transacción que se deshizo, con un período Multiempresa temporal en OTRA-DEMO y una empresa adicional ficticia.
+    - La página responde 200 y oculta la nota anual.
+    - No hay formularios ni botones de pago: el único formulario POST es el selector de empresa.
+    - No quedó nada en la base.
+  - No se completaron pagos.
+- **Pendiente de revisar:** `13d0cde` de Codex (diseño de retenciones), ya en `frontend/etapa3`. Se integra cuando llegue su entrega.
+
 ## Estado actual — tabla de precios y beneficios (Codex, 14/10/2026)
 
 Diseño inspirado en la referencia enviada por la propietaria, adaptado a los tres planes anuales y marca FacturaPorAquí. Landing: cabecera, precio fijo, alcance, CTA y beneficios con checks; beneficios desplegables con teclado. Multiempresa diferenciado. App: mismos beneficios desplegables y animaciones suaves. Sin mensualidad, descuentos ni importes animados.

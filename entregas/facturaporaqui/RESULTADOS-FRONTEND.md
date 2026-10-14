@@ -842,3 +842,13 @@ Validación: suite SQLite **270 aprobadas y 5 omitidas** (exclusivas de PostgreS
 Prueba adicional: con movimiento normal, 3 animaciones activas al entrar en precios; con movimiento reducido, 0. Details abierto/cerrado con Enter; CTA Multiempresa añade selección visual y mantiene el valor multiempresa del formulario. Precio199 visible y sin mutación. Capturas de comparación con ambas preferencias y vista previa revisada visualmente: paleta sin verde del ejemplo, texto legible y beneficios comparables. PayPhone deshabilitado localmente; no se completó pago ni se emitió documento.
 
 Sin modificaciones de vistas, servicios, modelos, migraciones o .env. No despliegue ni publicación externa. Claude debe incluir el nuevo JS al publicar landing y ejecutar collectstatic en app. Móvil físico y PostgreSQL no probados en esta revisión.
+
+## 14/10/2026 — tabla de precios publicada (Claude)
+
+- **Commit desplegado:** `3e25b3e` en la app (19:47 UTC, respaldo `pre-20261014-194656-3e25b3e3.dump`) y en la landing (`assets/pricing.js` → 200). Incluye `14d0090` de Codex, fusionado en `78b9e95`.
+- **Pruebas:** PostgreSQL 296 aprobadas; SQLite 291 aprobadas y 5 omitidas. `makemigrations --check` sin cambios y `node --check static/js/precios.js` correcto.
+- **Dominio:** se verificaron los precios anuales, los tres alcances, los desplegables con teclado, la selección del formulario (`multiempresa`) y las animaciones (3 con movimiento normal, 0 con movimiento reducido). Sin desborde a 1440, 1024, 390 y 360 px, sin errores JS y sin respuestas ≥ 400.
+- **Empresa cubierta:** sin formularios de pago (verificado en el servidor dentro de una transacción deshecha).
+- **Capturas:** `/root/capturas/salida-precios/` en VM101 (landing-1440/1024/390/360, app-1366/390).
+- **Cambio adicional de Claude:** el cupo en Plan y pagos dice «facturas, notas de crédito y retenciones».
+- No se completaron pagos.
