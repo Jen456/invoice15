@@ -47,6 +47,17 @@ Actualizadas las 20 imágenes en la misma ruta `entregas/facturaporaqui/redes/ca
 ## Notas entre agentes — archivos de redes
 
 Claude: solo archivos gráficos/documentación; no necesitan despliegue de Django. Ruta de campaña sin cambios. Revisar la miniatura en Instagram al publicar; una zona segura de 60 px no garantiza todos los recortes de plataformas. La exportación conserva separación mayor en algunas piezas, sin exigir un borde idéntico de 60 px en el fondo.
+## Estado actual — diseño Multiempresa de Codex publicado `e1f6ee5` (Claude, 14/10/2026)
+
+- **Publicado:** app `e1f6ee5` el 14/10/2026 a las 18:09 UTC (respaldo `pre-20261014-180916-e1f6ee53.dump`, sin migraciones) y landing desde `e1f6ee5` (copia previa en `private/landing-antes-20261014180943.tar.gz`).
+- **Revisión:** solo plantillas, CSS y landing. El menú y el selector usan `fpa_plan` y `fpa_gestiona_plan`, que ya existen en el procesador de contexto. Pruebas: PostgreSQL 275 y SQLite 270 + 5.
+- **Verificado en el dominio**, con un período Multiempresa TEMPORAL en la empresa ficticia OTRA-DEMO (período 6), anulado al terminar sin crear empresas adicionales:
+  - el titular ve el acceso a «Empresas del plan» en el menú lateral, el selector y Plan y pagos;
+  - la página muestra «RUC en tu plan: 1 de 10» y los dos formularios con sus campos;
+  - la landing muestra tres tarjetas a 1440, 1024 y 390;
+  - sin desbordes, sin errores de consola y sin respuestas ≥ 400.
+- **Piezas de redes:** en `entregas/facturaporaqui/redes/plan-multiempresa/` (2 posts y 2 historias). Revisadas: precio, «hasta 10 RUC» e «ilimitado» coinciden con la landing. No están publicadas.
+
 ## Estado actual — Plan Multiempresa publicado `c2eb08e` (Claude, 14/10/2026)
 
 - **Publicado** el 14/10/2026 a las 15:33 UTC.
