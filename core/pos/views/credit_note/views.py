@@ -10,6 +10,8 @@ from django.views.generic import CreateView, DeleteView, FormView
 
 from core.pos.forms import CreditNoteForm, CreditNote, CreditNoteDetail, Company, Sale, Receipt, SaleDetail, VOUCHER_TYPE, INVOICE_STATUS, IDENTIFICATION_TYPE
 from core.configuracion.servicios import receipt_para_emitir, requisitos_de_emision
+from core.pos import emision
+from core.pos.notas_credito import AUTORIZADOS, acreditado_por_detalle, crear as crear_nota_credito
 from core.pos.utilities.sri import SRI
 from core.reports.forms import ReportForm
 from core.security.mixins import GroupPermissionMixin
@@ -69,50 +71,26 @@ class CreditNoteCreateView(GroupPermissionMixin, CreateView):
         data = {}
         try:
             if action == 'add':
+                # Reglas en el servidor (core/pos/notas_credito.py): cantidades, precios y tarifa salen de la factura.
+                lineas = [(i['id'], i['quantity']) for i in json.loads(request.POST['products'])]
                 with transaction.atomic():
-                    company = request.company
-                    iva = float(company.iva) / 100
-                    credit_note = CreditNote()
-                    credit_note.sale_id = int(request.POST['sale'])
-                    credit_note.motive = request.POST['motive']
-                    credit_note.company = company
-                    credit_note.environment_type = credit_note.company.environment_type
-                    credit_note.receipt = receipt_para_emitir(company, VOUCHER_TYPE[1][0], electronica='create_electronic_invoice' in request.POST)
-                    credit_note.voucher_number = credit_note.generate_voucher_number()
-                    credit_note.voucher_number_full = credit_note.get_voucher_number_full()
-                    credit_note.iva = iva
-                    credit_note.create_electronic_invoice = 'create_electronic_invoice' in request.POST
-                    credit_note.save()
-                    for i in json.loads(request.POST['products']):
-                        sale_detail = SaleDetail.objects.get(id=i['id'])
-                        detail = CreditNoteDetail()
-                        detail.credit_note_id = credit_note.id
-                        detail.sale_detail_id = sale_detail.id
-                        detail.product_id = sale_detail.product_id
-                        detail.cant = int(i['quantity'])
-                        detail.price = float(i['price'])
-                        detail.dscto = float(i['dscto']) / 100
-                        detail.save()
-                        credit_note.calculate_detail()
-                        detail.product.stock += detail.cant
-                        detail.product.save()
-                    credit_note.calculate_invoice()
-                    if credit_note.create_electronic_invoice:
-                        data = credit_note.generate_electronic_invoice()
-                        if not data['resp']:
-                            transaction.set_rollback(True)
-                        else:
-                            credit_note.sale.status = INVOICE_STATUS[3][0]
-                            credit_note.sale.save()
-                if 'error' in data:
-                    SRI().create_voucher_errors(credit_note, data)
+                    credit_note = crear_nota_credito(request.company, request.POST['sale'], lineas, request.POST.get('motive'))
+                    emision.preparar(credit_note)   # si la firma falla, la nota se deshace: nada salió al SRI
+                data = credit_note.generate_electronic_invoice()
             elif action == 'search_sale':
                 data = []
                 term = request.POST['term']
-                for i in Sale.objects.filter(status__in=[INVOICE_STATUS[1][0], INVOICE_STATUS[2][0]]).filter(Q(voucher_number_full__icontains=term) | Q(voucher_number__icontains=term) | Q(client__user__names__icontains=term) | Q(client__dni__icontains=term)).exclude(client__identification_type=IDENTIFICATION_TYPE[-2][0]).order_by('voucher_number')[0:10]:
+                ventas = (Sale.objects.filter(status__in=AUTORIZADOS, environment_type=request.company.environment_type)
+                          .filter(Q(voucher_number_full__icontains=term) | Q(voucher_number__icontains=term) | Q(client__user__names__icontains=term) | Q(client__dni__icontains=term))
+                          .exclude(client__identification_type=IDENTIFICATION_TYPE[-2][0]).exclude(client__dni='9999999999999')
+                          .order_by('voucher_number')[0:10])
+                for i in ventas:
+                    acreditado = acreditado_por_detalle(i)
                     item = i.toJSON()
                     item['text'] = i.get_full_name()
-                    item['detail'] = [d.toJSON({'quantity': d.cant, 'state': 0, 'total': 0.00}) for d in i.saledetail_set.all()]
+                    # Cantidad que aún se puede acreditar en cada línea.
+                    item['detail'] = [d.toJSON({'quantity': d.cant - acreditado.get(d.pk, 0), 'state': 0, 'total': 0.00})
+                                      for d in i.saledetail_set.all() if d.cant - acreditado.get(d.pk, 0) > 0]
                     data.append(item)
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
@@ -145,7 +123,12 @@ class CreditNoteDeleteView(GroupPermissionMixin, DeleteView):
     def post(self, request, *args, **kwargs):
         data = {}
         try:
-            self.get_object().delete()
+            credit_note = self.get_object()
+            if credit_note.status in emision.BLOQUEAN_BORRADO:
+                data['error'] = ('Esta nota de crédito ya fue enviada al SRI y no se puede eliminar. Para dejarla sin efecto, '
+                                 'anúlala en «SRI en línea» (requiere la aceptación del comprador).')
+            else:
+                credit_note.delete()
         except Exception as e:
             data['error'] = str(e)
         return HttpResponse(json.dumps(data), content_type='application/json')

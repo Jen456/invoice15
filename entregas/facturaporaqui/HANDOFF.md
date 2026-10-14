@@ -12,6 +12,50 @@ Actualizadas las 20 imágenes en la misma ruta `entregas/facturaporaqui/redes/ca
 ## Notas entre agentes — archivos de redes
 
 Claude: solo archivos gráficos/documentación; no necesitan despliegue de Django. Ruta de campaña sin cambios. Revisar la miniatura en Instagram al publicar; una zona segura de 60 px no garantiza todos los recortes de plataformas. La exportación conserva separación mayor en algunas piezas, sin exigir un borde idéntico de 60 px en el fondo.
+## Estado actual — facturación electrónica: firma nativa y Etapa A publicadas `e3a2932` (Claude, 12/10/2026)
+
+- **Publicado:** `e3a2932` en app.facturaporaqui.com el 12/10/2026 a las 02:28 UTC.
+  - Incluye `fd656a1`, la firma XAdES-BES nativa en Python, que sustituye al jar Java: le faltaban sus bibliotecas y toda emisión fallaba.
+  - Migración `pos 0012` (solo agrega columnas y opciones). Respaldo previo: `pre-20261012-022817-e3a29324.dump`. Salud 200.
+  - Revertir el código: `bash deploy/scripts/desplegar.sh pruebas --revertir`. La versión anterior ignora las columnas nuevas.
+  - Temporizador nuevo: `facturaporaqui-sri@pruebas.timer`, cada 5 minutos (`manage.py consultar_sri`).
+- **Auditoría completa:** `AUDITORIA-SRI-2026-10.md` (hallazgos, fuentes, Etapas B/C y decisiones pendientes).
+- **Validado en el ambiente de PRUEBAS del SRI** con el código publicado: factura y nota de crédito AUTORIZADAS; la NC sobre consumidor final fue rechazada con el error 69, como exige 2026.
+- **Bloqueo intencional:** en Producción no se emite hasta configurar `FPA_RUC_PROVEEDOR`, el RUC de Suprohosting como proveedor (Anexo 26). Lo confirma la propietaria.
+  - Al configurarlo, la primera factura de la empresa 6 será la 001-002-000000271 (el número no se consumió en el intento fallido).
+- **Pruebas:** PostgreSQL 257 y SQLite 252 + 5 solo PostgreSQL. `tests/test_emision_sri.py` usa un SRI simulado.
+- **13/10/2026, 15:24 UTC — publicado `f787684`:** incluye `3fc3104` de Codex (formularios móviles) y la corrección del error 500 en 12 vistas de edición, que sin sesión cargaban el registro antes de comprobarla (visto en `/pos/client/update/8/`); ahora llevan al login. Respaldo `pre-20261013-152429-f7876848.dump`.
+- **13/10/2026 — `FPA_RUC_PROVEEDOR=0941609729001` instalado** en `/etc/facturaporaqui/pruebas.env` (RUC de Suprohosting: Alava Bolaños Jenny Julizza, ACTIVO; respaldo previo en `credenciales/`) y servicio reiniciado. Validado en el SRI de PRUEBAS: factura y NC con «RUC Proveedor», AUTORIZADAS. **La emisión en Producción queda habilitada** para la empresa 6 (próxima factura 001-002-000000271).
+
+## Pendiente para Codex — tras la Etapa A
+
+- [ ] Venta (`sale/admin/create.html`): la fecha la fija el servidor (hoy). Mostrar el campo de fecha como solo lectura o como texto.
+- [ ] Mensajes largos del SRI (devuelta o no autorizada) en el diálogo de error: legibles en móvil y sin desbordar.
+- [ ] Leyenda o ayuda de los estados nuevos en los listados de Ventas y Notas de crédito (ver el contrato abajo).
+- [ ] Etapa B del RIDE (`sale/format/invoice.html` y `credit_note/format/invoice.html`):
+  - razón social, dirección del establecimiento, ambiente y tipo de emisión;
+  - fechas de la NC (hoy intercambiadas);
+  - «Contribuyente especial» solo si lo es;
+  - subtotales por tarifa.
+
+  Coordinar antes los campos con Claude.
+
+## Notas entre agentes — contrato de la Etapa A (Claude → Codex)
+
+- **Estados (`status.id`)**, sin cambiar los anteriores:
+  - `without_authorizing` «Sin Autorizar» (guardado y firmado, aún sin enviar);
+  - `in_process` «En proceso en el SRI»;
+  - `returned` «Devuelta por el SRI»;
+  - `not_authorized` «No autorizada por el SRI»;
+  - `authorized`, `authorized_and_sent_by_email`, `canceled`, `sequential_registered_error`.
+- **Listados:** la acción POST `generate_invoice` envía o, si está `in_process`, consulta. Los botones se llaman «Enviar al SRI» (`without_authorizing` / `returned` / `not_authorized`) y «Consultar autorización en el SRI» (`in_process`).
+- **Respuesta JSON** de `add`, `generate_invoice` y `create_credit_note`:
+  - Claves: `resp`, `estado`, `mensaje`, `error`, `print_url`, y `en_proceso: true` cuando el SRI todavía autoriza.
+  - Con `en_proceso`, el formulario de venta muestra `mensaje` y vuelve al listado sin imprimir.
+- **Factura y NC siempre electrónicas:** el formulario envía `create_electronic_invoice=on` oculto y el servidor lo exige igual. En Producción el selector de comprobante ya no incluye el ticket 08.
+- **Consumidor final:** cada empresa tiene el suyo (`final_consumer` siempre trae `id`). Tope USD 50: 50,00 exacto es válido.
+- **NC (pantalla de notas):** `search_sale` devuelve en `detail[].quantity` lo que queda por acreditar y omite las líneas ya acreditadas. El servidor ignora `price` y `dscto` del navegador.
+- **No modificar** `core/pos/emision.py`, `core/pos/notas_credito.py` ni `core/pos/utilities/firma.py` sin coordinar.
 
 ## Estado actual — formularios responsive (Codex, 11/10 Ecuador)
 

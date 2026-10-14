@@ -1,7 +1,6 @@
 import base64
 import math
 import tempfile
-import time
 import unicodedata
 import uuid
 from datetime import datetime
@@ -454,6 +453,12 @@ class Receipt(TenantModel):
     def next_number_full(self):
         return f'{self.establishment_code}-{self.issuing_point_code}-{self.next_number:09d}'
 
+    def establishment_address(self):
+        """Dirección del establecimiento de esta numeración (dirEstablecimiento del comprobante)."""
+        if self.emission_point_id:
+            return self.emission_point.establishment.address
+        return ''
+
     def last_number_full(self):
         return f'{self.establishment_code}-{self.issuing_point_code}-{self.sequence:09d}' if self.sequence else ''
 
@@ -514,6 +519,29 @@ class Receipt(TenantModel):
             name='secuencia_unica_por_ambiente_punto_y_tipo')]
 
 
+# Campos de la emisión en dos fases que no se envían al navegador en toJSON().
+EXCLUIR_DEL_JSON = ('xml_signed', 'signed_at', 'sri_sent_at', 'emission_date')
+
+
+def informacion_adicional(raiz, pares):
+    """<infoAdicional> del comprobante: sin campos vacíos (el XSD exige al menos un carácter), sin saltos de
+    línea, hasta 300 caracteres y como máximo 15 campos, incluido el «RUC Proveedor» (Anexo 26 de la ficha)."""
+    from core.pos.emision import ruc_proveedor
+    campos = []
+    for nombre, valor in pares:
+        nombre, valor = ' '.join(str(nombre or '').split())[:300], ' '.join(str(valor or '').split())[:300]
+        if nombre and valor and nombre != 'RUC Proveedor':
+            campos.append((nombre, valor))
+    ruc = ruc_proveedor()
+    campos = campos[:14] if ruc else campos[:15]
+    if ruc:
+        campos.append(('RUC Proveedor', ruc))
+    if campos:
+        nodo = ElementTree.SubElement(raiz, 'infoAdicional')
+        for nombre, valor in campos:
+            ElementTree.SubElement(nodo, 'campoAdicional', nombre=nombre).text = valor
+
+
 class Sale(TenantModel):
     client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Cliente')
     receipt = models.ForeignKey(Receipt, on_delete=models.PROTECT, limit_choices_to={'voucher_type__in': [VOUCHER_TYPE[0][0], VOUCHER_TYPE[-1][0]]}, verbose_name='Tipo de comprobante')
@@ -521,7 +549,7 @@ class Sale(TenantModel):
     voucher_number_full = models.CharField(max_length=20, verbose_name='Número de comprobante completo')
     employee = models.ForeignKey(User, on_delete=models.PROTECT, verbose_name='Empleado')
     payment_type = models.CharField(choices=PAYMENT_TYPE, max_length=50, default=PAYMENT_TYPE[0][0], verbose_name='Tipo de pago')
-    payment_method = models.CharField(choices=PAYMENT_METHOD, max_length=50, default=PAYMENT_METHOD[5][0], verbose_name='Método de pago')
+    payment_method = models.CharField(choices=PAYMENT_METHOD, max_length=50, default='20', verbose_name='Método de pago')
     time_limit = models.IntegerField(default=31, verbose_name='Plazo')
     creation_date = models.DateTimeField(default=datetime.now, verbose_name='Fecha y hora de registro')
     date_joined = models.DateField(default=datetime.now, verbose_name='Fecha de registro')
@@ -542,6 +570,11 @@ class Sale(TenantModel):
     pdf_authorized = models.FileField(upload_to=CompanyPath('comprobantes/pdf'), null=True, blank=True, verbose_name='PDF Autorizado')
     create_electronic_invoice = models.BooleanField(default=True, verbose_name='Crear factura electrónica')
     status = models.CharField(max_length=50, choices=INVOICE_STATUS, default=INVOICE_STATUS[0][0], verbose_name='Estado')
+    # Emisión en dos fases (core/pos/emision.py): fecha y clave fijadas una vez y XML firmado guardado.
+    emission_date = models.DateField(null=True, blank=True, verbose_name='Fecha de emisión (SRI)')
+    xml_signed = models.TextField(null=True, blank=True, verbose_name='XML firmado')
+    signed_at = models.DateTimeField(null=True, blank=True, verbose_name='Firmado el')
+    sri_sent_at = models.DateTimeField(null=True, blank=True, verbose_name='Enviado al SRI el')
 
     def __str__(self):
         return self.get_full_name()
@@ -612,11 +645,12 @@ class Sale(TenantModel):
             self.pdf_authorized.save(name=f'{self.receipt.get_name_xml()}_{self.access_code}.pdf', content=File(file_temp))
 
     def generate_xml(self):
-        access_key = SRI().create_access_key(self)
+        fecha_emision = self.emission_date or timezone.localdate()   # la misma fecha (de Ecuador) para la clave y fechaEmision
+        access_key = self.access_code or SRI().create_access_key(self, fecha_emision)
         root = ElementTree.Element('factura', id="comprobante", version="1.0.0")
         # infoTributaria
         xml_tax_info = ElementTree.SubElement(root, 'infoTributaria')
-        ElementTree.SubElement(xml_tax_info, 'ambiente').text = str(self.company.environment_type)
+        ElementTree.SubElement(xml_tax_info, 'ambiente').text = str(self.environment_type)
         ElementTree.SubElement(xml_tax_info, 'tipoEmision').text = str(self.company.emission_type)
         ElementTree.SubElement(xml_tax_info, 'razonSocial').text = self.company.business_name
         ElementTree.SubElement(xml_tax_info, 'nombreComercial').text = self.company.tradename
@@ -629,8 +663,8 @@ class Sale(TenantModel):
         ElementTree.SubElement(xml_tax_info, 'dirMatriz').text = self.company.main_address
         # infoFactura
         xml_info_invoice = ElementTree.SubElement(root, 'infoFactura')
-        ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = datetime.now().strftime('%d/%m/%Y')
-        ElementTree.SubElement(xml_info_invoice, 'dirEstablecimiento').text = self.company.establishment_address
+        ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = fecha_emision.strftime('%d/%m/%Y')
+        ElementTree.SubElement(xml_info_invoice, 'dirEstablecimiento').text = self.receipt.establishment_address() or self.company.establishment_address
         ElementTree.SubElement(xml_info_invoice, 'obligadoContabilidad').text = self.company.obligated_accounting
         ElementTree.SubElement(xml_info_invoice, 'tipoIdentificacionComprador').text = self.client.identification_type
         ElementTree.SubElement(xml_info_invoice, 'razonSocialComprador').text = self.client.user.names
@@ -687,17 +721,17 @@ class Sale(TenantModel):
                 ElementTree.SubElement(xml_tax, 'baseImponible').text = f'{detail.total:.2f}'
                 ElementTree.SubElement(xml_tax, 'valor').text = "0"
         # infoAdicional
-        if len(self.additional_info):
-            xml_additional_info = ElementTree.SubElement(root, 'infoAdicional')
-            for additional_info in self.additional_info:
-                ElementTree.SubElement(xml_additional_info, 'campoAdicional', nombre=additional_info['name']).text = additional_info['value']
-        return ElementTree.tostring(root, xml_declaration=True, encoding='utf-8').decode('utf-8').replace("'", '"'), access_key
+        informacion_adicional(root, [(i.get('name'), i.get('value')) for i in (self.additional_info or [])])
+        # Solo la declaración lleva comillas dobles: reemplazar todas las ' alteraba nombres como O'Brien.
+        return '<?xml version="1.0" encoding="UTF-8"?>' + ElementTree.tostring(root, encoding='unicode'), access_key
 
     def is_invoice(self):
         return self.receipt.voucher_type == VOUCHER_TYPE[0][0]
 
     def toJSON(self):
-        item = model_to_dict(self)
+        # El XML firmado no viaja al navegador (pesa y no hace falta); las fechas nuevas van como texto.
+        item = model_to_dict(self, exclude=EXCLUIR_DEL_JSON)
+        item['emission_date'] = self.emission_date.strftime('%Y-%m-%d') if self.emission_date else ''
         item['company'] = self.company.toJSON()
         item['client'] = self.client.toJSON()
         item['receipt'] = self.receipt.toJSON()
@@ -763,28 +797,14 @@ class Sale(TenantModel):
         super(Sale, self).delete()
 
     def generate_electronic_invoice(self):
-        # Exige plan vigente y descuenta el cupo solo si el SRI autoriza (core/suscripciones/cupo.py).
-        from core.suscripciones.cupo import emitir_con_cupo
-        return emitir_con_cupo(self, self._emitir_electronicamente)
+        # Envía el XML firmado guardado o consulta su autorización (core/pos/emision.py); el cupo se
+        # reserva al enviar y solo se consume cuando el SRI autoriza (core/suscripciones/cupo.py).
+        from core.pos import emision
+        return emision.emitir(self)
 
-    def _emitir_electronicamente(self):
-        sri = SRI()
-        result = sri.create_xml(self)
-        if result['resp']:
-            result = sri.firm_xml(instance=self, xml=result['xml'])
-            if result['resp']:
-                result = sri.validate_xml(instance=self, xml=result['xml'])
-                if result['resp']:
-                    result = sri.authorize_xml(instance=self)
-                    index = 1
-                    while not result['resp'] and index < 3:
-                        time.sleep(1)
-                        result = sri.authorize_xml(instance=self)
-                        index += 1
-                    if result['resp']:
-                        result['print_url'] = self.get_pdf_authorized()
-                    return result
-        return result
+    def get_ruc_proveedor(self):
+        from core.pos.emision import ruc_proveedor
+        return ruc_proveedor()
 
     class Meta:
         verbose_name = 'Venta'
@@ -1136,6 +1156,11 @@ class CreditNote(TenantModel):
     pdf_authorized = models.FileField(upload_to=CompanyPath('comprobantes/pdf'), null=True, blank=True, verbose_name='PDF Autorizado')
     create_electronic_invoice = models.BooleanField(default=True, verbose_name='Crear factura electrónica')
     status = models.CharField(max_length=50, choices=INVOICE_STATUS, default=INVOICE_STATUS[0][0], verbose_name='Estado')
+    # Emisión en dos fases (core/pos/emision.py): fecha y clave fijadas una vez y XML firmado guardado.
+    emission_date = models.DateField(null=True, blank=True, verbose_name='Fecha de emisión (SRI)')
+    xml_signed = models.TextField(null=True, blank=True, verbose_name='XML firmado')
+    signed_at = models.DateTimeField(null=True, blank=True, verbose_name='Firmado el')
+    sri_sent_at = models.DateTimeField(null=True, blank=True, verbose_name='Enviado al SRI el')
 
     def __str__(self):
         return self.motive
@@ -1196,11 +1221,12 @@ class CreditNote(TenantModel):
             self.pdf_authorized.save(name=f'{self.receipt.get_name_xml()}_{self.access_code}.pdf', content=File(file_temp))
 
     def generate_xml(self):
-        access_key = SRI().create_access_key(self)
+        fecha_emision = self.emission_date or timezone.localdate()   # la misma fecha (de Ecuador) para la clave y fechaEmision
+        access_key = self.access_code or SRI().create_access_key(self, fecha_emision)
         root = ElementTree.Element('notaCredito', id="comprobante", version="1.1.0")
         # infoTributaria
         xml_tax_info = ElementTree.SubElement(root, 'infoTributaria')
-        ElementTree.SubElement(xml_tax_info, 'ambiente').text = str(self.company.environment_type)
+        ElementTree.SubElement(xml_tax_info, 'ambiente').text = str(self.environment_type)
         ElementTree.SubElement(xml_tax_info, 'tipoEmision').text = str(self.company.emission_type)
         ElementTree.SubElement(xml_tax_info, 'razonSocial').text = self.company.business_name
         ElementTree.SubElement(xml_tax_info, 'nombreComercial').text = self.company.tradename
@@ -1215,15 +1241,14 @@ class CreditNote(TenantModel):
             ElementTree.SubElement(xml_tax_info, 'agenteRetencion').text = '1'
         # infoNotaCredito
         xml_info_invoice = ElementTree.SubElement(root, 'infoNotaCredito')
-        ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = datetime.now().strftime('%d/%m/%Y')
-        ElementTree.SubElement(xml_info_invoice, 'dirEstablecimiento').text = self.company.establishment_address
+        ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = fecha_emision.strftime('%d/%m/%Y')
+        ElementTree.SubElement(xml_info_invoice, 'dirEstablecimiento').text = self.receipt.establishment_address() or self.company.establishment_address
         ElementTree.SubElement(xml_info_invoice, 'tipoIdentificacionComprador').text = self.sale.client.identification_type
         ElementTree.SubElement(xml_info_invoice, 'razonSocialComprador').text = self.sale.client.user.names
         ElementTree.SubElement(xml_info_invoice, 'identificacionComprador').text = self.sale.client.dni
         if not self.company.special_taxpayer == '000':
             ElementTree.SubElement(xml_info_invoice, 'contribuyenteEspecial').text = self.company.special_taxpayer
         ElementTree.SubElement(xml_info_invoice, 'obligadoContabilidad').text = self.company.obligated_accounting
-        ElementTree.SubElement(xml_info_invoice, 'rise').text = 'Contribuyente Régimen Simplificado RISE'
         ElementTree.SubElement(xml_info_invoice, 'codDocModificado').text = self.sale.receipt.voucher_type
         ElementTree.SubElement(xml_info_invoice, 'numDocModificado').text = self.sale.voucher_number_full
         ElementTree.SubElement(xml_info_invoice, 'fechaEmisionDocSustento').text = self.sale.date_joined.strftime('%d/%m/%Y')
@@ -1270,14 +1295,13 @@ class CreditNote(TenantModel):
                 ElementTree.SubElement(xml_tax, 'baseImponible').text = f'{detail.total:.2f}'
                 ElementTree.SubElement(xml_tax, 'valor').text = "0"
         # infoAdicional
-        xml_additional_info = ElementTree.SubElement(root, 'infoAdicional')
-        ElementTree.SubElement(xml_additional_info, 'campoAdicional', nombre='dirCliente').text = self.sale.client.address
-        ElementTree.SubElement(xml_additional_info, 'campoAdicional', nombre='telfCliente').text = self.sale.client.mobile
-        ElementTree.SubElement(xml_additional_info, 'campoAdicional', nombre='Observacion').text = f'NOTA_CREDITO # {self.voucher_number}'
-        return ElementTree.tostring(root, xml_declaration=True, encoding='UTF-8').decode('UTF-8').replace("'", '"'), access_key
+        informacion_adicional(root, [('dirCliente', self.sale.client.address), ('telfCliente', self.sale.client.mobile),
+                                     ('Observacion', f'NOTA_CREDITO # {self.voucher_number}')])
+        return '<?xml version="1.0" encoding="UTF-8"?>' + ElementTree.tostring(root, encoding='unicode'), access_key
 
     def toJSON(self):
-        item = model_to_dict(self)
+        item = model_to_dict(self, exclude=EXCLUIR_DEL_JSON)
+        item['emission_date'] = self.emission_date.strftime('%Y-%m-%d') if self.emission_date else ''
         item['date_joined'] = self.date_joined.strftime('%Y-%m-%d')
         item['sale'] = self.sale.toJSON()
         item['company'] = self.company.toJSON()
@@ -1299,19 +1323,12 @@ class CreditNote(TenantModel):
         return item
 
     def generate_electronic_invoice(self):
-        from core.suscripciones.cupo import emitir_con_cupo
-        return emitir_con_cupo(self, self._emitir_electronicamente)
+        from core.pos import emision
+        return emision.emitir(self)
 
-    def _emitir_electronicamente(self):
-        sri = SRI()
-        result = sri.create_xml(self)
-        if result['resp']:
-            result = sri.firm_xml(instance=self, xml=result['xml'])
-            if result['resp']:
-                result = sri.validate_xml(instance=self, xml=result['xml'])
-                if result['resp']:
-                    return sri.authorize_xml(instance=self)
-        return result
+    def get_ruc_proveedor(self):
+        from core.pos.emision import ruc_proveedor
+        return ruc_proveedor()
 
     def calculate_detail(self):
         for detail in self.creditnotedetail_set.filter():
@@ -1347,7 +1364,7 @@ class CreditNote(TenantModel):
     def delete(self, using=None, keep_parents=False):
         try:
             for i in self.creditnotedetail_set.filter(product__inventoried=True):
-                i.product.stock += i.cant
+                i.product.stock -= i.cant
                 i.product.save()
                 i.delete()
         except:

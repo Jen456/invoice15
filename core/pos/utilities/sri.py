@@ -1,32 +1,22 @@
-import base64
-import os.path
+import logging
 import random
-import smtplib
 import string
-import subprocess
-from datetime import datetime
-from email.mime.application import MIMEApplication
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from email.utils import parseaddr
 from itertools import cycle
-from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 import requests
-from django.core.files import File
-from lxml import etree
-from suds.client import Client
+from django.core.mail import EmailMessage, get_connection
+from django.utils import timezone
 
 from config import settings
-from core.pos.choices import VOUCHER_STAGE, INVOICE_STATUS
+from core.pos.choices import VOUCHER_STAGE
+from core.pos.utilities.firma import ErrorFirma, firmar_xml
+
+logger = logging.getLogger(__name__)
 
 
 class SRI:
-    def __init__(self):
-        self.base_dir = os.path.dirname(__file__)
-
-    def get_absolute_path(self, path):
-        return str(Path(path).absolute())
+    """Clave de acceso, firma y correo al comprador. El envío y la autorización viven en core/pos/emision.py."""
 
     def compute_mod11(self, pass_key_48=''):
         if len(pass_key_48) > 48:
@@ -45,213 +35,105 @@ class SRI:
     def generate_number(self, amount=8):
         return ''.join(random.choices(list(string.digits), k=amount))
 
-    def create_access_key(self, instance):
-        password_48 = f"{datetime.now().strftime('%d%m%Y')}{instance.receipt.voucher_type}{instance.company.ruc}{instance.company.environment_type}{instance.receipt.establishment_code}{instance.receipt.issuing_point_code}{instance.voucher_number}{self.generate_number()}{instance.company.emission_type}"
+    def create_access_key(self, instance, fecha=None):
+        """Clave de 49 dígitos con el ambiente del propio comprobante (no el que tenga hoy la empresa)."""
+        fecha = fecha or timezone.localdate()
+        password_48 = f"{fecha.strftime('%d%m%Y')}{instance.receipt.voucher_type}{instance.company.ruc}{instance.environment_type}{instance.receipt.establishment_code}{instance.receipt.issuing_point_code}{instance.voucher_number}{self.generate_number()}{instance.company.emission_type}"
         module11 = self.compute_mod11(pass_key_48=password_48)
         if len(module11):
             return f'{password_48}{module11}'
         return None
 
-    def get_receipt_url(self, instance):
-        if instance.company.environment_type == 2:
-            return 'https://cel.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline?wsdl'
-        return 'https://celcer.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline?wsdl'
-
-    def get_authorization_url(self, instance):
-        if instance.company.environment_type == 2:
-            return 'https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl'
-        return 'https://celcer.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl'
-
-    def check_sequential_error(self, errors):
-        if 'error' in errors and isinstance(errors['error'], dict):
-            if 'errors' in errors['error']:
-                for error in errors['error']['errors']:
-                    if 'mensaje' in error and error['mensaje'] == 'ERROR SECUENCIAL REGISTRADO':
-                        return True
-        return False
-
     def create_voucher_errors(self, instance, errors):
+        """Historial de «Errores de comprobantes». Solo registra: el estado lo decide core/pos/emision.py."""
         from core.pos.models import VoucherErrors
         try:
             voucher_errors = VoucherErrors()
             voucher_errors.reference = instance.voucher_number_full
             voucher_errors.stage = errors['stage']
             voucher_errors.receipt = instance.receipt
-            if type(errors) is str:
-                voucher_errors.errors = {'error': errors}
-            else:
-                voucher_errors.errors = errors
+            voucher_errors.errors = errors
             voucher_errors.environment_type = instance.environment_type
             voucher_errors.save()
-        except:
-            pass
-        finally:
-            if self.check_sequential_error(errors=errors):
-                instance.status = INVOICE_STATUS[4][0]
-                instance.edit()
-
-    def create_xml(self, instance):
-        response = {'resp': False, 'stage': VOUCHER_STAGE[1][0]}
-        try:
-            xml, access_code = instance.generate_xml()
-            instance.access_code = access_code
-            instance.save()
-            response['resp'] = True
-            response['xml'] = xml
-        except Exception as e:
-            response['error'] = str(e)
-        finally:
-            if 'error' in response:
-                self.create_voucher_errors(instance, response)
-        return response
+        except Exception:
+            logger.exception('No se pudo registrar el error del comprobante %s', getattr(instance, 'voucher_number_full', ''))
 
     def firm_xml(self, instance, xml):
+        """Firma XAdES-BES en el propio proceso (core.pos.utilities.firma)."""
         response = {'resp': False, 'stage': VOUCHER_STAGE[1][0]}
-        file_temp_name = ''
         try:
-            with NamedTemporaryFile(suffix='.xml', delete=False) as file_temp:
-                file_temp.write(xml.encode())
-                file_temp.flush()
-                file_temp_name = file_temp.name
-                jar_path = self.get_absolute_path(os.path.join(os.path.dirname(self.base_dir), 'resources/jar/sri.jar'))
-                certificate_path = self.get_absolute_path(f'{settings.BASE_DIR}/{instance.company.get_electronic_signature()}')
-                certificate_key = instance.company.electronic_signature_key
-                xml_name = f'{instance.voucher_number}.xml'
-                commands = ['java', '-jar', jar_path, certificate_path, certificate_key, file_temp.name, self.base_dir, xml_name]
-                procedure = subprocess.run(args=commands, capture_output=True)
-                if procedure.returncode == 0:
-                    error = procedure.stdout.decode('utf-8')
-                    if error.__contains__('Error'):
-                        response['error'] = error
-                    else:
-                        generated_xml_path = os.path.join(self.base_dir, xml_name)
-                        with open(generated_xml_path, 'rb') as file:
-                            response['resp'] = True
-                            response['xml'] = file.read().decode('utf-8')
-                        if os.path.exists(generated_xml_path):
-                            os.remove(generated_xml_path)
-                else:
-                    response['error'] = procedure.stderr.decode('utf-8')
-        except Exception as e:
+            company = instance.company
+            if not company.electronic_signature:
+                raise ErrorFirma('Sube tu firma electrónica (.p12) en «Configuración de facturación», paso 4.')
+            with company.electronic_signature.open('rb') as archivo:
+                contenido = archivo.read()
+            response['xml'] = firmar_xml(xml, contenido, company.electronic_signature_key)
+            response['resp'] = True
+        except ErrorFirma as e:
             response['error'] = str(e)
-        finally:
-            if os.path.exists(file_temp_name):
-                os.remove(file_temp_name)
-            if 'error' in response:
-                self.create_voucher_errors(instance, response)
-        return response
-
-    def validate_xml(self, instance, xml):
-        response = {'resp': False, 'stage': VOUCHER_STAGE[2][0]}
-        try:
-            document = xml.strip().encode('utf-8')
-            base64_binary_xml = base64.b64encode(document).decode('utf-8')
-            sri_client = Client(self.get_receipt_url(instance))
-            result = sri_client.service.validarComprobante(base64_binary_xml)
-            status = result.estado
-            if status == 'DEVUELTA':
-                receipt = result.comprobantes.comprobante[0]
-                response['error'] = {'access_code': receipt.claveAcceso, 'errors': []}
-                for count, value in enumerate(receipt.mensajes):
-                    message = value[1][count]
-                    values = dict()
-                    for name in ['identificador', 'informacionAdicional', 'mensaje', 'tipo']:
-                        if name in message:
-                            values[name] = message[name]
-                    response['error']['errors'].append(values)
-            elif status == 'RECIBIDA':
-                response['resp'] = True
-                response['xml'] = xml
         except Exception as e:
-            response['error'] = str(e)
+            response['error'] = f'No se pudo firmar el comprobante ({e.__class__.__name__}).'
         finally:
             if 'error' in response:
                 self.create_voucher_errors(instance, response)
         return response
 
-    def authorize_xml(self, instance):
-        response = {'resp': False, 'stage': VOUCHER_STAGE[3][0]}
-        try:
-            sri_client = Client(self.get_authorization_url(instance))
-            result = sri_client.service.autorizacionComprobante(instance.access_code)
-            if len(result):
-                receipt = result[2].autorizacion[0]
-                if receipt.estado == 'NO AUTORIZADO':
-                    response['error'] = {'access_code': instance.access_code, 'stage': receipt.estado, 'authorization_date': str(receipt.fechaAutorizacion), 'errors': []}
-                    for count, value in enumerate(receipt.mensajes):
-                        message = value[1][count]
-                        values = dict()
-                        for name in ['identificador', 'informacionAdicional', 'mensaje', 'tipo']:
-                            if name in message:
-                                values[name] = message[name]
-                        response['error']['errors'].append(values)
-                else:
-                    xml_authorization = etree.Element('autorizacion')
-                    etree.SubElement(xml_authorization, 'estado').text = receipt.estado
-                    etree.SubElement(xml_authorization, 'numeroAutorizacion').text = receipt.numeroAutorizacion
-                    etree.SubElement(xml_authorization, 'fechaAutorizacion', attrib={'class': "fechaAutorizacion"}).text = str(receipt.fechaAutorizacion.strftime("%d/%m/%Y %H:%M:%S"))
-                    voucher_sri = etree.SubElement(xml_authorization, 'comprobante')
-                    voucher_sri.text = etree.CDATA(receipt.comprobante)
-                    xml_text = etree.tostring(xml_authorization, encoding="utf8", xml_declaration=True).decode('utf8').replace("'", '"')
-                    with NamedTemporaryFile(delete=True) as file_temp:
-                        xml_path = f'xml/{instance.receipt.get_name_xml()}_{instance.access_code}.xml'
-                        file_temp.write(xml_text.encode())
-                        file_temp.flush()
-                        instance.xml_authorized.save(name=xml_path, content=File(file_temp))
-                        instance.authorization_date = receipt.fechaAutorizacion
-                        instance.generate_pdf_authorized()
-                        instance.status = INVOICE_STATUS[1][0]
-                        instance.save()
-                        response['resp'] = True
-        except Exception as e:
-            response['error'] = str(e)
-        finally:
-            if 'error' in response:
-                self.create_voucher_errors(instance, response)
-        return response
+    @staticmethod
+    def _remitente(nombre, direccion):
+        nombre = ' '.join(str(nombre or '').replace('"', '').replace('<', '').replace('>', '').split())
+        return f'"{nombre}" <{direccion}>'   # Django codifica el nombre (acentos) al enviar
+
+    def _correo_saliente(self, company):
+        """Conexión, remitente y responder-a: el SMTP propio de la empresa si lo configuró; si no, el de la plataforma."""
+        responder = [company.email] if '@' in (company.email or '') else []
+        if company.email_host and company.email_host_user and company.email_host_password:
+            puerto = int(company.email_port or 587)
+            conexion = get_connection('django.core.mail.backends.smtp.EmailBackend', host=company.email_host, port=puerto,
+                                      username=company.email_host_user, password=company.email_host_password,
+                                      use_tls=puerto != 465, use_ssl=puerto == 465, timeout=20, fail_silently=False)
+            return conexion, self._remitente(company.tradename or company.business_name, company.email_host_user), responder
+        _, direccion = parseaddr(settings.DEFAULT_FROM_EMAIL)
+        return get_connection(fail_silently=False), self._remitente(f'{company.tradename or company.business_name} vía FacturaPorAquí', direccion), responder
 
     def notify_by_email(self, instance, company, client):
+        """Entrega al comprador el XML autorizado y el RIDE (Res. NAC-DGERCGC18-00000233, art. 6)."""
         response = {'resp': False, 'stage': VOUCHER_STAGE[4][0]}
         try:
-            if client.send_email_invoice:
-                message = MIMEMultipart('alternative')
-                message['Subject'] = f'Notificación de {instance.receipt.name} {instance.voucher_number_full}'
-                message['From'] = company.email_host_user
-                message['To'] = client.user.email
-                content = f'Estimado(a)\n\n{client.user.names.upper()}\n\n'
-                content += f'{company.tradename} informa sobre documento electrónico emitido adjunto en formato XML Y PDF.\n\n'
-                content += f'DOCUMENTO: {instance.receipt.name} {instance.voucher_number_full}\n'
-                content += f"FECHA: {instance.date_joined.strftime('%Y-%m-%d')}\n"
-                content += f'MONTO: {str(float(round(instance.total, 2)))}\n'
-                content += f'CÓDIGO DE ACCESO: {instance.access_code}\n'
-                content += f'AUTORIZACIÓN: {instance.access_code}'
-                part = MIMEText(content)
-                message.attach(part)
-                with open(f'{settings.BASE_DIR}{instance.get_pdf_authorized()}', 'rb') as file:
-                    part = MIMEApplication(file.read())
-                    part.add_header('Content-Disposition', 'attachment', filename=f'{instance.access_code}.pdf')
-                    message.attach(part)
-                with open(f'{settings.BASE_DIR}{instance.get_xml_authorized()}', 'rb') as file:
-                    part = MIMEApplication(file.read())
-                    part.add_header('Content-Disposition', 'attachment', filename=f'{instance.access_code}.xml')
-                    message.attach(part)
-                server = smtplib.SMTP(company.email_host, company.email_port)
-                server.starttls()
-                server.login(company.email_host_user, company.email_host_password)
-                server.sendmail(company.email_host_user, message['To'], message.as_string())
-                server.quit()
-            instance.status = INVOICE_STATUS[2][0]
-            instance.save()
+            destinatario = (client.user.email or '').strip()
+            if not client.send_email_invoice or not destinatario:
+                response['resp'] = True
+                response['mensaje'] = 'El cliente no recibe comprobantes por correo: entrégale el RIDE impreso.'
+                return response
+            if not instance.xml_authorized or not instance.pdf_authorized:
+                raise ValueError('el comprobante aún no tiene el XML autorizado y el RIDE')
+            conexion, remitente, responder = self._correo_saliente(company)
+            contenido = (f'Estimado(a) {client.user.names}:\n\n'
+                         f'{company.tradename or company.business_name} le envía su {instance.receipt.name.lower()} electrónica '
+                         f'autorizada por el SRI, en formato XML y PDF (RIDE).\n\n'
+                         f'Documento: {instance.receipt.name} {instance.voucher_number_full}\n'
+                         f'Fecha de emisión: {(instance.emission_date or instance.date_joined):%d/%m/%Y}\n'
+                         f'Total: USD {instance.total:.2f}\n'
+                         f'Clave de acceso y número de autorización: {instance.access_code}\n')
+            correo = EmailMessage(subject=f'{instance.receipt.name.capitalize()} electrónica {instance.voucher_number_full} - '
+                                          f'{company.tradename or company.business_name}',
+                                  body=contenido, from_email=remitente, to=[destinatario], reply_to=responder, connection=conexion)
+            with instance.pdf_authorized.open('rb') as archivo:
+                correo.attach(f'{instance.access_code}.pdf', archivo.read(), 'application/pdf')
+            with instance.xml_authorized.open('rb') as archivo:
+                correo.attach(f'{instance.access_code}.xml', archivo.read(), 'application/xml')
+            correo.send()
+            instance.status = 'authorized_and_sent_by_email'
+            type(instance).all_companies.filter(pk=instance.pk).update(status=instance.status)
             response['resp'] = True
         except Exception as e:
-            response['error'] = str(e)
+            response['error'] = f'La {instance.receipt.name.lower()} está autorizada, pero no se pudo enviar el correo al cliente ({e.__class__.__name__}: {str(e)[:200]}).'
             self.create_voucher_errors(instance, response)
         return response
 
     def search_ruc_in_sri(self, ruc):
         response = {'error': 'El número de ruc es inválido'}
         url = f'https://srienlinea.sri.gob.ec/movil-servicios/api/v1.0/estadoTributario/{ruc}'
-        r = requests.get(url)
+        r = requests.get(url, timeout=15)
         if r.status_code == requests.codes.ok:
             response = r.json()
         else:

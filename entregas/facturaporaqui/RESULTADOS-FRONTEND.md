@@ -711,3 +711,78 @@ Petición: margen 60 px arriba/abajo/izquierda/derecha y actualización en entre
 Actualizados GALERIA.html (alternar imagen completa/miniatura orientativa3:4), README.md y ARCHIVOS.json (dimensiones, hash y margen de contenido oscuro medido). Regenerados ZIP locales `/workspace/facturaporaqui-redes-01.zip` y `/workspace/facturaporaqui-redes-01-margen60.zip`; el directorio temporal de preparación propio se retiró después de copiar, sin duplicar campaña. HANDOFF y AGENTS registran la regla.
 
 Validación: inspección visual de 20 PNG en pares; textos legibles, planes50/85 al año con IVA, numeración Último125/Próximo126 conservada. Lectura de píxeles confirma contenido oscuro (luminancia<140, indicador de texto/marca, no OCR) a >=60px de los cuatro bordes en todas. Esa medición se complementa con revisión visual; no certifica una banda uniforme de fondo. Chromium: 20 imágenes cargadas y alternancia de vista grid correcta. ZIP íntegros con20 PNG. No pruebas Django necesarias: no código de aplicación modificado. No se afirma verificación directa en una cuenta Instagram; revisar su vista previa antes de publicar. Sin publicación externa ni despliegue.
+## 12/10/2026 — Facturación electrónica: firma nativa y Etapa A, publicado `e3a2932` (Claude)
+
+### Contexto
+- La propietaria reportó que el cliente real (empresa 6, Producción) no podía emitir: `java.lang.NoClassDefFoundError: es/mityc/javasign/...` en la etapa «Firma del XML».
+- No se guardó ninguna venta: el número 001-002-000000271 sigue libre y el SRI nunca recibió nada.
+- La propietaria pidió revisar cada componente frente a la normativa ecuatoriana. Se hizo con tres revisiones paralelas: XML e impuestos, flujo de envío, y RIDE, correo y NC. Resultado en `AUDITORIA-SRI-2026-10.md`.
+
+### Qué se publicó
+- **`fd656a1`:** firma XAdES-BES nativa (`core/pos/utilities/firma.py`).
+- **`e3a2932`:** Etapa A, emisión en dos fases y reglas del SRI en el servidor. El detalle está en la auditoría y en HANDOFF.
+- Migración `pos 0012`. Respaldo `pre-20261012-022817-e3a29324.dump`. Temporizador `facturaporaqui-sri@pruebas.timer`.
+
+### Pruebas
+- PostgreSQL **257**; SQLite **252 + 5** solo PostgreSQL; `makemigrations --check` sin cambios; `node --check` de los JS modificados.
+- Nuevas:
+  - `test_firma_sri.py`: estructura, verificación independiente, alteración, clave incorrecta, firma vencida o aún no vigente.
+  - `test_fechas_sri.py`.
+  - `test_emision_sri.py`, con 28 casos y SRI simulado:
+    - autorización inmediata;
+    - en proceso sin reutilizar el número;
+    - sin respuesta → reenvío del mismo XML;
+    - devuelta → reenvío con la misma clave;
+    - 45, no autorizado, tarea periódica;
+    - firma fallida o sin cupo → la venta se deshace;
+    - sin RUC del proveedor;
+    - fecha forzada;
+    - apóstrofos;
+    - listados JSON;
+    - borrado;
+    - ticket;
+    - consumidor final y tope;
+    - identificación;
+    - comprador de otra empresa;
+    - NC (precio de la factura, saldo, duplicado, permiso, consumidor final);
+    - correo con XML y RIDE.
+- Controles de mutación:
+  - Regenerar la clave en un reintento hace fallar la prueba de devuelta.
+  - signxml rechaza un XML firmado y luego alterado (InvalidDigest).
+
+### Verificación contra el SRI (ambiente de PRUEBAS)
+- **Firma sola:** RECIBIDA → AUTORIZADO.
+- **Con el código publicado, de punta a punta**, en una transacción deshecha y sin correos:
+  - factura → AUTORIZADO, con XML autorizado y RIDE;
+  - nota de crédito → AUTORIZADO, y la factura queda «Anulado»;
+  - NC sobre consumidor final → NO AUTORIZADO, error 69.
+- Al final no quedó nada en la base y se borraron los 4 archivos temporales.
+
+### Verificación en el dominio (DEMOSTRACIÓN, PRUEBAS, sin firma)
+- Los listados de ventas y notas responden 200; el JSON no incluye el XML firmado.
+- El formulario ofrece FACTURA y TICKET (en PRUEBAS), con la factura electrónica fija y el consumidor final preseleccionado.
+- Emitir sin firma da «…sube tu firma electrónica (.p12)… paso 4» y no se guarda la venta (0 → 0).
+- 0 errores de consola y 0 respuestas ≥ 400.
+
+### Incidencias de Claude
+- **Contraseñas de demostración:** aparecieron en una salida de consola y se rotaron sin mostrarlas.
+- **`/dev/null` del hipervisor:** se borró por un comando erróneo y se restauró en segundos.
+- **Permisos del entorno publicado:** un `chmod -R go-rwx` sobre un entorno de verificación creado con `uv` quitó la lectura de grupo a 41 archivos compartidos por enlaces duros con los entornos publicados (`cffi`, `pycparser`, `certifi`).
+  - Se restauró en unos 15 minutos, antes de que se reiniciara algún worker; el sitio no cayó.
+  - Lección: nunca hacer `chmod -R` sobre un entorno de `uv`.
+- **Falsa alarma de zona horaria:** Claude afirmó que las facturas saldrían con la fecha del día siguiente. No era así: Django fija `TZ=America/Guayaquil` en el proceso. Se corrigió el aviso y la clave y la fecha salen ahora del mismo valor.
+
+### Pendientes
+- **`FPA_RUC_PROVEEDOR`:** RUC de Suprohosting y registro como proveedor en su RUC. Bloquea la emisión en Producción hasta que se configure.
+- Etapas B y C de la auditoría.
+- Publicar `3fc3104` (Codex, formularios móviles), ya fusionado en la rama.
+- Prueba en teléfono físico.
+
+
+## 13/10/2026 — Publicado `f787684` (Claude)
+- **Diagnóstico de «no puedo facturar desde el RUC de Fernando»:** la empresa 6 cumple plan, cupo, firma y numeración; el único bloqueo es `FPA_RUC_PROVEEDOR` vacío (decisión pendiente de la propietaria). Se reprodujo el mensaje exacto.
+- **Corrección:** 12 vistas de edición (clientes, productos, categorías, proveedores, tipos de gasto, gastos, promociones, comprobantes, usuarios, grupos, módulos, tipos de módulo) daban 500 sin sesión.
+- **Prueba nueva:** `tests/test_vistas_sin_sesion.py`, que falla con el código anterior.
+- **Suites:** PostgreSQL 259; SQLite 254 + 5 solo PostgreSQL.
+- **Publicado con `f787684`:** los formularios móviles de Codex (`3fc3104`).
+- **Verificación:** sin sesión → 302 al login; recorrido de DEMOSTRACIÓN sin errores de consola ni respuestas ≥ 400; temporizador del SRI activo.

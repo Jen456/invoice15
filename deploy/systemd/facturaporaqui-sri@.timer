@@ -1,0 +1,11 @@
+# Cada 5 minutos: consulta en el SRI los comprobantes que quedaron «En proceso».
+[Unit]
+Description=FacturaPorAquí (%i) - consulta periódica de comprobantes en el SRI
+
+[Timer]
+OnCalendar=*:0/5
+RandomizedDelaySec=30
+Persistent=false
+
+[Install]
+WantedBy=timers.target

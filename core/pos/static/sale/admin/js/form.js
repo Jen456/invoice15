@@ -593,9 +593,9 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 return false;
             }
             var customer = select_client.select2('data')[0];
-            if (select_receipt.val() === '1') {
-                if (customer.identification_type.id === '07' && sale.detail.total >= 50.00) {
-                    message_error('No se puede facturar un monto de 50 dólares con un cliente consumidor final');
+            if (select_receipt.val() === '01') {
+                if (customer.identification_type.id === '07' && sale.detail.total > 50.00) {
+                    message_error('Una factura a consumidor final no puede superar USD 50,00: registra los datos del comprador.');
                     return false;
                 }
                 if (customer.identification_type.id === '07' && select_payment_type.val() === 'credito') {
@@ -613,8 +613,15 @@ document.addEventListener('DOMContentLoaded', function (e) {
             var args = {
                 'params': params,
                 'success': function (request) {
+                    if (request.en_proceso || !request.print_url) {
+                        // El SRI aún autoriza la factura: quedó guardada; se consulta desde el listado.
+                        alert_sweetalert({'message': request.mensaje || 'Venta guardada.', 'timer': 9000, 'callback': function () {
+                            location.href = list_url;
+                        }});
+                        return;
+                    }
                     dialog_action({
-                        'content': '¿Desea Imprimir el Comprobante?',
+                        'content': (request.mensaje ? request.mensaje + '<br>' : '') + '¿Desea Imprimir el Comprobante?',
                         'success': function () {
                             console.log(request);
                             window.open(request.print_url, '_blank');

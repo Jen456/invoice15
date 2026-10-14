@@ -195,6 +195,12 @@
                 <td class="text-left"><b>Dirección</b></td>
                 <td class="text-center">{{ credit_note.sale.client.address }}</td>
             </tr>
+            {% if credit_note.get_ruc_proveedor %}
+            <tr>
+                <td class="text-left"><b>RUC Proveedor</b></td>
+                <td class="text-center">{{ credit_note.get_ruc_proveedor }}</td>
+            </tr>
+            {% endif %}
             </tbody>
         </table>
     </div>

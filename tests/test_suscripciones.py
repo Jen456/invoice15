@@ -14,7 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.pos.forms import CompanyForm
-from core.pos.models import Product, Provider, Purchase
+from core.pos.models import Product, Provider, Purchase, Sale
 from core.suscripciones import payphone
 from core.suscripciones.cupo import PlanRequerido, emitir_con_cupo
 from core.suscripciones.models import IvaRate, Payment, Plan, QuotaReservation, SubscriptionPeriod
@@ -442,9 +442,11 @@ def periodo_de(empresa):
 class TestCupo:
 
     @pytest.fixture(autouse=True)
-    def produccion_con_plan_1000(self, empresa):
-        empresa.environment_type = 2
+    def produccion_con_plan_1000(self, empresa, venta):
+        # El cupo sigue el ambiente del propio comprobante (el de la empresa al emitirlo).
+        empresa.environment_type = venta.environment_type = 2
         empresa.save()
+        Sale.all_companies.filter(pk=venta.pk).update(environment_type=2)
         SubscriptionPeriod.objects.filter(company=empresa).update(document_limit=2)
 
     def test_autorizado_consume_una_vez(self, empresa, venta):
@@ -489,8 +491,9 @@ class TestCupo:
         assert QuotaReservation.objects.get(voucher_id=venta_id).status == 'liberada'
 
     def test_pruebas_del_sri_no_descuenta_pero_exige_plan(self, empresa, venta, gratuita):
-        empresa.environment_type = 1
+        empresa.environment_type = venta.environment_type = 1
         empresa.save()
+        Sale.all_companies.filter(pk=venta.pk).update(environment_type=1)
         with company_context(empresa):
             emitir_con_cupo(venta, autoriza(venta))
         assert periodo_de(empresa).documents_used == 0 and not QuotaReservation.objects.exists()
@@ -499,8 +502,10 @@ class TestCupo:
             emitir_con_cupo(venta, autoriza(venta))
 
     def test_la_emision_real_pasa_por_el_cupo(self, empresa, venta):
-        with company_context(empresa), mock.patch('core.pos.models.Sale._emitir_electronicamente',
-                                                  autospec=True, side_effect=lambda self: autoriza(self)()):
+        def autoriza_envio(comprobante, esperas):
+            comprobante.status = 'authorized'
+            return {'resp': True}
+        with company_context(empresa), mock.patch('core.pos.emision._ejecutar', side_effect=autoriza_envio):
             venta.generate_electronic_invoice()
         assert periodo_de(empresa).documents_used == 1
 

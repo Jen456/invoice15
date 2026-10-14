@@ -30,7 +30,9 @@
         <div class="col-lg-3">
             <div class="form-group">
                 <label>{{ form.create_electronic_invoice.label }}:</label><br>
-                {{ form.create_electronic_invoice }}
+                {# Las notas de crédito solo pueden ser electrónicas (Res. NAC-DGERCGC18-00000233, art. 8). #}
+                <input type="hidden" name="create_electronic_invoice" value="on">
+                <span class="badge badge-success">Sí, siempre</span>
             </div>
         </div>
     </div>
