@@ -264,3 +264,65 @@ class LiquidacionDetalle(TenantModel):
         verbose_name_plural = 'Detalles de liquidación de compra'
         ordering = ('id',)
         default_permissions = ()
+
+
+class NotaDebito(ComprobanteElectronico):
+    """Nota de débito (codDoc 05, XML 1.0.0) sobre una factura autorizada: intereses de mora, gastos de cobranza u otros
+    cargos posteriores. La tarifa de IVA es la de la fecha de la factura (nota de la ficha técnica)."""
+    sale = models.ForeignKey('pos.Sale', on_delete=models.PROTECT, related_name='notas_debito', verbose_name='Factura')
+    # Comprador (copia al emitir: el XML no cambia si luego se edita el cliente)
+    tipo_identificacion = models.CharField(max_length=2, verbose_name='Tipo de identificación')
+    identificacion = models.CharField(max_length=20, verbose_name='Identificación')
+    razon_social = models.CharField(max_length=300, verbose_name='Razón social')
+    direccion = models.CharField(max_length=300, blank=True, verbose_name='Dirección')
+    correo = models.CharField(max_length=254, blank=True, verbose_name='Correo')
+    enviar_correo = models.BooleanField(default=True, verbose_name='Enviar por correo')
+    # Comprobante que se modifica
+    cod_doc_modificado = models.CharField(max_length=2, default='01', verbose_name='Tipo de comprobante modificado')
+    num_doc_modificado = models.CharField(max_length=17, verbose_name='Número del comprobante modificado')
+    fecha_doc_sustento = models.DateField(verbose_name='Fecha de emisión del comprobante modificado')
+    tarifa_iva = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Tarifa de IVA')
+    total_sin_impuestos = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='Total sin impuestos')
+    valor_iva = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='IVA')
+    valor_total = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='Valor total')
+    forma_pago = models.CharField(max_length=2, default='20', verbose_name='Forma de pago')
+
+    class Meta:
+        verbose_name = 'Nota de débito'
+        verbose_name_plural = 'Notas de débito'
+        ordering = ('-id',)
+        default_permissions = ()
+        permissions = (('view_notadebito', 'Puede ver notas de débito'), ('add_notadebito', 'Puede emitir notas de débito'),
+                       ('delete_notadebito', 'Puede eliminar notas de débito no enviadas'))
+        constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='nota_debito_numero_unico_por_secuencia')]
+
+    def __str__(self):
+        return f'Nota de débito {self.voucher_number_full} · {self.razon_social}'
+
+    @property
+    def total(self):
+        """Importe del correo de envío (core/pos/utilities/sri.py)."""
+        return self.valor_total
+
+    def get_destinatario(self):
+        return self.razon_social, self.correo, bool(self.correo) and self.enviar_correo
+
+    def generate_xml(self):
+        from core.comprobantes.xml_nota_debito import generar_xml
+        return generar_xml(self)
+
+    def generate_pdf_authorized(self):
+        from core.comprobantes.ride import guardar_ride
+        guardar_ride(self, 'comprobantes/notadebito/ride.html')
+
+
+class NotaDebitoMotivo(TenantModel):
+    nota = models.ForeignKey(NotaDebito, on_delete=models.CASCADE, related_name='motivos')
+    razon = models.CharField(max_length=300, verbose_name='Razón de la modificación')
+    valor = models.DecimalField(max_digits=14, decimal_places=2, verbose_name='Valor')
+
+    class Meta:
+        verbose_name = 'Motivo de nota de débito'
+        verbose_name_plural = 'Motivos de nota de débito'
+        ordering = ('id',)
+        default_permissions = ()

@@ -465,8 +465,8 @@ class Receipt(TenantModel):
     @staticmethod
     def modelos_con_numero():
         """Modelos de comprobante que consumen números de una secuencia."""
-        from core.comprobantes.models import LiquidacionCompra, Retencion
-        return (Sale, CreditNote, Retencion, LiquidacionCompra)
+        from core.comprobantes.models import LiquidacionCompra, NotaDebito, Retencion
+        return (Sale, CreditNote, Retencion, LiquidacionCompra, NotaDebito)
 
     def max_used(self):
         """Mayor secuencial ya registrado en esta secuencia (cualquier tipo de comprobante)."""

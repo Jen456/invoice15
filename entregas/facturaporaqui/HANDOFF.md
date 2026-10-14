@@ -1,5 +1,57 @@
 # Handoff compartido — frontend
 
+## Estado actual — nota de débito (05) terminada, sin publicar (Claude, 14/10/2026)
+
+- **Qué hace:**
+  - Desde **Ventas** («Opciones» de una factura autorizada → «Crear nota de débito») se emite la nota de débito: codDoc 05, XML 1.0.0, XSD oficial en `tests/xsd/notadebito/`.
+  - Sirve para cargos posteriores, como intereses de mora o gastos de cobranza.
+- **Reglas:**
+  - Solo sobre facturas autorizadas, del mismo ambiente y no emitidas a consumidor final.
+  - Admite de 1 a 10 motivos (razón y valor sin IVA); el XSD acepta varios `<motivo>`.
+  - La tarifa de IVA es la de la factura (nota de la ficha: la tarifa de la fecha del sustento) o 0 %. Nunca la decide el navegador.
+  - Una factura admite varias notas de débito, y cada una cuenta 1 del cupo.
+- **Emisión:**
+  - Revisión antes de emitir, firma nativa, dos fases y `consultar_sri`.
+  - El correo al cliente respeta su opción «¿Enviar email de factura?».
+  - La numeración se configura en Otros comprobantes (05).
+- **Código:**
+  - `core/comprobantes/notas_debito.py`, `xml_nota_debito.py`, modelos `NotaDebito` y `NotaDebitoMotivo` (RLS).
+  - Migraciones `comprobantes 0008–0010`. Módulo «Notas de débito» en Facturación para Propietario, Administrador, Contador y Consulta; el Vendedor no lo tiene.
+- **Verificado:**
+  - SQLite: 330 pruebas aprobadas y 5 omitidas. PostgreSQL: 335 aprobadas.
+  - El XML firmado es válido contra el XSD oficial.
+  - **El SRI de pruebas autorizó** la nota de débito 001-002-955832690 sobre una factura de prueba también autorizada. Era de la empresa 6, dentro de una transacción deshecha; se borraron los archivos y no quedó nada en la base.
+  - El RIDE se revisó en A4.
+
+## Pendiente para Codex — pantallas de nota de débito
+
+- [ ] `core/comprobantes/templates/comprobantes/notadebito/create.html`: motivos (hasta 10), IVA y forma de pago, resumen «Revisa antes de emitir», notas anteriores de la factura y el aviso cuando no se puede emitir (`impedimento`).
+- [ ] `core/comprobantes/templates/comprobantes/notadebito/list.html` y la opción «Crear nota de débito» del menú de Ventas (`core/pos/static/sale/admin/js/list.js`).
+- [ ] La sección 05 en `configuracion/otros.html`.
+- [ ] RIDE `core/comprobantes/templates/comprobantes/notadebito/ride.html` (conservar `.hoja` de 190 mm).
+- [ ] Revisar a 1440, 1024, 390 y 360 px.
+
+## Notas entre agentes — contrato de nota de débito (Claude → Codex)
+
+- **No cambiar:** modelos, servicios, vistas, URL ni migraciones.
+- **Formulario `NotaDebitoForm`:** campos `tarifa_iva` (opciones que fija el servidor) y `forma_pago`.
+- **Formset con prefijo `motivos`:**
+  - Cada forma tiene `razon` y `valor`. Se puede adoptar la mejora progresiva de `retenciones.js` (hasta 10).
+  - Conservar el `management_form`, `action=calcular/emitir` y el CSRF.
+- **Contexto de `create.html`:**
+  - `venta`, `impedimento` (texto o None), `anteriores`, `form`, `motivos`.
+  - `resumen`, con `doc.tarifa_iva`, `motivos` [razon, valor], `total_sin_impuestos`, `valor_iva` y `valor_total`.
+- **Listado:**
+  - Contexto: `notas`, `puede_emitir`, `puede_eliminar`.
+  - Acciones por POST: `generate_invoice` y `delete`, con `id`.
+- **RIDE, contenido obligatorio:**
+  - emisor, número, autorización, ambiente, clave en código de barras;
+  - comprador e identificación;
+  - comprobante que se modifica y su fecha;
+  - las razones con sus valores;
+  - subtotales, IVA y valor total;
+  - la forma de pago y la información adicional (RUC Proveedor y FACTURAPORAQUI).
+
 ## Estado actual — liquidación de compra (03) publicada `d9d142a` (Claude, 14/10/2026)
 
 - **Qué hace:**

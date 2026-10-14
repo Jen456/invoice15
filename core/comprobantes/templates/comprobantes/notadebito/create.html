@@ -1,0 +1,67 @@
+{% extends 'skin.html' %}
+{% load widget_tweaks %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item"><a href="{% url 'comprobantes_notas_debito' %}"><i class="fas fa-plus-circle"></i> Notas de débito</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Emitir</li>
+{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-retencion-nueva fp-nota-debito-nueva">
+    <header class="fp-welcome"><span class="fp-eyebrow">Nota de débito</span><h1>Nota de débito de la factura {{ venta.voucher_number_full }}</h1>
+        <p>Cliente: <strong>{{ venta.client.user.names }}</strong> · {{ venta.client.dni }} · Factura del {{ venta.emission_date|default:venta.date_joined|date:"d/m/Y" }} por ${{ venta.total|floatformat:2 }}</p></header>
+    {% if anteriores %}
+        <div class="alert alert-secondary">Notas de débito anteriores de esta factura: {% for n in anteriores %}<strong>{{ n.voucher_number_full }}</strong> ({{ n.get_status_display }}, ${{ n.valor_total|floatformat:2 }}){% if not forloop.last %}, {% endif %}{% endfor %}.</div>
+    {% endif %}
+    {% if impedimento %}
+        <div class="alert alert-warning">{{ impedimento }} <a href="/pos/sale/admin/">Volver a Ventas</a></div>
+    {% else %}
+    <form method="post" class="fp-retencion-form" novalidate>{% csrf_token %}
+        {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+        <section class="card fp-retencion-panel mb-3"><div class="card-body">
+            <span class="fp-eyebrow">Paso 1 · Motivos</span><h2 class="h5">Qué cobras</h2><p class="text-muted">Escribe cada cargo con su valor sin IVA. Las líneas vacías no se usan.</p>
+            {{ motivos.management_form }}{% for error in motivos.non_form_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+            {% for f in motivos %}
+                <fieldset class="row fp-retencion-linea"><legend>Motivo {{ forloop.counter }}</legend>
+                    {% for field in f %}
+                        <div class="form-group col-12 {% if field.name == 'razon' %}col-lg-8{% else %}col-md-6 col-lg-4{% endif %}">
+                            <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                            {% render_field field class="form-control" %}
+                            {% if field.help_text and forloop.parentloop.first %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                            {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                        </div>
+                    {% endfor %}
+                </fieldset>
+            {% endfor %}
+        </div></section>
+        <section class="card fp-retencion-panel mb-3"><div class="card-body">
+            <span class="fp-eyebrow">Paso 2 · Impuesto y pago</span><h2 class="h5">IVA y forma de pago</h2>
+            <div class="row">
+                {% for field in form %}
+                    <div class="form-group col-12 col-md-6">
+                        <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                        {% render_field field class="form-control" %}
+                        {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                        {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div></section>
+        {% if resumen %}
+            <section class="card fp-retencion-revision mb-3 border-info"><div class="card-body">
+                <span class="fp-eyebrow">Paso 3 · Confirmación</span><h2 class="h5">Revisa antes de emitir</h2><p>El cálculo todavía no ha emitido un documento. Comprueba los datos antes de enviarlo al SRI.</p>
+                <div class="table-responsive fp-retencion-resumen"><table class="table table-sm"><thead><tr><th>Razón</th><th class="text-right">Valor</th></tr></thead><tbody>
+                    {% for m in resumen.motivos %}<tr><td>{{ m.razon }}</td><td class="text-right">{{ m.valor|floatformat:2 }}</td></tr>{% endfor %}
+                    <tr><td class="text-right">Subtotal sin impuestos</td><td class="text-right">{{ resumen.total_sin_impuestos|floatformat:2 }}</td></tr>
+                    <tr><td class="text-right">IVA {{ resumen.doc.tarifa_iva|floatformat:"-2" }} %</td><td class="text-right">{{ resumen.valor_iva|floatformat:2 }}</td></tr>
+                    <tr><td class="text-right"><strong>Valor total</strong></td><td class="text-right"><strong>${{ resumen.valor_total|floatformat:2 }}</strong></td></tr>
+                </tbody></table></div>
+                <button type="submit" name="action" value="emitir" class="btn fpa-btn-pagar">Emitir nota de débito al SRI</button>
+                <button type="submit" name="action" value="calcular" class="btn btn-outline-secondary">Volver a calcular</button>
+            </div></section>
+        {% else %}
+            <button type="submit" name="action" value="calcular" class="btn fpa-btn-pagar">Revisar nota de débito</button>
+        {% endif %}
+        <a href="/pos/sale/admin/" class="btn btn-link">Cancelar</a>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

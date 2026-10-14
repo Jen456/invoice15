@@ -1,0 +1,44 @@
+{% extends 'skin.html' %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item active" aria-current="page"><a href="{% url 'comprobantes_notas_debito' %}"><i class="fas fa-plus-circle"></i> Notas de débito</a></li>
+{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-retenciones fp-notas-debito">
+    <header class="fp-welcome"><span class="fp-eyebrow">Comprobantes electrónicos</span><h1>Notas de débito</h1>
+        <p>Cargos posteriores a una factura autorizada: intereses de mora, gastos de cobranza u otros. Se emiten desde <a href="/pos/sale/admin/">Ventas</a>: en la factura, elige «Opciones» → «Crear nota de débito».</p></header>
+    {% for message in messages %}
+        <div class="alert {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'info' %}alert-info{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
+    {% endfor %}
+    <div class="table-responsive fp-retencion-listado">
+        <table class="table table-sm table-bordered bg-white fp-retencion-tabla">
+            <thead><tr><th scope="col">Número</th><th scope="col">Fecha</th><th scope="col">Cliente</th><th scope="col">Factura</th><th scope="col" class="text-right">Total</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+            <tbody>
+            {% for l in notas %}
+                <tr>
+                    <td data-label="Número">{{ l.voucher_number_full }}</td>
+                    <td data-label="Fecha">{{ l.emission_date|default:l.date_joined|date:"d/m/Y" }}</td>
+                    <td data-label="Cliente">{{ l.razon_social }}<br><small class="text-muted">{{ l.identificacion }}</small></td>
+                    <td data-label="Factura">{{ l.num_doc_modificado }}</td>
+                    <td data-label="Total" class="text-right">${{ l.valor_total|floatformat:2 }}</td>
+                    <td data-label="Estado"><span class="badge {% if l.status == 'authorized' or l.status == 'authorized_and_sent_by_email' %}badge-success{% elif l.status == 'in_process' %}badge-info{% elif l.status == 'without_authorizing' %}badge-warning{% else %}badge-danger{% endif %}">{{ l.get_status_display }}</span></td>
+                    <td data-label="Acciones" class="fp-retencion-acciones">
+                        {% if l.pdf_authorized %}<a href="{{ l.get_pdf_authorized }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">PDF</a>{% endif %}
+                        {% if l.xml_authorized %}<a href="{{ l.get_xml_authorized }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">XML</a>{% endif %}
+                        {% if puede_emitir and l.status == 'without_authorizing' or puede_emitir and l.status == 'returned' or puede_emitir and l.status == 'not_authorized' or puede_emitir and l.status == 'in_process' %}
+                            <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="generate_invoice"><input type="hidden" name="id" value="{{ l.pk }}">
+                                <button type="submit" class="btn btn-sm fpa-btn-pagar">{% if l.status == 'in_process' %}Consultar en el SRI{% else %}Enviar al SRI{% endif %}</button></form>
+                        {% endif %}
+                        {% if puede_eliminar and l.status == 'without_authorizing' or puede_eliminar and l.status == 'returned' or puede_eliminar and l.status == 'not_authorized' or puede_eliminar and l.status == 'sequential_registered_error' %}
+                            <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ l.pk }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button></form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="text-muted">Aún no has emitido notas de débito.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

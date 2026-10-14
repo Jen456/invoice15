@@ -280,6 +280,14 @@ class Command(BaseCommand):
                 'permissions': list(Permission.objects.filter(content_type__app_label='comprobantes', content_type__model='liquidacioncompra'))
             },
             {
+                'name': 'Notas de débito',
+                'url': '/comprobantes/notas-debito/',
+                'icon': 'fas fa-plus-circle',
+                'description': 'Notas de débito electrónicas sobre facturas autorizadas, emitidas desde Ventas',
+                'moduletype': moduletype,
+                'permissions': list(Permission.objects.filter(content_type__app_label='comprobantes', content_type__model='notadebito'))
+            },
+            {
                 'name': 'Errores de Comprob.',
                 'url': '/pos/voucher/errors/',
                 'icon': 'fas fa-file-archive',

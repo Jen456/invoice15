@@ -7,9 +7,11 @@ from django.urls import reverse
 from django.views.generic import TemplateView
 
 from core.comprobantes import liquidaciones as sl
+from core.comprobantes import notas_debito as snd
 from core.comprobantes import retenciones as sv
-from core.comprobantes.forms import DocumentoSustentoForm, LineasLiquidacionFormSet, LineasRetencionFormSet, LiquidacionForm
-from core.comprobantes.models import CodigoRetencion, LiquidacionCompra, Retencion
+from core.comprobantes.forms import (DocumentoSustentoForm, LineasLiquidacionFormSet, LineasRetencionFormSet, LiquidacionForm,
+                                     MotivosNotaDebitoFormSet, NotaDebitoForm)
+from core.comprobantes.models import CodigoRetencion, LiquidacionCompra, NotaDebito, Retencion
 from core.pos import emision
 from core.pos.choices import RETENTION_AGENT
 from core.security.mixins import GroupPermissionMixin
@@ -17,6 +19,7 @@ from core.security.session import get_group
 
 URL_LISTA = 'comprobantes_retenciones'
 URL_LIQUIDACIONES = 'comprobantes_liquidaciones'
+URL_NOTAS_DEBITO = 'comprobantes_notas_debito'
 
 
 def tiene_permiso(request, codigo):
@@ -35,7 +38,8 @@ def avisar_resultado(request, comprobante, resultado, nombre='Retención'):
 class ComprobanteListView(GroupPermissionMixin, TemplateView):
     """Listado con reenvío al SRI y borrado de los no enviados. Las subclases fijan modelo, permisos y textos."""
     model = None
-    nombre = ''            # «Retención», «Liquidación»: los dos son femeninos
+    relacionados = ('purchase',)
+    nombre = ''            # «Retención», «Liquidación», «Nota de débito»: todos femeninos
     contexto = ''          # nombre de la lista en la plantilla
     titulo = ''
     url_lista = ''
@@ -46,7 +50,7 @@ class ComprobanteListView(GroupPermissionMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update({'title': self.titulo,
-                        self.contexto: self.model.objects.select_related('purchase').order_by('-id')[:200],
+                        self.contexto: self.model.objects.select_related(*self.relacionados).order_by('-id')[:200],
                         'puede_emitir': tiene_permiso(self.request, self.permiso('add')),
                         'puede_eliminar': tiene_permiso(self.request, self.permiso('delete'))})
         return context
@@ -83,6 +87,13 @@ class LiquidacionListView(ComprobanteListView):
     permission_required = 'view_liquidacioncompra'
     model, nombre, contexto, titulo, url_lista = (LiquidacionCompra, 'Liquidación', 'liquidaciones', 'Liquidaciones de compra',
                                                   URL_LIQUIDACIONES)
+
+
+class NotaDebitoListView(ComprobanteListView):
+    template_name = 'comprobantes/notadebito/list.html'
+    permission_required = 'view_notadebito'
+    relacionados = ('sale',)
+    model, nombre, contexto, titulo, url_lista = NotaDebito, 'Nota de débito', 'notas', 'Notas de débito', URL_NOTAS_DEBITO
 
 
 class RetencionCrearView(GroupPermissionMixin, TemplateView):
@@ -198,3 +209,54 @@ class LiquidacionCrearView(GroupPermissionMixin, TemplateView):
             return self.render_to_response(self.get_context_data(form=form, lineas=lineas))
         avisar_resultado(request, liq, liq.generate_electronic_invoice(), 'Liquidación')
         return HttpResponseRedirect(reverse(URL_LIQUIDACIONES))
+
+
+class NotaDebitoCrearView(GroupPermissionMixin, TemplateView):
+    """Nota de débito sobre una factura autorizada: revisar (cálculo sin guardar) y luego emitir."""
+    template_name = 'comprobantes/notadebito/create.html'
+    permission_required = 'add_notadebito'
+
+    def get_venta(self):
+        from core.pos.models import Sale
+        return get_object_or_404(Sale.objects.select_related('client__user', 'receipt'), pk=self.kwargs['venta'])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        venta = self.get_venta()
+        try:
+            snd.validar_factura(venta, self.request.company)
+            impedimento = None
+        except snd.ErrorNotaDebito as e:
+            impedimento = str(e)
+        tarifas = snd.tarifas_permitidas(venta)
+        context.update({
+            'title': 'Emitir nota de débito', 'venta': venta, 'impedimento': impedimento,
+            'anteriores': NotaDebito.objects.filter(sale=venta).order_by('-id'),
+            'form': kwargs.get('form') or NotaDebitoForm(tarifas=tarifas, initial={'tarifa_iva': f'{tarifas[0]:.2f}',
+                                                                                  'forma_pago': venta.payment_method or '20'}),
+            'motivos': kwargs.get('motivos') or MotivosNotaDebitoFormSet(prefix='motivos'),
+            'resumen': kwargs.get('resumen'),
+        })
+        return context
+
+    def post(self, request, *args, **kwargs):
+        venta = self.get_venta()
+        form = NotaDebitoForm(request.POST, tarifas=snd.tarifas_permitidas(venta))
+        motivos = MotivosNotaDebitoFormSet(request.POST, prefix='motivos')
+        if not (form.is_valid() and motivos.is_valid()):
+            return self.render_to_response(self.get_context_data(form=form, motivos=motivos))
+        filas = [(f.cleaned_data.get('razon'), f.cleaned_data.get('valor')) for f in motivos.forms if f.cleaned_data]
+        try:
+            if request.POST.get('action') != 'emitir':
+                snd.validar_factura(venta, request.company)
+                doc, limpios, totales = snd.calcular(venta, form.cleaned_data, filas)
+                return self.render_to_response(self.get_context_data(form=form, motivos=motivos, resumen={
+                    'doc': doc, 'motivos': limpios, **totales}))
+            with transaction.atomic():
+                nota = snd.crear(request.company, request.user, venta, form.cleaned_data, filas)
+                emision.preparar(nota)   # si la firma o el plan fallan, se deshace: nada salió al SRI
+        except Exception as e:
+            form.add_error(None, str(e))
+            return self.render_to_response(self.get_context_data(form=form, motivos=motivos))
+        avisar_resultado(request, nota, nota.generate_electronic_invoice(), 'Nota de débito')
+        return HttpResponseRedirect(reverse(URL_NOTAS_DEBITO))

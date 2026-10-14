@@ -20,7 +20,7 @@ RUTAS_DE_PAGO = (
 
 # Con el plan vencido o el cupo agotado se puede consultar, pero no emitir.
 RUTAS_DE_EMISION = ('/pos/sale/admin/add/', '/pos/credit/note/admin/add/', '/comprobantes/retenciones/nueva/',
-                    '/comprobantes/liquidaciones/nueva/')
+                    '/comprobantes/liquidaciones/nueva/', '/comprobantes/notas-debito/nueva/')
 ACCIONES_DE_EMISION = ('generate_invoice', 'create_credit_note')
 
 # Límites del plan gratuito si la plataforma no ha definido el plan (falla cerrado).

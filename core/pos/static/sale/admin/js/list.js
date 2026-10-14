@@ -98,6 +98,8 @@ var sale = {
                             buttons += '<a href="' + row.xml_authorized + '" target="_blank" class="dropdown-item"><i class="fas fa-file-code"></i> Descargar xml</a>';
                             if (row.client.identification_type.id !== '07' && row.receipt.voucher_type.id === '01') {
                                 buttons += '<a rel="create_credit_note" class="dropdown-item"><i class="fas fa-minus-circle"></i> Crear nota de credito</a>';
+                                // Nota de débito (intereses, gastos de cobranza) sobre la factura autorizada (core/comprobantes).
+                                buttons += '<a href="/comprobantes/notas-debito/nueva/' + row.id + '/" class="dropdown-item"><i class="fas fa-plus-circle"></i> Crear nota de débito</a>';
                             }
                         }
                         buttons += '</div></div></div>';

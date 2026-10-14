@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 
 from core.comprobantes.models import CodigoRetencion, LiquidacionCompra
@@ -75,3 +77,20 @@ class LineaLiquidacionForm(forms.Form):
 
 
 LineasLiquidacionFormSet = forms.formset_factory(LineaLiquidacionForm, extra=0)
+
+
+class NotaDebitoForm(forms.Form):
+    tarifa_iva = forms.ChoiceField(label='Tarifa de IVA', help_text='La de la fecha de la factura, o 0 % si el cargo no grava IVA.')
+    forma_pago = forms.ChoiceField(label='Forma de pago', choices=PAYMENT_METHOD)
+
+    def __init__(self, *args, tarifas=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['tarifa_iva'].choices = [(f'{t:.2f}', f'{t.normalize():f} %'.replace('.', ',')) for t in tarifas]
+
+
+class MotivoNotaDebitoForm(forms.Form):
+    razon = forms.CharField(label='Razón', max_length=300, required=False, help_text='Por ejemplo: «Interés por mora».')
+    valor = forms.DecimalField(label='Valor sin IVA', required=False, min_value=Decimal('0.01'), decimal_places=2, max_digits=12)
+
+
+MotivosNotaDebitoFormSet = forms.formset_factory(MotivoNotaDebitoForm, extra=3, max_num=10)
