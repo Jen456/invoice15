@@ -22,3 +22,7 @@ Para publicar: lee **TEXTOS-Y-PUBLICACION.md**. Incluye los diez textos, hashtag
 Las ilustraciones representan conceptos; no son capturas de la aplicación. Las imágenes se generaron con referencia al logo original. Texto y datos comerciales revisados. No se han publicado en redes ni creado anuncios pagados.
 
 El dominio es facturaporaqui.com. No se inventó un WhatsApp, correo ni perfil social. Para las historias, agrega manualmente el sticker de enlace o una herramienta de mensaje/pregunta de la plataforma.
+
+## Encuadre revisado
+
+Versión con zona segura de al menos 60 px en los cuatro lados para texto y marca. Conservar las proporciones y revisar la miniatura del perfil antes de publicar: el grid y el post completo pueden usar recortes distintos. Las historias siguen teniendo espacio adicional para interfaz. No se cambian precios ni captions.

@@ -702,3 +702,12 @@ Validación Chromium con usuario/empresa ficticios locales, plan ilimitado asign
 Node --check y git diff --check sin incidencias. Suite SQLite ejecutada completa; resultado final registrado debajo. No pagos ni emisiones reales, modelos/migraciones/vistas/API/.env/SRI sin cambios. No pruebas de dispositivo físico, lector de pantalla ni de guardado. Formularios de compras/notas de crédito probados en su estado inicial; solo venta ejercitada con línea y cálculo. Las tablas de búsqueda en modales conservan desplazamiento local cuando sea necesario.
 
 Resultado final SQLite: **214 aprobadas, 5 omitidas** exclusivas de PostgreSQL, en 19,78 s.
+
+
+## 13/10/2026 (Ecuador) — márgenes de piezas de redes
+
+Petición: margen 60 px arriba/abajo/izquierda/derecha y actualización en entregas/facturaporaqui/redes. Se corrigieron las 20 imágenes mediante edición de imagen con referencia a cada original; se reemplazaron `campana-01/posts/post-01…10.png` y `historias/historia-01…10.png`, manteniendo contenidos comerciales y marca. La zona segura se implementó como mínimo de 60 px para contenido; algunas composiciones dejan más espacio, no una banda matemáticamente idéntica de exactamente 60 px.
+
+Actualizados GALERIA.html (alternar imagen completa/miniatura orientativa3:4), README.md y ARCHIVOS.json (dimensiones, hash y margen de contenido oscuro medido). Regenerados ZIP locales `/workspace/facturaporaqui-redes-01.zip` y `/workspace/facturaporaqui-redes-01-margen60.zip`; el directorio temporal de preparación propio se retiró después de copiar, sin duplicar campaña. HANDOFF y AGENTS registran la regla.
+
+Validación: inspección visual de 20 PNG en pares; textos legibles, planes50/85 al año con IVA, numeración Último125/Próximo126 conservada. Lectura de píxeles confirma contenido oscuro (luminancia<140, indicador de texto/marca, no OCR) a >=60px de los cuatro bordes en todas. Esa medición se complementa con revisión visual; no certifica una banda uniforme de fondo. Chromium: 20 imágenes cargadas y alternancia de vista grid correcta. ZIP íntegros con20 PNG. No pruebas Django necesarias: no código de aplicación modificado. No se afirma verificación directa en una cuenta Instagram; revisar su vista previa antes de publicar. Sin publicación externa ni despliegue.

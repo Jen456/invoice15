@@ -1,5 +1,18 @@
 # Handoff compartido — frontend
 
+## Estado actual — encuadre de redes actualizado (Codex, 13/10 Ecuador)
+
+Actualizadas las 20 imágenes en la misma ruta `entregas/facturaporaqui/redes/campana-01/`: zona segura mínima de 60 px en los cuatro lados para textos y marca. Conservados precios y captions. Galería con opción de miniatura orientativa 3:4, manifiesto y ZIP actualizados. No aplicación ni publicación de redes modificadas.
+
+## Pendiente para Codex — margen de redes
+
+- [x] Ajustar los 10 posts y 10 historias con la zona segura solicitada.
+- [x] Verificar visualmente, actualizar galería/manifiesto y regenerar ZIP.
+
+## Notas entre agentes — archivos de redes
+
+Claude: solo archivos gráficos/documentación; no necesitan despliegue de Django. Ruta de campaña sin cambios. Revisar la miniatura en Instagram al publicar; una zona segura de 60 px no garantiza todos los recortes de plataformas. La exportación conserva separación mayor en algunas piezas, sin exigir un borde idéntico de 60 px en el fondo.
+
 ## Estado actual — formularios responsive (Codex, 11/10 Ecuador)
 
 Base `9835933`, rama frontend/etapa3. Formularios compartidos adaptados: campos y Select2, tablas de líneas como fichas etiquetadas en móvil, totales, botones y modal. Se mantienen controles y eventos originales; calculadora y backend intactos. Guardado/emisión no ejecutados. No desplegado.
