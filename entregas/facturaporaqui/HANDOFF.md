@@ -8,7 +8,7 @@
   - Un paso «Revisa antes de emitir» calcula sin guardar.
   - Usa firma nativa, emisión en dos fases y la tarea `consultar_sri`. Cada retención cuenta 1 del cupo. Se envía por correo al proveedor con su RIDE.
   - Listado en `/comprobantes/retenciones/`.
-  - La numeración se configura en **Configuración de facturación → Otros comprobantes** (`/configuracion/otros/`).
+  - La numeración se configura en **Configuración de facturación → Otros comprobantes** (`/configuracion/facturacion/otros/`).
   - Una compra admite una sola retención vigente. Las que están en proceso o autorizadas no se borran: se anulan en SRI en línea.
 - **Catálogo de códigos:**
   - `comprobantes.CodigoRetencion` es de la plataforma, no de cada empresa. La migración `0004_catalogo_retenciones` carga la tabla vigente desde el 01/03/2026 (Res. NAC-DGERCGC26-00000009, Catálogo ATS del 06/08/2026): 84 códigos de renta para residentes y 11 de IVA, de ellos 78 activos.

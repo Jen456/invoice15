@@ -158,6 +158,9 @@ class TestNumeracion:
         respuesta = web.post(f'{LISTA}nueva/{compra.pk}/', {**formulario([(codigos['bienes'], '', '')]), 'action': 'emitir'})
         assert 'Otros comprobantes' in respuesta.content.decode() and not leer(compra.company, lambda: Retencion.objects.exists())
 
+    def test_configuracion_enlaza_otros_comprobantes(self, web, empresa):
+        assert 'href="/configuracion/facturacion/otros/"' in web.get('/configuracion/facturacion/', follow=True).content.decode()
+
     def test_otros_comprobantes_configura_y_confirma(self, web, empresa):
         from core.pos.models import BillingSetup
         antes = leer(empresa, lambda: BillingSetup.objects.get())
