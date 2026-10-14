@@ -1,0 +1,42 @@
+{% extends 'skin.html' %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item"><a href="{% url 'configuracion_facturacion' %}"><i class="fas fa-list-check"></i> Configuración de facturación</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Otros comprobantes</li>
+{% endblock %}
+{% block content %}
+<div class="fp-config fp-config-otros">
+    <header class="fp-config-header">
+        <p class="fp-eyebrow">Configuración de facturación</p>
+        <h1 class="h3">Otros comprobantes</h1>
+        <p class="text-muted">Numeración de los comprobantes que emites además de facturas y notas de crédito. Cada uno tiene su propia secuencia por punto de emisión y ambiente.</p>
+    </header>
+    {% for message in messages %}{% if 'configuracion' in message.tags %}
+        <div class="alert {% if message.level_tag == 'error' %}alert-danger{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
+    {% endif %}{% endfor %}
+    {% if not setup_completo %}
+        <div class="alert alert-warning">Primero completa y confirma la <a href="{% url 'configuracion_facturacion' %}">configuración de facturación</a> (pasos 1 a 5).</div>
+    {% else %}
+        <p>Emites desde <strong>{{ punto.full_code }}</strong> en el ambiente <strong>{{ ambiente }}</strong>.</p>
+        {% for d in documentos %}
+            <section class="card fp-config-panel mb-3"><div class="card-body">
+                <h2 class="h5">{{ d.nombre }}</h2>
+                {% if d.tipo == '07' %}<p class="text-muted small">Lo emiten los contribuyentes especiales y los agentes de retención calificados por el SRI, y cualquier contribuyente en casos puntuales (liquidaciones de compra, pagos al exterior). Se emite sobre una compra registrada, desde Compras.</p>{% endif %}
+                {% if d.secuencia %}
+                    <dl class="fp-config-secuencia">
+                        <dt>Último número utilizado</dt><dd>{{ d.secuencia.last_number_full|default:"Ninguno" }}</dd>
+                        <dt>Número del próximo documento</dt><dd><strong>{{ d.proximo }}</strong></dd>
+                        <dt>Estado</dt><dd>{% if d.confirmado %}Confirmada{% else %}Pendiente de confirmar{% endif %}</dd>
+                    </dl>
+                {% else %}
+                    <p class="text-muted">Sin numeración registrada para {{ punto.full_code }}.</p>
+                {% endif %}
+                <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="tipo" value="{{ d.tipo }}">
+                    {% for error in d.form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+                    {% include 'configuracion/_campos.html' with form=d.form %}
+                    <button type="submit" class="btn fpa-btn-pagar">Guardar y confirmar numeración</button>
+                </form>
+            </div></section>
+        {% endfor %}
+    {% endif %}
+</div>
+{% endblock %}

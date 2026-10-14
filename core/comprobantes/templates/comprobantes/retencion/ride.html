@@ -1,0 +1,89 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Comprobante de retención {{ c.voucher_number_full }}</title>
+    <link rel="stylesheet" href="{% static 'lib/bootstrap-4.6.0/css/bootstrap.min.css' %}"/>
+    <style>
+        @page { size: A4 portrait; margin: 12mm 10mm; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; }
+        .bloque { background: #f6f6f6; padding: 6px 10px; margin-bottom: 6px; }
+        .bloque p { margin: 1px 0; }
+        .titulo { font-size: 18px; font-weight: bold; }
+        /* Bootstrap fija en impresión body { min-width: 992px }, más ancho que la hoja: el contenido va en 190 mm (A4 menos márgenes) */
+        .hoja { width: 190mm; }
+        /* table-layout fijo y cortes en las claves de 49 dígitos: sin esto WeasyPrint ensancha las tablas más allá de la hoja */
+        table.cabecera, table.detalle { width: 100%; table-layout: fixed; }
+        .clave { word-break: break-all; font-size: 10px; }
+        .barcode { width: 100%; max-width: 100%; height: 60px; }
+        table.detalle { border-collapse: collapse; margin-top: 8px; }
+        table.detalle th { background: #000; color: #fff; padding: 3px; font-size: 9px; text-transform: uppercase; }
+        table.detalle td { border: 1px solid #000; padding: 3px; font-size: 10px; overflow-wrap: break-word; }
+        .num { text-align: right; }
+        .logo { max-height: 90px; max-width: 100%; }
+    </style>
+</head>
+<body>
+<div class="hoja">
+<table class="cabecera"><tr>
+    <td style="width:50%; vertical-align:top; padding-right:8px">
+        <img class="logo" alt="" src="{{ empresa.get_image }}">
+        <div class="bloque">
+            <p><b>{{ empresa.business_name }}</b></p>
+            {% if empresa.tradename and empresa.tradename != empresa.business_name %}<p>{{ empresa.tradename }}</p>{% endif %}
+            <p><b>RUC:</b> {{ empresa.ruc }}</p>
+            <p><b>Dirección matriz:</b> {{ empresa.main_address }}</p>
+            <p><b>Dirección establecimiento:</b> {{ c.receipt.establishment_address|default:empresa.establishment_address }}</p>
+            <p><b>Obligado a llevar contabilidad:</b> {{ empresa.obligated_accounting }}</p>
+            {% if empresa.special_taxpayer and empresa.special_taxpayer != '000' %}<p><b>Contribuyente especial No.:</b> {{ empresa.special_taxpayer }}</p>{% endif %}
+        </div>
+    </td>
+    <td style="width:50%; vertical-align:top">
+        <div class="bloque">
+            <p class="titulo">COMPROBANTE DE RETENCIÓN</p>
+            <p><b>No.</b> {{ c.voucher_number_full }}</p>
+            <p><b>Número de autorización:</b><br><span class="clave">{{ c.access_code }}</span></p>
+            <p><b>Fecha y hora de autorización:</b> {{ c.authorization_date|date:"d/m/Y H:i:s" }}</p>
+            <p><b>Ambiente:</b> {{ c.get_environment_type_display }} · <b>Emisión:</b> NORMAL</p>
+            <p><b>Clave de acceso:</b></p>
+            <img alt="" class="barcode" src="{{ access_code_barcode }}">
+        </div>
+    </td>
+</tr></table>
+<div class="bloque">
+    <p><b>Razón social / nombres del sujeto retenido:</b> {{ c.razon_social }}</p>
+    <p><b>Identificación:</b> {{ c.identificacion }} · <b>Fecha de emisión:</b> {{ c.emission_date|date:"d/m/Y" }} · <b>Período fiscal:</b> {{ c.periodo_fiscal }}</p>
+</div>
+<table class="detalle">
+    <colgroup><col style="width:11%"><col style="width:16%"><col style="width:11%"><col style="width:9%"><col style="width:12%">
+        <col style="width:8%"><col style="width:9%"><col style="width:10%"><col style="width:14%"></colgroup>
+    <thead><tr><th>Comprobante</th><th>Número</th><th>Fecha de emisión</th><th>Ejercicio fiscal</th><th>Base imponible</th><th>Impuesto</th><th>Código</th><th>% retención</th><th>Valor retenido</th></tr></thead>
+    <tbody>
+    {% for d in c.detalles.all %}
+        <tr><td>{% if c.cod_doc_sustento == '01' %}FACTURA{% elif c.cod_doc_sustento == '03' %}LIQUIDACIÓN DE COMPRA{% else %}{{ c.cod_doc_sustento }}{% endif %}</td>
+            <td>{{ c.num_doc_sustento_formato }}</td><td>{{ c.fecha_doc_sustento|date:"d/m/Y" }}</td><td>{{ c.periodo_fiscal }}</td>
+            <td class="num">{{ d.base_imponible|floatformat:2 }}</td><td>{{ d.get_impuesto_display|upper }}</td><td>{{ d.codigo }}</td>
+            <td class="num">{{ d.porcentaje|floatformat:2 }}</td><td class="num">{{ d.valor_retenido|floatformat:2 }}</td></tr>
+    {% endfor %}
+    <tr><td colspan="8" class="num"><b>TOTAL RETENIDO</b></td><td class="num"><b>{{ c.total_retenido|floatformat:2 }}</b></td></tr>
+    </tbody>
+</table>
+<table class="detalle" style="width:70%">
+    <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
+    <thead><tr><th colspan="2">Información adicional</th></tr></thead>
+    <tbody>
+        {% if c.provider.address %}<tr><td><b>Dirección</b></td><td>{{ c.provider.address }}</td></tr>{% endif %}
+        {% if c.correo %}<tr><td><b>Email</b></td><td>{{ c.correo }}</td></tr>{% endif %}
+        <tr><td><b>Autorización del documento sustento</b></td><td class="clave">{{ c.aut_doc_sustento }}</td></tr>
+        {% if proveedor %}
+            <tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>
+            <tr><td><b>Proveedor</b></td><td>{{ proveedor.nombre }}</td></tr>
+            <tr><td><b>Email proveedor</b></td><td>{{ proveedor.email }}</td></tr>
+            <tr><td><b>Dirección proveedor</b></td><td>{{ proveedor.direccion }}</td></tr>
+        {% endif %}
+    </tbody>
+</table>
+</div>
+</body>
+</html>

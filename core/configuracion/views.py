@@ -274,3 +274,40 @@ def guardar_ambiente_y_firma(company, datos, request):
     audit(request, 'company_change', company=company, origen='asistente', ambiente=ambiente,
           firma_actualizada=bool(archivo), clave_actualizada=bool(clave))
     return cambio
+
+
+class OtrosComprobantesView(ConfiguracionAccessMixin, TemplateView):
+    """Numeración de los comprobantes opcionales (retención, …): se configura y confirma en un paso."""
+    template_name = 'configuracion/otros.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        company = self.request.company
+        punto, filas = sv.otros_documentos(company)
+        enviado = kwargs.get('formularios', {})
+        for fila in filas:
+            r = fila['secuencia']
+            inicial = {'mode': 'mantener', 'last_number': r.last_number_full()} if r else {'mode': 'nuevo'}
+            fila['form'] = enviado.get(fila['tipo']) or SecuenciaForm(prefix=fila['tipo'], initial=inicial)
+        context.update({'title': 'Otros comprobantes', 'punto': punto, 'documentos': filas,
+                        'setup_completo': sv.obtener_setup(company).completed_at is not None,
+                        'ambiente': sv.AMBIENTES.get(company.environment_type)})
+        return context
+
+    def post(self, request, *args, **kwargs):
+        tipo = request.POST.get('tipo', '')
+        if tipo not in dict(sv.OTROS_DOCUMENTOS):
+            raise Http404
+        form = SecuenciaForm(request.POST, prefix=tipo)
+        if form.is_valid():
+            try:
+                r = sv.configurar_otro_documento(request.company, tipo, form.cleaned_data['mode'],
+                                                 form.cleaned_data['last_number'], form.cleaned_data['confirm'],
+                                                 request.user, request)
+                avisar(request, messages.SUCCESS, f'Numeración de {sv.NOMBRE_DOCUMENTO[tipo]} confirmada: el próximo será '
+                                                  f'{r.next_number_full()}.')
+                return HttpResponseRedirect(sv.URL_OTROS)
+            except sv.ErrorConfiguracion as e:
+                form.add_error(None, str(e))
+        return self.render_to_response(self.get_context_data(formularios={tipo: form}))
+

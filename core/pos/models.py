@@ -462,15 +462,21 @@ class Receipt(TenantModel):
     def last_number_full(self):
         return f'{self.establishment_code}-{self.issuing_point_code}-{self.sequence:09d}' if self.sequence else ''
 
+    @staticmethod
+    def modelos_con_numero():
+        """Modelos de comprobante que consumen números de una secuencia."""
+        from core.comprobantes.models import Retencion
+        return (Sale, CreditNote, Retencion)
+
     def max_used(self):
-        """Mayor secuencial ya registrado en esta secuencia (ventas y notas de crédito)."""
+        """Mayor secuencial ya registrado en esta secuencia (cualquier tipo de comprobante)."""
         numeros = [m.all_companies.filter(receipt_id=self.pk).aggregate(n=models.Max('voucher_number'))['n']
-                   for m in (Sale, CreditNote)]
+                   for m in self.modelos_con_numero()]
         return max([int(n) for n in numeros if n] or [0])
 
     @property
     def is_used(self):
-        return Sale.all_companies.filter(receipt_id=self.pk).exists() or CreditNote.all_companies.filter(receipt_id=self.pk).exists()
+        return any(m.all_companies.filter(receipt_id=self.pk).exists() for m in self.modelos_con_numero())
 
     def reservar_numero(self):
         """Reserva el próximo secuencial de forma atómica (bloqueo de la fila).
@@ -484,7 +490,7 @@ class Receipt(TenantModel):
             fila = Receipt.all_companies.select_for_update().get(pk=self.pk)
             numero = fila.sequence + 1
             usados = set()
-            for modelo in (Sale, CreditNote):
+            for modelo in self.modelos_con_numero():
                 usados.update(modelo.all_companies.filter(receipt_id=fila.pk, voucher_number__gte=f'{numero:09d}')
                               .values_list('voucher_number', flat=True))
             while f'{numero:09d}' in usados:
@@ -544,7 +550,7 @@ def informacion_adicional(raiz, pares):
 
 class Sale(TenantModel):
     client = models.ForeignKey(Client, on_delete=models.PROTECT, verbose_name='Cliente')
-    receipt = models.ForeignKey(Receipt, on_delete=models.PROTECT, limit_choices_to={'voucher_type__in': [VOUCHER_TYPE[0][0], VOUCHER_TYPE[-1][0]]}, verbose_name='Tipo de comprobante')
+    receipt = models.ForeignKey(Receipt, on_delete=models.PROTECT, limit_choices_to={'voucher_type__in': ['01', '08']}, verbose_name='Tipo de comprobante')
     voucher_number = models.CharField(max_length=9, verbose_name='Número de comprobante')
     voucher_number_full = models.CharField(max_length=20, verbose_name='Número de comprobante completo')
     employee = models.ForeignKey(User, on_delete=models.PROTECT, verbose_name='Empleado')

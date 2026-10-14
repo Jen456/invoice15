@@ -12,6 +12,11 @@ VOUCHER_TYPE = (
     ('01', 'FACTURA'),
     ('04', 'NOTA DE CRÉDITO'),
     ('08', 'TICKET DE VENTA'),
+    # Comprobantes electrónicos adicionales (core/comprobantes); el orden de los tres primeros no cambia.
+    ('03', 'LIQUIDACIÓN DE COMPRA'),
+    ('05', 'NOTA DE DÉBITO'),
+    ('06', 'GUÍA DE REMISIÓN'),
+    ('07', 'COMPROBANTE DE RETENCIÓN'),
 )
 
 EMISSION_TYPE = (

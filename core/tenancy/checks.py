@@ -3,8 +3,8 @@ from django.core import checks
 
 # Aplicaciones cuyos modelos son datos de empresa. Excepciones explícitas: la
 # propia empresa (es el inquilino).
-TENANT_APPS = ('pos',)
-NOT_TENANT = {'pos.Company'}
+TENANT_APPS = ('pos', 'comprobantes')
+NOT_TENANT = {'pos.Company', 'comprobantes.CodigoRetencion'}
 
 
 @checks.register()

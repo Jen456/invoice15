@@ -1,0 +1,70 @@
+{% extends 'skin.html' %}
+{% load widget_tweaks %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item"><a href="{% url 'comprobantes_retenciones' %}"><i class="fas fa-file-invoice-dollar"></i> Retenciones</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Emitir</li>
+{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-retencion-nueva">
+    <header class="fp-welcome"><span class="fp-eyebrow">Comprobante de retención</span><h1>Retención de la compra #{{ compra.pk }}</h1>
+        <p>Proveedor: <strong>{{ compra.provider.name }}</strong> · {{ compra.provider.ruc }}{% if compra.provider.email %} · {{ compra.provider.email }}{% endif %}</p></header>
+    {% if vigente %}
+        <div class="alert alert-warning">Esta compra ya tiene la retención <strong>{{ vigente.voucher_number_full }}</strong> ({{ vigente.get_status_display }}). <a href="{% url 'comprobantes_retenciones' %}">Ver retenciones</a></div>
+    {% else %}
+    {% if not es_agente %}
+        <div class="alert alert-info">Tu empresa no está registrada como agente de retención. Las sociedades y los obligados a llevar contabilidad ya no retienen por sí solos: emiten retenciones los contribuyentes especiales, los agentes de retención calificados por el SRI y, en casos puntuales, cualquier contribuyente (liquidaciones de compra, pagos al exterior). Si el SRI te calificó como agente, actualiza este dato en <a href="{% url 'configuracion_facturacion' %}">Configuración de facturación</a>.</div>
+    {% endif %}
+    <form method="post" novalidate>{% csrf_token %}
+        {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+        <section class="card mb-3"><div class="card-body">
+            <h2 class="h5">Factura del proveedor (documento sustento)</h2>
+            <div class="row">
+                {% for field in form %}
+                    <div class="form-group col-12 {% if field.name == 'cod_sustento' %}col-lg-12{% elif field.name == 'parte_relacionada' %}col-lg-12{% else %}col-md-6 col-lg-4{% endif %}">
+                        {% if field.field.widget.input_type == 'checkbox' %}
+                            <div class="form-check">{% render_field field class="form-check-input" %}<label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+                        {% else %}
+                            <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                            {% if field.errors %}{% render_field field class="form-control is-invalid" %}{% else %}{% render_field field class="form-control" %}{% endif %}
+                            {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                        {% endif %}
+                        {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div></section>
+        <section class="card mb-3"><div class="card-body">
+            <h2 class="h5">Retenciones</h2>
+            {{ lineas.management_form }}
+            {% for f in lineas %}
+                <div class="row border-bottom pb-2 mb-2">
+                    {% for field in f %}
+                        <div class="form-group col-12 {% if field.name == 'codigo' %}col-lg-6{% else %}col-md-6 col-lg-3{% endif %}">
+                            <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                            {% render_field field class="form-control" %}
+                            {% if forloop.parentloop.first and field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                            {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div></section>
+        {% if resumen %}
+            <section class="card mb-3 border-info"><div class="card-body">
+                <h2 class="h5">Revisa antes de emitir</h2>
+                <p>Factura {{ resumen.doc.num_doc_sustento|slice:":3" }}-{{ resumen.doc.num_doc_sustento|slice:"3:6" }}-{{ resumen.doc.num_doc_sustento|slice:"6:" }} · sin impuestos ${{ resumen.total_sin_impuestos|floatformat:2 }} · IVA ${{ resumen.doc.valor_iva|floatformat:2 }} · total ${{ resumen.importe_total|floatformat:2 }}</p>
+                <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Impuesto</th><th>Código</th><th>Concepto</th><th class="text-right">Base</th><th class="text-right">%</th><th class="text-right">Retenido</th></tr></thead><tbody>
+                    {% for d in resumen.detalle %}<tr><td>{% if d.impuesto == '1' %}Renta{% else %}IVA{% endif %}</td><td>{{ d.codigo }}</td><td>{{ d.concepto }}</td><td class="text-right">{{ d.base_imponible|floatformat:2 }}</td><td class="text-right">{{ d.porcentaje|floatformat:2 }}</td><td class="text-right">{{ d.valor_retenido|floatformat:2 }}</td></tr>{% endfor %}
+                    <tr><td colspan="5" class="text-right"><strong>Total retenido</strong></td><td class="text-right"><strong>${{ resumen.total|floatformat:2 }}</strong></td></tr>
+                </tbody></table></div>
+                <button type="submit" name="action" value="emitir" class="btn fpa-btn-pagar">Emitir retención al SRI</button>
+                <button type="submit" name="action" value="calcular" class="btn btn-outline-secondary">Volver a calcular</button>
+            </div></section>
+        {% else %}
+            <button type="submit" name="action" value="calcular" class="btn fpa-btn-pagar">Revisar retención</button>
+        {% endif %}
+        <a href="/pos/purchase/" class="btn btn-link">Cancelar</a>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

@@ -159,5 +159,12 @@
         </form>
     {% endif %}
     </div></section>
+    {% if estado.setup.completed_at %}
+        <section class="card fp-config-panel fp-config-otros-enlace mt-3"><div class="card-body">
+            <h2 class="h5">Otros comprobantes</h2>
+            <p class="text-muted mb-2">Numeración de los comprobantes de retención y de los demás documentos que emites además de facturas y notas de crédito.</p>
+            <a href="{% url 'configuracion_otros' %}" class="btn btn-outline-secondary">Configurar otros comprobantes</a>
+        </div></section>
+    {% endif %}
 </div>
 {% endblock %}
