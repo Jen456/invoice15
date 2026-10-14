@@ -819,3 +819,8 @@ Inspección visual: tarjetas de landing con texto y alcance legibles, app Multie
 Configuración de desarrollo reutilizable guardada con herramienta de onboarding: install_script y start_skill, estado saved, no publicación ejecutada. Entorno de navegador usa settings_frontend externo al repo y SQLite; no .env de producción. Para activar configuración cloud nueva se revisa/guarda en ajustes de entorno y se publica ese entorno; no es despliegue de app.
 
 Pendientes: revisión/publicación por Claude con respaldo; PostgreSQL, teléfono físico y lector de pantalla no probados por Codex. No publicación en redes ni publicidad pagada. No requisitos nuevos de backend.
+
+
+## 14/10/2026 — portada de Facebook
+
+Creada redes/portadas/facebook-facturaporaqui.png y guía README. Banner2035×773 px, colibrí Ingenioso, paleta coral/celeste/azul oscuro, lema y dominio. Fondo continuo, sin marco, sin precios; zona de perfil inferior izquierda despejada. Generado con referencia al isotipo, inspeccionado visualmente y PNG verificado. No cuenta de Facebook comprobada ni publicación automática; revisar recortes en plataforma al subir. Sin cambios de app.

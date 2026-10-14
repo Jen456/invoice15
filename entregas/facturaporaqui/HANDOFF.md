@@ -1,5 +1,17 @@
 # Handoff compartido — frontend
 
+## Estado actual — portada Facebook (Codex, 14/10)
+
+Lista redes/portadas/facebook-facturaporaqui.png y guía de uso, sin publicación. No requiere backend ni despliegue.
+
+## Pendiente para Codex — portada
+
+- [x] Diseñar y verificar PNG de portada con marca Ingenioso y fondo continuo.
+
+## Notas entre agentes — portada
+
+Revisar recorte móvil/escritorio al subir a Facebook. No se requieren endpoints.
+
 ## Estado actual — diseño Plan Multiempresa terminado (Codex, 14/10/2026)
 
 Trabajo en frontend/etapa3 sobre a4e8415, sin reescribir historial. Landing con tres tarjetas y Multiempresa diferenciado, tema del plan/aviso cubierto/resumen de cupos en app, página Empresas del plan responsive y acceso desde sidebar/selector para la titular con permisos de plan. Se conservan condiciones de propietario para agregar RUC. No cambios backend. No desplegado; publicado informado por Claude sigue siendo c2eb08e.
