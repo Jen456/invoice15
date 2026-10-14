@@ -25,6 +25,39 @@ Actualizadas las 20 imágenes en la misma ruta `entregas/facturaporaqui/redes/ca
 ## Notas entre agentes — archivos de redes
 
 Claude: solo archivos gráficos/documentación; no necesitan despliegue de Django. Ruta de campaña sin cambios. Revisar la miniatura en Instagram al publicar; una zona segura de 60 px no garantiza todos los recortes de plataformas. La exportación conserva separación mayor en algunas piezas, sin exigir un borde idéntico de 60 px en el fondo.
+## Estado actual — Plan Multiempresa publicado `c2eb08e` (Claude, 14/10/2026)
+
+- **Publicado** el 14/10/2026 a las 15:33 UTC.
+  - Migraciones `suscripciones 0006` (`Plan.company_limit`, `EmpresaAdicional` y el plan `multiempresa`) y `tenancy 0006`.
+  - Respaldo `pre-20261014-153355-c2eb08ef.dump`.
+  - Landing publicada desde `c2eb08e`; copia previa en `private/landing-antes-20261014153442.tar.gz`.
+- **Planes:**
+  - Plan 1000 ($50) e ilimitado ($85): **1 RUC**.
+  - **Plan Multiempresa: $199 al año con IVA, hasta 10 RUC distintos, documentos ilimitados.**
+- **Reglas de la propietaria:**
+  - Pasar de un plan de un RUC al multiempresa empieza un año nuevo desde el pago, sin prorrateo.
+  - El Propietario de la empresa titular agrega los RUC desde la app.
+  - Se mantiene la mención de retenciones en la landing.
+- **Pruebas:** `tests/test_plan_multiempresa.py`. PostgreSQL 275; SQLite 270 + 5 solo PostgreSQL.
+  - Hubo que restaurar `tests/test_multiempresa.py`, el de aislamiento entre empresas, que se había sobrescrito por error antes del commit.
+
+## Notas entre agentes — contrato del Plan Multiempresa (Claude → Codex)
+
+- **`/suscripcion/` (plan.html):**
+  - Cada opción trae `o.es_mejora`: existe la mejora por diferencia; ya no se deduce de «ilimitado».
+  - `o.cambio_multiempresa`: pasar del plan actual al multiempresa (botón «Cambiar a Plan Multiempresa por $199.00»).
+  - Variables nuevas:
+    - `cubierta` (bool): la empresa es adicional, no ve tarjetas ni botones de pago;
+    - `multiempresa` (`{usados, limite}`, solo en la titular).
+  - `o.plan.multiempresa` y `o.plan.company_limit`.
+  - Clases: `fp-plan-multiempresa` (tarjeta), `fp-plan-cubierta` (aviso de la adicional), `fp-plan-multi` (resumen de la titular).
+- **`/suscripcion/empresas/` (`suscripciones/empresas.html`):**
+  - POST `accion=nueva` con `ruc`, `business_name`, `tradename`, `main_address`, `email`, `mobile`.
+  - POST `accion=vincular` con `empresa` (id).
+  - Contexto: `multiempresa`, `periodo`, `usados`, `adicionales` (lista de pares empresa/cubierta), `propietario`, `form`, `vinculables`, `estado`.
+  - Hoy solo se llega desde el enlace «Ver y agregar empresas del plan» de Plan y pagos.
+- **`EstadoPlan.titular`:** empresa que paga, si la actual es adicional.
+
 ## Estado actual — facturación electrónica: firma nativa y Etapa A publicadas `e3a2932` (Claude, 12/10/2026)
 
 - **Publicado:** `e3a2932` en app.facturaporaqui.com el 12/10/2026 a las 02:28 UTC.
@@ -49,6 +82,13 @@ Claude: solo archivos gráficos/documentación; no necesitan despliegue de Djang
     - «Contribuyente Especial» solo si lo es.
   - **Ticket y RIDE:** datos del proveedor sin teléfono (`FPA_PROVEEDOR_*`): FACTURAPORAQUI, soporte@facturaporaqui.com, Milagro, Manta y Rumiñahui.
   - **Pruebas:** `tests/test_impresos.py`. PostgreSQL 261; SQLite 256 + 5 solo PostgreSQL.
+
+## Pendiente para Codex — Plan Multiempresa
+
+- [ ] Landing: diseño final de las tres tarjetas, con la del Multiempresa diferenciada y los textos y precios actuales.
+- [ ] Plan y pagos: estilo de la tercera tarjeta, del aviso de la empresa cubierta y del resumen de RUC de la titular.
+- [ ] Diseñar `suscripciones/empresas.html` y proponer un acceso visible a «Empresas del plan» para la titular (menú o selector de empresas); si hace falta un dato nuevo, pedirlo en HANDOFF.
+- [ ] Piezas de redes que anuncien el Plan Multiempresa, en la línea de `redes/campana-01`.
 
 ## Pendiente para Codex — tras la Etapa A
 
