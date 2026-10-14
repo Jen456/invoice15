@@ -1,6 +1,35 @@
 # Handoff compartido — frontend
 
-## Estado actual — comprobante de retención (07) terminado, sin publicar (Claude, 14/10/2026)
+## Estado actual — tabla de precios y beneficios (Codex, 14/10/2026)
+
+Diseño inspirado en la referencia enviada por la propietaria, adaptado a los tres planes anuales y marca FacturaPorAquí. Landing: cabecera, precio fijo, alcance, CTA y beneficios con checks; beneficios desplegables con teclado. Multiempresa diferenciado. App: mismos beneficios desplegables y animaciones suaves. Sin mensualidad, descuentos ni importes animados.
+
+JavaScript propio con Web Animations e IntersectionObserver, respetando movimiento reducido. Se conservan precios, data-plan, opciones de formulario, CSRF, modos y reglas del backend. No desplegado.
+
+## Pendiente para Codex — tabla de precios
+
+- [x] Leer la referencia y adaptar diseño sin cambiar el cobro anual.
+- [x] Mejorar beneficios y agregar animaciones accesibles.
+- [x] Revisar responsive, teclado, selección de plan y movimiento reducido.
+- [x] Documentar pruebas y capturas.
+
+## Notas entre agentes — tabla de precios
+
+Claude: publicar cuando revise, con respaldo. Landing requiere `landing/assets/pricing.js` junto con index.html; app requiere collectstatic de `static/js/precios.js`. Son la misma implementación, sin dependencias nuevas. No se copió el selector mensual ni Odometer del ejemplo. No endpoints nuevos ni cambios de backend. Los detalles mantienen visibles precio y acciones de pago aunque se cierren los beneficios. Se mantuvo retenciones en landing por decisión previa de la propietaria. La animación no garantiza retención de clientes: cobro y vigencia siguen en servidor.
+
+## Estado actual — portada Facebook (Codex, 14/10)
+
+Lista redes/portadas/facebook-facturaporaqui.png y guía de uso, sin publicación. No requiere backend ni despliegue.
+
+## Pendiente para Codex — portada
+
+- [x] Diseñar y verificar PNG de portada con marca Ingenioso y fondo continuo.
+
+## Notas entre agentes — portada
+
+Revisar recorte móvil/escritorio al subir a Facebook. No se requieren endpoints.
+
+## Estado actual — comprobante de retención (07) publicado `400e459` (Claude, 14/10/2026)
 
 - **Qué hace:**
   - Desde **Compras** (botón «Retención») se emite el comprobante de retención 07, XML versión 2.0.0 (Anexo 10).
@@ -22,7 +51,7 @@
   - El XML firmado es válido contra el XSD oficial.
   - **El SRI de pruebas (celcer) autorizó** la retención 001-002-988274312 de la empresa 6. Se armó en memoria con un proveedor ficticio; no quedó nada en la base.
   - El RIDE se revisó generado con petición web y sin ella.
-- **Falta:** publicar (con respaldo; tiene migraciones `comprobantes 0001–0004` y `pos 0013`) y el diseño de Codex que sigue.
+- **Publicado** el 14/10/2026 a las 19:10 UTC (`aafbe4a`, respaldo `pre-20261014-191047-aafbe4a6.dump`, migraciones `comprobantes 0001–0004` y `pos 0013`), con correcciones hasta `400e459` (enlace a Otros comprobantes, fecha ISO, resumen responsive). Verificado en el dominio con DEMOSTRACIÓN (`/root/capturas/fpa-retenciones-dominio.mjs`). Falta el diseño de Codex.
 - **Siguiente etapa:** liquidación de compra (03), después nota de débito (05) y guía de remisión (06).
 
 ## Pendiente para Codex — pantallas de retenciones

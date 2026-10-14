@@ -137,3 +137,12 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 @media(min-width:1200px){.fpa-plan .fp-plan-options .fp-plan-col{flex:0 0 33.333333%;max-width:33.333333%}}
 @media(min-width:768px) and (max-width:1199px){.fpa-plan .fp-plan-options .fp-plan-col{flex:0 0 50%;max-width:50%}.fpa-plan .fp-plan-options .fp-plan-col:last-child{flex:0 0 100%;max-width:100%}}
 @media(max-width:767px){.fpa-plan .fp-plan-options .fp-plan-col{flex:0 0 100%;max-width:100%}}
+
+/* Precio fijo anual y beneficios comparables. */
+.fp-annual-note{display:inline-flex;align-items:center;gap:10px;background:#E5F1F6;border-radius:12px;padding:12px 18px;font-size:15px;font-weight:600;color:#163B50}
+.fp-app-benefits{margin:14px 0 24px;border-top:1px solid var(--fp-border);padding-top:6px}
+.fp-app-benefits summary{font-size:16px;font-weight:700;cursor:pointer;padding:14px 0;min-height:48px}
+.fp-app-benefits .fpa-incluye{padding:0;list-style:none}.fp-app-benefits li{position:relative;padding:12px 0 12px 28px;border-top:1px solid #163b5010;line-height:1.6;margin:0}
+.fp-app-benefits li::before{content:'✓';position:absolute;left:0;color:#176581;font-weight:800}
+.fp-plan-multiempresa .fp-app-benefits{border-color:#ffffff30}.fp-plan-multiempresa .fp-app-benefits li{border-color:#ffffff20}.fp-plan-multiempresa .fp-app-benefits li::before{color:#8ed4eb}
+.fp-app-benefits summary:focus-visible{outline:3px solid #44badd;outline-offset:3px}
