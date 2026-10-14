@@ -1,5 +1,22 @@
 # Handoff compartido — frontend
 
+## Estado actual — tabla de precios y beneficios (Codex, 14/10/2026)
+
+Diseño inspirado en la referencia enviada por la propietaria, adaptado a los tres planes anuales y marca FacturaPorAquí. Landing: cabecera, precio fijo, alcance, CTA y beneficios con checks; beneficios desplegables con teclado. Multiempresa diferenciado. App: mismos beneficios desplegables y animaciones suaves. Sin mensualidad, descuentos ni importes animados.
+
+JavaScript propio con Web Animations e IntersectionObserver, respetando movimiento reducido. Se conservan precios, data-plan, opciones de formulario, CSRF, modos y reglas del backend. No desplegado.
+
+## Pendiente para Codex — tabla de precios
+
+- [x] Leer la referencia y adaptar diseño sin cambiar el cobro anual.
+- [x] Mejorar beneficios y agregar animaciones accesibles.
+- [x] Revisar responsive, teclado, selección de plan y movimiento reducido.
+- [x] Documentar pruebas y capturas.
+
+## Notas entre agentes — tabla de precios
+
+Claude: publicar cuando revise, con respaldo. Landing requiere `landing/assets/pricing.js` junto con index.html; app requiere collectstatic de `static/js/precios.js`. Son la misma implementación, sin dependencias nuevas. No se copió el selector mensual ni Odometer del ejemplo. No endpoints nuevos ni cambios de backend. Los detalles mantienen visibles precio y acciones de pago aunque se cierren los beneficios. Se mantuvo retenciones en landing por decisión previa de la propietaria. La animación no garantiza retención de clientes: cobro y vigencia siguen en servidor.
+
 ## Estado actual — portada Facebook (Codex, 14/10)
 
 Lista redes/portadas/facebook-facturaporaqui.png y guía de uso, sin publicación. No requiere backend ni despliegue.

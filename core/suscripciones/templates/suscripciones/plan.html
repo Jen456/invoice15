@@ -1,6 +1,7 @@
 {% extends 'skin.html' %}
 {% load static suscripciones %}
 {% block assets_body %}
+    <script src="{% static 'js/precios.js' %}" defer></script>
     <link rel="stylesheet" href="{% static 'suscripciones/css/plan.css' %}">
 {% endblock %}
 {% block breadcrumb_li %}
@@ -71,6 +72,7 @@
         {% if not payphone_listo %}
             <div class="alert alert-warning">El cobro en línea con PayPhone aún no está habilitado. Para activar tu plan escríbenos a <a href="mailto:ventas@facturaporaqui.com">ventas@facturaporaqui.com</a>.</div>
         {% endif %}
+        {% if not cubierta %}<p class="fp-annual-note">Planes anuales · IVA incluido</p>{% endif %}
         <div class="row fp-plan-options">
             {% for o in opciones %}
                 <div class="col-12 fp-plan-col mb-3">
@@ -80,13 +82,13 @@
                             <h3 class="h5 mb-1">{{ o.plan.name }}{% if o.actual %} <small class="text-muted">(tu plan actual)</small>{% endif %}</h3>
                             <p class="fpa-precio mb-1">{{ o.plan.price_cents|dolares }} <small>al año, IVA incluido</small></p>
                             <p class="text-muted mb-2">{{ o.plan.description }}</p>
-                            <ul class="fpa-incluye mb-3">
+                            <details class="fp-price-benefits fp-app-benefits" open><summary>Beneficios incluidos</summary><ul class="fpa-incluye mb-3">
                                 <li>{% if o.plan.multiempresa %}Hasta {{ o.plan.company_limit }} empresas (RUC distintos) con un solo pago{% else %}Para una sola empresa (1 RUC){% endif %}</li>
                                 <li>{% if o.plan.unlimited %}Comprobantes ilimitados{% else %}{{ o.plan.document_limit }} comprobantes autorizados al año{% endif %} (facturas y notas de crédito)</li>
                                 <li>Ventas, clientes, cuentas por cobrar y reportes</li>
                                 <li>Tu firma electrónica (.p12) y envío por correo</li>
                                 <li>Inventario sin límites</li>
-                            </ul>
+                            </ul></details>
                             <div class="mt-auto">
                                 {% if o.actual and estado.periodo %}
                                     <aside class="fp-current-summary" aria-label="Resumen de tu plan actual">

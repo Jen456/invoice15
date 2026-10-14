@@ -824,3 +824,21 @@ Pendientes: revisión/publicación por Claude con respaldo; PostgreSQL, teléfon
 ## 14/10/2026 — portada de Facebook
 
 Creada redes/portadas/facebook-facturaporaqui.png y guía README. Banner2035×773 px, colibrí Ingenioso, paleta coral/celeste/azul oscuro, lema y dominio. Fondo continuo, sin marco, sin precios; zona de perfil inferior izquierda despejada. Generado con referencia al isotipo, inspeccionado visualmente y PNG verificado. No cuenta de Facebook comprobada ni publicación automática; revisar recortes en plataforma al subir. Sin cambios de app.
+
+
+## 14/10/2026 — tabla de precios inspirada en la referencia
+
+Se leyó el texto adjunto (jQuery, selector mensual/anual, beneficios móviles y Odometer) como referencia de diseño, sin ejecutar ni copiar dependencias de terceros. La propietaria mantiene cobro anual y marca. Base frontend/etapa3 0bede49.
+
+Archivos:
+- `landing/index.html`: tarjetas con zonas claras de cabecera, precio anual, alcance RUC, CTA y beneficios en filas con checks. Se agregan beneficios disponibles: clientes/ventas/cuentas por cobrar, inventario/reportes y configuración guiada. Se conservan precios $50/$85/$199, data-plan, opciones de lead, retenciones y alcance 1 RUC / hasta 10 RUC. Aviso de pago anual con IVA. Sin selector mensual ni descuento inventado.
+- `core/suscripciones/templates/suscripciones/plan.html`: aviso de planes anuales, beneficios con details/summary nativos, carga del JS. Campos y formularios de pago intactos; no se promete un nuevo año en una mejora de período existente.
+- `static/css/facturaporaqui.css`: filas de beneficios, foco, checks y contraste en Multiempresa.
+- `static/js/precios.js` y `landing/assets/pricing.js`: implementación compartida sin bibliotecas nuevas. Entrada de tarjetas con Web Animations/IntersectionObserver, una vez al entrar en pantalla; si movimiento reducido está activo no anima. Selección visual del plan en landing conservando el handler existente que selecciona la opción del formulario. No cambia importe ni datos de pago. Sin JS el contenido sigue visible y los details funcionan nativamente.
+- HANDOFF y este informe; capturas `precios-*.png`.
+
+Validación: suite SQLite **270 aprobadas y 5 omitidas** (exclusivas de PostgreSQL), 41,81 s. Node --check y git diff --check correctos. Chromium: landing, planes de titular, empresas y adicional cubierta a 1440/1024/768/390/360 px, sin overflow; contratos de data-plan y lead, errores de RUC y menú/cobertura intactos. Sin errores JS ni recursos fallidos.
+
+Prueba adicional: con movimiento normal, 3 animaciones activas al entrar en precios; con movimiento reducido, 0. Details abierto/cerrado con Enter; CTA Multiempresa añade selección visual y mantiene el valor multiempresa del formulario. Precio199 visible y sin mutación. Capturas de comparación con ambas preferencias y vista previa revisada visualmente: paleta sin verde del ejemplo, texto legible y beneficios comparables. PayPhone deshabilitado localmente; no se completó pago ni se emitió documento.
+
+Sin modificaciones de vistas, servicios, modelos, migraciones o .env. No despliegue ni publicación externa. Claude debe incluir el nuevo JS al publicar landing y ejecutar collectstatic en app. Móvil físico y PostgreSQL no probados en esta revisión.
