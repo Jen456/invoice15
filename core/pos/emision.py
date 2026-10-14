@@ -78,6 +78,19 @@ def _nombre(comprobante):
     return f'{comprobante.receipt.name.lower()} {comprobante.voucher_number_full}'
 
 
+def _femenino(comprobante):
+    return comprobante.receipt.name.lower().startswith(('factura', 'nota', 'liquidación', 'guía'))
+
+
+def _la(comprobante):
+    """«la factura 001-…» / «el comprobante de retención 001-…»."""
+    return f'{"la" if _femenino(comprobante) else "el"} {_nombre(comprobante)}'
+
+
+def _autorizado(comprobante):
+    return 'autorizada' if _femenino(comprobante) else 'autorizado'
+
+
 # ------------------------------------------------------------------ fase 1: preparar
 
 def _fecha_de_clave(clave):
@@ -209,20 +222,20 @@ def _aplicar_autorizacion(comprobante, aut):
     estado = str(aut.estado)
     if estado == 'AUTORIZADO':
         _guardar_autorizado(comprobante, aut)
-        return {'resp': True, 'estado': AUTORIZADA, 'mensaje': f'{_nombre(comprobante).capitalize()} autorizada por el SRI.'}
+        return {'resp': True, 'estado': AUTORIZADA, 'mensaje': f'{_nombre(comprobante).capitalize()} {_autorizado(comprobante)} por el SRI.'}
     mensajes = _mensajes(aut)
     comprobante.status = NO_AUTORIZADA
     type(comprobante).all_companies.filter(pk=comprobante.pk).update(status=NO_AUTORIZADA)
     _registrar_error(comprobante, 'xml_authorized', {'access_code': comprobante.access_code, 'stage': estado, 'errors': mensajes})
     return {'resp': False, 'estado': NO_AUTORIZADA,
-            'error': f'El SRI no autorizó la {_nombre(comprobante)}: {_texto_mensajes(mensajes)}. Corrige los datos y '
+            'error': f'El SRI no autorizó {_la(comprobante)}: {_texto_mensajes(mensajes)}. Corrige los datos y '
                      'reenvíala desde el listado: se conservan el número y la clave de acceso.'}
 
 
 def _en_proceso(comprobante):
     return {'resp': True, 'estado': EN_PROCESO, 'en_proceso': True,
-            'mensaje': f'El SRI recibió la {_nombre(comprobante)} y aún la está autorizando. Quedó guardada como «En proceso en el SRI»: '
-                       'consulta su estado en el listado. No la vuelvas a emitir.'}
+            'mensaje': f'El SRI recibió {_la(comprobante)} y aún lo está autorizando. Quedó guardado como «En proceso en el SRI»: '
+                       'consulta su estado en el listado. No lo vuelvas a emitir.'}
 
 
 def _procesar(comprobante, esperas):
@@ -237,7 +250,7 @@ def _procesar(comprobante, esperas):
         type(comprobante).all_companies.filter(pk=comprobante.pk).update(status=DEVUELTA)
         _registrar_error(comprobante, 'xml_validation', {'access_code': comprobante.access_code, 'errors': mensajes})
         return {'resp': False, 'estado': DEVUELTA,
-                'error': f'El SRI devolvió la {_nombre(comprobante)}: {_texto_mensajes(mensajes)}. Corrige los datos y reenvíala '
+                'error': f'El SRI devolvió {_la(comprobante)}: {_texto_mensajes(mensajes)}. Corrige los datos y reenvíalo '
                          'desde el listado: se conservan el número y la clave de acceso.'}
     if resultado == 'secuencial':
         comprobante.status = SECUENCIAL_REGISTRADO
@@ -296,6 +309,11 @@ def _despues_de_autorizar(comprobante):
         from core.pos.notas_credito import actualizar_factura
         actualizar_factura(comprobante.sale_id)
         cliente = comprobante.sale.client
+    elif hasattr(comprobante, 'get_destinatario'):
+        # Comprobantes adicionales (retención…): el destinatario no es un cliente de ventas.
+        from types import SimpleNamespace
+        nombre, correo, enviar = comprobante.get_destinatario()
+        cliente = SimpleNamespace(send_email_invoice=enviar, user=SimpleNamespace(names=nombre, email=correo))
     else:
         cliente = comprobante.client
     SRI().notify_by_email(instance=comprobante, company=comprobante.company, client=cliente)
@@ -316,11 +334,12 @@ def emitir(comprobante):
 
 def consultar_pendientes(limite=200):
     """Para la tarea periódica: comprobantes en proceso o firmados sin enviar (todas las empresas)."""
+    from core.comprobantes.models import Retencion
     from core.pos.models import CreditNote, Sale
     from core.tenancy.context import company_context, platform_scope
     resumen = {'consultados': 0, 'autorizados': 0, 'pendientes': 0, 'con_error': 0}
     hace_un_rato = timezone.now() - timedelta(minutes=2)
-    for Modelo in (Sale, CreditNote):
+    for Modelo in (Sale, CreditNote, Retencion):
         with platform_scope():   # la lista abarca todas las empresas; cada comprobante se procesa en la suya
             pendientes = list(Modelo.all_companies.select_related('company')
                               .filter(create_electronic_invoice=True)

@@ -107,14 +107,16 @@ class SRI:
             if not instance.xml_authorized or not instance.pdf_authorized:
                 raise ValueError('el comprobante aún no tiene el XML autorizado y el RIDE')
             conexion, remitente, responder = self._correo_saliente(company)
+            total = getattr(instance, 'total', None)
+            monto = f'Total: USD {total:.2f}' if total is not None else f'Total retenido: USD {instance.total_retenido:.2f}'
             contenido = (f'Estimado(a) {client.user.names}:\n\n'
-                         f'{company.tradename or company.business_name} le envía su {instance.receipt.name.lower()} electrónica '
-                         f'autorizada por el SRI, en formato XML y PDF (RIDE).\n\n'
+                         f'{company.tradename or company.business_name} le envía el siguiente comprobante electrónico '
+                         f'autorizado por el SRI, en formato XML y PDF (RIDE).\n\n'
                          f'Documento: {instance.receipt.name} {instance.voucher_number_full}\n'
                          f'Fecha de emisión: {(instance.emission_date or instance.date_joined):%d/%m/%Y}\n'
-                         f'Total: USD {instance.total:.2f}\n'
+                         f'{monto}\n'
                          f'Clave de acceso y número de autorización: {instance.access_code}\n')
-            correo = EmailMessage(subject=f'{instance.receipt.name.capitalize()} electrónica {instance.voucher_number_full} - '
+            correo = EmailMessage(subject=f'{instance.receipt.name.capitalize()} {instance.voucher_number_full} - '
                                           f'{company.tradename or company.business_name}',
                                   body=contenido, from_email=remitente, to=[destinatario], reply_to=responder, connection=conexion)
             with instance.pdf_authorized.open('rb') as archivo:
@@ -126,7 +128,8 @@ class SRI:
             type(instance).all_companies.filter(pk=instance.pk).update(status=instance.status)
             response['resp'] = True
         except Exception as e:
-            response['error'] = f'La {instance.receipt.name.lower()} está autorizada, pero no se pudo enviar el correo al cliente ({e.__class__.__name__}: {str(e)[:200]}).'
+            response['error'] = (f'{instance.receipt.name.capitalize()} {instance.voucher_number_full}: autorizado por el SRI, pero no se '
+                                 f'pudo enviar el correo al destinatario ({e.__class__.__name__}: {str(e)[:200]}).')
             self.create_voucher_errors(instance, response)
         return response
 

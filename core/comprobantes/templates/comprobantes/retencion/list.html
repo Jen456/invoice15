@@ -1,0 +1,44 @@
+{% extends 'skin.html' %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item active" aria-current="page"><a href="{% url 'comprobantes_retenciones' %}"><i class="fas fa-file-invoice-dollar"></i> Retenciones</a></li>
+{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-retenciones">
+    <header class="fp-welcome"><span class="fp-eyebrow">Comprobantes electrónicos</span><h1>Comprobantes de retención</h1>
+        <p>Se emiten desde <a href="/pos/purchase/">Compras</a>: en la compra, elige «Emitir retención».</p></header>
+    {% for message in messages %}
+        <div class="alert {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'info' %}alert-info{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
+    {% endfor %}
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered bg-white">
+            <thead><tr><th scope="col">Número</th><th scope="col">Fecha</th><th scope="col">Proveedor</th><th scope="col">Factura del proveedor</th><th scope="col" class="text-right">Retenido</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+            <tbody>
+            {% for r in retenciones %}
+                <tr>
+                    <td>{{ r.voucher_number_full }}</td>
+                    <td>{{ r.emission_date|default:r.date_joined|date:"d/m/Y" }}</td>
+                    <td>{{ r.razon_social }}<br><small class="text-muted">{{ r.identificacion }}</small></td>
+                    <td>{{ r.num_doc_sustento_formato }}</td>
+                    <td class="text-right">${{ r.total_retenido|floatformat:2 }}</td>
+                    <td><span class="badge {% if r.status == 'authorized' or r.status == 'authorized_and_sent_by_email' %}badge-success{% elif r.status == 'in_process' %}badge-info{% elif r.status == 'without_authorizing' %}badge-warning{% else %}badge-danger{% endif %}">{{ r.get_status_display }}</span></td>
+                    <td class="text-nowrap">
+                        {% if r.pdf_authorized %}<a href="{{ r.get_pdf_authorized }}" target="_blank" class="btn btn-sm btn-outline-secondary">PDF</a>{% endif %}
+                        {% if r.xml_authorized %}<a href="{{ r.get_xml_authorized }}" target="_blank" class="btn btn-sm btn-outline-secondary">XML</a>{% endif %}
+                        {% if puede_emitir and r.status == 'without_authorizing' or puede_emitir and r.status == 'returned' or puede_emitir and r.status == 'not_authorized' or puede_emitir and r.status == 'in_process' %}
+                            <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="generate_invoice"><input type="hidden" name="id" value="{{ r.pk }}">
+                                <button type="submit" class="btn btn-sm fpa-btn-pagar">{% if r.status == 'in_process' %}Consultar en el SRI{% else %}Enviar al SRI{% endif %}</button></form>
+                        {% endif %}
+                        {% if puede_eliminar and r.status == 'without_authorizing' or puede_eliminar and r.status == 'returned' or puede_eliminar and r.status == 'not_authorized' or puede_eliminar and r.status == 'sequential_registered_error' %}
+                            <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ r.pk }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button></form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="text-muted">Aún no has emitido comprobantes de retención.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

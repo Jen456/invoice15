@@ -1,5 +1,64 @@
 # Handoff compartido — frontend
 
+## Estado actual — comprobante de retención (07) terminado, sin publicar (Claude, 14/10/2026)
+
+- **Qué hace:**
+  - Desde **Compras** (botón «Retención») se emite el comprobante de retención 07, XML versión 2.0.0 (Anexo 10).
+  - Los datos del sujeto retenido salen del proveedor de la compra. El documento sustento es la factura del proveedor (15 dígitos y autorización de 10, 37 o 49).
+  - Un paso «Revisa antes de emitir» calcula sin guardar.
+  - Usa firma nativa, emisión en dos fases y la tarea `consultar_sri`. Cada retención cuenta 1 del cupo. Se envía por correo al proveedor con su RIDE.
+  - Listado en `/comprobantes/retenciones/`.
+  - La numeración se configura en **Configuración de facturación → Otros comprobantes** (`/configuracion/otros/`).
+  - Una compra admite una sola retención vigente. Las que están en proceso o autorizadas no se borran: se anulan en SRI en línea.
+- **Catálogo de códigos:**
+  - `comprobantes.CodigoRetencion` es de la plataforma, no de cada empresa. La migración `0004_catalogo_retenciones` carga la tabla vigente desde el 01/03/2026 (Res. NAC-DGERCGC26-00000009, Catálogo ATS del 06/08/2026): 84 códigos de renta para residentes y 11 de IVA, de ellos 78 activos.
+  - Se edita en la administración de la plataforma; no se pueden borrar códigos, solo desactivarlos.
+  - Quedan inactivos los códigos que piden nodos que aún no generamos: dividendos, banano y autorretenciones. Los pagos al exterior (5xx) no se cargan.
+  - Detalle y fuentes en `NORMA-RETENCIONES-2026-10.md`.
+- **Aviso a no agentes:** las sociedades ya no son agentes de retención por sí solas. Si la empresa no está marcada como agente, la pantalla lo explica, pero no bloquea la emisión: hay casos puntuales en que cualquiera retiene.
+- **Verificado:**
+  - SQLite: 289 pruebas aprobadas y 5 omitidas. PostgreSQL: 294 aprobadas.
+  - `makemigrations --check` sin cambios.
+  - El XML firmado es válido contra el XSD oficial.
+  - **El SRI de pruebas (celcer) autorizó** la retención 001-002-988274312 de la empresa 6. Se armó en memoria con un proveedor ficticio; no quedó nada en la base.
+  - El RIDE se revisó generado con petición web y sin ella.
+- **Falta:** publicar (con respaldo; tiene migraciones `comprobantes 0001–0004` y `pos 0013`) y el diseño de Codex que sigue.
+- **Siguiente etapa:** liquidación de compra (03), después nota de débito (05) y guía de remisión (06).
+
+## Pendiente para Codex — pantallas de retenciones
+
+- [ ] `core/comprobantes/templates/comprobantes/retencion/create.html`: datos del sustento, líneas de retención (hasta 10), resumen «Revisa antes de emitir», aviso de compra con retención vigente y aviso a no agentes.
+- [ ] `core/comprobantes/templates/comprobantes/retencion/list.html`: estados, descargas de XML y PDF, reenviar y eliminar.
+- [ ] Sección «Comprobante de retención» en `core/configuracion/templates/configuracion/otros.html`.
+- [ ] Botón «Retención» en el listado de Compras (`core/pos/static/purchase/js/list.js`).
+- [ ] RIDE `core/comprobantes/templates/comprobantes/retencion/ride.html` (WeasyPrint, A4).
+- [ ] Revisar a 1440, 1024, 390 y 360 px, y registrar capturas.
+
+## Notas entre agentes — contrato de retenciones (Claude → Codex)
+
+- **No cambiar:** modelos, servicios, vistas, URL ni migraciones.
+- **Formulario de emisión** (deben conservarse):
+  - Nombres de los campos de `DocumentoSustentoForm`.
+  - El formset con prefijo `lineas` y su `management_form`.
+  - Los botones `name="action"` con `value="calcular"` y `value="emitir"`, y el CSRF.
+- **Contexto de `create.html`:**
+  - `compra`, `vigente`, `form`, `lineas`, `es_agente`.
+  - `resumen`, con `doc` (normalizado), `detalle` (codigo, concepto, base_imponible, porcentaje, valor_retenido, impuesto), `total`, `total_sin_impuestos` e `importe_total`.
+- **Listado:**
+  - Contexto: `retenciones`, `puede_emitir`, `puede_eliminar`.
+  - Acciones por POST: `action=generate_invoice` y `action=delete`, con `id`.
+  - Los estados se comparan de forma exacta: «authorized» está contenido en «not_authorized».
+- **Otros comprobantes:** el formulario envía `tipo` oculto y usa como prefijo el tipo (`07-…`).
+- **RIDE:**
+  - Conservar el contenedor `.hoja` de 190 mm y `table-layout: fixed`. Bootstrap fija `body { min-width: 992px }` al imprimir; sin eso el contenido se sale de la hoja.
+  - Contenido obligatorio:
+    - del emisor: razón social, RUC, direcciones, contabilidad y contribuyente especial;
+    - del comprobante: número, autorización y fecha, ambiente, clave en código de barras;
+    - del sujeto retenido: nombre e identificación, fecha y período fiscal;
+    - el detalle por línea (comprobante, número, fecha, ejercicio, base, impuesto, código, %, valor) y el total retenido;
+    - la información adicional, que incluye el RUC Proveedor y los datos de FACTURAPORAQUI.
+- **Datos de prueba:** usar empresas ficticias. No emitir documentos reales ni tocar numeraciones de clientes.
+
 ## Estado actual — diseño Plan Multiempresa terminado (Codex, 14/10/2026)
 
 Trabajo en frontend/etapa3 sobre a4e8415, sin reescribir historial. Landing con tres tarjetas y Multiempresa diferenciado, tema del plan/aviso cubierto/resumen de cupos en app, página Empresas del plan responsive y acceso desde sidebar/selector para la titular con permisos de plan. Se conservan condiciones de propietario para agregar RUC. No cambios backend. No desplegado; publicado informado por Claude sigue siendo c2eb08e.

@@ -264,6 +264,14 @@ class Command(BaseCommand):
                 'permissions': list(Permission.objects.filter(content_type__model=Promotions._meta.label.split('.')[1].lower()))
             },
             {
+                'name': 'Retenciones',
+                'url': '/comprobantes/retenciones/',
+                'icon': 'fas fa-file-invoice-dollar',
+                'description': 'Comprobantes de retención electrónicos emitidos desde Compras',
+                'moduletype': moduletype,
+                'permissions': list(Permission.objects.filter(content_type__app_label='comprobantes', content_type__model='retencion'))
+            },
+            {
                 'name': 'Errores de Comprob.',
                 'url': '/pos/voucher/errors/',
                 'icon': 'fas fa-file-archive',

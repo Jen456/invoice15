@@ -65,6 +65,8 @@ var purchase = {
                     class: 'text-center',
                     render: function (data, type, row) {
                         var buttons = '<a class="btn btn-success btn-xs btn-flat" rel="detail" data-toggle="tooltip" title="Detalles" ><i class="fas fa-folder-open"></i></a> ';
+                        // Comprobante de retención sobre la factura de esta compra (core/comprobantes).
+                        buttons += '<a href="/comprobantes/retenciones/nueva/' + row.id + '/" data-toggle="tooltip" title="Emitir retención" class="btn btn-info btn-xs btn-flat"><i class="fas fa-file-invoice-dollar"></i> Retención</a> ';
                         buttons += '<a href="' + pathname + 'delete/' + row.id + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
                         return buttons;
                     }

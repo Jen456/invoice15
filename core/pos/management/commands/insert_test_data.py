@@ -94,7 +94,7 @@ class Command(BaseCommand):
         punto = EmissionPoint.objects.create(establishment=establecimiento, code=company.issuing_point_code, is_default=True)
         BillingSetup.objects.create(completed_steps=[1, 2, 3, 4, 5], current_step=5, completed_at=timezone.now())
         for item in VOUCHER_TYPE:
-            sequence = 0 if item[0] == VOUCHER_TYPE[-1][0] else int(''.join(random.choices(numbers, k=7)))
+            sequence = 0 if item[0] == '08' else int(''.join(random.choices(numbers, k=7)))
             Receipt.objects.create(voucher_type=item[0], establishment_code=company.establishment_code,
                                    issuing_point_code=company.issuing_point_code, sequence=sequence,
                                    environment_type=company.environment_type, emission_point=punto,

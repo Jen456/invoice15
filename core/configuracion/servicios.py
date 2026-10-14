@@ -28,7 +28,14 @@ PASOS = (
 )
 FACTURA, NOTA_CREDITO, TICKET = VOUCHER_TYPE[0][0], VOUCHER_TYPE[1][0], VOUCHER_TYPE[2][0]
 DOCUMENTOS = ((FACTURA, 'Factura'), (NOTA_CREDITO, 'Nota de crédito'))
-NOMBRE_DOCUMENTO = {FACTURA: 'facturas', NOTA_CREDITO: 'notas de crédito', TICKET: 'tickets de venta'}
+RETENCION, LIQUIDACION, NOTA_DEBITO, GUIA = '07', '03', '05', '06'
+# Comprobantes opcionales: cada empresa configura y confirma su numeración aparte («Otros comprobantes»),
+# sin tocar el asistente ya confirmado. Se habilitan por etapas.
+OTROS_DOCUMENTOS = ((RETENCION, 'Comprobante de retención'),)
+NOMBRE_DOCUMENTO = {FACTURA: 'facturas', NOTA_CREDITO: 'notas de crédito', TICKET: 'tickets de venta',
+                    RETENCION: 'comprobantes de retención', LIQUIDACION: 'liquidaciones de compra',
+                    NOTA_DEBITO: 'notas de débito', GUIA: 'guías de remisión'}
+URL_OTROS = URL + 'otros/'
 AMBIENTES = dict(ENVIRONMENT_TYPE)
 PRODUCCION = 2
 
@@ -156,6 +163,10 @@ def requisitos_de_emision(company, tipo, electronica):
         paso = next((n for n, _ in PASOS if setup is None or not paso_completo(company, setup, n)), 5)
         faltan.append({'codigo': 'configuracion', 'paso': paso, 'url': f'{URL}paso/{paso}/',
                        'mensaje': f'Para emitir {nombre} completa la configuración de facturación (paso {paso}).'})
+    elif secuencia_configurada(company, tipo) is None and tipo in dict(OTROS_DOCUMENTOS):
+        faltan.append({'codigo': 'secuencia', 'paso': 'otros', 'url': URL_OTROS,
+                       'mensaje': (f'Configura la numeración de {nombre} para el ambiente {AMBIENTES.get(company.environment_type)} '
+                                   'en «Configuración de facturación → Otros comprobantes».')})
     elif secuencia_configurada(company, tipo) is None:
         faltan.append({'codigo': 'secuencia', 'paso': 3, 'url': f'{URL}paso/3/',
                        'mensaje': (f'Configura y confirma la numeración de {nombre} para el ambiente '
@@ -305,3 +316,36 @@ def confirmar_configuracion(company, usuario=None, request=None):
     audit(request, 'billing_setup_confirm', company=company, punto=punto.full_code, ambiente=company.environment_type,
           proximos=resumen)
     return setup
+
+
+# ---------------------------------------------------------------- otros comprobantes (opcionales)
+
+def otros_documentos(company):
+    """Estado de la numeración de cada comprobante opcional en el punto y ambiente actuales."""
+    punto = punto_predeterminado(company)
+    filas = []
+    for tipo, nombre in OTROS_DOCUMENTOS:
+        r = secuencia(company, punto, company.environment_type, tipo)
+        filas.append({'tipo': tipo, 'nombre': nombre, 'secuencia': r, 'confirmado': bool(r and r.confirmed_at),
+                      'proximo': r.next_number_full() if r else '', 'utilizada': bool(r and r.is_used)})
+    return punto, filas
+
+
+def configurar_otro_documento(company, tipo, modo, ultimo_texto='', confirmado=False, usuario=None, request=None):
+    """Configura y confirma en un solo paso la numeración de un comprobante opcional (retención, …)."""
+    if tipo not in dict(OTROS_DOCUMENTOS):
+        raise ErrorConfiguracion('Ese comprobante no está disponible.')
+    setup = obtener_setup(company)
+    if setup.completed_at is None:
+        raise ErrorConfiguracion('Primero completa y confirma la configuración de facturación (pasos 1 a 5).')
+    if not confirmado:
+        raise ErrorConfiguracion('Marca la confirmación de la numeración indicada.')
+    punto = punto_predeterminado(company)
+    with transaction.atomic():
+        r = configurar_secuencia(company, punto, company.environment_type, tipo, modo, ultimo_texto, confirmado, usuario, request)
+        r.confirmed_at, r.confirmed_by = timezone.now(), usuario
+        r.save(update_fields=['confirmed_at', 'confirmed_by'])
+    audit(request, 'billing_setup_confirm', company=company, tipo=tipo, punto=punto.full_code,
+          ambiente=company.environment_type, proximo=r.next_number_full())
+    return r
+

@@ -295,7 +295,7 @@ class SaleForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['client'].queryset = Client.objects.none()
-        self.fields['receipt'].choices = tuple((code, label) for code, label in VOUCHER_TYPE if code != VOUCHER_TYPE[1][0])
+        self.fields['receipt'].choices = tuple((code, label) for code, label in VOUCHER_TYPE if code in ('01', '08'))
 
     class Meta:
         model = Sale
