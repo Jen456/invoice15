@@ -84,7 +84,7 @@
                             <p class="text-muted mb-2">{{ o.plan.description }}</p>
                             <details class="fp-price-benefits fp-app-benefits" open><summary>Beneficios incluidos</summary><ul class="fpa-incluye mb-3">
                                 <li>{% if o.plan.multiempresa %}Hasta {{ o.plan.company_limit }} empresas (RUC distintos) con un solo pago{% else %}Para una sola empresa (1 RUC){% endif %}</li>
-                                <li>{% if o.plan.unlimited %}Comprobantes ilimitados{% else %}{{ o.plan.document_limit }} comprobantes autorizados al año{% endif %} (facturas y notas de crédito)</li>
+                                <li>{% if o.plan.unlimited %}Comprobantes ilimitados{% else %}{{ o.plan.document_limit }} comprobantes autorizados al año{% endif %} (facturas, notas de crédito y retenciones)</li>
                                 <li>Ventas, clientes, cuentas por cobrar y reportes</li>
                                 <li>Tu firma electrónica (.p12) y envío por correo</li>
                                 <li>Inventario sin límites</li>
