@@ -1,6 +1,6 @@
 # Handoff compartido — frontend
 
-## Estado actual — liquidación de compra (03) terminada, sin publicar (Claude, 14/10/2026)
+## Estado actual — liquidación de compra (03) publicada `d9d142a` (Claude, 14/10/2026)
 
 - **Qué hace:**
   - Desde **Compras** (botón «Liquidación») se emite la liquidación de compra de bienes y prestación de servicios: codDoc 03, XML 1.1.0 (Anexo 17).
@@ -26,7 +26,17 @@
   - El XML firmado es válido contra el XSD oficial 1.1.0.
   - **El SRI de pruebas (celcer) autorizó** la liquidación 001-002-920115897 y la retención 001-002-966385138, que tiene esa liquidación como sustento 03. Las dos son de la empresa 6, se armaron en memoria con un proveedor ficticio y no dejaron nada en la base.
   - El RIDE se revisó en A4.
-- **Sin publicar.** Se publica junto con el diseño de retenciones de Codex (`13d0cde`), ya integrado.
+- **Publicado** el 14/10/2026 a las 20:33 UTC junto con el diseño de retenciones de Codex (`13d0cde`):
+  - respaldo `pre-20261014-203336-d9d142aa.dump`; migraciones `comprobantes 0005–0007`;
+  - el módulo «Liquidaciones de compra» queda en Facturación para Propietario, Administrador, Contador y Consulta;
+  - las tablas nuevas tienen seguridad por filas.
+- **Verificado en el dominio** con DEMOSTRACIÓN (`/root/capturas/fpa-liquidaciones-dominio.mjs`, salida en `salida-liquidaciones/`):
+  - el listado, la sección 03 de Otros comprobantes y los 9 botones «Liquidación» y «Retención» de Compras funcionan;
+  - el formulario carga las 4 líneas de la compra #9;
+  - «Revisar» con pasaporte da un total de $323,28 (subtotal 15 %) sin guardar nada;
+  - sin desborde a 1366 ni a 390 px;
+  - el botón de Codex para agregar líneas de retención pasa de 3 a 4 líneas;
+  - sin errores de consola, sin respuestas ≥ 400 y sin liquidaciones creadas.
 
 ## Pendiente para Codex — pantallas de liquidación de compra
 

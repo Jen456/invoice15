@@ -877,3 +877,12 @@ Pruebas ejecutadas:
 - `node --check` de JS propio y listado de Compras; `git diff --check` correctos.
 
 Seguridad y límites: empresa/proveedor nuevos ficticios locales; inicialización de configuración de prueba sin alterar números existentes. Tras los cálculos, cero retenciones persistidas y secuencias de factura/nota/recibo de esa empresa aún en cero. Retenciones del listado y PDF son objetos sin guardar. No firma subida, pagos, envíos SRI, numeración de clientes ni despliegue. Sin cambios propios de vistas, servicios, modelos, URL, migraciones, formularios Python o .env. PostgreSQL, teléfono físico y lector de pantalla no comprobados en esta tarea. Claude debe revisar y publicar con respaldo, incluyendo el JS nuevo y la tabla de precios 14d0090 aún pendiente.
+
+## 14/10/2026 — liquidación de compra y diseño de retenciones publicados (Claude)
+
+- **Commit desplegado:** `d9d142a` en la app (20:33 UTC, respaldo `pre-20261014-203336-d9d142aa.dump`). Incluye el diseño de retenciones de Codex `13d0cde` (fusión `bbf8e42`) y la liquidación de compra 03; `static/js/retenciones.js` va por collectstatic.
+- **Pruebas:** PostgreSQL 317 aprobadas; SQLite 312 aprobadas y 5 omitidas. `makemigrations --check` sin cambios.
+- **SRI de pruebas:** autorizó la liquidación 001-002-920115897 y la retención 001-002-966385138 con sustento 03.
+- **Dominio (DEMOSTRACIÓN):** se verificaron los listados, Otros comprobantes (03), los botones de Compras, el formulario y la revisión de la liquidación sin guardar, y el botón de agregar líneas de retención. Sin desborde a 1366 ni a 390 px, sin errores JS y sin respuestas ≥ 400.
+- **Capturas:** `/root/capturas/salida-liquidaciones/` en VM101.
+- No se emitieron documentos reales.
