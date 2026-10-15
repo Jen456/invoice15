@@ -1,0 +1,30 @@
+{% extends 'skin.html' %}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page"><i class="fas fa-sliders-h"></i> Reglas de importación</li>{% endblock %}
+{% block content %}
+<div class="fp-config fp-importacion-reglas">
+    <header class="fp-config-header"><p class="fp-eyebrow">Configuración</p><h1 class="h3">Reglas de importación y contabilización</h1>
+        <p class="text-muted">Las cuentas son códigos de tu plan de cuentas. Se usan solo para la propuesta contable que revisa tu contador: FacturaPorAquí todavía no contabiliza.</p></header>
+    {% include 'importacion/_mensajes.html' %}
+    <form method="post" class="card fp-config-panel"><div class="card-body">{% csrf_token %}
+        <fieldset {% if not puede_editar %}disabled{% endif %}>
+        <div class="form-check"><input class="form-check-input" type="checkbox" name="verificar_con_sri" id="id_verificar" {% if regla.verificar_con_sri %}checked{% endif %}><label class="form-check-label" for="id_verificar">Verificar cada documento en el SRI al procesar el lote</label></div>
+        <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="exigir_verificacion" id="id_exigir" {% if regla.exigir_verificacion %}checked{% endif %}><label class="form-check-label" for="id_exigir">Exigir la verificación en el SRI para aprobar</label></div>
+        <div class="row">
+            <div class="form-group col-md-6"><label for="id_naturaleza" class="font-weight-bold">Naturaleza de las compras</label><select name="naturaleza_compra" id="id_naturaleza" class="form-control">{% for v, n in naturalezas %}<option value="{{ v }}" {% if regla.naturaleza_compra == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+            <div class="form-group col-md-6"><label for="id_tratamiento" class="font-weight-bold">Tratamiento del IVA en compras</label><select name="tratamiento_iva" id="id_tratamiento" class="form-control">{% for v, n in tratamientos %}<option value="{{ v }}" {% if regla.tratamiento_iva == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+            <div class="form-group col-md-4"><label for="id_cg" class="font-weight-bold">Cuenta de gasto</label><input id="id_cg" name="cuenta_gasto" value="{{ regla.cuenta_gasto }}" maxlength="30" class="form-control"></div>
+            <div class="form-group col-md-4"><label for="id_ci" class="font-weight-bold">Cuenta de inventario</label><input id="id_ci" name="cuenta_inventario" value="{{ regla.cuenta_inventario }}" maxlength="30" class="form-control"></div>
+            <div class="form-group col-md-4"><label for="id_ca" class="font-weight-bold">Cuenta de activo fijo</label><input id="id_ca" name="cuenta_activo_fijo" value="{{ regla.cuenta_activo_fijo }}" maxlength="30" class="form-control"></div>
+            <div class="form-group col-md-4"><label for="id_civa" class="font-weight-bold">IVA en compras</label><input id="id_civa" name="cuenta_iva_compras" value="{{ regla.cuenta_iva_compras }}" maxlength="30" class="form-control"></div>
+            <div class="form-group col-md-4"><label for="id_cp" class="font-weight-bold">Proveedores</label><input id="id_cp" name="cuenta_proveedores" value="{{ regla.cuenta_proveedores }}" maxlength="30" class="form-control"></div>
+            <div class="form-group col-md-4"><label for="id_crr" class="font-weight-bold">Retenciones de renta por pagar</label><input id="id_crr" name="cuenta_retencion_renta" value="{{ regla.cuenta_retencion_renta }}" maxlength="30" class="form-control"></div>
+            <div class="form-group col-md-4"><label for="id_cri" class="font-weight-bold">Retenciones de IVA por pagar</label><input id="id_cri" name="cuenta_retencion_iva" value="{{ regla.cuenta_retencion_iva }}" maxlength="30" class="form-control"></div>
+            <div class="form-group col-md-4"><label for="id_cv" class="font-weight-bold">Ventas</label><input id="id_cv" name="cuenta_ventas" value="{{ regla.cuenta_ventas }}" maxlength="30" class="form-control"></div>
+            <div class="form-group col-md-4"><label for="id_civ" class="font-weight-bold">IVA en ventas</label><input id="id_civ" name="cuenta_iva_ventas" value="{{ regla.cuenta_iva_ventas }}" maxlength="30" class="form-control"></div>
+            <div class="form-group col-md-4"><label for="id_cc" class="font-weight-bold">Clientes</label><input id="id_cc" name="cuenta_clientes" value="{{ regla.cuenta_clientes }}" maxlength="30" class="form-control"></div>
+        </div>
+        {% if puede_editar %}<button type="submit" class="btn fpa-btn-pagar">Guardar reglas</button>{% endif %}
+        </fieldset>
+    </div></form>
+</div>
+{% endblock %}

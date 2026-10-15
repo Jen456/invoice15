@@ -58,6 +58,7 @@ class Dashboard(models.Model):
 class ModuleType(models.Model):
     name = models.CharField(max_length=150, unique=True, verbose_name='Nombre')
     icon = models.CharField(max_length=30, unique=True, verbose_name='Icono')
+    orden = models.PositiveSmallIntegerField(default=100, verbose_name='Orden en el menú')
 
     def __str__(self):
         return self.name
@@ -78,7 +79,7 @@ class ModuleType(models.Model):
         group = get_group(request) if request is not None else None
         if group is not None:
             module_ids = list(group.groupmodule_set.filter(module__module_type=self).values_list('module_id', flat=True))
-            queryset = Module.objects.filter(id__in=module_ids).order_by('name')
+            queryset = Module.objects.filter(id__in=module_ids).order_by('orden', 'name')
         return queryset
 
     class Meta:
@@ -101,6 +102,7 @@ class Module(models.Model):
     icon = models.CharField(max_length=30, null=True, blank=True, verbose_name='Icono')
     image = models.ImageField(upload_to='module/%Y/%m/%d', null=True, blank=True, verbose_name='Imagen')
     permissions = models.ManyToManyField(Permission, blank=True, verbose_name='Permisos')
+    orden = models.PositiveSmallIntegerField(default=100, verbose_name='Orden dentro de su grupo')
 
     def __str__(self):
         return f'{self.name} / {self.url}'
@@ -233,12 +235,12 @@ class UserAccess(models.Model):
 
 def get_session_module_types(self):
     ids = list(self.groupmodule_set.all().values_list('module__module_type_id', flat=True).distinct())
-    return ModuleType.objects.filter(id__in=ids).order_by('name')
+    return ModuleType.objects.filter(id__in=ids).order_by('orden', 'name')
 
 
 def get_session_modules(self):
     ids = list(self.groupmodule_set.filter(module__module_type__isnull=True).values_list('module_id', flat=True).distinct())
-    return Module.objects.filter(id__in=ids).order_by('name')
+    return Module.objects.filter(id__in=ids).order_by('orden', 'name')
 
 
 Group.add_to_class('get_session_module_types', get_session_module_types)

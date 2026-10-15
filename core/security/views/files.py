@@ -17,7 +17,7 @@ from django.http import FileResponse, Http404, HttpResponse
 from core.tenancy.storage import GLOBAL_PREFIXES, TENANT_ROOT
 
 BLOCKED_SUFFIXES = {'.p12', '.pfx', '.key', '.pem'}
-BLOCKED_PREFIXES = ('backup/',)
+BLOCKED_PREFIXES = ('backup/', 'privado/')   # privado/: XML y PDF importados (se entregan con permiso propio)
 # Tipos que el navegador podría ejecutar como documento: se aíslan con CSP sandbox.
 ACTIVE_TYPES = {'image/svg+xml', 'text/html', 'application/xhtml+xml', 'text/xml', 'application/xml'}
 

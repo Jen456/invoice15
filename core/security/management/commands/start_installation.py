@@ -11,6 +11,7 @@ django.setup()
 from core.security.models import *
 from django.contrib.auth.models import Permission
 from core.pos.models import *
+from core.security.menu import organizar_menu
 from core.tenancy.roles import strip_platform_modules, sync_roles
 
 
@@ -437,6 +438,7 @@ class Command(BaseCommand):
 
         # Roles de empresa sobre los módulos recién creados; los de la plataforma
         # (grupos, módulos, configuración global) solo para superusuarios.
+        organizar_menu(ModuleType, Module, Permission)   # grupos, nombres y orden del menú; módulos de importación
         sync_roles(Group, Module, GroupModule)
         strip_platform_modules(Group, GroupModule)
         print('roles de empresa sincronizados')

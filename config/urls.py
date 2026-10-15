@@ -34,5 +34,6 @@ urlpatterns = [
     path('suscripcion/', include('core.suscripciones.urls')),
     path('configuracion/facturacion/', include('core.configuracion.urls')),
     path('comprobantes/', include('core.comprobantes.urls')),
+    path('importacion/', include('core.importacion.urls')),
     path('', DashboardView.as_view(), name='dashboard'),
 ]

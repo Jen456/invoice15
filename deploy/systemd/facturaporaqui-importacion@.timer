@@ -1,0 +1,11 @@
+# Cada 5 minutos: avanza los lotes de importación en cola y reintenta los XML que el SRI no entregó.
+[Unit]
+Description=FacturaPorAquí (%i) - procesamiento periódico de importaciones
+
+[Timer]
+OnCalendar=*:2/5
+RandomizedDelaySec=30
+Persistent=false
+
+[Install]
+WantedBy=timers.target

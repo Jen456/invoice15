@@ -1,0 +1,18 @@
+{% extends 'skin.html' %}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page"><i class="fas fa-layer-group"></i> Lotes e historial</li>{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-importacion">
+    <header class="fp-welcome"><span class="fp-eyebrow">Importación de documentos</span><h1>Lotes e historial</h1>
+        {% if puede_importar %}<p><a href="{% url 'importacion_nueva' %}" class="btn fpa-btn-pagar">Importar XML / RIDE</a></p>{% endif %}</header>
+    {% include 'importacion/_mensajes.html' %}
+    <div class="table-responsive fp-retencion-listado"><table class="table table-sm table-bordered bg-white fp-retencion-tabla">
+        <thead><tr><th scope="col">Lote</th><th scope="col">Fecha</th><th scope="col">Archivos</th><th scope="col">Avance</th><th scope="col">Estado</th><th scope="col">Importado por</th></tr></thead>
+        <tbody>
+        {% for l in lotes %}
+            <tr><td data-label="Lote"><a href="{% url 'importacion_lote' l.id %}">#{{ l.id }}</a></td><td data-label="Fecha">{{ l.creado|slice:":16"|cut:"T"|default:"" }}</td>
+                <td data-label="Archivos">{{ l.total_archivos }}</td><td data-label="Avance">{{ l.progreso }} %</td>
+                <td data-label="Estado">{{ l.estado.nombre }}</td><td data-label="Importado por">{{ l.usuario }}</td></tr>
+        {% empty %}<tr><td colspan="6" class="text-muted">Todavía no hay importaciones.</td></tr>{% endfor %}
+        </tbody></table></div>
+</div>
+{% endblock %}

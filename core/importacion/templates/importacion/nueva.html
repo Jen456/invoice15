@@ -1,0 +1,16 @@
+{% extends 'skin.html' %}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page"><i class="fas fa-file-import"></i> Nueva importación</li>{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-importacion fp-importacion-nueva">
+    <header class="fp-welcome"><span class="fp-eyebrow">Importación de documentos</span><h1>Importar XML / RIDE</h1>
+        <p>Sube comprobantes que ya existen: XML autorizados del SRI o el RIDE en PDF. Esto no emite facturas ni usa tu numeración.</p></header>
+    {% include 'importacion/_mensajes.html' %}
+    <form method="post" enctype="multipart/form-data" class="card fp-retencion-panel"><div class="card-body">{% csrf_token %}
+        <label for="id_archivos" class="font-weight-bold">Archivos XML o PDF</label>
+        <input type="file" name="archivos" id="id_archivos" class="form-control" multiple accept=".xml,.pdf,application/xml,text/xml,application/pdf" required>
+        <small class="form-text text-muted">Hasta {{ limites.MAX_ARCHIVOS_POR_LOTE }} archivos por lote; XML de hasta {{ limites.MAX_XML_BYTES|filesizeformat }} y PDF de hasta {{ limites.MAX_PDF_BYTES|filesizeformat }} y {{ limites.MAX_PDF_PAGINAS }} páginas. Por ahora se admiten facturas (01).</small>
+        <button type="submit" class="btn fpa-btn-pagar mt-3">Importar</button>
+        <a href="{% url 'importacion_lotes' %}" class="btn btn-link mt-3">Ver lotes</a>
+    </div></form>
+</div>
+{% endblock %}

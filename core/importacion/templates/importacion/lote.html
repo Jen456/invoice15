@@ -1,0 +1,31 @@
+{% extends 'skin.html' %}
+{% block breadcrumb_li %}<li class="breadcrumb-item"><a href="{% url 'importacion_lotes' %}"><i class="fas fa-layer-group"></i> Lotes</a></li><li class="breadcrumb-item active" aria-current="page">Lote #{{ lote.pk }}</li>{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-importacion fp-importacion-lote">
+    <header class="fp-welcome"><span class="fp-eyebrow">Importación de documentos</span><h1>Lote #{{ lote.pk }}</h1>
+        <p>{{ resumen.estado.nombre }} · {{ resumen.progreso }} % · {{ resumen.total_archivos }} archivos</p></header>
+    {% include 'importacion/_mensajes.html' %}
+    {% if resumen.pendientes and puede_importar %}
+        <form method="post" class="mb-3">{% csrf_token %}<button type="submit" name="action" value="procesar" class="btn fpa-btn-pagar">Procesar los pendientes ({{ resumen.pendientes }})</button></form>
+    {% endif %}
+    <div class="table-responsive fp-retencion-listado"><table class="table table-sm table-bordered bg-white fp-retencion-tabla">
+        <thead><tr><th scope="col">Archivo</th><th scope="col">Tipo</th><th scope="col">Estado</th><th scope="col">Detalle</th></tr></thead>
+        <tbody>
+        {% for e in resumen.entradas %}
+            <tr><td data-label="Archivo">{{ e.nombre }}</td><td data-label="Tipo">{{ e.tipo|upper }}</td><td data-label="Estado">{{ e.estado.nombre }}</td>
+                <td data-label="Detalle">
+                    {% for m in e.errores %}<div class="text-danger">{{ m.texto }}</div>{% endfor %}
+                    {% for m in e.advertencias %}<div class="text-muted small">{{ m.texto }}</div>{% endfor %}
+                    {% if e.documento_id %}<a href="{% url 'importacion_documento' e.documento_id %}">Ver documento</a>{% endif %}
+                    {% if puede_importar and e.estado.id == 'pendiente_clave' or puede_importar and e.estado.id == 'pendiente_xml' %}
+                        <form method="post" class="form-inline mt-1">{% csrf_token %}<input type="hidden" name="action" value="clave"><input type="hidden" name="entrada" value="{{ e.id }}">
+                            <label class="sr-only" for="clave-{{ e.id }}">Clave de acceso</label>
+                            <input id="clave-{{ e.id }}" name="clave" class="form-control form-control-sm mr-1" inputmode="numeric" maxlength="49" placeholder="Clave de acceso (49 dígitos)" list="cand-{{ e.id }}">
+                            <datalist id="cand-{{ e.id }}">{% for c in e.candidatas %}<option value="{{ c.clave }}">{% endfor %}</datalist>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Buscar en el SRI</button></form>
+                    {% endif %}
+                </td></tr>
+        {% endfor %}
+        </tbody></table></div>
+</div>
+{% endblock %}
