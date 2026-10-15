@@ -13,8 +13,9 @@ ESTRUCTURA = (
         ('/pos/credit/note/admin/', 'Notas de crédito', 2),
         ('/comprobantes/retenciones/', 'Retenciones emitidas', 3),
         ('/comprobantes/notas-debito/', 'Notas de débito', 4),
-        ('/comprobantes/liquidaciones/', 'Liquidaciones de compra', 5),
-        ('/pos/voucher/errors/', 'Errores de comprobantes', 6),
+        ('/comprobantes/guias/', 'Guías de remisión', 5),
+        ('/comprobantes/liquidaciones/', 'Liquidaciones de compra', 6),
+        ('/pos/voucher/errors/', 'Errores de comprobantes', 7),
     )),
     ('Clientes y promociones', 'fas fa-user-friends', 20, (
         ('/pos/client/', 'Clientes', 1),

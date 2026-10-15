@@ -334,12 +334,12 @@ def emitir(comprobante):
 
 def consultar_pendientes(limite=200):
     """Para la tarea periódica: comprobantes en proceso o firmados sin enviar (todas las empresas)."""
-    from core.comprobantes.models import LiquidacionCompra, NotaDebito, Retencion
+    from core.comprobantes.models import GuiaRemision, LiquidacionCompra, NotaDebito, Retencion
     from core.pos.models import CreditNote, Sale
     from core.tenancy.context import company_context, platform_scope
     resumen = {'consultados': 0, 'autorizados': 0, 'pendientes': 0, 'con_error': 0}
     hace_un_rato = timezone.now() - timedelta(minutes=2)
-    for Modelo in (Sale, CreditNote, Retencion, LiquidacionCompra, NotaDebito):
+    for Modelo in (Sale, CreditNote, Retencion, LiquidacionCompra, NotaDebito, GuiaRemision):
         with platform_scope():   # la lista abarca todas las empresas; cada comprobante se procesa en la suya
             pendientes = list(Modelo.all_companies.select_related('company')
                               .filter(create_electronic_invoice=True)

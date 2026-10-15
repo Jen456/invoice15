@@ -967,3 +967,12 @@ Pruebas:
 - `node --check` en los dos JS y `git diff --check` correctos. Inspección visual de carga, bandejas, menú, impuestos y propuesta móvil.
 
 Límites: PostgreSQL, teléfono físico y lector de pantalla no ejecutados por Codex. Sin documentos reales, claves privadas, pagos, emisiones ni cambios de numeración. El procesamiento al 100 % no promete verificación SRI de todos los documentos: se muestra el estado individual y se permite verificar según contrato. No despliegue de aplicación ni landing; entrega para revisión/publicación por Claude con respaldo, dependencias y temporizador del backend.
+## 15/10/2026 — guía de remisión publicada (Claude)
+
+- **Commit desplegado:** `561437a` (19:25 UTC, respaldo `pre-20261015-192505-561437aa.dump`). Es la rama `publicacion/guia`: lo publicado más la guía, sin la importación. En `plataforma` la guía está en `7eb53f5`.
+- **Pruebas:**
+  - Rama publicada: PostgreSQL 358 aprobadas; SQLite 353 aprobadas y 5 omitidas.
+  - `plataforma`: PostgreSQL 447 aprobadas; SQLite 440 aprobadas y 7 omitidas.
+- **SRI de pruebas:** autorizó la guía 001-002-953941043 sobre una factura de prueba.
+- **Dominio:** listado, Otros comprobantes (06) y menú sin errores. El formulario y la revisión se probaron con el código publicado en una transacción deshecha.
+- No se emitieron documentos reales.

@@ -100,6 +100,8 @@ var sale = {
                                 buttons += '<a rel="create_credit_note" class="dropdown-item"><i class="fas fa-minus-circle"></i> Crear nota de credito</a>';
                                 // Nota de débito (intereses, gastos de cobranza) sobre la factura autorizada (core/comprobantes).
                                 buttons += '<a href="/comprobantes/notas-debito/nueva/' + row.id + '/" class="dropdown-item"><i class="fas fa-plus-circle"></i> Crear nota de débito</a>';
+                                // Guía de remisión del traslado de lo vendido (core/comprobantes).
+                                buttons += '<a href="/comprobantes/guias/nueva/' + row.id + '/" class="dropdown-item"><i class="fas fa-truck"></i> Crear guía de remisión</a>';
                             }
                         }
                         buttons += '</div></div></div>';

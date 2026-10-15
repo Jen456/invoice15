@@ -326,3 +326,69 @@ class NotaDebitoMotivo(TenantModel):
         verbose_name_plural = 'Motivos de nota de débito'
         ordering = ('id',)
         default_permissions = ()
+
+
+class GuiaRemision(ComprobanteElectronico):
+    """Guía de remisión (codDoc 06, XML 1.1.0) que ampara el traslado de lo vendido en una factura autorizada."""
+    TIPO_IDENTIFICACION = (('04', 'RUC'), ('05', 'Cédula'), ('06', 'Pasaporte'), ('08', 'Identificación del exterior'))
+
+    sale = models.ForeignKey('pos.Sale', null=True, blank=True, on_delete=models.PROTECT, related_name='guias', verbose_name='Factura')
+    # Traslado
+    dir_partida = models.CharField(max_length=300, verbose_name='Dirección de partida')
+    fecha_inicio = models.DateField(verbose_name='Inicio del transporte')
+    fecha_fin = models.DateField(verbose_name='Fin del transporte')
+    placa = models.CharField(max_length=20, verbose_name='Placa')
+    transportista_tipo_identificacion = models.CharField(max_length=2, choices=TIPO_IDENTIFICACION, verbose_name='Tipo de identificación del transportista')
+    transportista_identificacion = models.CharField(max_length=20, verbose_name='Identificación del transportista')
+    transportista_razon_social = models.CharField(max_length=300, verbose_name='Transportista')
+    # Destinatario (copia al emitir) y documento sustento
+    identificacion = models.CharField(max_length=20, verbose_name='Identificación del destinatario')
+    razon_social = models.CharField(max_length=300, verbose_name='Destinatario')
+    direccion = models.CharField(max_length=300, verbose_name='Dirección de destino')
+    motivo = models.CharField(max_length=300, verbose_name='Motivo del traslado')
+    ruta = models.CharField(max_length=300, blank=True, verbose_name='Ruta')
+    cod_estab_destino = models.CharField(max_length=3, blank=True, verbose_name='Establecimiento de destino')
+    doc_aduanero = models.CharField(max_length=20, blank=True, verbose_name='Documento aduanero único')
+    cod_doc_sustento = models.CharField(max_length=2, default='01', verbose_name='Tipo de documento sustento')
+    num_doc_sustento = models.CharField(max_length=17, blank=True, verbose_name='Número del documento sustento')
+    aut_doc_sustento = models.CharField(max_length=49, blank=True, verbose_name='Autorización del documento sustento')
+    fecha_doc_sustento = models.DateField(null=True, blank=True, verbose_name='Fecha del documento sustento')
+    correo = models.CharField(max_length=254, blank=True, verbose_name='Correo')
+    enviar_correo = models.BooleanField(default=True, verbose_name='Enviar por correo')
+
+    class Meta:
+        verbose_name = 'Guía de remisión'
+        verbose_name_plural = 'Guías de remisión'
+        ordering = ('-id',)
+        default_permissions = ()
+        permissions = (('view_guiaremision', 'Puede ver guías de remisión'), ('add_guiaremision', 'Puede emitir guías de remisión'),
+                       ('delete_guiaremision', 'Puede eliminar guías de remisión no enviadas'))
+        constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='guia_numero_unico_por_secuencia')]
+
+    def __str__(self):
+        return f'Guía de remisión {self.voucher_number_full} · {self.razon_social}'
+
+    def get_destinatario(self):
+        return self.razon_social, self.correo, bool(self.correo) and self.enviar_correo
+
+    def generate_xml(self):
+        from core.comprobantes.xml_guia import generar_xml
+        return generar_xml(self)
+
+    def generate_pdf_authorized(self):
+        from core.comprobantes.ride import guardar_ride
+        guardar_ride(self, 'comprobantes/guia/ride.html')
+
+
+class GuiaDetalle(TenantModel):
+    guia = models.ForeignKey(GuiaRemision, on_delete=models.CASCADE, related_name='detalles')
+    sale_detail = models.ForeignKey('pos.SaleDetail', null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    codigo = models.CharField(max_length=25, blank=True, verbose_name='Código')
+    descripcion = models.CharField(max_length=300, verbose_name='Descripción')
+    cantidad = models.DecimalField(max_digits=18, decimal_places=6, verbose_name='Cantidad')
+
+    class Meta:
+        verbose_name = 'Detalle de guía de remisión'
+        verbose_name_plural = 'Detalles de guía de remisión'
+        ordering = ('id',)
+        default_permissions = ()

@@ -1,0 +1,94 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Guía de remisión {{ c.voucher_number_full }}</title>
+    <link rel="stylesheet" href="{% static 'lib/bootstrap-4.6.0/css/bootstrap.min.css' %}"/>
+    <style>
+        @page { size: A4 portrait; margin: 12mm 10mm; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #163B50; }
+        .bloque { background: #E5F1F6; border-top: 2px solid #44BADD; padding: 8px 10px; margin-bottom: 6px; }
+        .bloque p { margin: 1px 0; }
+        .titulo { font-size: 17px; font-weight: bold; color: #163B50; }
+        /* Bootstrap fija en impresión body { min-width: 992px }, más ancho que la hoja: el contenido va en 190 mm (A4 menos márgenes) */
+        .hoja { width: 190mm; }
+        /* table-layout fijo y cortes en las claves de 49 dígitos: sin esto WeasyPrint ensancha las tablas más allá de la hoja */
+        table.cabecera, table.detalle { width: 100%; table-layout: fixed; }
+        .clave { word-break: break-all; font-size: 10px; }
+        .barcode { width: 100%; max-width: 100%; height: 60px; }
+        table.detalle { border-collapse: collapse; margin-top: 8px; }
+        table.detalle th { background: #163B50; color: #fff; padding: 3px; font-size: 9px; text-transform: uppercase; }
+        table.detalle td { border: 1px solid #b9cfd9; padding: 3px; font-size: 10px; overflow-wrap: break-word; }
+        .num { text-align: right; }
+        .bloque, tr { break-inside: avoid; }
+        thead { display: table-header-group; }
+        table.totales td { border: 1px solid #b9cfd9; padding: 3px; font-size: 10px; }
+        .logo { max-height: 90px; max-width: 100%; }
+    </style>
+</head>
+<body>
+<div class="hoja">
+<table class="cabecera"><tr>
+    <td style="width:50%; vertical-align:top; padding-right:8px">
+        <img class="logo" alt="" src="{{ empresa.get_image }}">
+        <div class="bloque">
+            <p><b>{{ empresa.business_name }}</b></p>
+            {% if empresa.tradename and empresa.tradename != empresa.business_name %}<p>{{ empresa.tradename }}</p>{% endif %}
+            <p><b>RUC:</b> {{ empresa.ruc }}</p>
+            <p><b>Dirección matriz:</b> {{ empresa.main_address }}</p>
+            <p><b>Dirección establecimiento:</b> {{ c.receipt.establishment_address|default:empresa.establishment_address }}</p>
+            <p><b>Obligado a llevar contabilidad:</b> {{ empresa.obligated_accounting }}</p>
+            {% if empresa.special_taxpayer and empresa.special_taxpayer != '000' %}<p><b>Contribuyente especial No.:</b> {{ empresa.special_taxpayer }}</p>{% endif %}
+        </div>
+    </td>
+    <td style="width:50%; vertical-align:top">
+        <div class="bloque">
+            <p class="titulo">GUÍA DE REMISIÓN</p>
+            <p><b>No.</b> {{ c.voucher_number_full }}</p>
+            <p><b>Número de autorización:</b><br><span class="clave">{{ c.access_code }}</span></p>
+            <p><b>Fecha y hora de autorización:</b> {{ c.authorization_date|date:"d/m/Y H:i:s" }}</p>
+            <p><b>Ambiente:</b> {{ c.get_environment_type_display }} · <b>Emisión:</b> NORMAL</p>
+            <p><b>Clave de acceso:</b></p>
+            <img alt="" class="barcode" src="{{ access_code_barcode }}">
+        </div>
+    </td>
+</tr></table>
+<div class="bloque">
+    <p><b>Identificación (transportista):</b> {{ c.transportista_identificacion }} · <b>Razón social / nombres:</b> {{ c.transportista_razon_social }}</p>
+    <p><b>Placa:</b> {{ c.placa }} · <b>Punto de partida:</b> {{ c.dir_partida }}</p>
+    <p><b>Fecha inicio de transporte:</b> {{ c.fecha_inicio|date:"d/m/Y" }} · <b>Fecha fin de transporte:</b> {{ c.fecha_fin|date:"d/m/Y" }}</p>
+</div>
+<div class="bloque">
+    {% if c.num_doc_sustento %}<p><b>Comprobante de venta:</b> FACTURA {{ c.num_doc_sustento }} · <b>Fecha de emisión:</b> {{ c.fecha_doc_sustento|date:"d/m/Y" }}</p>
+    {% if c.aut_doc_sustento %}<p><b>Número de autorización:</b> <span class="clave">{{ c.aut_doc_sustento }}</span></p>{% endif %}{% endif %}
+    <p><b>Motivo del traslado:</b> {{ c.motivo }}</p>
+    <p><b>Destino (punto de llegada):</b> {{ c.direccion }}</p>
+    <p><b>Identificación (destinatario):</b> {{ c.identificacion }} · <b>Razón social / nombres:</b> {{ c.razon_social }}</p>
+    {% if c.doc_aduanero %}<p><b>Documento aduanero:</b> {{ c.doc_aduanero }}</p>{% endif %}
+    {% if c.cod_estab_destino %}<p><b>Código establecimiento destino:</b> {{ c.cod_estab_destino }}</p>{% endif %}
+    {% if c.ruta %}<p><b>Ruta:</b> {{ c.ruta }}</p>{% endif %}
+</div>
+<table class="detalle">
+    <colgroup><col style="width:14%"><col style="width:66%"><col style="width:20%"></colgroup>
+    <thead><tr><th>Código principal</th><th>Descripción</th><th>Cantidad</th></tr></thead>
+    <tbody>
+    {% for d in c.detalles.all %}<tr><td>{{ d.codigo }}</td><td>{{ d.descripcion }}</td><td class="num">{{ d.cantidad|floatformat:"-6" }}</td></tr>{% endfor %}
+    </tbody>
+</table>
+<table class="detalle" style="width:70%">
+    <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
+    <thead><tr><th colspan="2">Información adicional</th></tr></thead>
+    <tbody>
+        {% if c.correo %}<tr><td><b>Email</b></td><td>{{ c.correo }}</td></tr>{% endif %}
+        {% if proveedor %}
+            <tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>
+            <tr><td><b>Proveedor</b></td><td>{{ proveedor.nombre }}</td></tr>
+            <tr><td><b>Email proveedor</b></td><td>{{ proveedor.email }}</td></tr>
+            <tr><td><b>Dirección proveedor</b></td><td>{{ proveedor.direccion }}</td></tr>
+        {% endif %}
+    </tbody>
+</table>
+</div>
+</body>
+</html>

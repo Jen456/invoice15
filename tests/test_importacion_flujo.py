@@ -349,7 +349,8 @@ class TestMenu:
         assert Module.objects.get(url='/pos/sale/admin/').name == 'Facturas emitidas'   # misma URL
         compras = Module.objects.filter(module_type__name='Compras y gastos').order_by('orden').values_list('name', flat=True)
         assert list(compras)[:3] == ['Compras registradas', 'Documentos recibidos', 'Proveedores']
-        assert not Module.objects.filter(url__icontains='guia').exists()                  # no se muestra lo no implementado
+        guias = Module.objects.get(url='/comprobantes/guias/')                            # implementada: aparece en su lugar
+        assert guias.module_type.name == 'Comprobantes Electrónicos' and guias.orden == 5 and guias.name == 'Guías de remisión'
         assert Module.objects.get(url='/importacion/reglas/').module_type.name == 'Configuración'
 
     def test_modulos_por_rol(self, empresa):
