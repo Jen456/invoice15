@@ -894,3 +894,40 @@ Seguridad y límites: empresa/proveedor nuevos ficticios locales; inicializació
 - **SRI de pruebas:** autorizó la nota de débito 001-002-955832690 sobre una factura de prueba.
 - **Dominio:** listado, Otros comprobantes (05) y menú sin errores ni desbordes. El formulario y la revisión se probaron con el código publicado en una transacción deshecha.
 - No se emitieron documentos reales.
+
+## 15/10/2026 — importación de comprobantes XML / RIDE (backend, Claude) — sin publicar
+
+- **Implementado:**
+  - App `core/importacion`:
+    - procesar_xml_sri y procesar_ride_pdf, con el trabajador del PDF aislado;
+    - la consulta de autorización al SRI;
+    - lotes, archivos privados con deduplicación, documentos idempotentes por empresa, ambiente y clave;
+    - verificación, clasificación, revisión, vinculación y propuesta contable revisable;
+    - API JSON, páginas base, reglas y la tarea `procesar_importaciones`.
+  - Menú reorganizado con datos y permisos: campo `orden` y `core/security/menu.py`.
+  - Diseño y esquema SQL en `IMPORTACION-COMPROBANTES.md`; contrato para Codex en HANDOFF.
+- **Pruebas nuevas, todas con documentos ficticios:**
+  - `tests/test_importacion_xml_pdf.py` (52):
+    - XML: CDATA, texto escapado, elemento hijo, RespuestaAutorizacionComprobante, SOAP y espacios de nombres;
+    - ataques: XXE, billion laughs, DOCTYPE externo, XML malformado, excesivo o en UTF-16;
+    - claves inválidas o incoherentes; varias tarifas, incluida la histórica de 12 %, y exento y no objeto; advertencias de conciliación;
+    - receptores con cédula, pasaporte, identificación del exterior o consumidor final; tipos no soportados;
+    - PDF: QR con URL (sin visitarla), código de barras, texto incrustado, sin código, varias claves, protegido, demasiadas páginas, tiempo agotado;
+    - SRI: autorizado, sin resultados, no autorizado, caído con reintentos, y ambiente según la clave.
+  - `tests/test_importacion_flujo.py` (30):
+    - archivo privado, sin tocar cupo ni numeraciones; duplicados por hash y por clave;
+    - clasificación exacta, sin recortar la cédula; lote con fallos parciales;
+    - PDF que recupera el XML del SRI; SRI no disponible con reintento por clave; clave manual;
+    - verificación: coincide, difiere, no existe o no autorizado;
+    - revisión: aprobar con propuesta que cuadra, descartar, reabrir, crear proveedor, vincular con compra y venta existentes, documento ajeno;
+    - aislamiento entre empresas, descarga privada, API, subida por partes, reglas, permisos por rol, menú y tarea programada.
+  - `tests/test_zzz_importacion_concurrencia_pg.py` (2, solo PostgreSQL): cuatro importaciones simultáneas de la misma clave y tres procesamientos simultáneos del mismo lote.
+- **Suites completas:** SQLite 412 aprobadas y 7 omitidas (exclusivas de PostgreSQL); PostgreSQL 419 aprobadas. `makemigrations --check` sin cambios.
+- **Dependencias nuevas** (en `requirements/base.txt` con hashes, licencias abiertas): `pypdfium2` 5.14.0 y `zxing-cpp` 3.1.1. Sin dependencias transitivas.
+- **Pendiente:**
+  - importar otros tipos (04, 05, 07, 06, 03);
+  - crear compras desde las líneas del XML;
+  - libro mayor;
+  - la decisión comercial sobre plan y cupo;
+  - publicar: migraciones, dependencias y el temporizador `facturaporaqui-importacion@`.
+- No se desplegó, no se usaron documentos reales y no se cambiaron precios, planes, PayPhone ni secuencias.

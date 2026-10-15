@@ -1,5 +1,141 @@
 # Handoff compartido — frontend
 
+## Estado actual — importación de comprobantes XML / RIDE (backend terminado, sin publicar) (Claude, 15/10/2026)
+
+- **App `core/importacion`:**
+  - Ingesta segura de XML del SRI, RIDE en PDF con lectura de QR y código de barras en un proceso aislado, y consulta oficial de autorización al SRI.
+  - Lotes con deduplicación por hash y por clave, clasificación, verificación, revisión, vinculación con compras y ventas existentes, y propuesta contable revisable.
+  - Detalle técnico y esquema SQL en `entregas/facturaporaqui/IMPORTACION-COMPROBANTES.md`.
+- **Menú reorganizado** con datos y permisos (`core/security/menu.py`, campo `orden`); las URL no cambian:
+  - **Comprobantes Electrónicos:** Facturas emitidas (antes «Ventas»), Notas de crédito, Retenciones emitidas, Notas de débito, Liquidaciones de compra, Errores de comprobantes. Guías de remisión no aparece porque no está implementada.
+  - **Clientes y promociones.**
+  - **Compras y gastos:** Compras registradas, Documentos recibidos, Proveedores, Gastos, Tipos de gastos.
+  - **Importación de documentos:** Nueva importación XML / RIDE, Lotes e historial, Documentos pendientes de revisión.
+  - **Bodega, Administrativo, Reportes.**
+  - **Configuración:** Empresa, Facturación y numeración, Reglas de importación y contabilización, Numeraciones registradas.
+  - **Seguridad.** «Plan y pagos» sigue suelto.
+- **Verificado:** pruebas nuevas (82, más las de concurrencia en PostgreSQL) y las suites completas. Ver RESULTADOS.
+- **No publicado. Hace falta además:** las dependencias `pypdfium2` y `zxing-cpp` (en `requirements/base.txt`) y el temporizador `facturaporaqui-importacion@` (`instalar-servicio.sh --aplicar`).
+
+## Pendiente para Codex — importación
+
+- [ ] **Nueva importación** (`importacion/nueva.html`):
+  - zona para arrastrar archivos y selector de XML o RIDE;
+  - subida por partes con progreso por archivo: el primer POST crea el lote y los siguientes agregan archivos;
+  - después, llamar a «procesar» hasta que `pendientes` sea 0.
+- [ ] **Lote** (`importacion/lote.html` y `lotes.html`):
+  - estado de cada archivo y errores en lenguaje claro (tabla de códigos abajo);
+  - clave manual o elegida entre las `candidatas`.
+- [ ] **Bandejas** (`importacion/bandeja.html`): Pendientes y Documentos recibidos, con filtros, etiqueta Emitido / Recibido / Ajeno y el estado de verificación.
+- [ ] **Revisión** (`importacion/documento.html`):
+  - impuestos por código y tarifa, bases por tarifa, advertencias, duplicados y candidatos de conciliación;
+  - confirmar antes de incorporar, con la casilla «incorporar sin verificar» cuando corresponda;
+  - propuesta contable marcada como **no contabilizada**.
+- [ ] **Reglas** (`importacion/reglas.html`).
+- [ ] **Visual del menú** con los nuevos grupos y el orden. Mostrar «Facturas emitidas» donde antes decía «Ventas», sin cambiar las URL.
+- [ ] **Acción «Importar XML / RIDE»** en Documentos recibidos y en la bandeja, visualmente distinta de «Emitir factura».
+- [ ] **Revisión visual:** 1440, 1024, 768, 390 y 360 px, teclado y movimiento reducido. Mantener el colibrí Ingenioso y la marca.
+
+## Notas entre agentes — contrato de importación (Claude → Codex)
+
+**Principios:**
+- **Empresa activa:** la decide el servidor, por la sesión y la membresía. Nunca envíes `company_id`. Un id de otra empresa responde 404.
+- **Montos:** todos llegan como texto decimal (`"135.00"`). No los conviertas a float para calcular; solo muéstralos.
+- **Autenticación y errores:** sesión de Django y cabecera `X-CSRFToken` en cada POST. Las respuestas de error son `{"error": "texto para el usuario"}`, con estado 400, 403, 404 o 413.
+
+**Permisos (códigos del grupo):**
+
+| Código | Qué permite | Roles |
+|---|---|---|
+| `view_documentoimportado` | ver lotes, bandejas, documentos y descargar archivos | Propietario, Administrador, Contador y Consulta |
+| `add_documentoimportado` | importar, procesar lotes y escribir claves | Propietario y Administrador |
+| `change_documentoimportado` | verificar en el SRI y revisar | Propietario y Administrador |
+| `view_reglaimportacion` / `change_reglaimportacion` | ver y cambiar las reglas | ver: Propietario, Administrador y Consulta; cambiar: Propietario y Administrador |
+
+El Vendedor no tiene nada de la importación. El Contador y Consulta ven pero no importan, así que «Nueva importación» no está en su menú.
+
+**Endpoints reales:**
+
+| Método y ruta | Permiso | Entrada | Respuesta |
+|---|---|---|---|
+| `POST /importacion/api/lotes/` | add | multipart, campo `archivos` (varios) | 201 `{lote}` con `entradas` |
+| `POST /importacion/api/lotes/<id>/archivos/` | add | multipart `archivos` | 201 `{lote}` (agrega al mismo lote) |
+| `POST /importacion/api/lotes/<id>/procesar/` | add | — | `{lote}`; procesa hasta 3 entradas en cola y, cuando no queda cola, verifica en el SRI si las reglas lo piden |
+| `GET /importacion/api/lotes/` | view | `?pagina=` | `{lotes, pagina, paginas}` |
+| `GET /importacion/api/lotes/<id>/` | view | — | `{lote}` con `entradas` (para el avance) |
+| `POST /importacion/api/entradas/<id>/clave/` | add | `clave` (form o JSON) | `{entrada}`; registra la clave y busca el XML en el SRI |
+| `GET /importacion/api/documentos/` | view | `?bandeja=pendientes\|recibidos\|emitidos\|ajenos\|sin_xml\|todos&q=&pagina=` | `{bandeja, documentos, total, pagina, paginas}` |
+| `GET /importacion/api/documentos/<id>/` | view | — | `{documento}` con el detalle completo |
+| `POST /importacion/api/documentos/<id>/verificar/` | change | — | `{documento}` |
+| `POST /importacion/api/documentos/<id>/revisar/` | change | `accion` y sus datos (form o JSON) | `{documento}` o 400 con `error` |
+| `GET` / `POST /importacion/api/reglas/` | view / change | campos de la regla (JSON: solo cambia lo que envías) | `{reglas, puede_editar, opciones}` |
+| `GET /importacion/archivos/<id>/descargar/` | view | — | descarga privada (XML o PDF), `no-store` |
+
+Las páginas de los módulos (`/importacion/nueva/`, `lotes/`, `lotes/<id>/`, `pendientes/`, `recibidos/`, `documentos/<id>/`, `reglas/`) ya funcionan sin JavaScript. Son una base: rediséñalas sin cambiar los nombres de los campos (`archivos`, `accion`, `clave`, `entrada`, `id`, `motivo`, `clasificacion`, `mobile`, `email`, `confirmar_sin_verificar`).
+
+**`lote`:**
+- Campos: `id`, `estado {id, nombre}` (procesando | terminado | con_errores), `total_archivos`, `pendientes`, `progreso` (0–100), `por_estado {estado: n}`, `creado`, `terminado`, `usuario`.
+- `entradas[]` tiene `id`, `nombre`, `tamano`, `tipo` (xml | pdf | desconocido), `orden`, `estado {id, nombre}`, `errores[]`, `advertencias[]` ({codigo, texto}), `candidatas[]` ({clave, origen}), `documento_id` y `sha256`.
+- **Avance:** después de subir, repite `POST …/procesar/` mientras `pendientes > 0`. Cada llamada responde en pocos segundos porque procesa 3 archivos. Si se corta, la tarea programada termina el lote.
+
+**Estados de una entrada:**
+- `en_cola` → `procesando` → uno de estos:
+  - `procesado`;
+  - `duplicado`: el contenido o la clave ya estaban importados y se enlaza al documento existente;
+  - `pendiente_clave`: el PDF no tiene una clave legible o es ambigua; pide la clave y ofrece las `candidatas`;
+  - `pendiente_xml`: hay clave, pero el SRI no entregó el XML; se puede reintentar con la misma clave;
+  - `rechazado`: ver `errores`.
+
+**Errores por archivo (`codigo` → qué mostrar):**
+- **Archivo:** `tipo_archivo` (no es XML ni PDF), `archivo_grande`, `vacio`, `no_es_xml`, `no_es_pdf`, `codificacion`.
+- **Estructura:** `xml_malformado`, `dtd_prohibida` (DOCTYPE o entidades rechazados por seguridad), `xml_excesivo`, `estructura_desconocida`, `estructura_invalida`, `comprobante_vacio`.
+- **Autorización:** `no_autorizado`, `sin_autorizaciones`, `ambiguo`.
+- **Tipo:** `tipo_no_soportado` (por ahora solo facturas 01).
+- **Clave:** `clave_invalida`, `clave_incoherente`, `autorizacion_incoherente`.
+- **Datos:** `campo_faltante`, `ruc_emisor`, `fecha_invalida`, `importe_invalido`, `importe_faltante`.
+- **PDF:** `demasiadas_paginas`, `pdf_protegido`, `pdf_invalido`, `pdf_tiempo`, `ambigua`.
+- **Advertencias (no impiden importar):** `sin_autorizacion`, `iva_descuadrado`, `bases_descuadradas`, `total_descuadrado`, `pagos_descuadrados`, `lineas_descuadradas`, `tarifa_incoherente`, `iva_desconocido`, `identificacion_formato`, `autorizacion_antigua`, `ambiente_autorizacion`, `varias_autorizaciones`, `sin_clave`, `texto_distinto`.
+
+**`documento`:**
+- **Siempre:**
+  - `id`, `clave_acceso`, `cod_doc`, `tipo_documento`, `version`, `ambiente`, `numero`, `fecha_emision`, `numero_autorizacion`, `fecha_autorizacion`, `origen {id, nombre}`;
+  - `emisor {ruc, razon_social, nombre_comercial}`, `receptor {tipo_identificacion, identificacion, razon_social}`, `moneda`;
+  - `importes {total_sin_impuestos, total_descuento, propina, total_iva, total_ice, total_irbpnr, importe_total}`;
+  - `estados {procesamiento, verificacion {.., en}, clasificacion, revision, contable}`, cada uno `{id, nombre}`;
+  - `proveedor`, `cliente`, `compra_id`, `venta_id`, `advertencias`, `creado`.
+- **Detalle:**
+  - `impuestos[]` {codigo, codigo_porcentaje, impuesto, categoria, tarifa, base_imponible, valor, descuento_adicional, valor_devolucion_iva}, `bases_por_tarifa[]`, `pagos[]`, `lineas`, `info_adicional`;
+  - `archivos {xml, pdf}` ({id, tipo, origen, tamano, sha256, nombre, descarga});
+  - `candidatos[]` ({tipo: compra | venta, id, numero, fecha, subtotal | total, razones[], exacto}) y `retenciones[]`;
+  - `propuesta_contable` ({estado: propuesta, contabilizado: false, cuadra, debe, haber, lineas[{cuenta, descripcion, debe, haber}], avisos[], nota});
+  - `nota_revision`, `eventos[]` y `acciones[]`: las acciones que hoy admite el servidor. Úsalas para mostrar u ocultar botones.
+
+**Estados y transiciones del documento:**
+- **Procesamiento:** `pendiente_xml` (solo la clave, sin importes) → `procesado` cuando llega el XML (subido o del SRI).
+- **Verificación:**
+  - `sin_autorizacion` o `declarada_en_archivo` → (verificar) → `verificada_sri`, `discrepancia_sri`, `no_autorizada_sri`, `no_encontrada_sri` o `sri_no_disponible`.
+  - Lo declarado en el archivo **no** prueba autenticidad: muéstralo distinto de «Verificada en el SRI».
+  - `discrepancia_sri` pasa la clasificación a `revision_manual`.
+- **Clasificación:**
+  - `emitido`, `recibido`, `ajeno` o `revision_manual`; `pendiente` mientras falta el XML.
+  - `clasificar` solo acepta lo que coincide exactamente con el RUC.
+  - Ajeno no se incorpora.
+- **Revisión:**
+  - Desde `pendiente`: `aprobar`, `vincular_compra` o `vincular_venta` (con `id`), `descartar` (con `motivo`), `clasificar`, `crear_proveedor` (`mobile`, `email`).
+  - Desde `aprobado`, `vinculado` o `descartado`: `reabrir`.
+  - Aprobar y vincular exigen la verificación en el SRI. Si no está verificado, hay que enviar `confirmar_sin_verificar=1`, con una confirmación explícita del usuario.
+  - Con `no_autorizada_sri`, `no_encontrada_sri` o `discrepancia_sri` nunca se incorpora.
+- **Contable:** `sin_propuesta` → `propuesta` al aprobar o vincular. No existe «contabilizado».
+- **Conciliación:** importar **no** crea compras, gastos ni ventas. Si hay candidatos, propón vincular; con `exacto: true`, destácalo como «probable duplicado».
+
+**Límites que la interfaz debe anunciar:**
+- XML de 2 MB; PDF de 5 MB y 5 páginas.
+- 50 archivos y 60 MB por lote; **9 MB por petición**: sube de a pocos archivos y agrégalos al lote.
+- Facturas 01 por ahora.
+- El procesamiento de cada PDF puede tardar unos segundos, y más si el SRI está lento.
+
+**Comercial:** importar no descuenta del cupo de emisión, no cambia numeraciones y no emite nada. Hoy está disponible en todos los planes; la propietaria debe decidir si debe ser de pago.
+
 ## Estado actual — nota de débito (05) publicada `914f0b7` (Claude, 14/10/2026)
 
 - **Qué hace:**
