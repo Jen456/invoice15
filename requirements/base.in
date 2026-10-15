@@ -16,3 +16,5 @@ XlsxWriter
 openpyxl
 suds
 requests
+pypdfium2
+zxing-cpp
