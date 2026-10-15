@@ -107,6 +107,12 @@ class EstadoPlan:
         return self.codigo == 'gratuito'
 
     @property
+    def ilimitado(self):
+        """Ilimitado o Multiempresa (también la empresa cubierta por un Multiempresa). Vencido: el último período."""
+        periodo = self.periodo or (self.ultimo if self.vencido else None)
+        return periodo is not None and (periodo.document_limit is None or periodo.plan.multiempresa)
+
+    @property
     def vencido(self):
         return self.codigo == 'vencida'
 

@@ -181,7 +181,11 @@ CREATE TABLE importacion_reglaimportacion (          -- una por empresa
 - **Tipos:** notas de crédito, notas de débito, retenciones recibidas, guías y liquidaciones importadas devuelven «tipo no soportado».
 - **Crear la compra desde el XML** (líneas → productos e inventario): no está; hoy se aprueba como documento recibido o se vincula a una compra existente. Requiere decidir el emparejamiento de productos.
 - **Libro mayor:** no existe. La propuesta contable es revisable y no se contabiliza.
-- **Decisión comercial:** la importación no consume cupo y se puede usar con cualquier plan, incluido el gratuito, porque no se agregó a `RUTAS_DE_PAGO`. Si debe exigir plan pagado o contar en el cupo, hay que decidirlo.
+- **Decisión comercial (propietaria, 15/10/2026):** la importación está incluida **solo en los planes Ilimitado y Multiempresa**, también para la empresa cubierta por un Multiempresa, y no consume cupo.
+  - `core/suscripciones/reglas.py`: `RUTAS_ILIMITADAS` y `requiere_ilimitado`. `EstadoPlan.ilimitado` toma el período vigente o, si venció, el último.
+  - Con Plan 1000 o el gratuito, el menú muestra el candado y la ruta redirige a Plan y pagos (la API responde 403 `{"plan": "ilimitado"}`).
+  - Con un Ilimitado vencido se consulta, pero no se importa.
+  - Plan y pagos muestra el beneficio en las tarjetas de Ilimitado y Multiempresa.
 - **Al publicar:**
   - instalar `facturaporaqui-importacion@.{service,timer}` con `instalar-servicio.sh --aplicar`;
   - instalar las dependencias nuevas `pypdfium2` y `zxing-cpp`, que entran en `requirements/base.txt` con hashes;

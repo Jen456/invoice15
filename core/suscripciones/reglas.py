@@ -18,6 +18,12 @@ RUTAS_DE_PAGO = (
     '/comprobantes/',
 )
 
+# Incluidos solo en los planes ilimitados (Ilimitado y Multiempresa), por decisión comercial del 15/10/2026.
+# No consumen cupo de emisión.
+RUTAS_ILIMITADAS = ('/importacion/',)
+MENSAJE_SOLO_ILIMITADO = ('La importación de comprobantes recibidos (XML y RIDE) está incluida en los planes Ilimitado y '
+                          'Multiempresa.')
+
 # Con el plan vencido o el cupo agotado se puede consultar, pero no emitir.
 RUTAS_DE_EMISION = ('/pos/sale/admin/add/', '/pos/credit/note/admin/add/', '/comprobantes/retenciones/nueva/',
                     '/comprobantes/liquidaciones/nueva/', '/comprobantes/notas-debito/nueva/')
@@ -36,6 +42,10 @@ MINUTOS_PAGO_PENDIENTE = 15
 
 def requiere_plan(path):
     return path.startswith(RUTAS_DE_PAGO)
+
+
+def requiere_ilimitado(path):
+    return path.startswith(RUTAS_ILIMITADAS)
 
 
 def es_emision(request):

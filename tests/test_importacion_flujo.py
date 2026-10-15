@@ -381,3 +381,50 @@ class TestTareaProgramada:
         sri.caido, sri.comprobantes[f.clave(secuencial='000000300')] = False, f.factura(secuencial='000000300')
         call_command('procesar_importaciones')
         assert leer(empresa, lambda: DocumentoImportado.objects.get(secuencial='000000300').estado_procesamiento) == 'procesado'
+
+
+class TestPlanes:
+    """Decisión comercial (15/10/2026): la importación está incluida solo en Ilimitado y Multiempresa; no usa cupo."""
+
+    def entrar(self, client, plan, **extra):
+        empresa = helpers.crear_empresa(f'PLAN {plan}', plan=plan, **extra)
+        helpers.iniciar_sesion(client, helpers.crear_usuario(f'dueno.{plan or "gratis"}.{empresa.pk}', empresa, ROLE_OWNER), empresa=empresa)
+        return empresa
+
+    @pytest.mark.parametrize('plan', ['plan-1000', None])
+    def test_plan_1000_y_gratuito_no_importan(self, client, plan):
+        self.entrar(client, plan)
+        respuesta = client.get('/importacion/nueva/')
+        assert respuesta.status_code == 302 and respuesta.url == '/suscripcion/'
+        api = client.post('/importacion/api/lotes/', {'archivos': [SimpleUploadedFile('a.xml', recibida().encode())]})
+        assert api.status_code == 403 and api.json()['plan'] == 'ilimitado' and 'Ilimitado y Multiempresa' in api.json()['error']
+        assert client.get('/importacion/api/documentos/').status_code == 403
+
+    def test_multiempresa_y_empresa_cubierta_importan(self, client):
+        from core.suscripciones import servicios as suscripciones
+        titular = self.entrar(client, 'multiempresa')
+        assert client.get('/importacion/nueva/').status_code == 200
+        dueno = Membership.objects.get(company=titular).user
+        adicional = suscripciones.agregar_empresa(titular, dueno, {'ruc': '0990000007001', 'business_name': 'CUBIERTA S.A.', 'tradename': '',
+                                                                   'main_address': 'Guayaquil', 'email': 'c@example.com', 'mobile': '0990000000'})
+        client.post('/empresas/cambiar/', {'company': adicional.pk})
+        assert client.get('/importacion/nueva/').status_code == 200
+
+    def test_ilimitado_vencido_solo_consulta(self, client):
+        from django.utils import timezone
+        empresa = self.entrar(client, 'ilimitado')
+        SubscriptionPeriod.objects.filter(company=empresa).update(ends_at=timezone.now() - timezone.timedelta(days=1))
+        assert client.get('/importacion/lotes/').status_code == 200
+        assert client.post('/importacion/api/lotes/', {'archivos': [SimpleUploadedFile('a.xml', recibida().encode())]}).status_code == 403
+
+    def test_candado_en_el_menu_y_beneficio_en_planes(self, client):
+        from core.suscripciones.servicios import estado_empresa
+        from core.suscripciones.templatetags.suscripciones import bloqueado_por_plan
+        mil = helpers.crear_empresa('MIL', plan='plan-1000')
+        ilimitada = helpers.crear_empresa('ILIMITADA', plan='ilimitado')
+        assert bloqueado_por_plan('/importacion/nueva/', estado_empresa(mil))
+        assert not bloqueado_por_plan('/importacion/nueva/', estado_empresa(ilimitada))
+        assert not bloqueado_por_plan('/pos/purchase/', estado_empresa(mil))
+        self.entrar(client, 'plan-1000')
+        html = client.get('/suscripcion/').content.decode()
+        assert html.count('Importación de comprobantes recibidos (XML y RIDE)') == 2   # Ilimitado y Multiempresa, no Plan 1000

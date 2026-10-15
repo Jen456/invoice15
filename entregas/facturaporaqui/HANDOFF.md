@@ -134,7 +134,11 @@ Las páginas de los módulos (`/importacion/nueva/`, `lotes/`, `lotes/<id>/`, `p
 - Facturas 01 por ahora.
 - El procesamiento de cada PDF puede tardar unos segundos, y más si el SRI está lento.
 
-**Comercial:** importar no descuenta del cupo de emisión, no cambia numeraciones y no emite nada. Hoy está disponible en todos los planes; la propietaria debe decidir si debe ser de pago.
+**Comercial (decidido el 15/10/2026):** la importación está incluida solo en **Ilimitado y Multiempresa**, también para la empresa cubierta por un Multiempresa. No descuenta cupo, no cambia numeraciones y no emite nada.
+- Con Plan 1000 o el gratuito, el menú muestra el candado (`bloqueado_por_plan`) y las páginas redirigen a `/suscripcion/` con un aviso.
+- La API responde 403 `{"error": "La importación de comprobantes recibidos (XML y RIDE) está incluida en los planes Ilimitado y Multiempresa. Mejora tu plan para usarla.", "plan": "ilimitado"}`. Muestra una invitación a mejorar el plan.
+- Con un Ilimitado vencido se consulta, pero no se importa.
+- Plan y pagos ya lista «Importación de comprobantes recibidos (XML y RIDE)» en esas dos tarjetas. Falta agregarlo a la landing: es tarea de Codex, y es texto comercial.
 
 ## Estado actual — nota de débito (05) publicada `914f0b7` (Claude, 14/10/2026)
 

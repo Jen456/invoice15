@@ -88,6 +88,7 @@
                                 <li>Ventas, clientes, cuentas por cobrar y reportes</li>
                                 <li>Tu firma electrónica (.p12) y envío por correo</li>
                                 <li>Inventario sin límites</li>
+                                {% if o.plan.unlimited or o.plan.multiempresa %}<li>Importación de comprobantes recibidos (XML y RIDE)</li>{% endif %}
                             </ul></details>
                             <div class="mt-auto">
                                 {% if o.actual and estado.periodo %}

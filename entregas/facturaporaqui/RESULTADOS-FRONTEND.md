@@ -931,3 +931,4 @@ Seguridad y límites: empresa/proveedor nuevos ficticios locales; inicializació
   - la decisión comercial sobre plan y cupo;
   - publicar: migraciones, dependencias y el temporizador `facturaporaqui-importacion@`.
 - No se desplegó, no se usaron documentos reales y no se cambiaron precios, planes, PayPhone ni secuencias.
+- **15/10/2026 — Decisión comercial aplicada:** la importación está solo en Ilimitado y Multiempresa (`RUTAS_ILIMITADAS`, `EstadoPlan.ilimitado`, middleware, candado del menú y beneficio en Plan y pagos). Pruebas en `TestPlanes`: Plan 1000 y gratuito bloqueados, Multiempresa y empresa cubierta permitidos, Ilimitado vencido solo para consulta.

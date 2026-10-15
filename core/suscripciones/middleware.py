@@ -11,7 +11,7 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.utils import timezone
 
 from core.security.session import get_group
-from core.suscripciones.reglas import URL_SUSCRIPCION, es_emision, requiere_plan
+from core.suscripciones.reglas import MENSAJE_SOLO_ILIMITADO, URL_SUSCRIPCION, es_emision, requiere_ilimitado, requiere_plan
 from core.suscripciones.servicios import estado_de_peticion
 
 ESCRITURA = ('/add/', '/update/', '/delete/')
@@ -56,13 +56,20 @@ class PlanMiddleware:
                     or estado.vencido and (es_emision(request) or not _solo_consulta(request)) \
                     or estado.codigo == 'cupo_agotado' and es_emision(request):
                 return self.bloquear(request, mensaje_de_bloqueo(estado))
+        if getattr(request, 'company', None) is not None and request.user.is_authenticated \
+                and requiere_ilimitado(request.path):
+            estado = estado_de_peticion(request)
+            if not estado.ilimitado:
+                return self.bloquear(request, MENSAJE_SOLO_ILIMITADO + ' Mejora tu plan para usarla.', plan='ilimitado')
+            if estado.vencido and (request.method != 'GET' or not _solo_consulta(request)):
+                return self.bloquear(request, mensaje_de_bloqueo(estado))
         return self.get_response(request)
 
-    def bloquear(self, request, mensaje):
-        if request.method == 'GET':
+    def bloquear(self, request, mensaje, plan='requerido'):
+        if request.method == 'GET' and '/api/' not in request.path:   # las API responden siempre JSON
             if puede_gestionar_plan(request):
                 messages.warning(request, mensaje, extra_tags='plan')
                 return HttpResponseRedirect(URL_SUSCRIPCION)
             messages.warning(request, mensaje + ' Pide al propietario de la empresa que active el plan.')
             return HttpResponseRedirect('/dashboard/')
-        return JsonResponse({'error': mensaje, 'plan': 'requerido'}, status=403)
+        return JsonResponse({'error': mensaje, 'plan': plan}, status=403)
