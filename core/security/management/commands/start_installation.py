@@ -289,6 +289,14 @@ class Command(BaseCommand):
                 'permissions': list(Permission.objects.filter(content_type__app_label='comprobantes', content_type__model='notadebito'))
             },
             {
+                'name': 'Guías de remisión',
+                'url': '/comprobantes/guias/',
+                'icon': 'fas fa-truck',
+                'description': 'Guías de remisión electrónicas del traslado de lo vendido, emitidas desde las facturas',
+                'moduletype': moduletype,
+                'permissions': list(Permission.objects.filter(content_type__app_label='comprobantes', content_type__model='guiaremision'))
+            },
+            {
                 'name': 'Errores de Comprob.',
                 'url': '/pos/voucher/errors/',
                 'icon': 'fas fa-file-archive',

@@ -32,7 +32,7 @@ RETENCION, LIQUIDACION, NOTA_DEBITO, GUIA = '07', '03', '05', '06'
 # Comprobantes opcionales: cada empresa configura y confirma su numeración aparte («Otros comprobantes»),
 # sin tocar el asistente ya confirmado. Se habilitan por etapas.
 OTROS_DOCUMENTOS = ((RETENCION, 'Comprobante de retención'), (LIQUIDACION, 'Liquidación de compra'),
-                    (NOTA_DEBITO, 'Nota de débito'))
+                    (NOTA_DEBITO, 'Nota de débito'), (GUIA, 'Guía de remisión'))
 NOMBRE_DOCUMENTO = {FACTURA: 'facturas', NOTA_CREDITO: 'notas de crédito', TICKET: 'tickets de venta',
                     RETENCION: 'comprobantes de retención', LIQUIDACION: 'liquidaciones de compra',
                     NOTA_DEBITO: 'notas de débito', GUIA: 'guías de remisión'}

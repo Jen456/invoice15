@@ -4,14 +4,16 @@ from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import TemplateView
 
+from core.comprobantes import guias as sg
 from core.comprobantes import liquidaciones as sl
 from core.comprobantes import notas_debito as snd
 from core.comprobantes import retenciones as sv
-from core.comprobantes.forms import (DocumentoSustentoForm, LineasLiquidacionFormSet, LineasRetencionFormSet, LiquidacionForm,
-                                     MotivosNotaDebitoFormSet, NotaDebitoForm)
-from core.comprobantes.models import CodigoRetencion, LiquidacionCompra, NotaDebito, Retencion
+from core.comprobantes.forms import (DocumentoSustentoForm, GuiaForm, LineasGuiaFormSet, LineasLiquidacionFormSet,
+                                     LineasRetencionFormSet, LiquidacionForm, MotivosNotaDebitoFormSet, NotaDebitoForm)
+from core.comprobantes.models import CodigoRetencion, GuiaRemision, LiquidacionCompra, NotaDebito, Retencion
 from core.pos import emision
 from core.pos.choices import RETENTION_AGENT
 from core.security.mixins import GroupPermissionMixin
@@ -20,6 +22,7 @@ from core.security.session import get_group
 URL_LISTA = 'comprobantes_retenciones'
 URL_LIQUIDACIONES = 'comprobantes_liquidaciones'
 URL_NOTAS_DEBITO = 'comprobantes_notas_debito'
+URL_GUIAS = 'comprobantes_guias'
 
 
 def tiene_permiso(request, codigo):
@@ -94,6 +97,13 @@ class NotaDebitoListView(ComprobanteListView):
     permission_required = 'view_notadebito'
     relacionados = ('sale',)
     model, nombre, contexto, titulo, url_lista = NotaDebito, 'Nota de débito', 'notas', 'Notas de débito', URL_NOTAS_DEBITO
+
+
+class GuiaListView(ComprobanteListView):
+    template_name = 'comprobantes/guia/list.html'
+    permission_required = 'view_guiaremision'
+    relacionados = ('sale',)
+    model, nombre, contexto, titulo, url_lista = GuiaRemision, 'Guía de remisión', 'guias', 'Guías de remisión', URL_GUIAS
 
 
 class RetencionCrearView(GroupPermissionMixin, TemplateView):
@@ -260,3 +270,63 @@ class NotaDebitoCrearView(GroupPermissionMixin, TemplateView):
             return self.render_to_response(self.get_context_data(form=form, motivos=motivos))
         avisar_resultado(request, nota, nota.generate_electronic_invoice(), 'Nota de débito')
         return HttpResponseRedirect(reverse(URL_NOTAS_DEBITO))
+
+
+class GuiaCrearView(GroupPermissionMixin, TemplateView):
+    """Guía de remisión de lo vendido en una factura autorizada: revisar (sin guardar) y luego emitir."""
+    template_name = 'comprobantes/guia/create.html'
+    permission_required = 'add_guiaremision'
+
+    def get_venta(self):
+        from core.pos.models import Sale
+        return get_object_or_404(Sale.objects.select_related('client__user', 'receipt'), pk=self.kwargs['venta'])
+
+    def get_context_data(self, **kwargs):
+        from core.configuracion.servicios import punto_predeterminado
+        context = super().get_context_data(**kwargs)
+        venta = self.get_venta()
+        try:
+            sg.validar_factura(venta, self.request.company)
+            impedimento = None
+        except sg.ErrorGuia as e:
+            impedimento = str(e)
+        lineas_factura = sg.lineas_de_factura(venta)
+        lineas = kwargs.get('lineas') or LineasGuiaFormSet(prefix='lineas', initial=[
+            {'detalle': l['detalle'], 'cantidad': l['pendiente'].normalize()} for l in lineas_factura])
+        por_detalle = {l['detalle']: l for l in lineas_factura}
+        filas = []
+        for f in lineas.forms:
+            detalle = f['detalle'].value()
+            filas.append((f, por_detalle.get(int(detalle)) if str(detalle or '').isdigit() else None))
+        punto = punto_predeterminado(self.request.company)
+        partida = (punto.establishment.address if punto else '') or self.request.company.establishment_address or ''
+        hoy = timezone.localdate()
+        context.update({
+            'title': 'Emitir guía de remisión', 'venta': venta, 'impedimento': impedimento,
+            'anteriores': GuiaRemision.objects.filter(sale=venta).order_by('-id'),
+            'form': kwargs.get('form') or GuiaForm(initial={'fecha_inicio': hoy, 'fecha_fin': hoy, 'dir_partida': partida,
+                                                            'direccion': venta.client.address or '', 'motivo': 'Venta'}),
+            'lineas': lineas, 'filas': filas, 'resumen': kwargs.get('resumen'),
+        })
+        return context
+
+    def post(self, request, *args, **kwargs):
+        venta = self.get_venta()
+        form = GuiaForm(request.POST)
+        lineas = LineasGuiaFormSet(request.POST, prefix='lineas')
+        if not (form.is_valid() and lineas.is_valid()):
+            return self.render_to_response(self.get_context_data(form=form, lineas=lineas))
+        cantidades = {f.cleaned_data['detalle']: f.cleaned_data.get('cantidad') for f in lineas.forms if f.cleaned_data.get('detalle')}
+        try:
+            if request.POST.get('action') != 'emitir':
+                sg.validar_factura(venta, request.company)
+                doc, detalle = sg.calcular(venta, form.cleaned_data, cantidades)
+                return self.render_to_response(self.get_context_data(form=form, lineas=lineas, resumen={'doc': doc, 'detalle': detalle}))
+            with transaction.atomic():
+                guia = sg.crear(request.company, request.user, venta, form.cleaned_data, cantidades)
+                emision.preparar(guia)   # si la firma o el plan fallan, se deshace: nada salió al SRI
+        except Exception as e:
+            form.add_error(None, str(e))
+            return self.render_to_response(self.get_context_data(form=form, lineas=lineas))
+        avisar_resultado(request, guia, guia.generate_electronic_invoice(), 'Guía de remisión')
+        return HttpResponseRedirect(reverse(URL_GUIAS))

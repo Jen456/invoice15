@@ -108,13 +108,18 @@ class SRI:
                 raise ValueError('el comprobante aún no tiene el XML autorizado y el RIDE')
             conexion, remitente, responder = self._correo_saliente(company)
             total = getattr(instance, 'total', None)
-            monto = f'Total: USD {total:.2f}' if total is not None else f'Total retenido: USD {instance.total_retenido:.2f}'
+            if total is not None:
+                monto = f'Total: USD {total:.2f}\n'
+            elif hasattr(instance, 'total_retenido'):
+                monto = f'Total retenido: USD {instance.total_retenido:.2f}\n'
+            else:
+                monto = ''   # guía de remisión: no tiene importes
             contenido = (f'Estimado(a) {client.user.names}:\n\n'
                          f'{company.tradename or company.business_name} le envía el siguiente comprobante electrónico '
                          f'autorizado por el SRI, en formato XML y PDF (RIDE).\n\n'
                          f'Documento: {instance.receipt.name} {instance.voucher_number_full}\n'
                          f'Fecha de emisión: {(instance.emission_date or instance.date_joined):%d/%m/%Y}\n'
-                         f'{monto}\n'
+                         f'{monto}'
                          f'Clave de acceso y número de autorización: {instance.access_code}\n')
             correo = EmailMessage(subject=f'{instance.receipt.name.capitalize()} {instance.voucher_number_full} - '
                                           f'{company.tradename or company.business_name}',

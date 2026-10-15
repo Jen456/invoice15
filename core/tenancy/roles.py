@@ -18,7 +18,7 @@ SELLER_URLS = {'/pos/client/', '/pos/sale/admin/', '/pos/credit/note/admin/', '/
 ACCOUNTANT_URLS = REPORT_URLS | {'/pos/sale/admin/', '/pos/credit/note/admin/', '/pos/purchase/', '/pos/expenses/',
                                  '/pos/ctas/collect/', '/pos/debts/pay/', '/pos/voucher/errors/', '/pos/client/',
                                  '/pos/provider/', '/comprobantes/retenciones/',
-                                 '/comprobantes/liquidaciones/', '/comprobantes/notas-debito/',
+                                 '/comprobantes/liquidaciones/', '/comprobantes/notas-debito/', '/comprobantes/guias/',
                                  '/importacion/lotes/', '/importacion/pendientes/', '/importacion/recibidos/'} | PROFILE_URLS
 # Permisos que un rol de solo lectura nunca recibe aunque el módulo esté en su menú.
 WRITE_PREFIXES = ('add_', 'change_', 'delete_', 'adjust_')

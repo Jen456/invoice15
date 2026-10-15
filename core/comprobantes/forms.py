@@ -94,3 +94,29 @@ class MotivoNotaDebitoForm(forms.Form):
 
 
 MotivosNotaDebitoFormSet = forms.formset_factory(MotivoNotaDebitoForm, extra=3, max_num=10)
+
+
+class GuiaForm(forms.Form):
+    transportista_tipo_identificacion = forms.ChoiceField(label='Identificación del transportista',
+                                                          choices=(('04', 'RUC'), ('05', 'Cédula'), ('06', 'Pasaporte'),
+                                                                   ('08', 'Identificación del exterior')), initial='04')
+    transportista_identificacion = forms.CharField(label='Número de identificación', max_length=20)
+    transportista_razon_social = forms.CharField(label='Nombre o razón social del transportista', max_length=300)
+    placa = forms.CharField(label='Placa del vehículo', max_length=20)
+    fecha_inicio = forms.DateField(label='Inicio del transporte', widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'))
+    fecha_fin = forms.DateField(label='Fin del transporte', widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'))
+    dir_partida = forms.CharField(label='Dirección de partida', max_length=300)
+    direccion = forms.CharField(label='Dirección de destino', max_length=300)
+    motivo = forms.CharField(label='Motivo del traslado', max_length=300, initial='Venta')
+    ruta = forms.CharField(label='Ruta (opcional)', max_length=300, required=False)
+    cod_estab_destino = forms.CharField(label='Establecimiento de destino (opcional)', max_length=3, required=False,
+                                        help_text='Solo si el destino es un establecimiento del comprador, p. ej. 001.')
+    doc_aduanero = forms.CharField(label='Documento aduanero único (opcional)', max_length=20, required=False)
+
+
+class LineaGuiaForm(forms.Form):
+    detalle = forms.IntegerField(widget=forms.HiddenInput)
+    cantidad = forms.DecimalField(label='Cantidad a trasladar', required=False, min_value=0, decimal_places=6, max_digits=18)
+
+
+LineasGuiaFormSet = forms.formset_factory(LineaGuiaForm, extra=0)

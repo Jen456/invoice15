@@ -1,5 +1,55 @@
 # Handoff compartido — frontend
 
+## Estado actual — guía de remisión (06) terminada, sin publicar (Claude, 15/10/2026)
+
+- **Qué hace:**
+  - Desde **Facturas emitidas** («Opciones» de una factura autorizada → «Crear guía de remisión») se emite la guía: codDoc 06, XML 1.1.0, XSD oficial en `tests/xsd/guia/`.
+  - El destinatario es el cliente de la factura y el documento sustento es la factura (número, clave y fecha).
+- **Reglas:**
+  - Solo sobre facturas autorizadas, del mismo ambiente y no emitidas a consumidor final.
+  - Transportista: RUC o cédula validados, o pasaporte o identificación del exterior; nombre obligatorio.
+  - Placa: letras, números y guion. Fechas de inicio y fin del transporte; el fin no puede ser anterior al inicio.
+  - Direcciones de partida (la del establecimiento por defecto) y de destino (la del cliente por defecto), motivo («Venta» por defecto), ruta, establecimiento de destino y documento aduanero opcionales.
+  - Las líneas son las de la factura y admiten entregas parciales en varias guías; entre todas las guías vigentes no se traslada más de lo vendido.
+  - La guía no tiene importes y cuenta 1 del cupo. El correo respeta la preferencia del cliente y no muestra un total.
+- **Código:**
+  - `core/comprobantes/guias.py`, `xml_guia.py`, modelos `GuiaRemision` y `GuiaDetalle` (RLS).
+  - Migraciones `comprobantes 0011–0013` e `importacion 0004`, que vuelve a ordenar el menú con «Guías de remisión» en Comprobantes Electrónicos (posición 5).
+- **Verificado:**
+  - SQLite: 440 pruebas aprobadas y 7 omitidas. PostgreSQL: 447 aprobadas.
+  - El XML firmado es válido contra el XSD.
+  - **El SRI de pruebas autorizó** la guía 001-002-953941043 sobre una factura de prueba autorizada. Era de la empresa 6, dentro de una transacción deshecha; se borraron los archivos y no quedó nada en la base.
+  - El RIDE se revisó en A4.
+
+## Pendiente para Codex — pantallas de guía de remisión
+
+- [ ] `core/comprobantes/templates/comprobantes/guia/create.html`: transporte (transportista, placa, fechas, partida, destino, motivo, ruta y opcionales), líneas con vendido, ya en guías y pendiente, resumen «Revisa antes de emitir», guías anteriores y el aviso `impedimento`.
+- [ ] `core/comprobantes/templates/comprobantes/guia/list.html` y la opción «Crear guía de remisión» del menú de facturas (`core/pos/static/sale/admin/js/list.js`).
+- [ ] La sección 06 en `configuracion/otros.html`.
+- [ ] RIDE `core/comprobantes/templates/comprobantes/guia/ride.html` (conservar `.hoja` de 190 mm).
+- [ ] Revisar a 1440, 1024, 390 y 360 px.
+
+## Notas entre agentes — contrato de guía de remisión (Claude → Codex)
+
+- **No cambiar:** modelos, servicios, vistas, URL ni migraciones.
+- **Formulario `GuiaForm`:** campos `transportista_tipo_identificacion` (04, 05, 06 u 08), `transportista_identificacion`, `transportista_razon_social`, `placa`, `fecha_inicio`, `fecha_fin` (input date ISO), `dir_partida`, `direccion`, `motivo`, `ruta`, `cod_estab_destino` y `doc_aduanero`.
+- **Formset con prefijo `lineas`:**
+  - Cada forma tiene `detalle` oculto y `cantidad`; con 0 o vacío, la línea no va.
+  - Conservar el `management_form`, `action=calcular/emitir` y el CSRF.
+- **Contexto de `create.html`:**
+  - `venta`, `impedimento`, `anteriores`, `form`, `lineas`.
+  - `filas`: pares (forma, línea), donde la línea tiene codigo, descripcion, vendido, trasladado y pendiente.
+  - `resumen`, con `doc` (datos normalizados del transporte) y `detalle` (codigo, descripcion, cantidad).
+- **Listado:**
+  - Contexto: `guias`, `puede_emitir`, `puede_eliminar`.
+  - Acciones por POST: `generate_invoice` y `delete`, con `id`.
+- **RIDE, contenido obligatorio:**
+  - emisor, número, autorización, ambiente, clave en código de barras;
+  - transportista (identificación y nombre), placa, punto de partida y fechas de inicio y fin;
+  - comprobante de venta con número, fecha y autorización; motivo, destino, destinatario e identificación; ruta y los datos opcionales;
+  - detalle (código, descripción, cantidad);
+  - información adicional (RUC Proveedor y FACTURAPORAQUI).
+
 ## Estado actual — importación de comprobantes XML / RIDE (backend terminado, sin publicar) (Claude, 15/10/2026)
 
 - **App `core/importacion`:**

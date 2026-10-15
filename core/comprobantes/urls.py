@@ -9,4 +9,6 @@ urlpatterns = [
     path('liquidaciones/nueva/<int:compra>/', views.LiquidacionCrearView.as_view(), name='comprobantes_liquidacion_nueva'),
     path('notas-debito/', views.NotaDebitoListView.as_view(), name='comprobantes_notas_debito'),
     path('notas-debito/nueva/<int:venta>/', views.NotaDebitoCrearView.as_view(), name='comprobantes_nota_debito_nueva'),
+    path('guias/', views.GuiaListView.as_view(), name='comprobantes_guias'),
+    path('guias/nueva/<int:venta>/', views.GuiaCrearView.as_view(), name='comprobantes_guia_nueva'),
 ]
