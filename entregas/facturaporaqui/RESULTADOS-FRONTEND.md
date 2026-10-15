@@ -932,3 +932,13 @@ Seguridad y límites: empresa/proveedor nuevos ficticios locales; inicializació
   - publicar: migraciones, dependencias y el temporizador `facturaporaqui-importacion@`.
 - No se desplegó, no se usaron documentos reales y no se cambiaron precios, planes, PayPhone ni secuencias.
 - **15/10/2026 — Decisión comercial aplicada:** la importación está solo en Ilimitado y Multiempresa (`RUTAS_ILIMITADAS`, `EstadoPlan.ilimitado`, middleware, candado del menú y beneficio en Plan y pagos). Pruebas en `TestPlanes`: Plan 1000 y gratuito bloqueados, Multiempresa y empresa cubierta permitidos, Ilimitado vencido solo para consulta.
+
+## 15/10/2026 — guía de remisión publicada (Claude)
+
+- **Commit desplegado:** `561437a` (19:25 UTC, respaldo `pre-20261015-192505-561437aa.dump`). Es la rama `publicacion/guia`: lo publicado más la guía, sin la importación. En `plataforma` la guía está en `7eb53f5`.
+- **Pruebas:**
+  - Rama publicada: PostgreSQL 358 aprobadas; SQLite 353 aprobadas y 5 omitidas.
+  - `plataforma`: PostgreSQL 447 aprobadas; SQLite 440 aprobadas y 7 omitidas.
+- **SRI de pruebas:** autorizó la guía 001-002-953941043 sobre una factura de prueba.
+- **Dominio:** listado, Otros comprobantes (06) y menú sin errores. El formulario y la revisión se probaron con el código publicado en una transacción deshecha.
+- No se emitieron documentos reales.

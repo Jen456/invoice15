@@ -1,6 +1,6 @@
 # Handoff compartido — frontend
 
-## Estado actual — guía de remisión (06) terminada, sin publicar (Claude, 15/10/2026)
+## Estado actual — guía de remisión (06) publicada `561437a` (Claude, 15/10/2026)
 
 - **Qué hace:**
   - Desde **Facturas emitidas** («Opciones» de una factura autorizada → «Crear guía de remisión») se emite la guía: codDoc 06, XML 1.1.0, XSD oficial en `tests/xsd/guia/`.
@@ -20,6 +20,13 @@
   - El XML firmado es válido contra el XSD.
   - **El SRI de pruebas autorizó** la guía 001-002-953941043 sobre una factura de prueba autorizada. Era de la empresa 6, dentro de una transacción deshecha; se borraron los archivos y no quedó nada en la base.
   - El RIDE se revisó en A4.
+- **Publicado** el 15/10/2026 a las 19:25 UTC (respaldo `pre-20261015-192505-561437aa.dump`, migraciones `comprobantes 0011–0013`):
+  - es una **versión aparte**: `561437a`, rama local `publicacion/guia` = lo publicado (`914f0b7`) + la guía, **sin** la importación ni el menú nuevo, que esperan el diseño de Codex;
+  - las migraciones son idénticas a las de `plataforma`, así que al publicar `plataforma` más adelante no se repiten;
+  - en producción la guía aparece en el grupo «Facturación» hasta que se publique el menú nuevo.
+- **Verificado en el dominio:**
+  - el listado, la sección 06 de Otros comprobantes y el menú cargan sin errores ni desbordes (`/root/capturas/fpa-guias-dominio.mjs`);
+  - el formulario y «Revisar» se probaron con el código publicado en una transacción deshecha (`verif-firma/verif_guia_formulario.py`): factura autorizada ficticia en DEMOSTRACIÓN, «pendiente 2» y el resumen; no se creó ninguna guía.
 
 ## Pendiente para Codex — pantallas de guía de remisión
 
