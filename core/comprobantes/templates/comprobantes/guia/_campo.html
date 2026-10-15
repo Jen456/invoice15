@@ -1,0 +1,7 @@
+{% load widget_tweaks %}
+<div class="form-group col-12 {% if field.name == 'transportista_razon_social' or field.name == 'dir_partida' or field.name == 'direccion' or field.name == 'motivo' %}col-md-12{% else %}col-md-6{% endif %}">
+<label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+{% if field.errors %}{% render_field field class="form-control is-invalid" %}{% else %}{% render_field field class="form-control" %}{% endif %}
+{% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+{% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+</div>

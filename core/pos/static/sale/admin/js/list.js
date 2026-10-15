@@ -101,7 +101,7 @@ var sale = {
                                 // Nota de débito (intereses, gastos de cobranza) sobre la factura autorizada (core/comprobantes).
                                 buttons += '<a href="/comprobantes/notas-debito/nueva/' + row.id + '/" class="dropdown-item"><i class="fas fa-plus-circle"></i> Crear nota de débito</a>';
                                 // Guía de remisión del traslado de lo vendido (core/comprobantes).
-                                buttons += '<a href="/comprobantes/guias/nueva/' + row.id + '/" class="dropdown-item"><i class="fas fa-truck"></i> Crear guía de remisión</a>';
+                                buttons += '<a href="/comprobantes/guias/nueva/' + row.id + '/" class="dropdown-item fp-guia-opcion"><i class="fas fa-truck" aria-hidden="true"></i> Crear guía de remisión</a>';
                             }
                         }
                         buttons += '</div></div></div>';

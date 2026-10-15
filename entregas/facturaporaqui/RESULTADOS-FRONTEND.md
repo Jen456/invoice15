@@ -976,3 +976,35 @@ Límites: PostgreSQL, teléfono físico y lector de pantalla no ejecutados por C
 - **SRI de pruebas:** autorizó la guía 001-002-953941043 sobre una factura de prueba.
 - **Dominio:** listado, Otros comprobantes (06) y menú sin errores. El formulario y la revisión se probaron con el código publicado en una transacción deshecha.
 - No se emitieron documentos reales.
+
+
+## 15/10/2026 — guía de remisión 06 e importación integradas (Codex)
+
+Leídos AGENTS, HANDOFF (estado publicado 561437a y contrato de guía) e informe. Rama frontend/etapa3: merge e5da4f6 une el diseño local de importación 579047b con github/frontend/etapa3 36bb8de (igual a plataforma). Conflictos únicamente en HANDOFF y RESULTADOS, resueltos preservando ambos textos, sin reescritura del historial. No despliegue ni push; producción sigue en la versión independiente indicada por Claude.
+
+Archivos de guía:
+- `core/comprobantes/templates/comprobantes/guia/create.html` y nuevo `_campo.html`: campos existentes agrupados en transportista/vehículo, fechas/recorrido y datos opcionales; labels, ISO date, ayudas y errores del servidor. Formulario con name y CSRF originales, sin cambiar contexto ni backend. Historial e impedimento visibles; no se ofrece emisión si hay impedimento.
+- Líneas de create.html: tarjetas Vendido / Ya en guías / Pendiente; cantidad editable original y detalle oculto intactos. Con 0 no se incluye la línea, como decide el servidor. El resumen muestra transportista, placa, fechas, direcciones, motivo, ruta y opcionales, además de código/descripción/cantidad. No importes. En móvil el resumen se presenta como fichas.
+- `guia/list.html`: aviso de entrega total/parcial y ausencia de importes, estados y transporte con marca, tabla/fichas heredadas responsive. Condiciones exactas de estado, permisos, descargas y POST originales conservados.
+- `core/pos/static/sale/admin/js/list.js`: clase fp-guia-opcion para destacar el acceso existente en Opciones, con icono y control táctil. Condiciones de factura autorizada, consumidor final y URL intactas.
+- `core/configuracion/templates/configuracion/otros.html`: tarjeta 06 identificada con icono y borde celeste. tipo, prefijo 06-, campos, mensajes y envío conservados; no se envió el formulario de numeración en navegador.
+- `guia/ride.html`: títulos de transporte/destino, acento coral en título, legibilidad y wrapping. Contenedor .hoja 190 mm, A4, tablas fijas, emisor, autorización, código de barras, sustento, destinatario, transportista, placa, fechas, ruta, opcionales, cantidades e información adicional preservados. Logo del emisor original; sin introducir el logo de la plataforma como si fuera el del cliente.
+- `static/css/facturaporaqui.css`: componentes fp-guia- específicos y responsive sin nuevos cálculos/JavaScript.
+- `tests/test_guias.py`: aserción de presentación actualizada: el antiguo texto plano “pendiente 2” ahora se verifica en el dd de la tarjeta Pendiente, manteniendo el mismo valor esperado. No se deshabilitó ninguna prueba.
+- HANDOFF, este informe y capturas `guia-*.png`: formulario, errores, revisión, cantidad excedida, impedimento, listado y configuración a 1440/390/360; opción de factura en escritorio y RIDE rasterizado.
+
+Pruebas de guía:
+- Entorno local Python 3.12/SQLite, migraciones nuevas solo en base local externa al repo. Suite completa final: 442 aprobadas y 7 omitidas exclusivas de PostgreSQL (101,70 s).
+- Chromium con movimiento reducido, 1440/1024/768/390/360 px, sin overflow ni errores JS/HTTP fallidos en recorrido de guía.
+- Empresa, destinatario, factura y productos ficticios. Historial simulado de cuatro estados mediante fixtures locales, sin SRI ni firma. Primera línea: vendido5, trasladado2, pendiente3; segunda vendido2, trasladado0, pendiente2. Formularios conservan ambos detalles ocultos y su prefijo.
+- Enviar datos vacíos devuelve errores visibles. Revisar 1 unidad de la primera línea y 0 de la segunda produce solo una línea en el resumen. Opcionales 002 y DEMO-ADUANA visibles. Pedir 4 cuando quedan3 devuelve el error del servidor. Factura no autorizada muestra impedimento sin botón de emitir.
+- Listado: authorized no ofrece acciones de envío/borrado; in_process ofrece consultar sin eliminar. No se pulsaron acciones de listado. Opción Crear guía de remisión visible en factura autorizada; sin modificar la venta.
+- RIDE generado con WeasyPrint: una página A4, caja de 190 mm medida y tres tablas dentro del ancho. Documento aduanero y establecimiento de destino incluidos solo en memoria para comprobar campos opcionales. Captura inspeccionada; avisos heredados de CSS Bootstrap no soportado sin error de PDF.
+- Tras revisar: mismas secuencias de la fixture, mismas cuatro guías de historial. No nuevas guías, firmas, envíos ni consumo de cupo de emisión.
+
+Continuación de importación:
+- Se conserva íntegro 579047b y se repite el recorrido sobre el backend 36bb8de: carga por archivo, procesamiento, clave manual/ambigua, historial, recibidos/emitidos, filtros, revisión, confirmación, verificación SRI simulada, vínculo con compra ficticia y propuesta no contabilizada, reglas y aviso de mejora. Cinco anchos sin overflow, sin errores JS ni recursos fallidos. HTTP400 por falta de verificación y 403 de mejora simulada son casos esperados.
+- Se repiten permisos Contador/Consulta/Vendedor/Plan1000, siete PDF en tres llamadas procesar, carga nativa sin JS, foco de selector y transporte simulado de 12 MB dividido en tres peticiones de 4 MB. SRI real deshabilitado en el ejecutor local, no en archivos de backend.
+- Capturas de importación regeneradas reflejan la integración y el menú con guías. Los 27 archivos siguen acompañando el informe anterior.
+
+Sin modificaciones propias de modelos, vistas, servicios, URL, migraciones, .env o contexto. Sin documentos reales ni despliegue. PostgreSQL, móvil físico y lector de pantalla pendientes de revisión externa. Entrega local para revisión de Claude y publicación con respaldo cuando la propietaria lo indique.

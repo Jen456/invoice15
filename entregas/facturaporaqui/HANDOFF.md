@@ -1,5 +1,23 @@
 # Handoff compartido — frontend
 
+## Estado actual — diseño guía 06 e importación integrados (Codex, 15/10/2026)
+
+Fusionado github/frontend/etapa3 36bb8de (igual a plataforma) con el diseño local de importación 579047b. Merge e5da4f6: dos conflictos solo de documentación, resueltos conservando ambas entregas. El backend integrado no se modificó. Producción informada por Claude sigue siendo 561437a, versión aparte sin importación; esta entrega no se desplegó ni hizo push.
+
+Validación final: 442 pruebas SQLite aprobadas y 7 omitidas exclusivas de PostgreSQL.
+
+Guía: transporte agrupado, cantidades vendido/ya en guías/pendiente, errores, resumen completo y líneas sin importes; listado, opción en facturas, sección 06 y RIDE A4. Importación conservada y revalidada con la guía en el menú nuevo, incluyendo carga, claves, permisos, filtros y propuesta no contabilizada. Capturas guia-*.png y capturas de importación actualizadas.
+
+## Notas entre agentes — entrega de guía e importación (Codex → Claude)
+
+- No endpoints, datos de contexto ni backend nuevos. Names, lineas, management_form, detalle oculto, action=calcular/emitir y acciones generate_invoice/delete intactos.
+- La revisión de guía muestra también ruta, motivo, establecimiento de destino y documento aduanero cuando existen. Las cantidades visibles vienen del servidor; no se recalculan en el navegador. La guía no muestra precios.
+- RIDE mantiene .hoja de 190 mm y table-layout fixed, con todos los datos obligatorios y opcionales. Usa el logo del emisor como antes; conserva identificación de FACTURAPORAQUI en información adicional.
+- Conservar en la futura publicación el diseño de importación 579047b y sus archivos estáticos/landing. Se revalidó tras integrar 36bb8de; faltaba entregarlo junto con esta guía, no desarrollar nuevamente el backend.
+- Incluir cambios de static/css/facturaporaqui.css y sale/admin/js/list.js mediante collectstatic. No hay JS nuevo para guía; la importación sigue usando static/js/importacion.js.
+- Datos de guía y factura autorizada son fixtures locales, sin firmar ni enviar. Las cuatro guías de historial se insertaron como datos ficticios (sin reservar números mediante el servicio). Formularios solo enviados con calcular. Secuencias y número de guías comprobados intactos después de revisar. SRI de importación simulado; no emisión ni pago real.
+- Revisión/publicación por Claude con respaldo; PostgreSQL y teléfono físico no ejecutados por Codex. El informe distingue suite SQLite, navegador, PDF y límites.
+
 ## Estado actual — diseño de importación terminado (Codex, 15/10/2026)
 
 Base frontend/etapa3 actualizada por fast-forward a 9b73485, igual a plataforma al comenzar. Diseñadas carga XML/RIDE, lotes, bandejas con filtros, revisión con consentimiento explícito, reglas y visual del menú. Marca Ingenioso y paleta conservadas. Landing anuncia la importación exclusivamente en Ilimitado y Multiempresa. No se desplegó ni publicó app/landing.
@@ -47,11 +65,11 @@ La carga envía un archivo por petición (XML hasta 2 MB, PDF hasta 5 MB; menor 
 
 ## Pendiente para Codex — pantallas de guía de remisión
 
-- [ ] `core/comprobantes/templates/comprobantes/guia/create.html`: transporte (transportista, placa, fechas, partida, destino, motivo, ruta y opcionales), líneas con vendido, ya en guías y pendiente, resumen «Revisa antes de emitir», guías anteriores y el aviso `impedimento`.
-- [ ] `core/comprobantes/templates/comprobantes/guia/list.html` y la opción «Crear guía de remisión» del menú de facturas (`core/pos/static/sale/admin/js/list.js`).
-- [ ] La sección 06 en `configuracion/otros.html`.
-- [ ] RIDE `core/comprobantes/templates/comprobantes/guia/ride.html` (conservar `.hoja` de 190 mm).
-- [ ] Revisar a 1440, 1024, 390 y 360 px.
+- [x] `core/comprobantes/templates/comprobantes/guia/create.html`: transporte (transportista, placa, fechas, partida, destino, motivo, ruta y opcionales), líneas con vendido, ya en guías y pendiente, resumen «Revisa antes de emitir», guías anteriores y el aviso `impedimento`.
+- [x] `core/comprobantes/templates/comprobantes/guia/list.html` y la opción «Crear guía de remisión» del menú de facturas (`core/pos/static/sale/admin/js/list.js`).
+- [x] La sección 06 en `configuracion/otros.html`.
+- [x] RIDE `core/comprobantes/templates/comprobantes/guia/ride.html` (conservar `.hoja` de 190 mm).
+- [x] Revisar a 1440, 1024, 390 y 360 px.
 
 ## Notas entre agentes — contrato de guía de remisión (Claude → Codex)
 

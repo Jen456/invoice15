@@ -9,25 +9,25 @@
     <header class="fp-welcome"><span class="fp-eyebrow">Guía de remisión</span><h1>Guía de la factura {{ venta.voucher_number_full }}</h1>
         <p>Destinatario: <strong>{{ venta.client.user.names }}</strong> · {{ venta.client.dni }} · Factura del {{ venta.emission_date|default:venta.date_joined|date:"d/m/Y" }}</p></header>
     {% if anteriores %}
-        <div class="alert alert-secondary">Guías anteriores de esta factura: {% for g in anteriores %}<strong>{{ g.voucher_number_full }}</strong> ({{ g.get_status_display }}){% if not forloop.last %}, {% endif %}{% endfor %}.</div>
+        <div class="alert alert-secondary fp-guia-anteriores" role="status">Guías anteriores de esta factura: {% for g in anteriores %}<strong>{{ g.voucher_number_full }}</strong> ({{ g.get_status_display }}){% if not forloop.last %}, {% endif %}{% endfor %}.</div>
     {% endif %}
     {% if impedimento %}
-        <div class="alert alert-warning">{{ impedimento }} <a href="/pos/sale/admin/">Volver a las facturas</a></div>
+        <div class="alert alert-warning" role="alert">{{ impedimento }} <a href="/pos/sale/admin/">Volver a las facturas</a></div>
     {% else %}
     <form method="post" class="fp-retencion-form" novalidate>{% csrf_token %}
         {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
         <section class="card fp-retencion-panel mb-3"><div class="card-body">
             <span class="fp-eyebrow">Paso 1 · Transporte</span><h2 class="h5">Transportista, vehículo y trayecto</h2>
-            <div class="row">
-                {% for field in form %}
-                    <div class="form-group col-12 {% if field.name == 'transportista_razon_social' or field.name == 'dir_partida' or field.name == 'direccion' %}col-lg-8{% else %}col-md-6 col-lg-4{% endif %}">
-                        <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
-                        {% render_field field class="form-control" %}
-                        {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
-                        {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
-                    </div>
-                {% endfor %}
-            </div>
+            <p class="text-muted">Indica quién transporta la mercadería y por dónde se traslada. Puedes repartir una factura en varias entregas.</p>
+            <fieldset class="fp-guia-grupo"><legend><i class="fas fa-id-card" aria-hidden="true"></i> Transportista y vehículo</legend><div class="row">
+                {% for field in form %}{% if field.name == 'transportista_tipo_identificacion' or field.name == 'transportista_identificacion' or field.name == 'transportista_razon_social' or field.name == 'placa' %}{% include 'comprobantes/guia/_campo.html' %}{% endif %}{% endfor %}
+            </div></fieldset>
+            <fieldset class="fp-guia-grupo"><legend><i class="fas fa-route" aria-hidden="true"></i> Fechas y recorrido</legend><div class="row">
+                {% for field in form %}{% if field.name == 'fecha_inicio' or field.name == 'fecha_fin' or field.name == 'dir_partida' or field.name == 'direccion' or field.name == 'motivo' %}{% include 'comprobantes/guia/_campo.html' %}{% endif %}{% endfor %}
+            </div></fieldset>
+            <fieldset class="fp-guia-grupo"><legend>Datos complementarios <span class="text-muted">· opcionales</span></legend><div class="row">
+                {% for field in form %}{% if field.name == 'ruta' or field.name == 'cod_estab_destino' or field.name == 'doc_aduanero' %}{% include 'comprobantes/guia/_campo.html' %}{% endif %}{% endfor %}
+            </div></fieldset>
         </div></section>
         <section class="card fp-retencion-panel mb-3"><div class="card-body">
             <span class="fp-eyebrow">Paso 2 · Mercadería</span><h2 class="h5">Qué se traslada</h2><p class="text-muted">Por defecto, lo que falta trasladar de la factura. Pon 0 en lo que no va en esta guía.</p>
@@ -35,11 +35,11 @@
             {% for f, linea in filas %}
                 <fieldset class="row fp-retencion-linea"><legend>{% if linea %}{{ linea.descripcion }}{% else %}Línea {{ forloop.counter }}{% endif %}</legend>
                     {{ f.detalle }}
-                    {% if linea %}<p class="col-12 text-muted mb-2">Código {{ linea.codigo|default:"—" }} · vendido {{ linea.vendido|floatformat:"-6" }} · ya en guías {{ linea.trasladado|floatformat:"-6" }} · pendiente {{ linea.pendiente|floatformat:"-6" }}</p>{% endif %}
+                    {% if linea %}<div class="col-12"><p class="text-muted">Código {{ linea.codigo|default:"—" }}</p><dl class="fp-guia-cantidades"><div><dt>Vendido</dt><dd>{{ linea.vendido|floatformat:"-6" }}</dd></div><div><dt>Ya en guías</dt><dd>{{ linea.trasladado|floatformat:"-6" }}</dd></div><div class="fp-guia-pendiente"><dt>Pendiente</dt><dd>{{ linea.pendiente|floatformat:"-6" }}</dd></div></dl></div>{% endif %}
                     {% for field in f.visible_fields %}
                         <div class="form-group col-12 col-md-6 col-lg-4">
                             <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
-                            {% render_field field class="form-control" %}
+                            {% if field.errors %}{% render_field field class="form-control is-invalid" %}{% else %}{% render_field field class="form-control" %}{% endif %}
                             {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
                         </div>
                     {% endfor %}
@@ -49,9 +49,19 @@
         {% if resumen %}
             <section class="card fp-retencion-revision mb-3 border-info"><div class="card-body">
                 <span class="fp-eyebrow">Paso 3 · Confirmación</span><h2 class="h5">Revisa antes de emitir</h2><p>La guía todavía no se ha emitido. Comprueba los datos antes de enviarla al SRI.</p>
-                <p>{{ resumen.doc.transportista_razon_social }} ({{ resumen.doc.transportista_identificacion }}) · placa {{ resumen.doc.placa }} · {{ resumen.doc.fecha_inicio|date:"d/m/Y" }} – {{ resumen.doc.fecha_fin|date:"d/m/Y" }}<br>{{ resumen.doc.dir_partida }} → {{ resumen.doc.direccion }}</p>
-                <div class="table-responsive fp-retencion-resumen"><table class="table table-sm"><thead><tr><th>Código</th><th>Descripción</th><th class="text-right">Cantidad</th></tr></thead><tbody>
-                    {% for d in resumen.detalle %}<tr><td>{{ d.codigo }}</td><td>{{ d.descripcion }}</td><td class="text-right">{{ d.cantidad|floatformat:"-6" }}</td></tr>{% endfor %}
+                <dl class="fp-guia-confirmacion">
+                    <div><dt>Transportista</dt><dd>{{ resumen.doc.transportista_razon_social }} · {{ resumen.doc.transportista_identificacion }}</dd></div>
+                    <div><dt>Vehículo</dt><dd>Placa {{ resumen.doc.placa }}</dd></div>
+                    <div><dt>Inicio del transporte</dt><dd>{{ resumen.doc.fecha_inicio|date:"d/m/Y" }}</dd></div>
+                    <div><dt>Fin del transporte</dt><dd>{{ resumen.doc.fecha_fin|date:"d/m/Y" }}</dd></div>
+                    <div><dt>Partida</dt><dd>{{ resumen.doc.dir_partida }}</dd></div><div><dt>Destino</dt><dd>{{ resumen.doc.direccion }}</dd></div>
+                    <div><dt>Motivo</dt><dd>{{ resumen.doc.motivo }}</dd></div>
+                    {% if resumen.doc.ruta %}<div><dt>Ruta</dt><dd>{{ resumen.doc.ruta }}</dd></div>{% endif %}
+                    {% if resumen.doc.cod_estab_destino %}<div><dt>Establecimiento de destino</dt><dd>{{ resumen.doc.cod_estab_destino }}</dd></div>{% endif %}
+                    {% if resumen.doc.doc_aduanero %}<div><dt>Documento aduanero</dt><dd>{{ resumen.doc.doc_aduanero }}</dd></div>{% endif %}
+                </dl>
+                <div class="table-responsive fp-guia-resumen"><table class="table table-sm fp-guia-tabla"><thead><tr><th>Código</th><th>Descripción</th><th class="text-right">Cantidad</th></tr></thead><tbody>
+                    {% for d in resumen.detalle %}<tr><td data-label="Código">{{ d.codigo }}</td><td data-label="Descripción">{{ d.descripcion }}</td><td data-label="Cantidad" class="text-right">{{ d.cantidad|floatformat:"-6" }}</td></tr>{% endfor %}
                 </tbody></table></div>
                 <button type="submit" name="action" value="emitir" class="btn fpa-btn-pagar">Emitir guía al SRI</button>
                 <button type="submit" name="action" value="calcular" class="btn btn-outline-secondary">Volver a revisar</button>

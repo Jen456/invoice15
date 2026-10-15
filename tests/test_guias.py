@@ -115,7 +115,8 @@ class TestEmision:
     def test_revisar_no_guarda_y_emitir_autoriza(self, web, empresa, comprador, factura, numeracion, sri):  # noqa: F811
         leer(empresa, lambda: Client.objects.filter(pk=comprador.pk).update(send_email_invoice=True))
         html = web.get(f'{LISTA}nueva/{factura.pk}/').content.decode()
-        assert 'Guía de la factura 001-002-000000271' in html and 'pendiente 2' in html and 'value="Av. Ficticia 1"' in html
+        assert 'Guía de la factura 001-002-000000271' in html and 'value="Av. Ficticia 1"' in html
+        assert etree.HTML(html).xpath('//div[contains(@class, "fp-guia-pendiente")]/dd/text()') == ['2']
         revision = web.post(f'{LISTA}nueva/{factura.pk}/', {**formulario(factura), 'action': 'calcular'}).content.decode()
         assert 'Revisa antes de emitir' in revision and 'GBA-1234' in revision and not leer(empresa, lambda: GuiaRemision.objects.exists())
         mail.outbox.clear()

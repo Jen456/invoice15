@@ -10,7 +10,7 @@
         body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #163B50; }
         .bloque { background: #E5F1F6; border-top: 2px solid #44BADD; padding: 8px 10px; margin-bottom: 6px; }
         .bloque p { margin: 1px 0; }
-        .titulo { font-size: 17px; font-weight: bold; color: #163B50; }
+        .titulo { border-bottom: 2px solid #CA462C; padding-bottom: 6px; margin-bottom: 6px !important; font-size: 17px; font-weight: bold; color: #163B50; }
         /* Bootstrap fija en impresión body { min-width: 992px }, más ancho que la hoja: el contenido va en 190 mm (A4 menos márgenes) */
         .hoja { width: 190mm; }
         /* table-layout fijo y cortes en las claves de 49 dígitos: sin esto WeasyPrint ensancha las tablas más allá de la hoja */
@@ -20,7 +20,9 @@
         table.detalle { border-collapse: collapse; margin-top: 8px; }
         table.detalle th { background: #163B50; color: #fff; padding: 3px; font-size: 9px; text-transform: uppercase; }
         table.detalle td { border: 1px solid #b9cfd9; padding: 3px; font-size: 10px; overflow-wrap: break-word; }
-        .num { text-align: right; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .seccion { font-size: 10px; text-transform: uppercase; letter-spacing: .6px; color: #163B50; font-weight: bold; margin-bottom: 5px !important; }
+        .bloque, table.detalle td { overflow-wrap: break-word; }
         .bloque, tr { break-inside: avoid; }
         thead { display: table-header-group; }
         table.totales td { border: 1px solid #b9cfd9; padding: 3px; font-size: 10px; }
@@ -50,16 +52,17 @@
             <p><b>Fecha y hora de autorización:</b> {{ c.authorization_date|date:"d/m/Y H:i:s" }}</p>
             <p><b>Ambiente:</b> {{ c.get_environment_type_display }} · <b>Emisión:</b> NORMAL</p>
             <p><b>Clave de acceso:</b></p>
-            <img alt="" class="barcode" src="{{ access_code_barcode }}">
+            <img alt="Código de barras de la clave de acceso" class="barcode" src="{{ access_code_barcode }}">
         </div>
     </td>
 </tr></table>
 <div class="bloque">
-    <p><b>Identificación (transportista):</b> {{ c.transportista_identificacion }} · <b>Razón social / nombres:</b> {{ c.transportista_razon_social }}</p>
+    <p class="seccion">Transporte</p><p><b>Identificación (transportista):</b> {{ c.transportista_identificacion }} · <b>Razón social / nombres:</b> {{ c.transportista_razon_social }}</p>
     <p><b>Placa:</b> {{ c.placa }} · <b>Punto de partida:</b> {{ c.dir_partida }}</p>
     <p><b>Fecha inicio de transporte:</b> {{ c.fecha_inicio|date:"d/m/Y" }} · <b>Fecha fin de transporte:</b> {{ c.fecha_fin|date:"d/m/Y" }}</p>
 </div>
 <div class="bloque">
+    <p class="seccion">Destino y documento sustento</p>
     {% if c.num_doc_sustento %}<p><b>Comprobante de venta:</b> FACTURA {{ c.num_doc_sustento }} · <b>Fecha de emisión:</b> {{ c.fecha_doc_sustento|date:"d/m/Y" }}</p>
     {% if c.aut_doc_sustento %}<p><b>Número de autorización:</b> <span class="clave">{{ c.aut_doc_sustento }}</span></p>{% endif %}{% endif %}
     <p><b>Motivo del traslado:</b> {{ c.motivo }}</p>

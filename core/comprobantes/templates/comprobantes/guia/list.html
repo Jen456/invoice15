@@ -6,6 +6,7 @@
 <div class="fp-comprobantes fp-retenciones fp-guias">
     <header class="fp-welcome"><span class="fp-eyebrow">Comprobantes electrónicos</span><h1>Guías de remisión</h1>
         <p>Amparan el traslado de lo vendido. Se emiten desde <a href="/pos/sale/admin/">Facturas emitidas</a>: en la factura, elige «Opciones» → «Crear guía de remisión».</p></header>
+    <p class="fp-guia-nota"><i class="fas fa-box-open" aria-hidden="true"></i> Entregas totales o parciales · Las guías muestran cantidades, sin importes.</p>
     {% for message in messages %}
         <div class="alert {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'info' %}alert-info{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
     {% endfor %}
@@ -19,8 +20,8 @@
                     <td data-label="Fecha">{{ l.emission_date|default:l.date_joined|date:"d/m/Y" }}</td>
                     <td data-label="Cliente">{{ l.razon_social }}<br><small class="text-muted">{{ l.identificacion }}</small></td>
                     <td data-label="Factura">{{ l.num_doc_sustento }}</td>
-                    <td data-label="Transporte">{{ l.fecha_inicio|date:"d/m/Y" }} – {{ l.fecha_fin|date:"d/m/Y" }} · {{ l.placa }}</td>
-                    <td data-label="Estado"><span class="badge {% if l.status == 'authorized' or l.status == 'authorized_and_sent_by_email' %}badge-success{% elif l.status == 'in_process' %}badge-info{% elif l.status == 'without_authorizing' %}badge-warning{% else %}badge-danger{% endif %}">{{ l.get_status_display }}</span></td>
+                    <td data-label="Transporte" class="fp-guia-transporte">{{ l.fecha_inicio|date:"d/m/Y" }} – {{ l.fecha_fin|date:"d/m/Y" }} · {{ l.placa }}</td>
+                    <td data-label="Estado"><span class="badge fp-guia-estado {% if l.status == 'authorized' or l.status == 'authorized_and_sent_by_email' %}badge-success{% elif l.status == 'in_process' %}badge-info{% elif l.status == 'without_authorizing' %}badge-warning{% else %}badge-danger{% endif %}">{{ l.get_status_display }}</span></td>
                     <td data-label="Acciones" class="fp-retencion-acciones">
                         {% if l.pdf_authorized %}<a href="{{ l.get_pdf_authorized }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">PDF</a>{% endif %}
                         {% if l.xml_authorized %}<a href="{{ l.get_xml_authorized }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">XML</a>{% endif %}

@@ -271,3 +271,39 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-menu-procesos .has-treeview > .nav-link > .nav-icon { flex-shrink: 0; }
 .fp-menu-procesos .has-treeview > .nav-link > p { min-width: 0; }
 @media(max-width:767.98px) { .fp-import-detail-table tfoot { display: block; } }
+
+/* Guía 06: cantidades pendientes y transporte, sin importes. */
+.fp-guia-grupo { min-width: 0; border: 1px solid #cbdfe8; border-radius: 14px; padding: 1.25rem 1rem .25rem; margin: 1.5rem 0 0; }
+.fp-guia-grupo legend { width: auto; max-width: 100%; padding: 0 .5rem; font-size: 1rem; font-weight: 700; color: #163B50; }
+.fp-guia-grupo legend i { margin-right: .4rem; color: #176581; }
+.fp-guia-cantidades { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; margin-bottom: 1.25rem; }
+.fp-guia-cantidades > div { background: white; border: 1px solid #cbdfe8; border-radius: 12px; padding: .8rem; min-width: 0; }
+.fp-guia-cantidades dt { font-size: .85rem; line-height: 1.4; }
+.fp-guia-cantidades dd { margin: .35rem 0 0; font-size: 1.35rem; font-weight: 750; overflow-wrap: anywhere; }
+.fp-guia-cantidades .fp-guia-pendiente { background: #163B50; border-color: #163B50; color: white; }
+.fp-guia-nueva legend { overflow-wrap: anywhere; }
+.fp-guia-confirmacion { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.fp-guia-confirmacion > div { border-left: 3px solid #44BADD; background: #f4fafc; padding: .85rem 1rem; overflow-wrap: anywhere; }
+.fp-guia-confirmacion dt { font-size: .85rem; color: #526d7a; }
+.fp-guia-confirmacion dd { margin: .35rem 0 0; }
+.fp-guia-tabla { width: 100%; table-layout: fixed; }
+.fp-guia-tabla td { overflow-wrap: anywhere; }
+.fp-guia-nota { background: #e5f1f6; border-radius: 12px; padding: 1rem; line-height: 1.6; }
+.fp-guia-nota i { margin-right: .5rem; }
+.fp-guia-transporte { min-width: 160px; }
+.fp-guia-config { border-top: 3px solid #44BADD; }
+.fp-guia-opcion { color: #163B50; font-weight: 650; white-space: normal; min-height: 44px; }
+.fp-guia-opcion i { color: #CA462C; }
+.fp-guia-anteriores { line-height: 1.7; }
+@media(max-width:767.98px) {
+ .fp-guia-confirmacion { grid-template-columns: 1fr; gap: .65rem; }
+ .fp-guia-cantidades { gap: .35rem; }
+ .fp-guia-cantidades > div { padding: .65rem .45rem; }
+ .fp-guia-cantidades dd { font-size: 1.15rem; }
+ .fp-guia-cantidades dt { font-size: .75rem; }
+ .fp-guia-tabla, .fp-guia-tabla tbody, .fp-guia-tabla tr, .fp-guia-tabla td { display: block; width: 100%; }
+ .fp-guia-tabla thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+ .fp-guia-tabla tr { background: white; border: 1px solid #cbdfe8; border-radius: 12px; padding: .5rem; margin-bottom: .65rem; }
+ .fp-guia-tabla td { text-align: left !important; border: 0; }
+ .fp-guia-tabla td::before { content: attr(data-label); display: block; font-size: .8rem; font-weight: 700; color: #526d7a; }
+}
