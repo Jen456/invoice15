@@ -1,49 +1,51 @@
-{% extends 'skin.html' %}
+{% extends 'importacion/base.html' %}
 {% block breadcrumb_li %}<li class="breadcrumb-item"><a href="{% url 'importacion_pendientes' %}"><i class="fas fa-inbox"></i> Pendientes</a></li><li class="breadcrumb-item active" aria-current="page">{{ detalle.numero }}</li>{% endblock %}
 {% block content %}
-<div class="fp-comprobantes fp-importacion fp-importacion-documento">
-    <header class="fp-welcome"><span class="fp-eyebrow">{{ detalle.tipo_documento }} importada</span><h1>{{ detalle.numero }}</h1>
+<div class="fp-comprobantes fp-importacion fp-importacion-documento" data-documento="{{ documento.pk }}">
+    <header class="fp-welcome"><span class="fp-eyebrow">{{ detalle.tipo_documento }} importada</span><h1>{{ detalle.numero|default:"Documento pendiente de XML" }}</h1>
         <p>{{ detalle.emisor.razon_social }} ({{ detalle.emisor.ruc }}) → {{ detalle.receptor.razon_social }} ({{ detalle.receptor.identificacion }}) · {{ documento.fecha_emision|date:"d/m/Y" }}</p></header>
-    {% include 'importacion/_mensajes.html' %}
+    {% include 'importacion/_mensajes.html' %}<p class="fp-import-note">Revisa el documento, sus impuestos y sus posibles vínculos. Aprobarlo no crea una transacción ni un asiento contable.</p>{% if detalle.estados.verificacion.id != 'verificada_sri' %}<div class="alert alert-warning" role="status">La autorización declarada en el archivo no equivale a una verificación en el SRI. Estado actual: {{ detalle.estados.verificacion.nombre }}.</div>{% endif %}
     <section class="card fp-retencion-panel mb-3"><div class="card-body">
         <dl class="row mb-0">
-            <dt class="col-sm-4">Clasificación</dt><dd class="col-sm-8">{{ detalle.estados.clasificacion.nombre }}</dd>
-            <dt class="col-sm-4">Verificación</dt><dd class="col-sm-8">{{ detalle.estados.verificacion.nombre }}</dd>
+            <dt class="col-sm-4">Clasificación</dt><dd class="col-sm-8"><span class="fp-import-tag" data-state="{{ detalle.estados.clasificacion.id }}">{{ detalle.estados.clasificacion.nombre }}</span></dd>
+            <dt class="col-sm-4">Verificación</dt><dd class="col-sm-8"><span class="fp-import-tag" data-state="{{ detalle.estados.verificacion.id }}">{{ detalle.estados.verificacion.nombre }}</span></dd>
             <dt class="col-sm-4">Revisión</dt><dd class="col-sm-8">{{ detalle.estados.revision.nombre }}</dd>
             <dt class="col-sm-4">Contabilidad</dt><dd class="col-sm-8">{{ detalle.estados.contable.nombre }}</dd>
             <dt class="col-sm-4">Clave de acceso</dt><dd class="col-sm-8 text-break">{{ detalle.clave_acceso }}</dd>
         </dl>
         {% for a in detalle.advertencias %}<div class="alert alert-warning py-1 mb-1">{{ a.texto }}</div>{% endfor %}
     </div></section>
-    <section class="card fp-retencion-panel mb-3"><div class="card-body"><h2 class="h5">Impuestos</h2>
-        <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Impuesto</th><th>Código %</th><th>Categoría</th><th class="text-right">Tarifa</th><th class="text-right">Base</th><th class="text-right">Valor</th></tr></thead><tbody>
-            {% for i in detalle.impuestos %}<tr><td>{{ i.impuesto }}</td><td>{{ i.codigo_porcentaje }}</td><td>{{ i.categoria }}</td><td class="text-right">{{ i.tarifa|default:"—" }}</td><td class="text-right">{{ i.base_imponible }}</td><td class="text-right">{{ i.valor }}</td></tr>{% endfor %}
+    {% if detalle.estados.procesamiento.id == 'procesado' %}<div class="fp-import-totals"><div><span>Sin impuestos</span><strong>{{ detalle.moneda }} {{ detalle.importes.total_sin_impuestos }}</strong></div><div><span>IVA</span><strong>{{ detalle.moneda }} {{ detalle.importes.total_iva }}</strong></div><div><span>Importe total</span><strong>{{ detalle.moneda }} {{ detalle.importes.importe_total }}</strong></div></div><section class="card fp-retencion-panel mb-3"><div class="card-body"><span class="fp-eyebrow">Desglose del XML</span><h2 class="h5">Impuestos</h2>
+        <div class="table-responsive"><table class="table table-sm fp-import-detail-table"><thead><tr><th>Impuesto</th><th>Código impuesto / porcentaje</th><th>Categoría</th><th class="text-right">Tarifa</th><th class="text-right">Base</th><th class="text-right">Valor</th></tr></thead><tbody>
+            {% for i in detalle.impuestos %}<tr><td data-label="Impuesto">{{ i.impuesto }}</td><td data-label="Código impuesto / porcentaje">{{ i.codigo }} / {{ i.codigo_porcentaje }}</td><td data-label="Categoría">{% include "importacion/_categoria.html" with categoria=i.categoria %}</td><td data-label="Tarifa" class="text-right">{{ i.tarifa|default_if_none:"—" }} %</td><td data-label="Base" class="text-right">{{ i.base_imponible }}</td><td data-label="Valor" class="text-right">{{ i.valor }}</td></tr>{% endfor %}
             <tr><td colspan="5" class="text-right"><strong>Importe total</strong></td><td class="text-right"><strong>{{ detalle.importes.importe_total }}</strong></td></tr>
         </tbody></table></div>
         {% if detalle.archivos.xml %}<a href="{{ detalle.archivos.xml.descarga }}" class="btn btn-sm btn-outline-secondary">Descargar XML</a>{% endif %}
         {% if detalle.archivos.pdf %}<a href="{{ detalle.archivos.pdf.descarga }}" class="btn btn-sm btn-outline-secondary">Descargar PDF</a>{% endif %}
     </div></section>
-    {% if detalle.candidatos %}<section class="card fp-retencion-panel mb-3"><div class="card-body"><h2 class="h5">Posibles registros existentes</h2>
-        <ul>{% for c in detalle.candidatos %}<li>{{ c.tipo|capfirst }} {{ c.numero }} — {{ c.razones|join:", " }}
+    {% else %}<div class="alert alert-info">Falta recuperar el XML. El PDF por sí solo no aporta importes contables.</div>{% endif %}
+    {% if detalle.bases_por_tarifa %}<section class="fp-import-panel"><h2 class="h5">Bases por tarifa</h2><div class="fp-import-bases">{% for b in detalle.bases_por_tarifa %}<div><strong>{% include "importacion/_categoria.html" with categoria=b.categoria %}</strong><p>Tarifa: {{ b.tarifa|default_if_none:"—" }} %</p><p>Base: {{ b.base_imponible }} · Impuesto: {{ b.valor }}</p></div>{% endfor %}</div></section>{% endif %}
+    {% if detalle.candidatos %}<section class="card fp-retencion-panel mb-3"><div class="card-body"><h2 class="h5">Posibles registros existentes</h2><p>Importar no crea una compra ni una venta. Compara antes de vincular para evitar duplicados.</p>
+        <ul>{% for c in detalle.candidatos %}<li class="fp-import-candidate">{% if c.exacto %}<span class="fp-import-tag" data-state="duplicado">Probable duplicado</span>{% endif %} {{ c.tipo|capfirst }} {{ c.numero }} — {{ c.razones|join:", " }}<p class="small text-muted">{% if c.fecha %}Fecha: {{ c.fecha }} · {% endif %}Importe sin impuestos o total del registro: {% if c.tipo == 'compra' %}{{ c.subtotal }}{% else %}{{ c.total }}{% endif %}</p>
             {% if puede_revisar and 'vincular_compra' in detalle.acciones and c.tipo == 'compra' or puede_revisar and 'vincular_venta' in detalle.acciones and c.tipo == 'venta' %}
-                <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="accion" value="vincular_{{ c.tipo }}"><input type="hidden" name="id" value="{{ c.id }}"><input type="hidden" name="confirmar_sin_verificar" value="1"><button class="btn btn-sm btn-outline-secondary">Vincular</button></form>
+                <form method="post" class="fp-import-action">{% csrf_token %}<input type="hidden" name="accion" value="vincular_{{ c.tipo }}"><input type="hidden" name="id" value="{{ c.id }}">{% include "importacion/_confirmar.html" %}<button class="btn btn-sm btn-outline-secondary">Vincular</button></form>
             {% endif %}</li>{% endfor %}</ul>
     </div></section>{% endif %}
     {% if detalle.propuesta_contable %}<section class="card fp-retencion-panel mb-3"><div class="card-body"><h2 class="h5">Propuesta contable (no contabilizada)</h2>
-        <table class="table table-sm"><thead><tr><th>Cuenta</th><th>Descripción</th><th class="text-right">Debe</th><th class="text-right">Haber</th></tr></thead><tbody>
-        {% for l in detalle.propuesta_contable.lineas %}<tr><td>{{ l.cuenta|default:"—" }}</td><td>{{ l.descripcion }}</td><td class="text-right">{{ l.debe }}</td><td class="text-right">{{ l.haber }}</td></tr>{% endfor %}
-        </tbody></table>{% for a in detalle.propuesta_contable.avisos %}<div class="text-muted small">{{ a }}</div>{% endfor %}
+        <div class="table-responsive"><table class="table table-sm fp-import-detail-table"><thead><tr><th>Cuenta</th><th>Descripción</th><th class="text-right">Debe</th><th class="text-right">Haber</th></tr></thead><tbody>
+        {% for l in detalle.propuesta_contable.lineas %}<tr><td data-label="Cuenta">{{ l.cuenta|default:"—" }}</td><td data-label="Descripción">{{ l.descripcion }}</td><td data-label="Debe" class="text-right">{{ l.debe }}</td><td data-label="Haber" class="text-right">{{ l.haber }}</td></tr>{% endfor %}
+        </tbody><tfoot><tr><td colspan="2">Totales de la propuesta</td><td data-label="Debe">{{ detalle.propuesta_contable.debe }}</td><td data-label="Haber">{{ detalle.propuesta_contable.haber }}</td></tr></tfoot></table></div><p>{% if detalle.propuesta_contable.cuadra %}La propuesta cuadra.{% else %}La propuesta no cuadra: revisa las líneas.{% endif %}</p><p class="fp-import-note">{{ detalle.propuesta_contable.nota }} Esta propuesta no es un asiento contabilizado.</p>{% for a in detalle.propuesta_contable.avisos %}<div class="text-muted small">{{ a }}</div>{% endfor %}
     </div></section>{% endif %}
     {% if puede_revisar %}<section class="card fp-retencion-panel mb-3"><div class="card-body"><h2 class="h5">Acciones</h2>
-        {% for accion in detalle.acciones %}
-            <form method="post" class="d-inline-block mr-2 mb-2">{% csrf_token %}<input type="hidden" name="accion" value="{{ accion }}">
-                {% if accion == 'aprobar' %}<label class="small mr-1"><input type="checkbox" name="confirmar_sin_verificar" value="1"> Incorporar aunque no esté verificado en el SRI</label>{% endif %}
-                {% if accion == 'clasificar' %}<select name="clasificacion" class="form-control form-control-sm d-inline-block w-auto"><option value="recibido">Recibido</option><option value="emitido">Emitido</option><option value="ajeno">Ajeno</option></select>{% endif %}
-                {% if accion == 'crear_proveedor' %}<input name="mobile" class="form-control form-control-sm d-inline-block w-auto" placeholder="Celular" maxlength="10"><input name="email" type="email" class="form-control form-control-sm d-inline-block w-auto" placeholder="Correo">{% endif %}
-                {% if accion == 'descartar' %}<input name="motivo" class="form-control form-control-sm d-inline-block w-auto" placeholder="Motivo (opcional)" maxlength="300">{% endif %}
-                {% if accion != 'vincular_compra' and accion != 'vincular_venta' %}<button type="submit" class="btn btn-sm {% if accion == 'aprobar' %}fpa-btn-pagar{% else %}btn-outline-secondary{% endif %}">{{ accion|capfirst|cut:"_" }}</button>{% endif %}
+        {% for accion in detalle.acciones %}{% if accion != 'vincular_compra' and accion != 'vincular_venta' %}
+            <form method="post" class="fp-import-action">{% csrf_token %}<input type="hidden" name="accion" value="{{ accion }}">
+                {% if accion == 'aprobar' %}{% include "importacion/_confirmar.html" %}{% endif %}
+                {% if accion == 'clasificar' %}<select aria-label="Clasificación del documento" name="clasificacion" class="form-control form-control-sm d-inline-block w-auto"><option value="recibido">Recibido</option><option value="emitido">Emitido</option><option value="ajeno">Ajeno</option></select>{% endif %}
+                {% if accion == 'crear_proveedor' %}<input name="mobile" class="form-control form-control-sm d-inline-block w-auto" aria-label="Celular del proveedor" placeholder="Celular" maxlength="10"><input name="email" type="email" class="form-control form-control-sm d-inline-block w-auto" aria-label="Correo del proveedor" placeholder="Correo">{% endif %}
+                {% if accion == 'descartar' %}<input name="motivo" class="form-control form-control-sm d-inline-block w-auto" aria-label="Motivo del descarte" placeholder="Motivo (opcional)" maxlength="300">{% endif %}
+                {% if accion != 'vincular_compra' and accion != 'vincular_venta' %}<button type="submit" class="btn btn-sm {% if accion == 'aprobar' %}fpa-btn-pagar{% else %}btn-outline-secondary{% endif %}">{% if accion == 'aprobar' %}Aprobar documento{% elif accion == 'verificar' %}Verificar en el SRI{% elif accion == 'crear_proveedor' %}Crear proveedor{% elif accion == 'reabrir' %}Reabrir revisión{% else %}{{ accion|capfirst }}{% endif %}</button>{% endif %}
             </form>
-        {% endfor %}
+        {% endif %}{% endfor %}
     </div></section>{% endif %}
 </div>
 {% endblock %}

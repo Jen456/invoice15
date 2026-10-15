@@ -1,0 +1,1 @@
+{% if categoria == 'iva_tarifa' %}IVA gravado{% elif categoria == 'iva_0' %}IVA tarifa 0 %{% elif categoria == 'iva_exento' %}Exento de IVA{% elif categoria == 'iva_no_objeto' %}No objeto de IVA{% elif categoria == 'iva_diferenciado' %}IVA diferenciado{% elif categoria == 'ice' %}ICE{% elif categoria == 'irbpnr' %}IRBPNR{% else %}{{ categoria }}{% endif %}

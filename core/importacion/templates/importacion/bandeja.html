@@ -1,19 +1,20 @@
-{% extends 'skin.html' %}
+{% extends 'importacion/base.html' %}
 {% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page"><i class="fas fa-inbox"></i> {{ title }}</li>{% endblock %}
 {% block content %}
 <div class="fp-comprobantes fp-importacion fp-importacion-{{ bandeja }}">
     <header class="fp-welcome"><span class="fp-eyebrow">{% if bandeja == 'recibidos' %}Compras y gastos{% else %}Importación de documentos{% endif %}</span><h1>{{ title }}</h1>
         {% if puede_importar %}<p><a href="{% url 'importacion_nueva' %}" class="btn fpa-btn-pagar">Importar XML / RIDE</a></p>{% endif %}</header>
     {% include 'importacion/_mensajes.html' %}
+    {% include "importacion/_filtros.html" %}
     <div class="table-responsive fp-retencion-listado"><table class="table table-sm table-bordered bg-white fp-retencion-tabla">
         <thead><tr><th scope="col">Comprobante</th><th scope="col">Fecha</th><th scope="col">Emisor</th><th scope="col" class="text-right">Total</th><th scope="col">Clasificación</th><th scope="col">Verificación</th><th scope="col">Revisión</th></tr></thead>
-        <tbody>
+        <tbody id="fp-import-documents">
         {% for d in documentos %}
             <tr><td data-label="Comprobante"><a href="{% url 'importacion_documento' d.pk %}">{{ d.get_cod_doc_display }} {{ d.numero }}</a></td>
                 <td data-label="Fecha">{{ d.fecha_emision|date:"d/m/Y" }}</td><td data-label="Emisor">{{ d.emisor_razon_social|default:d.emisor_ruc }}<br><small class="text-muted">{{ d.emisor_ruc }}</small></td>
-                <td data-label="Total" class="text-right">${{ d.importe_total|floatformat:2 }}</td><td data-label="Clasificación">{{ d.get_clasificacion_display }}</td>
-                <td data-label="Verificación">{{ d.get_estado_verificacion_display }}</td><td data-label="Revisión">{{ d.get_estado_revision_display }}</td></tr>
+                <td data-label="Total" class="text-right">${{ d.importe_total|floatformat:2 }}</td><td data-label="Clasificación"><span class="fp-import-tag" data-state="{{ d.clasificacion }}">{{ d.get_clasificacion_display }}</span></td>
+                <td data-label="Verificación"><span class="fp-import-tag" data-state="{{ d.estado_verificacion }}">{{ d.get_estado_verificacion_display }}</span></td><td data-label="Revisión">{{ d.get_estado_revision_display }}</td></tr>
         {% empty %}<tr><td colspan="7" class="text-muted">No hay documentos aquí.</td></tr>{% endfor %}
-        </tbody></table></div>
+        </tbody></table></div><div id="fp-import-pagination" class="fp-import-pagination" hidden><button type="button" data-page="prev" class="btn btn-outline-secondary">Anterior</button><span role="status"></span><button type="button" data-page="next" class="btn btn-outline-secondary">Siguiente</button></div>
 </div>
 {% endblock %}

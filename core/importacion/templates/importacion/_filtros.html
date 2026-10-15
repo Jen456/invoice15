@@ -1,0 +1,4 @@
+<form id="fp-import-filters" class="fp-import-filters" data-bandeja="{{ bandeja }}" hidden>
+<div><label for="fp-import-query">Buscar comprobante</label><input type="search" id="fp-import-query" name="q" class="form-control" placeholder="Número, RUC o razón social"></div>
+<div><label for="fp-import-tray">Mostrar</label><select id="fp-import-tray" name="bandeja" class="form-control"><option value="pendientes">Pendientes de revisión</option><option value="recibidos">Recibidos</option><option value="emitidos">Emitidos</option><option value="ajenos">Ajenos</option><option value="sin_xml">Sin XML</option><option value="todos">Todos</option></select></div>
+<button class="btn btn-outline-secondary" type="submit">Filtrar documentos</button><p id="fp-import-filter-status" role="status" aria-live="polite"></p></form>

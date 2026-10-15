@@ -1,4 +1,4 @@
-{% extends 'skin.html' %}
+{% extends 'importacion/base.html' %}
 {% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page"><i class="fas fa-sliders-h"></i> Reglas de importación</li>{% endblock %}
 {% block content %}
 <div class="fp-config fp-importacion-reglas">
@@ -7,9 +7,9 @@
     {% include 'importacion/_mensajes.html' %}
     <form method="post" class="card fp-config-panel"><div class="card-body">{% csrf_token %}
         <fieldset {% if not puede_editar %}disabled{% endif %}>
-        <div class="form-check"><input class="form-check-input" type="checkbox" name="verificar_con_sri" id="id_verificar" {% if regla.verificar_con_sri %}checked{% endif %}><label class="form-check-label" for="id_verificar">Verificar cada documento en el SRI al procesar el lote</label></div>
+        <h2 class="h5">Verificación y revisión</h2><p class="fp-import-note">Define cómo revisar los documentos de esta empresa. Las cuentas se utilizan únicamente para una propuesta, no para registrar asientos.</p><div class="form-check"><input class="form-check-input" type="checkbox" name="verificar_con_sri" id="id_verificar" {% if regla.verificar_con_sri %}checked{% endif %}><label class="form-check-label" for="id_verificar">Verificar cada documento en el SRI al procesar el lote</label></div>
         <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="exigir_verificacion" id="id_exigir" {% if regla.exigir_verificacion %}checked{% endif %}><label class="form-check-label" for="id_exigir">Exigir la verificación en el SRI para aprobar</label></div>
-        <div class="row">
+        <h2 class="h5 mt-4">Tratamiento y cuentas contables</h2><div class="row">
             <div class="form-group col-md-6"><label for="id_naturaleza" class="font-weight-bold">Naturaleza de las compras</label><select name="naturaleza_compra" id="id_naturaleza" class="form-control">{% for v, n in naturalezas %}<option value="{{ v }}" {% if regla.naturaleza_compra == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
             <div class="form-group col-md-6"><label for="id_tratamiento" class="font-weight-bold">Tratamiento del IVA en compras</label><select name="tratamiento_iva" id="id_tratamiento" class="form-control">{% for v, n in tratamientos %}<option value="{{ v }}" {% if regla.tratamiento_iva == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
             <div class="form-group col-md-4"><label for="id_cg" class="font-weight-bold">Cuenta de gasto</label><input id="id_cg" name="cuenta_gasto" value="{{ regla.cuenta_gasto }}" maxlength="30" class="form-control"></div>

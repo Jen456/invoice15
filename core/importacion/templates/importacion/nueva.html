@@ -1,16 +1,16 @@
-{% extends 'skin.html' %}
+{% extends 'importacion/base.html' %}
 {% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page"><i class="fas fa-file-import"></i> Nueva importación</li>{% endblock %}
 {% block content %}
 <div class="fp-comprobantes fp-importacion fp-importacion-nueva">
     <header class="fp-welcome"><span class="fp-eyebrow">Importación de documentos</span><h1>Importar XML / RIDE</h1>
         <p>Sube comprobantes que ya existen: XML autorizados del SRI o el RIDE en PDF. Esto no emite facturas ni usa tu numeración.</p></header>
-    {% include 'importacion/_mensajes.html' %}
-    <form method="post" enctype="multipart/form-data" class="card fp-retencion-panel"><div class="card-body">{% csrf_token %}
-        <label for="id_archivos" class="font-weight-bold">Archivos XML o PDF</label>
+    {% include 'importacion/_mensajes.html' %}<ol class="fp-import-steps" aria-label="Etapas de importación"><li><b>1</b> Sube tus archivos</li><li><b>2</b> Procesa y verifica</li><li><b>3</b> Revisa y decide</li></ol>
+    <form id="fp-import-upload" method="post" enctype="multipart/form-data" class="card fp-retencion-panel"><div class="card-body">{% csrf_token %}
+        <div class="fp-import-drop" id="fp-import-drop"><span class="fp-import-symbol" aria-hidden="true"><i class="fas fa-cloud-upload-alt"></i></span><h2>De tus archivos a una sola bandeja</h2><p>Arrastra aquí tus XML o RIDE, o selecciona los archivos de tu dispositivo.</p><label for="id_archivos" class="font-weight-bold">Archivos XML o PDF</label>
         <input type="file" name="archivos" id="id_archivos" class="form-control" multiple accept=".xml,.pdf,application/xml,text/xml,application/pdf" required>
-        <small class="form-text text-muted">Hasta {{ limites.MAX_ARCHIVOS_POR_LOTE }} archivos por lote; XML de hasta {{ limites.MAX_XML_BYTES|filesizeformat }} y PDF de hasta {{ limites.MAX_PDF_BYTES|filesizeformat }} y {{ limites.MAX_PDF_PAGINAS }} páginas. Por ahora se admiten facturas (01).</small>
-        <button type="submit" class="btn fpa-btn-pagar mt-3">Importar</button>
+        </div><small class="form-text text-muted">Hasta {{ limites.MAX_ARCHIVOS_POR_LOTE }} archivos por lote; XML de hasta {{ limites.MAX_XML_BYTES|filesizeformat }} y PDF de hasta {{ limites.MAX_PDF_BYTES|filesizeformat }} y {{ limites.MAX_PDF_PAGINAS }} páginas. Por ahora se admiten facturas (01).</small>
+        <p class="fp-import-note">Máximo 60 MB por lote. La subida se divide en peticiones de menos de 9 MB. Un PDF admite hasta 5 páginas; solo se importan facturas (01).</p><noscript><p class="alert alert-info">Sin JavaScript, selecciona archivos que sumen menos de 9 MB por envío. Puedes revisar y procesar el lote desde su detalle.</p></noscript><button type="submit" class="btn fpa-btn-pagar mt-3">Importar</button>
         <a href="{% url 'importacion_lotes' %}" class="btn btn-link mt-3">Ver lotes</a>
-    </div></form>
+    </div></form><section id="fp-import-upload-status" class="fp-import-panel" hidden aria-labelledby="fp-upload-title"><h2 id="fp-upload-title">Avance de tu importación</h2><p id="fp-upload-message" role="status" aria-live="polite"></p><ul id="fp-upload-files" class="fp-upload-files"></ul><a id="fp-upload-lote" class="btn btn-outline-secondary" hidden>Ver lote y resultados</a></section>
 </div>
 {% endblock %}

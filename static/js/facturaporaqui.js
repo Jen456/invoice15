@@ -75,3 +75,33 @@
     }
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', start); } else { start(); }
 })();
+
+/* Menú por procesos: estado visible por URL y grupos operables con teclado. */
+(function () {
+    function initMenu() {
+        var menu = document.querySelector('.fp-menu-procesos');
+        if (!menu) return;
+        var path = location.pathname;
+        if (path.indexOf('/importacion/documentos/') === 0) path = '/importacion/pendientes/';
+        var links = Array.from(menu.querySelectorAll('a[data-name=submodule],a[data-name=single_module]'));
+        var current = links.filter(function (link) { return path.indexOf(link.getAttribute('href')) === 0; })
+            .sort(function (a, b) { return b.getAttribute('href').length - a.getAttribute('href').length; })[0];
+        links.forEach(function (link) { link.classList.remove('active'); link.removeAttribute('aria-current'); });
+        if (current) {
+            current.classList.add('active'); current.setAttribute('aria-current', 'page');
+            var group = current.closest('.has-treeview');
+            if (group) { group.classList.add('menu-open'); group.querySelector('.nav-treeview').style.display = 'block'; }
+        }
+        menu.querySelectorAll('.has-treeview').forEach(function (group) {
+            var trigger = group.querySelector('[data-name=module_header]');
+            trigger.classList.toggle('active', Boolean(current && group.contains(current)));
+            function sync() { trigger.setAttribute('aria-expanded', String(group.classList.contains('menu-open'))); }
+            sync();
+            new MutationObserver(sync).observe(group, {attributes: true, attributeFilter: ['class']});
+            trigger.addEventListener('click', function (event) { event.preventDefault(); });
+            trigger.addEventListener('keydown', function (event) { if (event.key === ' ') {event.preventDefault(); trigger.click();} });
+        });
+    }
+    if (window.jQuery) jQuery(function () { setTimeout(initMenu, 0); });
+    else document.addEventListener('DOMContentLoaded', initMenu);
+}());

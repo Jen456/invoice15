@@ -1,0 +1,2 @@
+<div class="fp-import-confirm"><label><input type="checkbox" required> He revisado los impuestos y los posibles duplicados. Confirmo esta incorporación o vinculación.</label>
+{% if detalle.estados.verificacion.id != 'verificada_sri' %}<label><input type="checkbox" name="confirmar_sin_verificar" value="1"> Incorporar aunque no esté verificado en el SRI</label><small>Esta excepción no permite incorporar documentos no autorizados, no encontrados o con discrepancias.</small>{% endif %}</div>

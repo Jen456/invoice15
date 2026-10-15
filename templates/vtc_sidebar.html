@@ -13,7 +13,7 @@
                 <a class="d-block">{{ request.user.get_short_name }}</a>
             </div>
         </div>
-        <nav class="mt-2">
+        <nav class="mt-2 fp-menu-procesos" aria-label="Procesos y comprobantes de tu empresa">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                 {% if fpa_plan.periodo.plan.multiempresa and not fpa_plan.titular and fpa_gestiona_plan %}
                 <li class="nav-item"><a class="nav-link{% if request.path == '/suscripcion/empresas/' %} active{% endif %}" href="{% url 'suscripcion_empresas' %}"><i class="nav-icon fas fa-building" aria-hidden="true"></i><p>Empresas del plan</p></a></li>
@@ -22,11 +22,11 @@
                 {% if session_group.get_session_module_types %}
                     {% for module_type in session_group.get_session_module_types %}
                         <li class="nav-item has-treeview" data-name="module_header" data-id="{{ forloop.counter }}">
-                            <a class="nav-link" data-name="module_header">
+                            <a href="#fp-menu-grupo-{{ module_type.pk }}" role="button" aria-expanded="false" aria-controls="fp-menu-grupo-{{ module_type.pk }}" class="nav-link" data-name="module_header">
                                 <i class="nav-icon {{ module_type.icon }}"></i>
                                 <p>{{ module_type.name }}<i class="right fas fa-angle-left"></i></p>
                             </a>
-                            <ul class="nav nav-treeview">
+                            <ul class="nav nav-treeview" id="fp-menu-grupo-{{ module_type.pk }}">
                                 {% for module in module_type.get_session_modules %}
                                     <li class="nav-item">
                                         <a href="{{ module.url }}" class="nav-link" data-name="submodule" data-id="{{ forloop.counter }}">

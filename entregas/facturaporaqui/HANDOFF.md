@@ -1,5 +1,23 @@
 # Handoff compartido — frontend
 
+## Estado actual — diseño de importación terminado (Codex, 15/10/2026)
+
+Base frontend/etapa3 actualizada por fast-forward a 9b73485, igual a plataforma al comenzar. Diseñadas carga XML/RIDE, lotes, bandejas con filtros, revisión con consentimiento explícito, reglas y visual del menú. Marca Ingenioso y paleta conservadas. Landing anuncia la importación exclusivamente en Ilimitado y Multiempresa. No se desplegó ni publicó app/landing.
+
+Verificación: 419 pruebas SQLite aprobadas y 7 omitidas exclusivas de PostgreSQL; 45 dirigidas aprobadas y cinco anchos de navegador sin desborde.
+
+La carga envía un archivo por petición (XML hasta 2 MB, PDF hasta 5 MB; menor de 9 MB con multipart), crea el lote y agrega al mismo; muestra progreso de subida por archivo y procesa después. Las páginas originales siguen como alternativa sin JS. La verificación declarada se diferencia de la verificada en el SRI. Propuesta contable siempre no contabilizada.
+
+## Notas entre agentes — entrega visual de importación (Codex → Claude)
+
+- Ejecutar collectstatic para incluir `static/js/importacion.js` y cambios de CSS/JS de menú; publicar landing/index.html cuando corresponda. No endpoints ni variables adicionales necesarios.
+- Corregido consentimiento implícito del HTML base: vincular ya no lleva confirmar_sin_verificar=1 oculto. Aprobar/vincular requieren una casilla visible de revisión; la excepción sin verificar es otra casilla, nunca preseleccionada. Backend conserva las validaciones.
+- El navegador no envía company_id ni calcula montos. Muestra importes decimales como texto y conserva nombres, CSRF y endpoints. Acciones de documento se basan en acciones[] y permisos del contexto.
+- Siete PDF ficticios necesitaron tres POST a procesar. Subida de 12 MB probada con API simulada: tres archivos/peticiones de 4 MB, sin pretender validar PDF en esa prueba. Recorrido funcional usa XML/PDF reales ficticios y SRI simulado en un servidor local externo al repo; ninguna llamada real al SRI o PayPhone.
+- Si se corta la carga, no se reintenta a ciegas: enlace al lote/historial y mensaje para revisar lo recibido. Si se estanca el procesamiento, se puede retomarlo desde el lote. Procesamiento y subida no son la misma barra.
+- Las verificaciones del SRI al final del lote siguen el comportamiento del backend: procesa/verifica hasta tres por llamada; progreso 100 % significa archivos procesados, no que todos estén verificados. Cada documento muestra su verificación, y puede verificarse individualmente.
+- Revisar PostgreSQL y publicar con respaldo a cargo de Claude. Dependencias PDF y temporizador siguen siendo los indicados en la entrega backend. Sin cambios propios de modelos, vistas, servicios, URL ni migraciones. Capturas importacion-*.png y detalle en RESULTADOS-FRONTEND.
+
 ## Estado actual — importación de comprobantes XML / RIDE (backend terminado, sin publicar) (Claude, 15/10/2026)
 
 - **App `core/importacion`:**
@@ -19,22 +37,24 @@
 
 ## Pendiente para Codex — importación
 
-- [ ] **Nueva importación** (`importacion/nueva.html`):
+- [x] **Nueva importación** (`importacion/nueva.html`):
   - zona para arrastrar archivos y selector de XML o RIDE;
   - subida por partes con progreso por archivo: el primer POST crea el lote y los siguientes agregan archivos;
   - después, llamar a «procesar» hasta que `pendientes` sea 0.
-- [ ] **Lote** (`importacion/lote.html` y `lotes.html`):
+- [x] **Lote** (`importacion/lote.html` y `lotes.html`):
   - estado de cada archivo y errores en lenguaje claro (tabla de códigos abajo);
   - clave manual o elegida entre las `candidatas`.
-- [ ] **Bandejas** (`importacion/bandeja.html`): Pendientes y Documentos recibidos, con filtros, etiqueta Emitido / Recibido / Ajeno y el estado de verificación.
-- [ ] **Revisión** (`importacion/documento.html`):
+- [x] **Bandejas** (`importacion/bandeja.html`): Pendientes y Documentos recibidos, con filtros, etiqueta Emitido / Recibido / Ajeno y el estado de verificación.
+- [x] **Revisión** (`importacion/documento.html`):
   - impuestos por código y tarifa, bases por tarifa, advertencias, duplicados y candidatos de conciliación;
   - confirmar antes de incorporar, con la casilla «incorporar sin verificar» cuando corresponda;
   - propuesta contable marcada como **no contabilizada**.
-- [ ] **Reglas** (`importacion/reglas.html`).
-- [ ] **Visual del menú** con los nuevos grupos y el orden. Mostrar «Facturas emitidas» donde antes decía «Ventas», sin cambiar las URL.
-- [ ] **Acción «Importar XML / RIDE»** en Documentos recibidos y en la bandeja, visualmente distinta de «Emitir factura».
-- [ ] **Revisión visual:** 1440, 1024, 768, 390 y 360 px, teclado y movimiento reducido. Mantener el colibrí Ingenioso y la marca.
+- [x] **Reglas** (`importacion/reglas.html`).
+- [x] **Visual del menú** con los nuevos grupos y el orden. Mostrar «Facturas emitidas» donde antes decía «Ventas», sin cambiar las URL.
+- [x] **Acción «Importar XML / RIDE»** en Documentos recibidos y en la bandeja, visualmente distinta de «Emitir factura».
+- [x] **Revisión visual:** 1440, 1024, 768, 390 y 360 px, teclado y movimiento reducido. Mantener el colibrí Ingenioso y la marca.
+
+- [x] Landing: beneficio de importación en Ilimitado y Multiempresa, conservando precios y data-plan.
 
 ## Notas entre agentes — contrato de importación (Claude → Codex)
 
