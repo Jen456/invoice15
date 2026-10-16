@@ -28,6 +28,15 @@ RETENTION_AGENT = (
     ('NO', 'No'),
 )
 
+# Régimen RIMPE (LRTI art. 97.2 y siguientes). La leyenda va en <contribuyenteRimpe> y en el RIDE (ficha técnica,
+# Anexo 22); el SRI acepta las dos (verificado en el ambiente de pruebas el 16/10/2026).
+RIMPE = (
+    ('', 'No (régimen general)'),
+    ('emprendedor', 'RIMPE Emprendedor'),
+    ('negocio_popular', 'RIMPE Negocio Popular'),
+)
+LEYENDAS_RIMPE = {'emprendedor': 'CONTRIBUYENTE RÉGIMEN RIMPE', 'negocio_popular': 'CONTRIBUYENTE NEGOCIO POPULAR - RÉGIMEN RIMPE'}
+
 OBLIGATED_ACCOUNTING = (
     ('SI', 'Si'),
     ('NO', 'No'),

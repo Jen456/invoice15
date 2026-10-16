@@ -93,6 +93,7 @@
         Ruc: {{ sale.company.ruc }}<br>
         {% if sale.is_invoice %}
             Obligado a llevar contabilidad: {{ sale.company.get_obligated_accounting_display }}<br>
+            {% if sale.company.leyenda_rimpe %}{{ sale.company.leyenda_rimpe }}<br>{% endif %}
         {% endif %}
         Teléfono: {{ sale.company.phone }} / Celular: {{ sale.company.mobile }}
     </p>

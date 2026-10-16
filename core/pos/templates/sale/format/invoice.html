@@ -95,6 +95,7 @@
         <div class="text-content"><p><b>Matriz:</b> {{ sale.company.main_address }}</p></div>
         <div class="text-content"><p><b>Correo:</b> {{ sale.company.email }}</p></div>
         <div class="text-content"><p><b>Obligado a llevar contabilidad:</b> {{ sale.company.obligated_accounting }}</p></div>
+        {% if sale.company.leyenda_rimpe %}<div class="text-content"><p><b>{{ sale.company.leyenda_rimpe }}</b></p></div>{% endif %}
         {% if sale.company.special_taxpayer and sale.company.special_taxpayer != '000' %}<div class="text-content"><p><b>Contribuyente Especial No.:</b> {{ sale.company.special_taxpayer }}</p></div>{% endif %}
     </div>
     <div class="col-50">

@@ -40,6 +40,7 @@
             <p><b>Dirección establecimiento:</b> {{ c.receipt.establishment_address|default:empresa.establishment_address }}</p>
             <p><b>Obligado a llevar contabilidad:</b> {{ empresa.obligated_accounting }}</p>
             {% if empresa.special_taxpayer and empresa.special_taxpayer != '000' %}<p><b>Contribuyente especial No.:</b> {{ empresa.special_taxpayer }}</p>{% endif %}
+            {% if empresa.leyenda_rimpe %}<p><b>{{ empresa.leyenda_rimpe }}</b></p>{% endif %}
         </div>
     </td>
     <td style="width:50%; vertical-align:top">

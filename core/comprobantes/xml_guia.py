@@ -7,8 +7,7 @@ from xml.etree import ElementTree
 from django.utils import timezone
 
 from core.comprobantes.xml_retencion import _sub
-from core.pos.choices import RETENTION_AGENT
-from core.pos.models import informacion_adicional
+from core.pos.models import info_tributaria_final, informacion_adicional
 from core.pos.utilities.sri import SRI
 
 
@@ -26,8 +25,7 @@ def generar_xml(guia):
                        ('estab', guia.receipt.establishment_code), ('ptoEmi', guia.receipt.issuing_point_code),
                        ('secuencial', guia.voucher_number), ('dirMatriz', company.main_address)):
         _sub(it, tag, valor)
-    if company.retention_agent == RETENTION_AGENT[0][0]:
-        _sub(it, 'agenteRetencion', '1')   # igual que en la factura y la nota de crédito
+    info_tributaria_final(company, it)   # agenteRetencion y contribuyenteRimpe (Anexo 22)
 
     info = ElementTree.SubElement(raiz, 'infoGuiaRemision')
     _sub(info, 'dirEstablecimiento', guia.receipt.establishment_address() or company.establishment_address or company.main_address)

@@ -134,7 +134,7 @@ class TestEmision:
         assert enviado.subject.startswith('Guía de remisión 001-002-000000010') and 'Total' not in enviado.body
 
     def test_xml_firmado_valido_contra_el_xsd_oficial(self, empresa, factura, numeracion):  # noqa: F811
-        empresa.retention_agent, empresa.special_taxpayer = 'SI', '12345'
+        empresa.retention_agent, empresa.special_taxpayer, empresa.rimpe = 'SI', '12345', 'emprendedor'
         empresa.save()
         with company_context(empresa):
             with transaction.atomic():
@@ -150,6 +150,7 @@ class TestEmision:
         assert documento.findtext('destinatarios/destinatario/detalles/detalle/cantidad') == '1.250000'
         assert documento.findtext('destinatarios/destinatario/codEstabDestino') == '001'
         assert documento.findtext('infoTributaria/agenteRetencion') == '1'
+        assert documento.findtext('infoTributaria/contribuyenteRimpe') == 'CONTRIBUYENTE RÉGIMEN RIMPE'
 
     def test_entregas_parciales_no_superan_lo_vendido(self, web, empresa, factura, numeracion, sri):  # noqa: F811
         for _ in range(2):

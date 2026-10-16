@@ -196,7 +196,7 @@ class TestEmision:
         assert mail.outbox[0].to == ['compras@proveedor.example'] and len(mail.outbox[0].attachments) == 2
 
     def test_xml_firmado_valido_contra_el_xsd_oficial(self, empresa, compra, codigos, numeracion):
-        empresa.retention_agent, empresa.special_taxpayer = 'SI', '12345'
+        empresa.retention_agent, empresa.special_taxpayer, empresa.rimpe = 'SI', '12345', 'emprendedor'
         empresa.save()
         with company_context(empresa):
             from django.db import transaction
@@ -212,6 +212,7 @@ class TestEmision:
         assert documento.findtext('infoCompRetencion/periodoFiscal') == f'{timezone.localdate():%m/%Y}'
         assert [i.findtext('codigoPorcentaje') for i in documento.iter('impuestoDocSustento')] == ['0', '4']
         assert documento.findtext('infoTributaria/agenteRetencion') == '1'
+        assert documento.findtext('infoTributaria/contribuyenteRimpe') == 'CONTRIBUYENTE RÉGIMEN RIMPE'
         assert documento.findtext('infoCompRetencion/contribuyenteEspecial') == '12345'
 
     def test_una_retencion_por_compra(self, web, empresa, compra, codigos, numeracion, sri):

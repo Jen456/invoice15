@@ -54,7 +54,7 @@ class CompanyAdmin(admin.ModelAdmin):
         ('Empresa', {'fields': ('ruc', 'business_name', 'tradename', 'is_active', 'uuid', 'created_at')}),
         ('Datos tributarios', {'fields': ('main_address', 'establishment_address', 'establishment_code',
                                           'issuing_point_code', 'special_taxpayer', 'obligated_accounting',
-                                          'retention_agent', 'environment_type', 'emission_type', 'iva',
+                                          'retention_agent', 'rimpe', 'environment_type', 'emission_type', 'iva',
                                           'vat_percentage')}),
         ('Contacto', {'fields': ('mobile', 'phone', 'email', 'website', 'description', 'image')}),
     )

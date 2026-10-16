@@ -44,6 +44,8 @@ class Company(models.Model):
     environment_type = models.PositiveIntegerField(choices=ENVIRONMENT_TYPE, default=1, verbose_name='Tipo de Ambiente')
     emission_type = models.PositiveIntegerField(choices=EMISSION_TYPE, default=1, verbose_name='Tipo de Emisión')
     retention_agent = models.CharField(max_length=2, choices=RETENTION_AGENT, default=RETENTION_AGENT[1][0], verbose_name='Agente de Retención')
+    rimpe = models.CharField(max_length=20, choices=RIMPE, default='', blank=True, verbose_name='Régimen RIMPE',
+                             help_text='Si la empresa está en el RIMPE, sus comprobantes llevan la leyenda que exige el SRI.')
     mobile = models.CharField(max_length=10, verbose_name='Teléfono celular')
     phone = models.CharField(max_length=9, verbose_name='Teléfono convencional')
     email = models.CharField(max_length=50, verbose_name='Email')
@@ -60,6 +62,11 @@ class Company(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     is_active = models.BooleanField(default=True, verbose_name='Activa')
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name='Fecha de alta')
+
+
+    @property
+    def leyenda_rimpe(self):
+        return LEYENDAS_RIMPE.get(self.rimpe or '', '')
 
     def __str__(self):
         return self.business_name
@@ -529,6 +536,14 @@ class Receipt(TenantModel):
 EXCLUIR_DEL_JSON = ('xml_signed', 'signed_at', 'sri_sent_at', 'emission_date')
 
 
+def info_tributaria_final(company, info_tributaria):
+    """Últimos nodos de <infoTributaria> en todos los comprobantes: agenteRetencion y contribuyenteRimpe (Anexo 22)."""
+    if company.retention_agent == RETENTION_AGENT[0][0]:
+        ElementTree.SubElement(info_tributaria, 'agenteRetencion').text = '1'
+    if company.leyenda_rimpe:
+        ElementTree.SubElement(info_tributaria, 'contribuyenteRimpe').text = company.leyenda_rimpe
+
+
 def informacion_adicional(raiz, pares):
     """<infoAdicional> del comprobante: sin campos vacíos (el XSD exige al menos un carácter), sin saltos de
     línea, hasta 300 caracteres y como máximo 15 campos, incluido el «RUC Proveedor» (Anexo 26 de la ficha)."""
@@ -667,6 +682,7 @@ class Sale(TenantModel):
         ElementTree.SubElement(xml_tax_info, 'ptoEmi').text = self.receipt.issuing_point_code
         ElementTree.SubElement(xml_tax_info, 'secuencial').text = self.voucher_number
         ElementTree.SubElement(xml_tax_info, 'dirMatriz').text = self.company.main_address
+        info_tributaria_final(self.company, xml_tax_info)
         # infoFactura
         xml_info_invoice = ElementTree.SubElement(root, 'infoFactura')
         ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = fecha_emision.strftime('%d/%m/%Y')
@@ -1247,8 +1263,7 @@ class CreditNote(TenantModel):
         ElementTree.SubElement(xml_tax_info, 'ptoEmi').text = self.receipt.issuing_point_code
         ElementTree.SubElement(xml_tax_info, 'secuencial').text = self.voucher_number
         ElementTree.SubElement(xml_tax_info, 'dirMatriz').text = self.company.main_address
-        if self.company.retention_agent == RETENTION_AGENT[0][0]:
-            ElementTree.SubElement(xml_tax_info, 'agenteRetencion').text = '1'
+        info_tributaria_final(self.company, xml_tax_info)
         # infoNotaCredito
         xml_info_invoice = ElementTree.SubElement(root, 'infoNotaCredito')
         ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = fecha_emision.strftime('%d/%m/%Y')

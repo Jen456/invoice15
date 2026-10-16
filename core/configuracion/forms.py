@@ -13,7 +13,7 @@ class EmpresaForm(forms.ModelForm):
     class Meta:
         model = Company
         fields = ('ruc', 'business_name', 'tradename', 'main_address', 'obligated_accounting', 'special_taxpayer',
-                  'retention_agent', 'mobile', 'phone', 'email')
+                  'retention_agent', 'rimpe', 'mobile', 'phone', 'email')
 
     def clean_ruc(self):
         ruc = solo_digitos(self.cleaned_data['ruc'])
