@@ -1008,3 +1008,29 @@ Continuación de importación:
 - Capturas de importación regeneradas reflejan la integración y el menú con guías. Los 27 archivos siguen acompañando el informe anterior.
 
 Sin modificaciones propias de modelos, vistas, servicios, URL, migraciones, .env o contexto. Sin documentos reales ni despliegue. PostgreSQL, móvil físico y lector de pantalla pendientes de revisión externa. Entrega local para revisión de Claude y publicación con respaldo cuando la propietaria lo indique.
+
+## 15/10/2026 — subida a GitHub, landing y compresión de marca (Codex)
+
+Leídos AGENTS, HANDOFF e informe antes de comenzar. Trabajo en frontend/etapa3. Orden solicitado respetado: fetch, merge, suite SQLite completa y primer push antes de modificar los PNG o crear las capturas de cierre.
+
+**Integración y primer commit subido:** fetch de frontend/etapa3 y plataforma confirmó ambas referencias en 36bb8de. `git merge --no-edit github/plataforma` respondió «Already up to date»: e5da4f6 ya contenía esa integración, con documentación de ambos agentes conservada. Se subió **12a2800f8c549df0b8788039e505ed0af2425623** a refs/heads/frontend/etapa3; `git ls-remote` confirmó exactamente ese SHA. Plataforma seguía en 36bb8de. Sin force push ni reescritura.
+
+**Suite antes del push:** `XDG_CACHE_HOME=/workspace/multi-runtime/cache /workspace/.venv-platform/bin/python -m pytest -o addopts= -q`, salida 0: **442 passed, 7 skipped en 98,38 s**. Ajustes config.settings_test, FPA_TEST_DATABASE_URL ausente: SQLite en memoria. Las siete omitidas necesitan PostgreSQL. No se repitió la suite después de la compresión: los cambios posteriores son PNG, capturas y documentación; se verificaron los archivos decodificados y su carga en navegador.
+
+**Landing comercial:** `landing/index.html` ya incluía desde 579047b el texto exacto «Importación de comprobantes recibidos (XML y RIDE)» en Ilimitado y Multiempresa. No se modificó el HTML ni se duplicó el beneficio. Verificado en navegador que las ocurrencias por tarjeta son 0/1/1. Se conservan $50/$85/$199, cobro anual, IVA, alcance de RUC, data-plan plan-1000/ilimitado/multiempresa y todas las opciones y nombres del formulario.
+
+**Archivos modificados:**
+- `landing/assets/brand/isotipo.png` y `static/img/brand/isotipo.png`: de 504.942 a 441.969 bytes cada uno (−12,47 %), 1374×1145 px RGBA.
+- `landing/assets/brand/favicon.png` y `static/img/brand/favicon.png`: de 534.685 a 442.708 bytes cada uno (−17,20 %), 1254×1254 px RGBA.
+- HANDOFF.md, este informe y 14 capturas de cierre en `capturas/`.
+
+**Compresión y nitidez:** ImageMagick generó un flujo IDAT con compresión nivel 9 y filtrado adaptativo fuera del repositorio. Solo ese flujo comprimido se sustituyó en cada PNG original. IHDR y todos los chunks auxiliares, incluido caBX, se conservaron byte a byte; CRC comprobados. Comparación del RGBA decodificado antes/después: igualdad exacta, incluyendo alfa. Mismos nombres, dimensiones y pares idénticos entre landing/app. Ahorro total: **309.900 bytes (14,90 %)** en los cuatro archivos. Se conservó la resolución completa para no alterar el logo ni su nitidez.
+
+**Navegador y capturas:**
+- Chromium/Playwright a 1440/1024/768/390/360 px: ancho del documento igual al viewport, tarjetas dentro del viewport y sin scroll interno horizontal. Portada, navegación y formulario también comprobados.
+- Cada CTA selecciona la opción correcta en el formulario; inputs personales vacíos y sin envío. Beneficios desplegables accesibles mediante Enter y Espacio. Con movimiento reducido no hay animación; con movimiento normal las tres tarjetas aparecen al entrar en pantalla. Cero errores JavaScript y cero respuestas HTTP fallidas.
+- Capturas `cierre-landing-planes-{1440,1024,768,390,360}.png`, `cierre-landing-formulario-{1440,1024,768,390,360}.png` y `cierre-landing-portada-{1440,390}.png`. Inspección visual de planes a 1440 y 390 px. El glifo decorativo ↗ depende de la fuente del navegador; en este entorno aparece como un cuadro, sin afectar texto ni acciones.
+- PNG optimizados decodificados en la landing y en /login/ local; isotipo y favicon con las dimensiones originales, sin recursos fallidos. Login a 1440/390 sin desbordes: `cierre-marca-login-1440.png` y `cierre-marca-login-390.png`.
+- `git diff --check` correcto. HTML de landing sin diferencia respecto de 12a2800. Scripts/logs de comprobación y candidatos de compresión fuera del checkout, en /workspace/cierre-runtime/; sin dependencias nuevas para el proyecto.
+
+Sin cambios del backend, precios, campos, action ni CSRF. No se usaron datos privados ni se hicieron pagos o emisiones. No despliegue: Claude revisa, integra en plataforma, ejecuta PostgreSQL y publica con respaldo. Pruebas de teléfono físico y PostgreSQL quedan a cargo de la revisión posterior.

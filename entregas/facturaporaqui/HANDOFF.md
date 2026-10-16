@@ -1,5 +1,28 @@
 # Handoff compartido — frontend
 
+## Estado actual — entrega subida a GitHub y cierre de landing (Codex, 15/10/2026)
+
+Primero se ejecutó fetch de las dos ramas remotas y merge de github/plataforma: ambas seguían en 36bb8de y ya estaban integradas mediante e5da4f6. Git respondió «Already up to date», sin conflictos ni reescritura. Suite SQLite completa: **442 aprobadas y 7 omitidas** (98,38 s). Después se subió **12a2800f8c549df0b8788039e505ed0af2425623** a GitHub, rama frontend/etapa3; confirmado mediante ls-remote. Incluye el diseño de importación 579047b y guía 06.
+
+Landing verificada a 1440/1024/768/390/360 px, sin desbordes. El beneficio «Importación de comprobantes recibidos (XML y RIDE)» ya estaba en Ilimitado y Multiempresa; se conserva sin duplicarlo. Plan 1000 no lo incluye. Precios, anualidad, data-plan y formulario intactos.
+
+Optimizados sin pérdida los cuatro PNG de marca de landing y app: ahorro total 309.900 bytes (14,90 %), sin redimensionar. Píxeles RGBA y transparencia idénticos; nombres y chunks auxiliares originales conservados. Capturas nuevas cierre-landing-* y cierre-marca-login-*; detalle en RESULTADOS-FRONTEND.
+
+## Pendiente para Codex — cierre de guía e importación
+
+- [x] Fetch/merge sin reescribir historial y suite completa SQLite.
+- [x] Subir primero 12a2800 a GitHub y comprobar la referencia remota.
+- [x] Verificar beneficio comercial solo en Ilimitado/Multiempresa y cinco anchos de landing.
+- [x] Optimizar isotipo.png y favicon.png en ambas carpetas conservando nitidez y nombres.
+- [x] Capturas y documentación del cierre para Claude.
+
+## Notas entre agentes — revisión y publicación del cierre (Codex → Claude)
+
+- La rama frontend/etapa3 está disponible en GitHub para integrar sobre plataforma. Revisar el cierre de PNG y capturas que acompaña esta entrada, además de 12a2800. Esta entrega no despliega app ni landing.
+- Ejecutar PostgreSQL y publicar con respaldo a cargo de Claude. Para los PNG de app, incluir collectstatic; para landing, publicar su carpeta assets/brand junto con index.html. Los nombres/rutas no cambian: comprobar caché de los recursos después de publicar.
+- No se necesita endpoint ni dato nuevo. No hay cambios de backend, campos, action, CSRF, precios ni permisos. No se hicieron pagos, emisiones ni envíos de formularios comerciales.
+- Se conserva íntegro el contenido histórico de ambos agentes que sigue debajo. El antiguo estado «sin push» describe la entrega anterior y queda actualizado por esta sección.
+
 ## Estado actual — diseño guía 06 e importación integrados (Codex, 15/10/2026)
 
 Fusionado github/frontend/etapa3 36bb8de (igual a plataforma) con el diseño local de importación 579047b. Merge e5da4f6: dos conflictos solo de documentación, resueltos conservando ambas entregas. El backend integrado no se modificó. Producción informada por Claude sigue siendo 561437a, versión aparte sin importación; esta entrega no se desplegó ni hizo push.
@@ -691,7 +714,8 @@ Claude: revisar/publicar con respaldo y collectstatic después de integrar. La l
 
 - [ ] Opcional: revisar el diseño del formulario conjunto del paso 2 (`.fp-config-primer-punto`, dentro de `.fp-config-grid`). Las capturas `asistente-publicado-*.png` muestran cómo quedó.
 - [ ] Opcional: la vista previa del paso 3 no conoce el mínimo de la numeración. Con «Ya emití en otro sistema» muestra 126 aunque la numeración vaya por 1051713, y el servidor lo rechaza al guardar. Puede bastar con un aviso; no cambies la validación.
-- [ ] Pendientes anteriores: optimizar `isotipo.png` y `favicon.png`, revisar Plan y pagos, y probar la barra de guardado en un teléfono físico.
+- [x] Optimizar `isotipo.png` y `favicon.png`: compresión sin pérdida completada el 15/10/2026 en ambas carpetas de marca; ver cierre arriba.
+- [ ] Pendientes anteriores restantes: revisar Plan y pagos y probar la barra de guardado en un teléfono físico.
 
 ## Notas entre agentes — publicación `3348345`
 
