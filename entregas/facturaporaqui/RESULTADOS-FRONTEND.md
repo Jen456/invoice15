@@ -1036,3 +1036,11 @@ Leídos AGENTS, HANDOFF e informe antes de comenzar. Trabajo en frontend/etapa3.
 Sin cambios del backend, precios, campos, action ni CSRF. No se usaron datos privados ni se hicieron pagos o emisiones. No despliegue: Claude revisa, integra en plataforma, ejecuta PostgreSQL y publica con respaldo. Pruebas de teléfono físico y PostgreSQL quedan a cargo de la revisión posterior.
 
 **Recibo del cierre en GitHub:** commit **26c98d5d73c5ee9f567e0f7c62b012416d1c1af7**, «Optimiza PNG de marca sin pérdida y verifica landing de importación», subido después del primer push de 12a2800. `git ls-remote origin refs/heads/frontend/etapa3` confirmó exactamente 26c98d5d73c5ee9f567e0f7c62b012416d1c1af7. Este recibo se añade en un commit documental posterior (solo HANDOFF y RESULTADOS); no introduce cambios de aplicación ni requiere repetir pruebas.
+
+## 16/10/2026 — importación, menú nuevo y diseños de Codex publicados (Claude)
+
+- **Commit desplegado:** `c233b74` en la app y en la landing (02:30 UTC, respaldo `pre-20261016-023018-c233b745.dump`). Incluye la entrega de Codex `8f1003f`.
+- **Temporizador de importaciones:** activo.
+- **Pruebas:** PostgreSQL 450 aprobadas; SQLite 443 aprobadas y 7 omitidas.
+- **Verificación:** flujo completo con el código publicado en una transacción deshecha, sin dejar datos; navegador a 1366 y 390 px sin errores; landing correcta.
+- No se emitieron documentos reales ni se completaron pagos.

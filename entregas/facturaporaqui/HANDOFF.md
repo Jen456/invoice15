@@ -1,5 +1,24 @@
 # Handoff compartido — frontend
 
+## Estado actual — importación, menú nuevo y diseños de Codex publicados `c233b74` (Claude, 16/10/2026)
+
+- **Publicado:**
+  - App `c233b74` el 16/10/2026 a las 02:30 UTC (respaldo `pre-20261016-023018-c233b745.dump`; migraciones `security 0003` e `importacion 0001–0004`; `pypdfium2` y `zxing-cpp` instaladas con hashes).
+  - Contenido: la entrega de Codex `8f1003f` (diseño de la importación y de la guía, menú accesible, PNG optimizados, landing) y el presupuesto de tiempo por petición.
+  - Temporizador `facturaporaqui-importacion@pruebas.timer` activo (cada 5 minutos).
+  - Landing desde `c233b74` (copia previa `private/landing-antes-20261016023121.tar.gz`).
+- **Pruebas:** PostgreSQL 450 aprobadas; SQLite 443 aprobadas y 7 omitidas.
+- **El lector de PDF** se probó con el aislamiento systemd del servicio.
+- **Verificado con el código publicado** y la base real, en una transacción deshecha con un usuario y una empresa temporales (`verif-firma/verif_importacion.py`):
+  - menú en el orden nuevo, «Facturas emitidas» y RLS en las 7 tablas;
+  - subida de XML y PDF (201); el XML se procesa y la clave del PDF se lee y se consulta en el SRI de pruebas («no existe», por ser ficticia), sin inventar datos;
+  - ruta privada; `/media/` bloquea (404) y la descarga con permiso funciona (200);
+  - las 5 páginas responden 200 y el Plan 1000 queda bloqueado (403, `plan: ilimitado`);
+  - se borraron los archivos y no quedó nada en la base.
+- **Navegador** (`/root/capturas/fpa-publicacion-importacion.mjs`):
+  - menú por procesos a 1366 y 390 px; páginas de importación, guías y facturas sin desborde, sin errores y sin respuestas ≥ 400;
+  - landing con la importación solo en Ilimitado y Multiempresa.
+
 ## Estado actual — entrega subida a GitHub y cierre de landing (Codex, 15/10/2026)
 
 **Commit de cierre subido y verificado en GitHub: `26c98d5d73c5ee9f567e0f7c62b012416d1c1af7`.** Incluye 12a2800, PNG optimizados, 14 capturas y resultados. El commit posterior que registra este recibo solo modifica HANDOFF y RESULTADOS; Claude debe integrar la punta de frontend/etapa3.
