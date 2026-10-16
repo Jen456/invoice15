@@ -1,6 +1,21 @@
 # Handoff compartido — frontend
 
-## Estado actual — respaldo diario, leyenda RIMPE e IVA por producto (Claude, 16/10/2026, sin publicar)
+## Estado actual — clave de la firma (.p12) cifrada en la base (Claude, 16/10/2026, sin publicar)
+
+- **Qué cambia:** `Company.electronic_signature_key` se guarda cifrada (Fernet) con la llave `FPA_CLAVES_CIFRADO` del entorno del servicio (`/etc/facturaporaqui/pruebas.env`, que ya la tenía desde la instalación). En la base solo queda `fernet:<token>`; el modelo entrega la clave en claro, así que firma, emisión y formularios no cambian. La clave del SMTP sigue igual (fuera de alcance por ahora).
+- **Código:** `core/tenancy/cifrado.py` (campo `ClaveCifrada`), comprobaciones `fpa.E002`/`fpa.E003` (sin llave válida el servidor no arranca), orden `manage.py claves_firma` (informe sin mostrar claves; `--recifrar` para rotar llaves) y migración `pos 0017`, que cifra las existentes y al revertirla las deja en claro.
+- **Seguridad ante errores:** una clave que no se pueda descifrar (llave equivocada o perdida) se trata como vacía, pero al guardar se conserva la original; `desplegar.sh` ejecuta `claves_firma` después de migrar y se detiene si alguna es ilegible.
+- **Llave y respaldos:** la llave vive en `/etc` de VM101, que el respaldo del hipervisor también copia al repositorio restic cifrado; un volcado de la base por sí solo ya no revela las claves.
+- **Ensayado** sobre una copia del volcado real: la clave de la empresa 6 quedó cifrada, descifrada abre su .p12, y la reversión la devuelve en claro.
+- **Revertir:** primero `migrate pos 0016` con el código nuevo (deja las claves en claro) y después `desplegar.sh pruebas --revertir`.
+
+## Estado actual — respaldo diario, leyenda RIMPE e IVA por producto publicados `4d76e04` (Claude, 16/10/2026)
+
+- **Publicado** el 16/10/2026 a las 14:30 UTC (respaldo `pre-20261016-143052-4d76e04b.dump`, migraciones `pos 0014–0016`) y subido a GitHub (`plataforma` = `frontend/etapa3` = `4d76e04`).
+- **En la base real** todos los productos y líneas tienen tarifa y los totales recalculados coinciden con los guardados.
+- **En el dominio** (`/root/capturas/fpa-iva-dominio.mjs`, DEMOSTRACIÓN, sin guardar): formulario de producto con las cinco tarifas y sin «¿Se cobra impuesto?», producto existente en 15 %, campo RIMPE en el paso 1 y venta calculada en el navegador con cinco tarifas (29,99 / 7,50 / 3,50 / 40,99, igual que el servidor); sin errores ni desbordes.
+
+## Estado actual — respaldo diario, leyenda RIMPE e IVA por producto — detalle (Claude, 16/10/2026)
 
 - **Respaldo diario** (`441a091`): `pg_dump` de todas las empresas a las 18:15 de Ecuador, con validación y 14 copias locales; el respaldo nocturno del hipervisor (19:00) lo lleva al NAS. Ya está instalado y activo en la VM (`facturaporaqui-respaldo@pruebas.timer`); se probó restaurándolo en una base temporal.
 - **Leyenda RIMPE** (`c20c2c0`, migración `pos 0014`):

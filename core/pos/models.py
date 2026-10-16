@@ -25,6 +25,7 @@ from config import settings
 from core.pos.choices import *
 from core.pos.utilities import printer
 from core.pos.utilities.sri import SRI
+from core.tenancy.cifrado import ClaveCifrada
 from core.tenancy.context import require_company
 from core.tenancy.models_base import TenantModel
 from core.tenancy.storage import CompanyPath
@@ -55,7 +56,7 @@ class Company(models.Model):
     iva = models.DecimalField(default=0.00, decimal_places=2, max_digits=9, verbose_name='IVA')
     vat_percentage = models.IntegerField(choices=VAT_PERCENTAGE, default=VAT_PERCENTAGE[3][0], verbose_name='Porcentaje del IVA')
     electronic_signature = models.FileField(null=True, blank=True, upload_to=CompanyPath('firma'), verbose_name='Firma electrónica (Archivo P12)')
-    electronic_signature_key = models.CharField(max_length=100, verbose_name='Clave de firma electrónica')
+    electronic_signature_key = ClaveCifrada(verbose_name='Clave de firma electrónica')   # cifrada en la base (FPA_CLAVES_CIFRADO)
     email_host = models.CharField(max_length=30, default='smtp.gmail.com', verbose_name='Servidor de correo')
     email_port = models.IntegerField(default=587, verbose_name='Puerto del servidor de correo')
     email_host_user = models.CharField(max_length=100, verbose_name='Username del servidor de correo')

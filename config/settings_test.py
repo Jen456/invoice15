@@ -9,6 +9,7 @@ import tempfile
 os.environ['FPA_ENV_FILE'] = os.devnull
 os.environ['SECRET_KEY'] = 'pruebas-automaticas-sin-valor-secreto'
 os.environ['DEBUG'] = 'False'
+os.environ['FPA_CLAVES_CIFRADO'] = 'cHJ1ZWJhcy1hdXRvbWF0aWNhcy1zaW4tc2VjcmV0by0=' # llave Fernet fija, sin valor secreto
 os.environ['FPA_ENTORNO'] = 'pruebas_automaticas'
 os.environ['DATABASE_URL'] = os.environ.get('FPA_TEST_DATABASE_URL', 'sqlite://:memory:')
 os.environ['FPA_ARCHIVOS'] = tempfile.mkdtemp(prefix='fpa-archivos-')

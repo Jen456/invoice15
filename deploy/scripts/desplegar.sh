@@ -101,6 +101,7 @@ django "$REL" createcachetable
 django "$REL" collectstatic --noinput --clear -v 0
 chmod -R a+rX "$STATIC_ROOT"   # nginx (www-data) lee los estáticos
 django "$REL" check --deploy --fail-level ERROR
+PGOPTIONS="-c app.platform=on" django "$REL" claves_firma   # las claves de firma se descifran con FPA_CLAVES_CIFRADO
 
 if [ -n "$PRIMERA" ]; then
   echo "== 4b. Instalación base (primera vez)"

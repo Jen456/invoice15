@@ -457,7 +457,8 @@ class CompanyForm(forms.ModelForm):
     def _conservar_secreto(self, name):
         valor = self.cleaned_data.get(name) or ''
         if not valor and self.instance.pk is not None:
-            return getattr(self.instance, name) or ''
+            actual = getattr(self.instance, name)
+            return '' if actual is None else actual   # conserva también una clave guardada que no se pudo descifrar
         return valor
 
     def clean_electronic_signature_key(self):
