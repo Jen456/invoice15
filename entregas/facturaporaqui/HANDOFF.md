@@ -1,7 +1,10 @@
 # Handoff compartido — frontend
 
-## Estado actual — clave de la firma (.p12) cifrada en la base (Claude, 16/10/2026, sin publicar)
+## Estado actual — clave de la firma (.p12) cifrada en la base, publicada `ede88cb` (Claude, 16/10/2026)
 
+- **Publicado** el 16/10/2026 a las 14:58 UTC (respaldo `pre-20261016-145810-ede88cb9.dump`, migración `pos 0017`; `claves_firma`: 1 cifrada, 0 ilegibles) y subido a GitHub.
+- **Verificado con la base real** (solo lectura, `verif-firma/verif_cifrado.py` y `verif_firma_cifrada.py`): la columna solo guarda el texto cifrado; la clave de la empresa 6, descifrada, abre su .p12 y firma XAdES-BES. En el dominio, la configuración (pasos 1 y 4), los datos de la empresa, el panel y las ventas cargan sin errores (`/root/capturas/fpa-cifrado-dominio.mjs`).
+- **Pruebas:** PostgreSQL 491 aprobadas; SQLite 484 aprobadas y 7 omitidas.
 - **Qué cambia:** `Company.electronic_signature_key` se guarda cifrada (Fernet) con la llave `FPA_CLAVES_CIFRADO` del entorno del servicio (`/etc/facturaporaqui/pruebas.env`, que ya la tenía desde la instalación). En la base solo queda `fernet:<token>`; el modelo entrega la clave en claro, así que firma, emisión y formularios no cambian. La clave del SMTP sigue igual (fuera de alcance por ahora).
 - **Código:** `core/tenancy/cifrado.py` (campo `ClaveCifrada`), comprobaciones `fpa.E002`/`fpa.E003` (sin llave válida el servidor no arranca), orden `manage.py claves_firma` (informe sin mostrar claves; `--recifrar` para rotar llaves) y migración `pos 0017`, que cifra las existentes y al revertirla las deja en claro.
 - **Seguridad ante errores:** una clave que no se pueda descifrar (llave equivocada o perdida) se trata como vacía, pero al guardar se conserva la original; `desplegar.sh` ejecuta `claves_firma` después de migrar y se detiene si alguna es ilegible.
