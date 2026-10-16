@@ -146,10 +146,20 @@ def actualizar_estado_lote(lote):
     return lote
 
 
-def procesar_lote(lote, usuario, maximo=limites.PROCESAR_POR_PETICION):
-    """Procesa hasta `maximo` entradas en cola (cada llamada avanza; dos llamadas a la vez no toman la misma entrada)."""
+def procesar_lote(lote, usuario, maximo=limites.PROCESAR_POR_PETICION, presupuesto=limites.PRESUPUESTO_PETICION_SEGUNDOS):
+    """Procesa hasta `maximo` entradas en cola (cada llamada avanza; dos llamadas a la vez no toman la misma entrada).
+
+    No empieza otra entrada ni otra verificación cuando ya pasaron `presupuesto` segundos (presupuesto=None: sin límite,
+    para la tarea programada): la petición web termina antes del corte de gunicorn y la siguiente llamada continúa.
+    """
+    import time
+    inicio = time.monotonic()
+
+    def queda_tiempo():
+        return presupuesto is None or time.monotonic() - inicio < presupuesto
+
     procesadas = 0
-    while procesadas < maximo:
+    while procesadas < maximo and (procesadas == 0 or queda_tiempo()):
         with transaction.atomic():
             entrada = (EntradaLote.objects.select_for_update(skip_locked=True).filter(lote=lote, estado='en_cola')
                        .order_by('orden', 'id').first())
@@ -158,10 +168,11 @@ def procesar_lote(lote, usuario, maximo=limites.PROCESAR_POR_PETICION):
             EntradaLote.objects.filter(pk=entrada.pk).update(estado='procesando', intentos=entrada.intentos + 1)
         procesar_entrada(EntradaLote.objects.get(pk=entrada.pk), usuario)
         procesadas += 1
-    if lote.entradas.filter(estado__in=PENDIENTES).count() == 0:
+    if lote.entradas.filter(estado__in=PENDIENTES).count() == 0 and reglas_de(lote.company).verificar_con_sri:
         for documento in lote.documentos.filter(estado_procesamiento='procesado', verificado_en__isnull=True)[:maximo]:
-            if reglas_de(lote.company).verificar_con_sri:
-                verificar_en_sri(documento, usuario)
+            if not queda_tiempo():
+                break
+            verificar_en_sri(documento, usuario)
     return actualizar_estado_lote(lote)
 
 

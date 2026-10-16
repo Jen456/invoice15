@@ -179,7 +179,7 @@ El Vendedor no tiene nada de la importación. El Contador y Consulta ven pero no
 |---|---|---|---|
 | `POST /importacion/api/lotes/` | add | multipart, campo `archivos` (varios) | 201 `{lote}` con `entradas` |
 | `POST /importacion/api/lotes/<id>/archivos/` | add | multipart `archivos` | 201 `{lote}` (agrega al mismo lote) |
-| `POST /importacion/api/lotes/<id>/procesar/` | add | — | `{lote}`; procesa hasta 3 entradas en cola y, cuando no queda cola, verifica en el SRI si las reglas lo piden |
+| `POST /importacion/api/lotes/<id>/procesar/` | add | — | `{lote}`; procesa hasta 3 entradas en cola, pero no empieza otra después de 20 s (cada llamada responde en menos de ~45 s); cuando no queda cola, verifica en el SRI si las reglas lo piden |
 | `GET /importacion/api/lotes/` | view | `?pagina=` | `{lotes, pagina, paginas}` |
 | `GET /importacion/api/lotes/<id>/` | view | — | `{lote}` con `entradas` (para el avance) |
 | `POST /importacion/api/entradas/<id>/clave/` | add | `clave` (form o JSON) | `{entrada}`; registra la clave y busca el XML en el SRI |

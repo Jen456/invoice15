@@ -162,6 +162,17 @@ class TestPdfYSri:
             sv.usar_clave_manual(entrada, dueno, f.clave())
             assert lote.entradas.get().estado == 'procesado' and DocumentoImportado.objects.get().origen == 'manual'
 
+    def test_presupuesto_por_peticion(self, empresa, dueno, sri):
+        for n in (1, 2, 3):
+            sri.comprobantes[f.clave(secuencial=f'{n:09d}')] = f.factura(secuencial=f'{n:09d}')
+        lote = importar(empresa, dueno, *[(f'{n}.pdf', f.pdf(('barras', f.clave(secuencial=f'{n:09d}')))) for n in (1, 2, 3)])
+        with company_context(empresa):
+            sv.procesar_lote(lote, dueno, maximo=3, presupuesto=0)        # agotado: hace una sola entrada y sale
+            assert lote.entradas.filter(estado='procesado').count() == 1 and lote.entradas.filter(estado='en_cola').count() == 2
+            assert DocumentoImportado.objects.filter(verificado_en__isnull=False).count() == 1   # ni verificaciones extra
+            sv.procesar_lote(lote, dueno, maximo=3, presupuesto=None)
+            assert lote.entradas.filter(estado='procesado').count() == 3
+
     def test_clave_de_tipo_no_soportado(self, empresa, dueno, sri):
         lote = importar(empresa, dueno, ('nd.pdf', f.pdf(('barras', f.clave(cod_doc='05')))))
         with company_context(empresa):

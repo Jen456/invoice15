@@ -25,7 +25,7 @@ class Command(BaseCommand):
                 estado_procesamiento='pendiente_xml', estado_verificacion='sri_no_disponible', verificado_en__lt=hace_un_rato)[:50])
         for lote in lotes:
             with company_context(lote.company):
-                sv.procesar_lote(lote, lote.usuario, maximo=opciones['maximo'])
+                sv.procesar_lote(lote, lote.usuario, maximo=opciones['maximo'], presupuesto=None)   # sin corte de gunicorn
         for documento in pendientes:
             with company_context(documento.company):
                 sv.recuperar_xml(documento, documento.importado_por)
