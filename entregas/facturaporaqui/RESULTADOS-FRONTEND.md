@@ -1034,3 +1034,5 @@ Leídos AGENTS, HANDOFF e informe antes de comenzar. Trabajo en frontend/etapa3.
 - `git diff --check` correcto. HTML de landing sin diferencia respecto de 12a2800. Scripts/logs de comprobación y candidatos de compresión fuera del checkout, en /workspace/cierre-runtime/; sin dependencias nuevas para el proyecto.
 
 Sin cambios del backend, precios, campos, action ni CSRF. No se usaron datos privados ni se hicieron pagos o emisiones. No despliegue: Claude revisa, integra en plataforma, ejecuta PostgreSQL y publica con respaldo. Pruebas de teléfono físico y PostgreSQL quedan a cargo de la revisión posterior.
+
+**Recibo del cierre en GitHub:** commit **26c98d5d73c5ee9f567e0f7c62b012416d1c1af7**, «Optimiza PNG de marca sin pérdida y verifica landing de importación», subido después del primer push de 12a2800. `git ls-remote origin refs/heads/frontend/etapa3` confirmó exactamente 26c98d5d73c5ee9f567e0f7c62b012416d1c1af7. Este recibo se añade en un commit documental posterior (solo HANDOFF y RESULTADOS); no introduce cambios de aplicación ni requiere repetir pruebas.

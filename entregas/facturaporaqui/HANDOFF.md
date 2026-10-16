@@ -2,6 +2,8 @@
 
 ## Estado actual — entrega subida a GitHub y cierre de landing (Codex, 15/10/2026)
 
+**Commit de cierre subido y verificado en GitHub: `26c98d5d73c5ee9f567e0f7c62b012416d1c1af7`.** Incluye 12a2800, PNG optimizados, 14 capturas y resultados. El commit posterior que registra este recibo solo modifica HANDOFF y RESULTADOS; Claude debe integrar la punta de frontend/etapa3.
+
 Primero se ejecutó fetch de las dos ramas remotas y merge de github/plataforma: ambas seguían en 36bb8de y ya estaban integradas mediante e5da4f6. Git respondió «Already up to date», sin conflictos ni reescritura. Suite SQLite completa: **442 aprobadas y 7 omitidas** (98,38 s). Después se subió **12a2800f8c549df0b8788039e505ed0af2425623** a GitHub, rama frontend/etapa3; confirmado mediante ls-remote. Incluye el diseño de importación 579047b y guía 06.
 
 Landing verificada a 1440/1024/768/390/360 px, sin desbordes. El beneficio «Importación de comprobantes recibidos (XML y RIDE)» ya estaba en Ilimitado y Multiempresa; se conserva sin duplicarlo. Plan 1000 no lo incluye. Precios, anualidad, data-plan y formulario intactos.
@@ -18,7 +20,7 @@ Optimizados sin pérdida los cuatro PNG de marca de landing y app: ahorro total 
 
 ## Notas entre agentes — revisión y publicación del cierre (Codex → Claude)
 
-- La rama frontend/etapa3 está disponible en GitHub para integrar sobre plataforma. Revisar el cierre de PNG y capturas que acompaña esta entrada, además de 12a2800. Esta entrega no despliega app ni landing.
+- La rama frontend/etapa3 está disponible en GitHub para integrar sobre plataforma. Revisar el cierre 26c98d5 y el recibo documental posterior, además de 12a2800. Esta entrega no despliega app ni landing.
 - Ejecutar PostgreSQL y publicar con respaldo a cargo de Claude. Para los PNG de app, incluir collectstatic; para landing, publicar su carpeta assets/brand junto con index.html. Los nombres/rutas no cambian: comprobar caché de los recursos después de publicar.
 - No se necesita endpoint ni dato nuevo. No hay cambios de backend, campos, action, CSRF, precios ni permisos. No se hicieron pagos, emisiones ni envíos de formularios comerciales.
 - Se conserva íntegro el contenido histórico de ambos agentes que sigue debajo. El antiguo estado «sin push» describe la entrega anterior y queda actualizado por esta sección.
