@@ -1,5 +1,41 @@
 # Handoff compartido — frontend
 
+## Estado actual — respaldo diario, leyenda RIMPE e IVA por producto (Claude, 16/10/2026, sin publicar)
+
+- **Respaldo diario** (`441a091`): `pg_dump` de todas las empresas a las 18:15 de Ecuador, con validación y 14 copias locales; el respaldo nocturno del hipervisor (19:00) lo lleva al NAS. Ya está instalado y activo en la VM (`facturaporaqui-respaldo@pruebas.timer`); se probó restaurándolo en una base temporal.
+- **Leyenda RIMPE** (`c20c2c0`, migración `pos 0014`):
+  - Campo «Régimen RIMPE» de la empresa: régimen general, RIMPE Emprendedor o RIMPE Negocio Popular.
+  - El XML lleva `<contribuyenteRimpe>` al final de `<infoTributaria>` en los seis comprobantes, y el RIDE muestra la leyenda.
+  - El SRI de pruebas aceptó las dos leyendas del Anexo 22.
+- **IVA por producto** (migraciones `pos 0015–0016`):
+  - Cada producto elige su tarifa: 15 %, 5 %, 0 %, exento o no objeto de IVA (tabla 17).
+  - Una factura puede mezclar tarifas. Cada línea guarda la tarifa con la que se vendió y la nota de crédito usa la de la línea que acredita.
+  - XML: un `totalImpuesto` por código de porcentaje. El IVA se calcula por línea con redondeo HALF_UP.
+  - RIDE y ticket: una fila «Subtotal …» por tarifa y una fila «IVA …» por cada tarifa con IVA.
+  - Los productos existentes se migran solos: con impuesto pasan a 15 % y sin impuesto a 0 %. Las líneas ya vendidas toman el IVA de su venta (12 % → código 2).
+  - El Excel de productos exporta e importa la columna «Tarifa de IVA». Un archivo sin esa columna conserva la tarifa si sigue de acuerdo con «¿Se cobra impuesto?».
+  - La liquidación de compra sugiere la tarifa del producto.
+- **Verificado:**
+  - Factura con las cinco tarifas y nota de crédito válidas contra sus XSD.
+  - **El SRI de pruebas autorizó** la factura 001-002-928441125 (15 %, 5 %, 0 %, exento y no objeto) y la nota de crédito 001-002-928441125 sobre la línea del 5 %. Se hizo con la empresa 6, sobre una copia temporal del respaldo diario con el código nuevo, y la copia se borró al terminar.
+  - En esa copia, las migraciones `0014–0016` dejaron todos los productos y líneas con tarifa, y los totales recalculados coinciden con los guardados.
+
+## Pendiente para Codex — tarifa de IVA y régimen RIMPE en pantallas
+
+- [ ] Formulario de producto: el campo `tarifa_iva` (select) reemplaza a «¿Se cobra impuesto?».
+- [ ] Venta: la tabla muestra la tarifa bajo el nombre del producto (`nombre_tarifa`); los totales dicen «Subtotal con IVA» e «IVA general %». Revisar si conviene un desglose por tarifa en pantalla.
+- [ ] Nota de crédito: los totales usan la tarifa de cada línea de la factura.
+- [ ] RIDE de factura, nota de crédito y ticket: filas por tarifa (conservar `.hoja` de 190 mm).
+- [ ] Configuración de la empresa: el campo `rimpe` en el paso 1.
+
+## Notas entre agentes — contrato de IVA por producto y RIMPE (Claude → Codex)
+
+- **No cambiar:** modelos, cálculos del servidor, XML ni migraciones. El servidor recalcula todo; el navegador solo muestra.
+- **JSON del producto:** `tarifa_iva` (código 4, 5, 0, 7 o 6), `tarifa` (porcentaje numérico) y `nombre_tarifa` («15 %», «exento de IVA»…).
+- **JSON de la línea de factura** (para la nota de crédito): `codigo_porcentaje` y `tarifa`.
+- **RIDE:** `OBJ.impuestos_por_tarifa` es una lista de `{codigo, nombre, tarifa, base, valor}` en el orden 15 %, 5 %, 0 %, no objeto, exento. Se muestra «IVA …» solo cuando `tarifa > 0`.
+- **Empresa:** `rimpe` (vacío, `emprendedor` o `negocio_popular`); la leyenda está en `company.leyenda_rimpe`.
+
 ## Estado actual — importación, menú nuevo y diseños de Codex publicados `c233b74` (Claude, 16/10/2026)
 
 - **Publicado:**

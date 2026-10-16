@@ -69,6 +69,11 @@ class ProductForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['name'].widget.attrs['autofocus'] = True
+        # La tarifa de IVA reemplaza a «¿Se cobra impuesto?» (que el modelo mantiene sincronizado).
+        self.fields['tarifa_iva'].required = True
+        self.fields['tarifa_iva'].choices = TARIFAS_IVA
+        if not self.instance.tarifa_iva:
+            self.initial['tarifa_iva'] = '0' if self.instance.pk and not self.instance.with_tax else '4'
 
     class Meta:
         model = Product
@@ -79,9 +84,10 @@ class ProductForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'placeholder': 'Ingrese una descripción', 'rows': 3, 'cols': 3}),
             'category': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
             'price': forms.TextInput(),
-            'pvp': forms.TextInput()
+            'pvp': forms.TextInput(),
+            'tarifa_iva': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
         }
-        exclude = ['stock', 'barcode']
+        exclude = ['stock', 'barcode', 'with_tax']
 
     def save(self, commit=True):
         data = {}

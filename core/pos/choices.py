@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 PAYMENT_TYPE = (
     ('efectivo', 'Efectivo'),
     ('credito', 'Credito'),
@@ -98,3 +100,18 @@ INVOICE_STATUS = (
     ('returned', 'Devuelta por el SRI'),
     ('not_authorized', 'No autorizada por el SRI'),
 )
+
+
+# Tarifa de IVA de cada producto (tabla 17 de la ficha: código de porcentaje). Vacío = derivar de «¿Se cobra impuesto?».
+TARIFAS_IVA = (
+    ('4', '15 %'),
+    ('5', '5 %'),
+    ('0', '0 %'),
+    ('7', 'Exento de IVA'),
+    ('6', 'No objeto de IVA'),
+)
+PORCENTAJE_IVA = {'0': Decimal('0'), '2': Decimal('12'), '3': Decimal('14'), '4': Decimal('15'), '5': Decimal('5'),
+                  '6': Decimal('0'), '7': Decimal('0'), '10': Decimal('13')}
+NOMBRE_TARIFA_IVA = {'4': '15 %', '5': '5 %', '0': '0 %', '7': 'exento de IVA', '6': 'no objeto de IVA', '2': '12 %', '3': '14 %',
+                     '10': '13 %'}
+ORDEN_TARIFAS_IVA = ('4', '10', '3', '2', '5', '0', '6', '7')

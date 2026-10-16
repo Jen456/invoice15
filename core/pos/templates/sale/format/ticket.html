@@ -153,18 +153,16 @@
             <td class="float-right font-weight-bold">Descuentos</td>
             <td class="text-right">{{ sale.total_dscto|floatformat:2 }}</td>
         </tr>
-        <tr>
-            <td class="float-right font-weight-bold">Subtotal {{ sale.get_iva_percent }}%</td>
-            <td class="text-right">{{ sale.subtotal_12|floatformat:2 }}</td>
-        </tr>
-        <tr>
-            <td class="float-right font-weight-bold">Subtotal 0%</td>
-            <td class="text-right">{{ sale.subtotal_0|floatformat:2 }}</td>
-        </tr>
-        <tr>
-            <td class="float-right font-weight-bold">IVA {{ sale.get_iva_percent }}%</td>
-            <td class="text-right">{{ sale.total_iva|floatformat:2 }}</td>
-        </tr>
+        {% with impuestos=sale.impuestos_por_tarifa %}{# subtotales e IVA por tarifa (15 %, 5 %, 0 %, no objeto, exento) #}
+        {% for t in impuestos %}<tr>
+            <td class="float-right font-weight-bold">Subtotal {{ t.nombre }}</td>
+            <td class="text-right">{{ t.base|floatformat:2 }}</td>
+        </tr>{% endfor %}
+        {% for t in impuestos %}{% if t.tarifa %}<tr>
+            <td class="float-right font-weight-bold">IVA {{ t.nombre }}</td>
+            <td class="text-right">{{ t.valor|floatformat:2 }}</td>
+        </tr>{% endif %}{% endfor %}
+        {% endwith %}
         <tr>
             <td class="float-right font-weight-bold">Total</td>
             <td class="text-right">{{ sale.total|floatformat:2 }}</td>

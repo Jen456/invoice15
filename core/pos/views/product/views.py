@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
 import xlsxwriter
@@ -12,8 +13,27 @@ from django.views.generic import CreateView, UpdateView, DeleteView, TemplateVie
 from django.views.generic.base import View
 from openpyxl import load_workbook
 
+from core.pos.choices import NOMBRE_TARIFA_IVA, PORCENTAJE_IVA
 from core.pos.forms import ProductForm, Product, Category
 from core.security.mixins import GroupPermissionMixin
+
+COLUMNA_TARIFA = {'4': '15 %', '5': '5 %', '0': '0 %', '7': 'Exento', '6': 'No objeto'}
+
+
+def tarifa_desde_excel(valor):
+    """Código de la columna «Tarifa de IVA» (15 %, 5 %, 0 %, Exento, No objeto); '' si está vacía o no se reconoce."""
+    texto = ' '.join(str(valor if valor is not None else '').lower().replace('%', ' ').split())
+    if texto.startswith('exento'):
+        return '7'
+    if texto.startswith('no objeto'):
+        return '6'
+    try:
+        numero = Decimal(texto.replace(',', '.'))
+    except InvalidOperation:
+        return ''
+    if 0 < numero < 1:
+        numero *= 100   # celda con formato de porcentaje (0,15)
+    return {Decimal('15'): '4', Decimal('5'): '5', Decimal('0'): '0'}.get(numero, '')
 
 
 class ProductListView(GroupPermissionMixin, TemplateView):
@@ -46,7 +66,14 @@ class ProductListView(GroupPermissionMixin, TemplateView):
                         product.pvp = float(wb.cell(row=row, column=6).value)
                         product.stock = int(wb.cell(row=row, column=7).value)
                         product.inventoried = str(wb.cell(row=row, column=8).value).lower() == 'si'
-                        product.with_tax = str(wb.cell(row=row, column=9).value).lower() == 'si'
+                        # La columna «Tarifa de IVA» manda; los archivos sin ella usan «¿Se cobra impuesto?» y conservan
+                        # la tarifa del producto si sigue de acuerdo (un producto del 5 % sigue en 5 %).
+                        con_impuesto = str(wb.cell(row=row, column=9).value).lower() == 'si'
+                        tarifa = tarifa_desde_excel(wb.cell(row=row, column=10).value)
+                        if tarifa:
+                            product.tarifa_iva = tarifa
+                        elif not product.tarifa_iva or con_impuesto != (PORCENTAJE_IVA.get(product.tarifa_iva, 0) > 0):
+                            product.tarifa_iva = '4' if con_impuesto else '0'
                         product.save()
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
@@ -205,7 +232,7 @@ class ProductStockAdjustmentView(GroupPermissionMixin, TemplateView):
 class ProductExportExcelView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         try:
-            headers = {'Id': 15, 'Nombre': 75, 'Código': 20, 'Categoría': 20, 'Precio de Compra': 20, 'Precio de Venta': 20, 'Stock': 10, '¿Es inventariado?': 15, '¿Se cobra impuesto?': 15}
+            headers = {'Id': 15, 'Nombre': 75, 'Código': 20, 'Categoría': 20, 'Precio de Compra': 20, 'Precio de Venta': 20, 'Stock': 10, '¿Es inventariado?': 15, '¿Se cobra impuesto?': 15, 'Tarifa de IVA': 15}
             output = BytesIO()
             workbook = xlsxwriter.Workbook(output)
             worksheet = workbook.add_worksheet('productos')
@@ -227,6 +254,7 @@ class ProductExportExcelView(LoginRequiredMixin, View):
                 worksheet.write(row, 6, product.stock, row_format)
                 worksheet.write(row, 7, 'Si' if product.inventoried else 'No', row_format)
                 worksheet.write(row, 8, 'Si' if product.with_tax else 'No', row_format)
+                worksheet.write(row, 9, COLUMNA_TARIFA.get(product.tarifa_iva, NOMBRE_TARIFA_IVA.get(product.tarifa_iva, '')), row_format)
                 row += 1
             workbook.close()
             output.seek(0)

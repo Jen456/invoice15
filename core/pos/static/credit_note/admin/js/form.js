@@ -100,19 +100,21 @@ var credit_note = {
     calculateInvoice: function () {
         var tax = this.detail.iva / 100;
         var products = this.detail.products.filter(value => value.state === 1);
+        // Tarifa de la línea de la factura (15 %, 5 %, 0 %, exento o no objeto); el servidor recalcula y manda.
+        var redondear = function (valor) { return Math.round((valor + Number.EPSILON) * 100) / 100; };
         products.forEach(function (value, index, array) {
-            value.iva = parseFloat(tax);
+            value.iva = value.tarifa !== undefined ? parseFloat(value.tarifa) / 100 : (value.product.with_tax ? parseFloat(tax) : 0);
             value.price_with_vat = value.price + (value.price * value.iva);
-            value.subtotal = value.price * value.quantity;
-            value.total_dscto = value.subtotal * parseFloat((value.dscto / 100));
-            value.total_iva = (value.subtotal - value.total_dscto) * value.iva;
+            value.subtotal = redondear(value.price * value.quantity);
+            value.total_dscto = redondear(value.subtotal * parseFloat((value.dscto / 100)));
             value.total = value.subtotal - value.total_dscto;
+            value.total_iva = redondear(value.total * value.iva);
         });
-        this.detail.subtotal_0 = products.filter(value => !value.product.with_tax).reduce((a, b) => a + (b.total || 0), 0);
-        this.detail.subtotal_12 = products.filter(value => value.product.with_tax).reduce((a, b) => a + (b.total || 0), 0);
+        this.detail.subtotal_0 = products.filter(value => !value.iva).reduce((a, b) => a + (b.total || 0), 0);
+        this.detail.subtotal_12 = products.filter(value => value.iva > 0).reduce((a, b) => a + (b.total || 0), 0);
         this.detail.total_dscto = this.detail.products.reduce((a, b) => a + (b.total_dscto || 0), 0);
         this.detail.subtotal = parseFloat(this.detail.subtotal_0) + parseFloat(this.detail.subtotal_12);
-        this.detail.total_iva = products.filter(value => value.product.with_tax).reduce((a, b) => a + (b.total_iva || 0), 0);
+        this.detail.total_iva = products.reduce((a, b) => a + (b.total_iva || 0), 0);
         this.detail.total = this.detail.subtotal + this.detail.total_iva;
         this.detail.total = parseFloat(this.detail.total.toFixed(2));
 
