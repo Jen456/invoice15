@@ -105,3 +105,67 @@
     if (window.jQuery) jQuery(function () { setTimeout(initMenu, 0); });
     else document.addEventListener('DOMContentLoaded', initMenu);
 }());
+
+/* Menús «Opciones» dentro de tablas: los contenedores con desplazamiento horizontal (DataTables, .table-responsive) los
+   recortaban y no se podían ver ni usar. Se colocan aquí en posición fija junto al botón (Popper 1 los ubica mal en
+   posición fija), sin sacarlos de la fila, donde los listados escuchan sus clics; las opciones sin enlace se pueden
+   recorrer con las flechas y activar con Enter o espacio. */
+(function () {
+    var CONTENEDORES = '.dataTables_wrapper, .dataTables_scroll, .table-responsive';
+    var MARGEN = 8;
+    var abierto = null;
+    function preparar(event) {
+        var toggle = event.target.closest && event.target.closest('[data-toggle="dropdown"]');
+        // Antes de que Bootstrap cree el menú (lee los atributos en el primer clic o tecla): sin estilos de Popper.
+        if (toggle && !toggle.hasAttribute('data-display') && toggle.closest(CONTENEDORES)) toggle.setAttribute('data-display', 'static');
+    }
+    ['pointerdown', 'mousedown', 'focusin', 'keydown'].forEach(function (tipo) {
+        document.addEventListener(tipo, preparar, true);
+    });
+    function colocar(menu, toggle) {
+        var r = toggle.getBoundingClientRect();
+        // Se mide en el origen de la ventana: junto al borde el texto se partiría y el menú parecería más alto.
+        Object.assign(menu.style, {position: 'fixed', transform: 'none', top: '0px', left: '0px', right: 'auto', bottom: 'auto',
+                                   maxHeight: '', overflowY: '', maxWidth: (window.innerWidth - 2 * MARGEN) + 'px'});
+        var ancho = menu.offsetWidth, alto = menu.offsetHeight;
+        var abajo = window.innerHeight - r.bottom - MARGEN, arriba = r.top - MARGEN, top;
+        if (alto <= abajo || abajo >= arriba) {
+            top = r.bottom + 2;
+            if (alto > abajo) Object.assign(menu.style, {maxHeight: abajo + 'px', overflowY: 'auto'});
+        } else {
+            top = r.top - 2 - Math.min(alto, arriba);
+            if (alto > arriba) Object.assign(menu.style, {maxHeight: arriba + 'px', overflowY: 'auto'});
+        }
+        var left = Math.min(r.right - ancho, window.innerWidth - ancho - MARGEN);
+        menu.style.top = Math.max(MARGEN, top) + 'px';
+        menu.style.left = Math.max(MARGEN, left) + 'px';
+    }
+    function recolocar() { if (abierto) colocar(abierto.menu, abierto.toggle); }
+    function enfocables(menu) {
+        menu.querySelectorAll('.dropdown-item:not([href]):not(.disabled)').forEach(function (item) {
+            if (!item.hasAttribute('tabindex')) item.tabIndex = 0;
+            if (!item.hasAttribute('role')) item.setAttribute('role', 'button');
+        });
+    }
+    if (window.jQuery) {
+        jQuery(document).on('show.bs.dropdown', function (event) {
+            event.target.querySelectorAll('.dropdown-menu').forEach(enfocables);
+        }).on('shown.bs.dropdown', function (event) {
+            var toggle = event.relatedTarget, menu = event.target.querySelector('.dropdown-menu');
+            if (!toggle || !menu || toggle.getAttribute('data-display') !== 'static' || !toggle.closest(CONTENEDORES)) return;
+            abierto = {menu: menu, toggle: toggle};
+            colocar(menu, toggle);
+        }).on('hidden.bs.dropdown', function () {
+            abierto = null;
+        });
+    }
+    window.addEventListener('scroll', recolocar, true);
+    window.addEventListener('resize', recolocar);
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        var item = event.target.closest && event.target.closest('.dropdown-menu .dropdown-item[role="button"]:not([href])');
+        if (!item) return;
+        event.preventDefault();
+        item.click();   // también activa los manejadores de jQuery de los listados
+    });
+}());
