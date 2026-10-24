@@ -235,7 +235,15 @@ class Product(TenantModel):
             self.with_tax = PORCENTAJE_IVA.get(self.tarifa_iva, Decimal('0')) > 0
         else:
             self.tarifa_iva = '4' if self.with_tax else '0'
-        self.generate_barcode()
+        # La imagen del código de barras se hace al crear el producto, al cambiar su código o si falta el archivo; antes se
+        # rehacía en cada guardado (cada venta o compra mueve el stock) y la anterior quedaba huérfana.
+        anterior = type(self).all_companies.filter(pk=self.pk).values_list('code', 'barcode').first() if self.pk else None
+        if anterior is None or anterior[0] != self.code or not self.barcode or not self.barcode.storage.exists(self.barcode.name):
+            reemplazada = anterior[1] if anterior else None
+            self.generate_barcode()
+            if reemplazada and reemplazada != self.barcode.name:
+                almacen = self.barcode.storage
+                transaction.on_commit(lambda: almacen.delete(reemplazada))
         super(Product, self).save()
 
     class Meta:
