@@ -1099,3 +1099,39 @@ Antes de subir se hizo fetch de ambas ramas. Los merge de github/frontend/etapa3
 **Verificación:** árbol limpio y `git diff --check` correcto antes del push; SHA remoto exacto después. Se conserva la validación de la misma versión: suite SQLite **517 aprobadas, 7 omitidas en 80,50 s**, ocho regresiones nuevas y matriz de 41 páginas, detalladas arriba. No se repitieron las pruebas ni se generaron nuevas capturas porque no hubo cambios de código ni una nueva integración. El recibo se registra en un commit exclusivamente documental posterior a f1936d8.
 
 Claude puede continuar con la fusión en plataforma, suite PostgreSQL, revisión de PDF cortos/largos y contraste normativo del proveedor, y publicación con respaldo. Mantener los límites documentados de lectura digital de barras; impresora/escáner físicos siguen pendientes. Sin pagos, emisiones ni cambios de numeración.
+
+## 24/10/2026 — RIDE B integrado, corregido y publicado `131bb61` (Claude)
+
+- **Integración:** `frontend/etapa3` (`9a794c5`, incluye `f1936d8`) fusionada en `plataforma` por avance rápido, sin reescribir historial ni reconstruir la entrega. Publicado `131bb61` el 24/10/2026 a las 21:03 UTC, con respaldo `pre-20261024-210356-131bb61b.dump`. GitHub: ambas ramas en `131bb61`.
+- **Pruebas:** PostgreSQL 555 aprobadas; SQLite 548 aprobadas y 7 omitidas (sobre `61da0b5`). El último cambio, solo de plantilla, se probó aparte: 61 en SQLite y 32 en PostgreSQL. Las 8 regresiones de Codex se mantienen y se suman 24 en `tests/test_ride_integracion.py`.
+- **Revisión de PDF** con modelos reales y por los dos caminos (con y sin petición):
+  - Cortos y largos (90 líneas) de los seis tipos.
+  - Márgenes de 10 mm, contenido de 190 mm, pie sin superposición y en todas las páginas, cabecera y encabezados de tabla una sola vez.
+  - Fechas de la NC: la propia y la del documento modificado. Se corrigió además la hora de autorización, que salía en UTC.
+  - Estáticos con huella y la ventana del `collectstatic --clear`.
+- **Corregido antes de publicar** (detalle en HANDOFF): «RUC Proveedor» de vuelta en «Información adicional», según el Anexo 26; bloque de información adicional de la NC; peso del PDF (unos 440 KB → unos 40 KB); código de barras con módulos de 3 px y 86,6 mm; respaldo de estilos si falta la hoja con huella; columnas de la liquidación; fechas en dd/mm/aaaa.
+- **Código de barras** (lectura digital con PDFium + ZXing): se lee a 200, 300 y 600 ppp, con y sin suavizado, en factura, NC, retención y guía. Antes no se leía a 200 ppp y a 300 dependía del suavizado. Esto supera lo indicado en `propuestas/ride-b/README.md`. **No es una prueba física:** la prueba con impresora y escáner sigue pendiente.
+- **Proveedor, contrastado con la fuente oficial:**
+  - Res. NAC-DGERCGC26-00000027, art. 5 y transitoria tercera: RUC del proveedor en `infoAdicional` del XML, en los seis tipos, desde el 26/09/2026. La ficha técnica v2.34, Anexo 26, nombra el campo «RUC Proveedor» y su ejemplo de RIDE lo coloca en «Información adicional».
+  - El XML no cambió y sigue cumpliendo.
+  - Pie y cursiva son decisión de diseño. Nombre, correo y dirección se permiten como datos adicionales (§9.19).
+- **En el dominio**, con el código y los estáticos publicados y sin guardar nada (`verif-firma/verif_ride_dominio.py`):
+  - Los seis tipos por los dos caminos: A4, 1 página, unos 40 KB, hoja e isotipo con huella cargados y barras legibles.
+  - Las 2 facturas reales, regeneradas en memoria: los datos coinciden con su XML. Sus PDF guardados no se tocaron, no se emitió nada y no se hicieron pagos.
+- **También publicado:** «Imprimir factura A4» en Ventas → Opciones, junto al ticket. Menús «Opciones» visibles y usables con teclado en todas las tablas (verificado con Chromium a 1440×760 y 390×844, `/root/capturas/fpa-menu-opciones.mjs`). Ventanas modales dentro de tarjetas utilizables de nuevo.
+- **Pendientes:**
+  - Impresora y escáner físicos.
+  - Revisión visual de Codex de las correcciones.
+  - Los seis puntos que ya existían antes del diseño B (HANDOFF).
+  - Confirmar la actividad J62021002 del establecimiento del proveedor.
+  - Decidir si se regeneran los PDF ya guardados.
+
+### Propuesta (no ejecutada): regenerar solo la representación de RIDE ya guardados
+
+Los PDF autorizados se generan una vez, al autorizarse, y quedan en `pdf_authorized`. Publicar el diseño B no los cambia: hoy hay **2 facturas reales** (empresa 6, Producción, 001-002-000000271 y 272) con el diseño anterior. Si la propietaria quiere el diseño nuevo también para ellas:
+
+1. **Orden** `manage.py regenerar_ride --empresa RUC [--tipo …] [--desde AAAA-MM-DD] [--aplicar]`, ensayo por defecto, con informe por comprobante.
+2. **Solo la representación:** únicamente comprobantes autorizados (o anulados) que tengan su XML autorizado. No toca XML, estado, numeración, cupo ni el SRI, y **no reenvía correos**.
+3. **Fidelidad:** antes de reemplazar, compara el texto del PDF nuevo con el XML autorizado (comprador, identificación, detalles, totales por tarifa, número y fecha de autorización, campos adicionales). Si algo difiere, por ejemplo porque se editó el cliente o el producto después de autorizar, **no lo regenera** y lo informa. Más adelante el contexto podría armarse directamente desde el XML autorizado.
+4. **Nunca sobrescribe:** escribe un archivo nuevo, conserva el anterior y su ruta en el informe y en un registro de auditoría, y solo con `--aplicar` apunta `pdf_authorized` al nuevo. Antes saca un volcado de la base y un tar de los PDF afectados.
+5. **Alcance sugerido:** las 2 facturas de la empresa 6, cuando la propietaria lo pida.

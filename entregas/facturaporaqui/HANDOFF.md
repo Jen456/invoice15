@@ -1,5 +1,60 @@
 # Handoff compartido — frontend
 
+## Estado actual — RIDE A4 estilo B publicado `131bb61`, con impresión A4 en ventas y menús corregidos (Claude, 24/10/2026)
+
+- **Publicado** el 24/10/2026 a las 21:03 UTC en app.facturaporaqui.com (respaldo `pre-20261024-210356-131bb61b.dump`, sin migraciones; salud 200). GitHub: `plataforma` = `frontend/etapa3` = `131bb61`, por avance rápido y sin reescribir historial.
+- **Qué entra:** la entrega de Codex `9a794c5` (incluye `f1936d8`) fusionada por avance rápido sobre `fb302af`, y encima `cc10088` (impresión A4 en ventas), `045f7ac` (menús y ventanas), `61da0b5` (correcciones del RIDE B) y `131bb61` (información adicional de la factura con los filtros del XML).
+- **Pruebas:** PostgreSQL 555 aprobadas; SQLite 548 aprobadas y 7 omitidas (sobre `61da0b5`). El cambio de `131bb61`, solo de plantilla, se probó aparte: 61 pruebas en SQLite y 32 en PostgreSQL.
+- **Revisión antes de publicar:** 42 agentes con modelos reales, por los dos caminos de generación (con y sin petición), más los estáticos con huella, la lectura de barras y la fuente oficial del SRI. Cada hallazgo medio o alto pasó por dos verificadores que intentaron refutarlo. Además, una segunda pasada de fidelidad sobre `61da0b5`, con XML firmado idéntico en los 14 comprobantes.
+- **Verificado en el dominio con el código publicado** (`verif-firma/verif_ride_dominio.py`, sin guardar nada):
+  - Los seis tipos, con y sin petición: A4, 1 página, unos 40 KB, hoja `facturaporaqui-ride.<huella>.css` e `isotipo-pie.<huella>.png` cargadas, código de barras legible a 300 ppp y «RUC Proveedor» en «Información adicional» y en el pie.
+  - Las 2 facturas reales de la empresa 6, regeneradas solo en memoria: número, clave, RUC, identificación y total coinciden con su XML. Sus PDF guardados no se tocaron.
+  - El dominio sirve el JS y el CSS nuevos.
+
+### Correcciones de Claude sobre el diseño B (`61da0b5`, `131bb61`)
+
+- **«RUC Proveedor»** vuelve a la tabla «Información adicional» de los seis RIDE, como en el modelo oficial: ficha técnica v2.34, Anexo 26, ejemplo 2 «Formato RIDE», p. 135. El pie en cursiva con el colibrí se mantiene como decisión de diseño. La NC recupera su bloque «Información adicional» con los campos de su XML (dirección, teléfono, observación).
+- **Peso:** el pie usa `static/img/brand/isotipo-pie.png` (166×138 px, 15 KB) con tamaño propio. El isotipo completo, de 442 KB, multiplicaba por unas 18 veces cada PDF.
+- **Código de barras:**
+  - Un solo generador, `core/comprobantes/ride.codigo_de_barras`, con módulos de 0,254 mm = 3 px exactos a 300 ppp, colocado a 86,6 mm. Factura y NC también lo usan.
+  - Se lee rasterizado a 200, 300 y 600 ppp, con y sin suavizado. Antes eran 2,36 px por módulo y la lectura dependía de la resolución.
+  - Lo que dice `propuestas/ride-b/README.md` sobre lectura de barras queda superado por esto.
+  - **Impresora y escáner físicos siguen pendientes.**
+- **Estilos:**
+  - `printer._local_file` usa el original de la misma versión si el nombre con huella aún no está en STATIC_ROOT, por ejemplo durante `collectstatic --clear` en un despliegue. Antes, en ese caso salía un RIDE en A3 y sin estilos que se guardaba y se enviaba igual.
+  - `templates/ride/_estilos.html` deja un respaldo en línea (A4, logo, barras, isotipo). Las seis plantillas lo incluyen en lugar del `<link>`.
+- **Fechas:** la NC muestra la hora de autorización en hora de Ecuador; antes salía en UTC, error que ya existía. Las fechas de factura y NC quedan en dd/mm/aaaa.
+- **Liquidación:** columnas más anchas, «Cantidad» ya no se parte y las cifras no se cortan (`td.num` sin salto). Los encabezados numéricos quedan alineados a la derecha en liquidación, ND y guía.
+- **Pruebas nuevas** en `tests/test_ride_integracion.py` (24). El contexto de `tests/test_ride_diseno.py` ahora incluye los campos reales `date_joined` y `voucher_number`, que usa la plantilla.
+
+### También publicado
+
+- **Ventas → Opciones:**
+  - «Imprimir factura A4», el RIDE completo, junto al ticket. Funciona también en facturas anuladas, que muestran «(anulada)».
+  - Antes de la autorización aparece deshabilitada con el aviso «disponible cuando el SRI la autorice».
+  - Reemplaza a «Imprimir pdf». El comprador lo tiene en su listado.
+  - Vista `SalePrintA4View`: abre el PDF guardado sin reemplazarlo. Si falta, lo genera una sola vez.
+- **Menús «Opciones» de todas las tablas:** los contenedores de DataTables los recortaban. Ahora `static/js/facturaporaqui.js` los coloca en posición fija junto a su botón, y se usan con teclado: flechas, Enter y espacio.
+- **Ventanas modales dentro de tarjetas** (por ejemplo «Detalle de productos») quedaban bajo el fondo oscuro y no se podían usar. La causa era la animación `fp-enter` con `both`; ahora usa `backwards`.
+
+## Pendiente para Codex — tras la publicación del RIDE B
+
+- [ ] Revisar visualmente las correcciones de Claude en las seis plantillas: fila «RUC Proveedor», bloque de la NC, columnas de la liquidación y código de barras de 86,6 mm. Si se cambian, conservar la fila del proveedor en «Información adicional» y el tamaño natural del código de barras.
+- [ ] Al tocar estilos de tablas o tarjetas, no volver a usar `animation-fill-mode: both` con `transform` en contenedores con modales, ni `notEmpty`/`remote` en teléfono y correo del cliente.
+
+## Notas entre agentes — RIDE B publicado (Claude → Codex)
+
+- La plantilla de factura muestra las entradas de `sale.additional_info` con los mismos filtros que el XML: sin nombre vacío ni «RUC Proveedor» escrito a mano. El RUC Proveedor real va al final.
+- **Pendientes que ya existían antes del diseño B**, para decidir con la propietaria. Ninguno se cambió porque tocan el XML o son decisiones fiscales:
+  1. El XML de la factura no lleva `contribuyenteEspecial` aunque el RIDE lo muestra.
+  2. Ningún RIDE muestra la leyenda de agente de retención, aunque el XML lleva `<agenteRetencion>1</agenteRetencion>`. Falta confirmar con la ficha cuál es el valor correcto y qué leyenda va.
+  3. «Subtotal sin impuestos» de factura y NC es el importe antes del descuento y no coincide con `totalSinImpuestos` del XML.
+  4. `fechaEmisionDocSustento` de la NC usa `sale.date_joined`; la ND y la guía usan `emission_date or date_joined`.
+  5. La descripción de las líneas de factura y NC añade «(categoría)», que el XML no lleva.
+  6. El bloque de totales no se parte: si no cabe, pasa entero a la página siguiente. Es una observación de maquetación.
+- **Proveedor (Res. NAC-DGERCGC26-00000027, RO 5.º Supl. 335 del 28/07/2026; ficha v2.34, Anexo 26):** la norma exige el RUC en `infoAdicional` del XML («RUC Proveedor») en los seis tipos desde el 26/09/2026, y el código cumple. Nombre, correo y dirección son datos adicionales permitidos (§9.19). Pendiente de la propietaria o su contador: confirmar la actividad J62021002 del establecimiento 002 y el listado del art. 4.
+- **Los PDF ya guardados no cambian.** Propuesta de regeneración, no ejecutada, en RESULTADOS-FRONTEND (24/10/2026, Claude).
+
 ## Estado actual — RIDE A4 estilo B implementado y subido a GitHub (Codex, 24/10/2026)
 
 La propietaria eligió B y pidió encabezados simplificados **sin repetición**, márgenes de 10 mm, descripciones amplias y colibrí pequeño con datos del proveedor en cursiva al pie. Esta elección sustituye el estado anterior de espera. Implementadas las seis plantillas A4: factura, nota de crédito, nota de débito, retención, liquidación de compra y guía. Entrega subida a GitHub, pendiente de integración y despliegue por Claude.
@@ -43,6 +98,7 @@ La propietaria solicita escoger el estilo antes de modificar el código. Prepara
 ## Notas entre agentes — propuesta RIDE A4 (Codex → Claude)
 
 No implementar aún: la propietaria pidió escoger primero. Propuesta: logo del emisor proporcionado, datos fiscales íntegros, tabla legible, pie en cursiva con proveedor.nombre/ruc/email/direccion y colibrí pequeño. Conservar etiqueta «RUC Proveedor» y campo adicional XML. La auditoría interna cita Res. NAC-DGERCGC26-00000027/Anexo26; Codex no pudo contrastar fuente oficial por bloqueo 403 del proxy. Verificar ubicación y texto permitidos antes de trasladar los datos al pie; la cursiva es una decisión visual, no una obligación normativa confirmada. Sin solicitud de nuevos endpoints/contexto. Los hallazgos históricos y entregas previas se conservan debajo.
+
 ## Estado actual — clientes del exterior, varios correos, teléfono opcional y migración desde Facturero Móvil (Claude, 24/10/2026)
 
 - **Pedido de la propietaria (24/10):** migrar a la empresa 6 (GARCIA MARTINEZ IGNACIO FERNANDO GABRIEL, 1303645616001) los productos, clientes y proveedores de su sistema anterior (Facturero Móvil); el teléfono del cliente no es obligatorio; admitir empresas extranjeras como compradores; guardar varios correos por cliente.
