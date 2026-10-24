@@ -764,7 +764,7 @@ class Sale(TenantModel):
         with tempfile.NamedTemporaryFile(delete=True) as file_temp:
             file_temp.write(pdf_file)
             file_temp.flush()
-            self.pdf_authorized.save(name=f'{self.receipt.get_name_xml()}_{self.access_code}.pdf', content=File(file_temp))
+            self.pdf_authorized.save(name=f'{self.receipt.get_name_xml()}_{self.access_code}.pdf', content=File(file_temp), save=False)
 
     def generate_xml(self):
         fecha_emision = self.emission_date or timezone.localdate()   # la misma fecha (de Ecuador) para la clave y fechaEmision
@@ -1319,7 +1319,7 @@ class CreditNote(TenantModel):
         with tempfile.NamedTemporaryFile(delete=True) as file_temp:
             file_temp.write(pdf_file)
             file_temp.flush()
-            self.pdf_authorized.save(name=f'{self.receipt.get_name_xml()}_{self.access_code}.pdf', content=File(file_temp))
+            self.pdf_authorized.save(name=f'{self.receipt.get_name_xml()}_{self.access_code}.pdf', content=File(file_temp), save=False)
 
     def generate_xml(self):
         fecha_emision = self.emission_date or timezone.localdate()   # la misma fecha (de Ecuador) para la clave y fechaEmision

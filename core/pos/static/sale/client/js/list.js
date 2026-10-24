@@ -85,7 +85,7 @@ var sale = {
                         buttons += '<div class="dropdown-menu dropdown-menu-right">';
                         buttons += '<a class="dropdown-item" rel="detail"><i class="fas fa-folder-open"></i> Detalle de productos</a>';
                         if (['authorized', 'authorized_and_sent_by_email'].includes(row.status.id)) {
-                            buttons += '<a href="' + row.pdf_authorized + '" target="_blank" class="dropdown-item"><i class="fa-solid fa-file-pdf"></i> Imprimir pdf</a>';
+                            buttons += '<a href="' + pathname + 'print/a4/' + row.id + '/" target="_blank" class="dropdown-item"><i class="fa-solid fa-file-pdf"></i> Imprimir factura A4</a>';
                             buttons += '<a href="' + row.xml_authorized + '" target="_blank" class="dropdown-item"><i class="fas fa-file-code"></i> Descargar xml</a>';
                         }
                         buttons += '</div></div></div>';

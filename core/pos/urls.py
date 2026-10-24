@@ -79,8 +79,10 @@ urlpatterns = [
     path('sale/admin/add/', SaleCreateView.as_view(), name='sale_admin_create'),
     path('sale/admin/delete/<int:pk>/', SaleDeleteView.as_view(), name='sale_admin_delete'),
     path('sale/admin/print/invoice/<int:pk>/', SalePrintInvoiceView.as_view(), name='sale_admin_print_invoice'),
+    path('sale/admin/print/a4/<int:pk>/', SalePrintA4View.as_view(), name='sale_admin_print_a4'),
     path('sale/client/', SaleClientListView.as_view(), name='sale_client_list'),
     path('sale/client/print/invoice/<int:pk>/', SalePrintInvoiceView.as_view(), name='sale_client_print_invoice'),
+    path('sale/client/print/a4/<int:pk>/', SalePrintA4View.as_view(), name='sale_client_print_a4'),
     # credit_note
     path('credit/note/admin/', CreditNoteListView.as_view(), name='credit_note_admin_list'),
     path('credit/note/admin/add/', CreditNoteCreateView.as_view(), name='credit_note_admin_create'),

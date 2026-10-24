@@ -314,6 +314,47 @@ class SalePrintInvoiceView(LoginRequiredMixin, View):
         return HttpResponseRedirect(self.get_success_url())
 
 
+class SalePrintA4View(LoginRequiredMixin, View):
+    """RIDE A4 (versión completa) de una factura autorizada, también si después se anuló con una nota de crédito: el PDF
+    guardado al autorizarse. Si faltara (falló al generarse), se genera esa única vez con los datos actuales; nunca
+    reemplaza uno existente. Antes de la autorización no hay RIDE."""
+    success_url = reverse_lazy('sale_admin_list')
+    ESTADOS = emision.AUTORIZADOS + (emision.ANULADA,)
+
+    def get_success_url(self):
+        if self.request.user.is_client():
+            return reverse_lazy('sale_client_list')
+        return self.success_url
+
+    @staticmethod
+    def tiene_ride(sale):
+        return bool(sale.pdf_authorized) and sale.pdf_authorized.storage.exists(sale.pdf_authorized.name)
+
+    @staticmethod
+    def generar_ride(sale):
+        sale.generate_pdf_authorized()   # escribe el archivo; solo se guarda ese campo, no la venta completa
+        try:
+            Sale.objects.filter(pk=sale.pk).update(pdf_authorized=sale.pdf_authorized.name)
+        except Exception:
+            sale.pdf_authorized.storage.delete(sale.pdf_authorized.name)
+            raise
+
+    def get(self, request, *args, **kwargs):
+        try:
+            sale = Sale.objects.select_related('receipt').filter(id=self.kwargs['pk']).first()
+            if sale and can_print_voucher(request, sale) and sale.status in self.ESTADOS \
+                    and sale.receipt.voucher_type == VOUCHER_TYPE[0][0]:
+                if not self.tiene_ride(sale):
+                    with transaction.atomic():
+                        sale = Sale.objects.select_for_update().get(pk=sale.pk)
+                        if not self.tiene_ride(sale):
+                            self.generar_ride(sale)
+                return HttpResponseRedirect(sale.get_pdf_authorized())
+        except Exception:
+            logger.exception('No se pudo abrir el RIDE A4 de la venta %s', self.kwargs['pk'])
+        return HttpResponseRedirect(self.get_success_url())
+
+
 class SaleClientListView(GroupPermissionMixin, FormView):
     template_name = 'sale/client/list.html'
     form_class = ReportForm

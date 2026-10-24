@@ -88,13 +88,20 @@ var sale = {
                         buttons += '<div class="dropdown-menu dropdown-menu-right">';
                         buttons += '<a class="dropdown-item" rel="detail"><i class="fas fa-folder-open"></i> Detalle de productos</a>';
                         buttons += '<a target="_blank" href="' + pathname + 'print/invoice/' + row.id + '/" class="dropdown-item"><i class="fas fa-ticket-alt"></i> Imprimir factura ticket</a> ';
+                        // RIDE A4 (versión completa): existe desde que el SRI autoriza la factura (también si luego se anuló).
+                        if (row.receipt.voucher_type.id === '01') {
+                            if (['authorized', 'authorized_and_sent_by_email', 'canceled'].includes(row.status.id)) {
+                                buttons += '<a target="_blank" href="' + pathname + 'print/a4/' + row.id + '/" class="dropdown-item"><i class="fa-solid fa-file-pdf"></i> Imprimir factura A4' + (row.status.id === 'canceled' ? ' (anulada)' : '') + '</a>';
+                            } else {
+                                buttons += '<span class="dropdown-item disabled" aria-disabled="true"><i class="fa-solid fa-file-pdf"></i> Factura A4: disponible cuando el SRI la autorice</span>';
+                            }
+                        }
                         if (row.status.id === 'in_process') {
                             buttons += '<a rel="generate_invoice" class="dropdown-item"><i class="fas fa-sync-alt"></i> Consultar autorización en el SRI</a>';
                         } else if (['without_authorizing', 'returned', 'not_authorized'].includes(row.status.id) && row.receipt.voucher_type.id === '01') {
                             buttons += '<a rel="generate_invoice" class="dropdown-item"><i class="fas fa-clipboard-check"></i> Enviar al SRI</a>';
                         } else if (['authorized', 'authorized_and_sent_by_email'].includes(row.status.id)) {
                             buttons += '<a rel="send_invoice_by_email" class="dropdown-item"><i class="fas fa-envelope"></i> Enviar comprobantes por email</a>';
-                            buttons += '<a href="' + row.pdf_authorized + '" target="_blank" class="dropdown-item"><i class="fa-solid fa-file-pdf"></i> Imprimir pdf</a>';
                             buttons += '<a href="' + row.xml_authorized + '" target="_blank" class="dropdown-item"><i class="fas fa-file-code"></i> Descargar xml</a>';
                             if (row.client.identification_type.id !== '07' && row.receipt.voucher_type.id === '01') {
                                 buttons += '<a rel="create_credit_note" class="dropdown-item"><i class="fas fa-minus-circle"></i> Crear nota de credito</a>';
