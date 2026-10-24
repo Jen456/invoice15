@@ -4,6 +4,7 @@ que aún no está en STATIC_ROOT, hora de autorización de la NC en hora de Ecua
 import base64
 from datetime import datetime, timezone
 from io import BytesIO
+from types import SimpleNamespace as NS
 
 import pypdfium2 as pdfium
 import pytest
@@ -101,3 +102,12 @@ def test_liquidacion_no_parte_el_encabezado_cantidad():
     with pdfium.PdfDocument(contenido) as documento:
         lineas = [linea.strip() for linea in documento[0].get_textpage().get_text_range().splitlines()]
     assert 'Cantidad' in ' '.join(lineas).split() and 'Cantida' not in lineas
+
+
+def test_factura_no_repite_un_ruc_proveedor_escrito_a_mano():
+    contexto = contexto_demo('factura')
+    contexto['sale'].additional_info = [*contexto['sale'].additional_info,
+                                         NS(name='RUC Proveedor', value='1790012345001'), NS(name='  ', value='sin nombre')]
+    contenido = render_to_string(TEMPLATES['factura'], contexto)
+    assert informacion_adicional(contenido)['RUC Proveedor'] == PROVEEDOR_DEMO['ruc']
+    assert '1790012345001' not in contenido and 'sin nombre' not in contenido
