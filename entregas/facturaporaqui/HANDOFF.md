@@ -1,5 +1,23 @@
 # Handoff compartido — frontend
 
+## Estado actual — clientes del exterior, varios correos, teléfono opcional y migración desde Facturero Móvil (Claude, 24/10/2026)
+
+- **Pedido de la propietaria (24/10):** migrar a la empresa 6 (GARCIA MARTINEZ IGNACIO FERNANDO GABRIEL, 1303645616001) los productos, clientes y proveedores de su sistema anterior (Facturero Móvil); el teléfono del cliente no es obligatorio; admitir empresas extranjeras como compradores; guardar varios correos por cliente.
+- **Cliente (`pos 0018`):** `mobile` opcional y sin unicidad (había 25 compradores sin teléfono y dos empresas de un grupo con la misma central); `dni` de hasta 20 caracteres (el máximo de `identificacionComprador` en el XSD) para pasaporte (06) e identificación del exterior (08): letras, números, guiones y espacios, p. ej. `155652251-2-2017 DV7`; campo nuevo `extra_emails` («Otros correos (separados por comas)»). Etiqueta del 08 corregida: «IDENTIFICACION DEL EXTERIOR*».
+- **Reglas en un solo lugar:** `core/pos/clientes.py` → `validar_identificacion(tipo, numero)` (la usan `ClientForm` y el importador), `separar_correos`, `unir_correos`, `correo_valido`; `Client.correos()` = principal + adicionales sin repetir.
+- **Correo:** `SRI.notify_by_email` envía a todas las direcciones del cliente; la venta guarda «Email» con todas las que caben en 300 caracteres (infoAdicional); nota de débito y guía guardan las que caben en 254.
+- **Importador:** `manage.py importar_facturero --empresa RUC --productos F --clientes F --proveedores F` (ensayo por defecto; `--aplicar` guarda; `--informe x.json`). Lee los .txt originales (tabuladores, UTF-8 o Windows-1252), comprueba que el titular sea la empresa, no toca lo que ya existe y deja en el informe lo omitido y los avisos. Código en `core/pos/facturero.py`.
+
+## Pendiente para Codex — formulario de cliente
+
+- El formulario de cliente y el alta rápida desde Ventas muestran ya el campo `extra_emails` (las plantillas recorren los campos); falta darle diseño y una ayuda breve («Reciben las facturas junto con el correo principal»).
+- Validación en el navegador (`client/js/form.js`, `sale/admin/js/form.js`): teléfono y correo opcionales y sin comprobación de repetidos; la identificación se valida según el tipo con `identificacion_valida(tipo, numero)` de `static/js/functions.js` (mismas reglas que el servidor). Con 06/08 el campo admite letras, guiones y espacios.
+
+## Notas entre agentes — contrato de clientes (Claude → Codex)
+
+- `Client.toJSON()` incluye `extra_emails` (texto «a@x.com, b@y.com»). El servidor normaliza y rechaza direcciones inválidas con el error en `extra_emails`.
+- No reintroducir `notEmpty` ni `remote` en `mobile`/`email`: los datos migrados tienen clientes sin teléfono y correos compartidos.
+
 ## Estado actual — clave de la firma (.p12) cifrada en la base, publicada `ede88cb` (Claude, 16/10/2026)
 
 - **Publicado** el 16/10/2026 a las 14:58 UTC (respaldo `pre-20261016-145810-ede88cb9.dump`, migración `pos 0017`; `claves_firma`: 1 cifrada, 0 ilegibles) y subido a GitHub.

@@ -5,13 +5,70 @@ si otra empresa ya lo había registrado (o el «CONSUMIDOR FINAL» 9999999999999
 demostración), la empresa no podía crearlo. Cada empresa tiene ahora su propio consumidor final y, si la
 identificación ya está tomada por otra empresa, se crea un usuario aparte (no se comparten datos).
 """
+import re
 import uuid
 
 from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 
 from config import settings
+from core.login.identificacion import cedula_valida, ruc_valido
 
 CONSUMIDOR_FINAL = '9999999999999'
+# Pasaporte e identificación del exterior: hasta 20 caracteres como en el XML del SRI (identificacionComprador),
+# p. ej. el RUC panameño 155652251-2-2017 DV7.
+EXTRANJERA = re.compile(r'[A-Z0-9][A-Z0-9 -]{1,18}[A-Z0-9]')
+
+
+def validar_identificacion(tipo, numero):
+    """(número normalizado, [(campo, error)]) según el tipo (tabla 6 de la ficha técnica del SRI)."""
+    if tipo in ('06', '08'):
+        numero = ' '.join((numero or '').split()).upper()
+    else:
+        numero = re.sub(r'\s', '', numero or '').upper()
+    errores = []
+    if tipo == '05' and not cedula_valida(numero):
+        errores.append(('dni', 'La cédula no es válida: revisa los 10 dígitos.'))
+    elif tipo == '04' and not ruc_valido(numero):
+        errores.append(('dni', 'El RUC no es válido: revisa los 13 dígitos.'))
+    elif tipo == '07' and numero != CONSUMIDOR_FINAL:
+        errores.append(('dni', 'Para consumidor final la identificación es 9999999999999.'))
+    elif tipo in ('06', '08') and not EXTRANJERA.fullmatch(numero):
+        errores.append(('dni', 'El pasaporte o la identificación del exterior admite de 3 a 20 letras, números, guiones y espacios.'))
+    if tipo and tipo != '07' and numero == CONSUMIDOR_FINAL:
+        errores.append(('identification_type', 'El 9999999999999 solo se usa con «Venta a consumidor final».'))
+    return numero, errores
+
+
+def separar_correos(*textos):
+    """Direcciones en orden y sin repetir (sin distinguir mayúsculas), separadas por comas, punto y coma o espacios."""
+    vistos, correos = set(), []
+    for texto in textos:
+        for correo in re.split(r'[,;\s]+', (texto or '').strip()):
+            if correo and correo.casefold() not in vistos:
+                vistos.add(correo.casefold())
+                correos.append(correo)
+    return correos
+
+
+def correo_valido(correo):
+    try:
+        validate_email(correo)
+        return True
+    except ValidationError:
+        return False
+
+
+def unir_correos(correos, largo):
+    """Las direcciones que caben enteras en `largo` caracteres, separadas por «, »."""
+    texto = ''
+    for correo in correos:
+        candidato = f'{texto}, {correo}' if texto else correo
+        if len(candidato) > largo:
+            break
+        texto = candidato
+    return texto
 
 
 def consumidor_final(company):

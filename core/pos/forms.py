@@ -1,9 +1,7 @@
-import re
-
 from django import forms
 
 from .models import *
-from core.login.identificacion import cedula_valida, ruc_valido
+from core.pos.clientes import correo_valido, separar_correos, validar_identificacion
 
 
 class ProviderForm(forms.ModelForm):
@@ -223,25 +221,33 @@ class PaymentsDebtsPayForm(forms.ModelForm):
         }
 
 
+class IdentificacionField(forms.CharField):
+    """Espacios repetidos en uno antes de medir el largo (ClientForm.clean normaliza el número según su tipo)."""
+
+    def to_python(self, value):
+        return ' '.join(super().to_python(value).split())
+
+
 class ClientForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def clean_extra_emails(self):
+        correos = separar_correos(self.cleaned_data.get('extra_emails'))
+        invalidos = [c for c in correos if not correo_valido(c)]
+        if invalidos:
+            raise forms.ValidationError(f'Correo no válido: {", ".join(invalidos)}')
+        texto = ', '.join(correos)
+        if len(texto) > 500:
+            raise forms.ValidationError('Los correos adicionales no pueden pasar de 500 caracteres.')
+        return texto
+
     def clean(self):
         """La identificación debe corresponder a su tipo (tabla 6 de la ficha técnica del SRI)."""
         datos = super().clean()
-        tipo = datos.get('identification_type')
-        dni = re.sub(r'\s', '', datos.get('dni') or '').upper()
-        if tipo == '05' and not cedula_valida(dni):
-            self.add_error('dni', 'La cédula no es válida: revisa los 10 dígitos.')
-        elif tipo == '04' and not ruc_valido(dni):
-            self.add_error('dni', 'El RUC no es válido: revisa los 13 dígitos.')
-        elif tipo == '07' and dni != '9999999999999':
-            self.add_error('dni', 'Para consumidor final la identificación es 9999999999999.')
-        elif tipo in ('06', '08') and not re.fullmatch(r'[A-Z0-9]{3,13}', dni):
-            self.add_error('dni', 'El pasaporte o la identificación del exterior admite de 3 a 13 letras y números.')
-        if tipo and tipo != '07' and dni == '9999999999999':
-            self.add_error('identification_type', 'El 9999999999999 solo se usa con «Venta a consumidor final».')
+        dni, errores = validar_identificacion(datos.get('identification_type'), datos.get('dni'))
+        for campo, mensaje in errores:
+            self.add_error(campo, mensaje)
         datos['dni'] = dni
         return datos
 
@@ -272,7 +278,13 @@ class ClientForm(forms.ModelForm):
                 'placeholder': 'Ingrese una dirección'
             }),
             'identification_type': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
+            'extra_emails': forms.TextInput(attrs={
+                'class': 'form-control',
+                'autocomplete': 'off',
+                'placeholder': 'Ej.: contabilidad@empresa.com, compras@empresa.com',
+            }),
         }
+        field_classes = {'dni': IdentificacionField}
         exclude = ['user']
 
 

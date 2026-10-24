@@ -329,18 +329,25 @@ class PurchaseDetail(TenantModel):
 
 class Client(TenantModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='clients', verbose_name='Usuario')
-    dni = models.CharField(max_length=13, verbose_name='Número de cedula o ruc')
-    mobile = models.CharField(max_length=10, verbose_name='Teléfono')
+    dni = models.CharField(max_length=20, verbose_name='Número de cedula o ruc')
+    # Opcional y repetible: hay compradores sin teléfono y empresas de un mismo grupo que comparten la central.
+    mobile = models.CharField(max_length=10, blank=True, default='', verbose_name='Teléfono')
     birthdate = models.DateField(default=datetime.now, verbose_name='Fecha de nacimiento')
     address = models.CharField(max_length=500, verbose_name='Dirección')
     identification_type = models.CharField(max_length=30, choices=IDENTIFICATION_TYPE, default=IDENTIFICATION_TYPE[0][0], verbose_name='Tipo de identificación')
     send_email_invoice = models.BooleanField(default=True, verbose_name='¿Enviar email de factura?')
+    extra_emails = models.CharField(max_length=500, blank=True, default='', verbose_name='Otros correos (separados por comas)')
 
     def __str__(self):
         return self.get_full_name()
 
     def get_full_name(self):
         return f'{self.user.names} ({self.dni})'
+
+    def correos(self):
+        """Correo principal y adicionales, sin repetir: todos reciben los comprobantes."""
+        from core.pos.clientes import separar_correos
+        return separar_correos(self.user.email, self.extra_emails)
 
     def birthdate_format(self):
         return self.birthdate.strftime('%Y-%m-%d')
@@ -361,7 +368,7 @@ class Client(TenantModel):
             pass
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['company', 'dni'], name='client_dni_por_empresa'), models.UniqueConstraint(fields=['company', 'mobile'], name='client_mobile_por_empresa')]
+        constraints = [models.UniqueConstraint(fields=['company', 'dni'], name='client_dni_por_empresa')]
         verbose_name = 'Cliente'
         verbose_name_plural = 'Clientes'
 

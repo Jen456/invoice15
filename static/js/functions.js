@@ -379,4 +379,61 @@ function validate_dni_ruc(numero) {
     return true;
 }
 
+// Identificación del comprador con las mismas reglas que el servidor (core/pos/clientes.py, core/login/identificacion.py).
+function es_identificacion_extranjera(tipo) {
+    return tipo === '06' || tipo === '08';
+}
 
+function cedula_valida(cedula) {
+    if (!/^\d{10}$/.test(cedula)) {
+        return false;
+    }
+    var provincia = parseInt(cedula.substr(0, 2), 10);
+    if (!((provincia >= 1 && provincia <= 24) || provincia === 30) || parseInt(cedula.charAt(2), 10) >= 6) {
+        return false;
+    }
+    var total = 0;
+    [2, 1, 2, 1, 2, 1, 2, 1, 2].forEach(function (coeficiente, i) {
+        var producto = parseInt(cedula.charAt(i), 10) * coeficiente;
+        total += producto > 9 ? producto - 9 : producto;
+    });
+    return (10 - total % 10) % 10 === parseInt(cedula.charAt(9), 10);
+}
+
+function ruc_valido(ruc) {
+    if (!/^\d{13}$/.test(ruc)) {
+        return false;
+    }
+    var provincia = parseInt(ruc.substr(0, 2), 10);
+    if (!((provincia >= 1 && provincia <= 24) || provincia === 30)) {
+        return false;
+    }
+    var tipo = parseInt(ruc.charAt(2), 10);
+    if (tipo < 6) {
+        return cedula_valida(ruc.substr(0, 10)) && ruc.substr(10) !== '000';
+    }
+    if (tipo === 6) {
+        return ruc.substr(9) !== '0000';
+    }
+    return tipo === 9 && ruc.substr(10) !== '000';
+}
+
+function identificacion_valida(tipo, numero) {
+    if (es_identificacion_extranjera(tipo)) {
+        return /^[A-Z0-9][A-Z0-9 -]{1,18}[A-Z0-9]$/.test(numero.trim().replace(/\s+/g, ' ').toUpperCase());
+    }
+    numero = numero.replace(/\s/g, '');
+    if (tipo === '07') {
+        return numero === '9999999999999';
+    }
+    if (numero === '9999999999999') {
+        return false;
+    }
+    if (tipo === '05') {
+        return cedula_valida(numero);
+    }
+    if (tipo === '04') {
+        return ruc_valido(numero);
+    }
+    return true;
+}
