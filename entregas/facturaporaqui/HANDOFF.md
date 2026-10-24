@@ -1,5 +1,31 @@
 # Handoff compartido — frontend
 
+## Estado actual — RIDE A4 estilo B implementado (Codex, 24/10/2026)
+
+La propietaria eligió B y pidió encabezados simplificados **sin repetición**, márgenes de 10 mm, descripciones amplias y colibrí pequeño con datos del proveedor en cursiva al pie. Esta elección sustituye el estado anterior de espera. Implementadas las seis plantillas A4: factura, nota de crédito, nota de débito, retención, liquidación de compra y guía. Entrega local, sin push ni despliegue.
+
+Antes de editar se fusionó github/plataforma **fb302af** en frontend/etapa3: merge **e860058**. Conflictos solo en HANDOFF y RESULTADOS, conservando ambas secciones. Se mantienen IVA por producto, RIMPE y cambios recientes de clientes. Sin cambios propios de backend, XML, modelos, migraciones, URL, campos ni action.
+
+Suite SQLite final: **517 aprobadas y 7 omitidas** (80,50 s), incluyendo ocho regresiones nuevas de PDF. Matriz de doce PDF ficticios: seis cortos de una página y seis largos de 90 líneas (41 páginas en total), con pie cursivo separado y cabeceras una sola vez. Muestras en `propuestas/ride-b/` y nueve capturas `capturas/ride-b-*.png`.
+
+## Pendiente para Codex — diseño A4 elegido
+
+- [x] Aplicar estilo B a los seis RIDE y conservar todos los datos de cada tipo.
+- [x] Pie compartido con los cuatro datos del proveedor y colibrí de 7 mm; encabezados no repetidos.
+- [x] PDFs cortos/largos, desglose de impuestos, fechas de NC, márgenes y lectura digital de barras.
+- [x] Registrar muestras, limitaciones y suite SQLite.
+
+## Notas entre agentes — entrega RIDE B (Codex → Claude)
+
+- Archivos comunes nuevos: `static/css/facturaporaqui-ride.css` y `templates/ride/_pie.html`. Incluir el CSS mediante collectstatic y ambos recursos en el despliegue. El CSS A4 se separa del tema web y evita depender de los anchos de impresión de Bootstrap; no se cambió el renderizador Python.
+- Los seis RIDE incluyen el pie antes del contenido para que WeasyPrint lo coloque en todas las páginas. Contenedor de 190 mm, margen superior/lateral 10 mm, reserva inferior de 28 mm para el pie. `thead` y `tfoot` se presentan como grupos normales de filas: no se repiten. Logo del emisor proporcional, solo si está configurado; colibrí de plataforma solo en el pie.
+- RIMPE, contribuyente especial, IVA por tarifa, descuentos, receptor, sustentos y datos opcionales conservados. Retención agrupa el sustento una vez y usa cinco columnas de retención; guía no incluye importes. Factura/NC mantienen los valores y cálculos existentes.
+- NC: corregidas las fechas intercambiadas del template antiguo. Fecha propia usa emission_date cuando existe; fecha del documento modificado sigue sale.get_date_joined, consistente con el XML actual. Si se revisa en backend fechaEmisionDocSustento frente a emission_date de la factura, coordinarlo aparte: Codex no cambió esa lógica.
+- Proveedor: conservar proveedor.nombre/ruc/email/direccion y la etiqueta «RUC Proveedor». XML intacto. Ubicación y cursiva son la decisión visual aprobada; no se afirma una obligación normativa de ese estilo. La fuente oficial sigue pendiente de contraste por Claude, según la nota anterior de acceso al SRI.
+- Lectura digital exacta a 300 dpi sin suavizado y 600 dpi predeterminado. 216 dpi/300 dpi con suavizado fallan por aliasing en la matriz; revisar una impresión y escáner físico antes de dar por verificados esos dispositivos. Detalle reproducible en tests/test_ride_diseno.py e informes adjuntos.
+- El nuevo formato alcanza los PDF generados con estas plantillas. Los A4 autorizados ya guardados no se regeneran automáticamente; no reenviar XML ni emitir otra vez para cambiar diseño. Ticket térmico fuera de esta entrega A4. Ningún documento real fue modificado.
+- PostgreSQL y publicación con respaldo a cargo de Claude después de revisar. Esta entrega sigue local en frontend/etapa3; no se hizo push.
+
 ## Estado actual — propuesta visual RIDE A4 pendiente de elección (Codex, 24/10/2026)
 
 La propietaria solicita escoger el estilo antes de modificar el código. Preparadas tres alternativas en `propuestas/RIDE-A4-PROPUESTA.md` y `propuestas/ride-a4-comparativa.png`: A clásica, B profesional con marca (recomendada), C minimalista. Referencias revisadas mediante lectura; solo documentación e imagen ficticia. No cambios de plantillas ni despliegue.
@@ -8,8 +34,8 @@ La propietaria solicita escoger el estilo antes de modificar el código. Prepara
 
 - [x] Revisar factura adjunta y referencia Tomebamba; proponer alternativas A4 con pie discreto del proveedor.
 - [x] Documentar opciones, campos que conservar y límites de la maqueta, sin guardar datos reales.
-- [ ] Recibir elección A/B/C de la propietaria antes de implementar las plantillas.
-- [ ] Tras la elección: adaptar los documentos y validar PDFs largos, impresión y códigos de barras.
+- [x] Recibir elección A/B/C: B aprobada el 24/10/2026, con encabezados no repetidos.
+- [x] Tras la elección: adaptar los documentos y validar PDFs largos y lectura digital de barras. Impresión/escáner físicos pendientes, separados de la validación digital.
 
 ## Notas entre agentes — propuesta RIDE A4 (Codex → Claude)
 

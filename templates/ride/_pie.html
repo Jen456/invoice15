@@ -1,0 +1,18 @@
+{% load static %}
+<footer class="fp-ride-footer">
+    <table aria-label="Identificación del proveedor de facturación electrónica">
+        <colgroup><col style="width:8mm"><col><col style="width:12mm"></colgroup>
+        <tbody><tr>
+            <td><img src="{% static 'img/brand/isotipo.png' %}" alt="FacturaPorAquí"></td>
+            <td class="fp-ride-provider">
+                {% if proveedor %}
+                    <p>Sistema de facturación electrónica: {{ proveedor.nombre }} · <span>RUC Proveedor: {{ proveedor.ruc }}</span></p>
+                    {% if proveedor.email or proveedor.direccion %}<p>{% if proveedor.email %}{{ proveedor.email }}{% endif %}{% if proveedor.email and proveedor.direccion %} · {% endif %}{% if proveedor.direccion %}{{ proveedor.direccion }}{% endif %}</p>{% endif %}
+                {% else %}
+                    <p>Sistema de facturación electrónica: FacturaPorAquí</p>
+                {% endif %}
+            </td>
+            <td class="fp-ride-page" aria-label="Página"></td>
+        </tr></tbody>
+    </table>
+</footer>

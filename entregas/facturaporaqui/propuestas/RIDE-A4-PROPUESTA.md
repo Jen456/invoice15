@@ -1,6 +1,6 @@
 # Propuesta de diseño de documentos A4 — 24/10/2026
 
-Estado: **propuesta para elección de la propietaria; no implementada**. Se solicita escoger antes de modificar las plantillas o encargar la implementación. Rama frontend/etapa3.
+Estado: **opción B elegida por la propietaria el 24/10/2026 e implementada localmente**. Se aprobó mantener márgenes, descripciones amplias y pie cursivo; se corrigió expresamente la propuesta inicial: encabezados simplificados **sin repetirlos**. Rama frontend/etapa3. Muestras generadas en `ride-b/`, pendientes de publicación por Claude.
 
 Referencia visual: factura actual adjunta de una página A4 y captura de Importadora Tomebamba aportadas por la propietaria. Los originales tienen datos reales y no se incorporan al repositorio. La comparativa usa exclusivamente datos ficticios.
 
@@ -24,7 +24,7 @@ La imagen generada es una maqueta conceptual, no una plantilla fiscal completa n
 - Código de barras más compacto, conservando proporción, zona libre y clave legible; tamaño definitivo condicionado a prueba de lectura del PDF y de una impresión. No fijar un ancho que comprima las barras de forma arbitraria.
 - Datos del receptor en un bloque claro. Tabla con más espacio para descripción, importes alineados a la derecha, cifras tabulares y descuentos visibles.
 - Cuerpo orientativo de 9,5–10,5 pt y pie de 8–8,5 pt, con contraste suficiente. No encoger toda la factura para forzar una sola página.
-- Tabla con encabezado repetido cuando continúe; evitar partir filas cortas y permitir textos largos sin recortes. Totales al final, sin superposición con el pie. Página n de N.
+- Por elección final de la propietaria, tabla y cabecera del documento **sin encabezados repetidos** al continuar; evitar partir filas cortas y permitir textos largos sin recortes. Totales al final, sin superposición con el pie. Página n de N en el pie.
 - Fondos muy tenues y bordes finos para conservar legibilidad en escala de grises. No copiar declaraciones jurídicas, firmas ni condiciones comerciales particulares de Tomebamba.
 
 ## Identificación del proveedor en el pie
@@ -46,6 +46,8 @@ La auditoría interna AUDITORIA-SRI-2026-10.md, consultada por Claude el 11/10/2
 - Retención: sujeto retenido, sustento, período fiscal, impuesto, código, base, porcentaje y valor retenido. No titular el resumen «Total a pagar».
 - Guía de remisión: transportista, placa, fechas, partida, destino, motivo/ruta, sustento y cantidades; sin precios ni totales monetarios.
 
-## Alcance de esta entrega
+## Alcance de la propuesta inicial
 
 Solo propuesta gráfica y documentación. Se revisaron las referencias y plantillas mediante lectura; no se ejecutó una emisión, no se modificaron templates, backend, XML ni numeraciones. La imagen no es una prueba de paginación, legibilidad impresa, lectura de código de barras ni cumplimiento fiscal. Esas comprobaciones se harán con PDFs ficticios de pocas y muchas líneas cuando se elija el estilo y se implemente.
+
+La implementación posterior y sus pruebas reales se registran en RESULTADOS-FRONTEND.md y `ride-b/README.md`. La imagen comparativa sigue siendo la propuesta conceptual original.

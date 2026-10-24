@@ -12,3 +12,5 @@
 - Material de redes: dejar una zona segura mínima de 60 px arriba, abajo, izquierda y derecha para texto y marca; comprobar miniatura y formato completo. Las historias requieren también espacio para la interfaz de la plataforma.
 
 - La zona segura de redes es invisible: extender fondo y formas decorativas hasta el borde; no crear marcos, paneles interiores ni bandas que alteren el diseño. Mantener texto/logo al menos a 60 px.
+
+- Los RIDE A4 usan `static/css/facturaporaqui-ride.css` y el pie `templates/ride/_pie.html`, separados del tema web. Elección de la propietaria: estilo B, contenido de 190 mm, margen superior/lateral de 10 mm y reserva inferior para el pie; cabecera y encabezados de tabla una sola vez, sin repetición en páginas posteriores. Colibrí pequeño y datos del proveedor en cursiva en el pie de cada página. Conservar los cuatro datos del proveedor, RIMPE y desglose por tarifa. Probar PDF corto/largo, no solo HTML; indicar configuración de rasterizado al informar lectura de barras.

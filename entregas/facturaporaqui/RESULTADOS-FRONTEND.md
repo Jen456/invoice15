@@ -1048,6 +1048,38 @@ Archivos: nuevo `propuestas/RIDE-A4-PROPUESTA.md`, nueva imagen ficticia `propue
 Comprobaciones: dimensiones A4 del adjunto, inspección visual de referencia y comparativa, lectura de variantes factura/NC/ND/retención/liquidación/guía, revisión de datos de proveedor ya disponibles y `git diff --check`. No suite de aplicación: no se modificó código. Fuente normativa externa no revalidada: conexión a sri.gob.ec bloqueada con 403 del proxy. La obligación de RUC Proveedor se atribuye a la auditoría interna, y no se afirma que pie/cursiva sean mandatos del SRI. Datos XML y backend intactos.
 
 Pendiente: elección de la propietaria y verificación de la referencia oficial antes de implementar el traslado visual del proveedor. Después corresponderá probar paginación, textos largos, escala de grises, lectura del código de barras y diferencias por tipo de documento. Sin emisión, pagos, cambios de numeración, push ni despliegue en esta tarea.
+
+## 24/10/2026 — implementación del estilo B elegido (Codex)
+
+La propietaria aprobó B, márgenes y descripciones amplias, y cambió expresamente el criterio inicial: **encabezados simplificados, sin repetirlos**. Autorizada la implementación de esa elección. Antes de editar se hizo fetch: frontend/etapa3 y plataforma estaban en fb302af. Merge e860058 sobre la propuesta c40d196, sin reescribir historia; conflictos solo en HANDOFF y este informe, conservando ambos contenidos. Leídas las notas nuevas de IVA por producto, RIMPE y clientes.
+
+### Archivos y decisiones
+
+- `static/css/facturaporaqui-ride.css` (nuevo): estilo de impresión A4 independiente de Bootstrap y del tema web. Contenido `.hoja` de 190 mm, margen superior/lateral de 10 mm y reserva inferior de 28 mm que aloja el pie manteniendo espacio hacia el borde del papel. Azul oscuro, celeste tenue y línea coral; cuerpo de 9,5 pt, celdas de 9 pt y proveedor en 8 pt cursiva. `thead`/`tfoot` sin repetición en páginas posteriores. Tablas con ancho fijo y texto ajustable, importes a la derecha y totales destacados.
+- `templates/ride/_pie.html` (nuevo): colibrí Ingenioso de 7 mm; nombre, **RUC Proveedor**, correo y dirección existentes, sin inventar valores. Pie en todas las páginas con número n/N. Los datos del proveedor salen de las tablas de información del cliente; se mantiene el campo adicional XML sin ninguna modificación.
+- `core/pos/templates/sale/format/invoice.html`: cabecera compacta con logo proporcional del emisor, razón social/nombre comercial, establecimientos, ambiente y tipo de emisión ya disponibles; receptor, descripción al 45 %, forma de pago, información adicional, descuentos e impuestos por tarifa intactos. Se conserva el método original para la autorización: la factura guarda fecha sin hora, no se inventa una.
+- `core/pos/templates/credit_note/format/invoice.html`: mismos componentes; documento modificado a la izquierda del resumen y totales a la derecha. Corregidas las etiquetas con fechas intercambiadas: emisión propia de NC y fecha de la factura modificada. La fecha propia usa emission_date si existe; la del sustento sigue el dato que usa el XML actual. Se conservan motivo, líneas e impuestos.
+- `core/comprobantes/templates/comprobantes/{retencion,liquidacion,notadebito,guia}/ride.html`: cabecera unificada y pie compartido, datos fiscales/RIMPE y opcionales conservados. Liquidación con descripción al 46 %. Retención muestra sustento una vez y cinco columnas claras (impuesto, código, base, porcentaje, valor), conservando período, autorización y total retenido. Guía conserva transporte, partida/destino, fechas, ruta, aduana y cantidades, sin importes.
+- Logos de emisores solo cuando existe una imagen configurada; no se imprime el icono genérico de imagen ausente. Logo propio sin distorsión; la marca de plataforma permanece en el pie. Ticket térmico no modificado: esta entrega es A4.
+- `tests/test_ride_diseno.py` (nuevo): ocho regresiones PDF con contextos ficticios en memoria, sin DB real/SRI. Datos, impuestos/RIMPE/proveedor, A4, paginación sin cabeceras repetidas, código de barras y fechas de NC.
+- AGENTS añade la convención de impresión; HANDOFF, propuesta aprobada, muestras y este informe actualizados.
+
+### Pruebas ejecutadas
+
+- Dos regresiones existentes de IVA por tarifa y RIMPE: aprobadas. Un primer render detectó que Sale.authorization_date no admite formato de hora; se corrigió usando el método original y se repitieron las pruebas.
+- Ocho regresiones nuevas: aprobadas (6,24 s). Contextos de seis tipos con RIMPE, contribuyente especial, proveedor ficticio y descripciones completas; no se deshabilitó ninguna prueba.
+- Suite SQLite completa después de la integración: **517 aprobadas y 7 omitidas** (81,11 s). Tras los últimos ajustes de retención y logo, suite completa final: **517 aprobadas y 7 omitidas en 80,50 s**, salida 0. Comando `XDG_CACHE_HOME=/workspace/multi-runtime/cache /workspace/.venv-platform/bin/python -m pytest -o addopts= -q`. Omisiones exclusivas de PostgreSQL.
+- Doce PDF renderizados con el mismo renderizador de la app y resolución local de recursos: los seis cortos (cinco líneas) caben en una página. Con 90 líneas: factura 7 páginas, NC 7, ND 5, retención 4, liquidación 7, guía 5. **41 páginas** de comprobación digital.
+- En todos: tamaño A4, texto dentro de márgenes, última línea conservada y cabecera del emisor/títulos de tabla una sola vez. Pie en cada página; separado del cuerpo, sin superposición; cursiva comprobada en las fuentes del PDF (Liberation-Sans-Italic).
+- Barcode PNG original y extraído del PDF legibles. Clave exacta recuperada en los doce PDF a **300 dpi sin suavizado de imagen** y **600 dpi predeterminado** con PDFium + ZXing. A 216 dpi y 300 dpi con suavizado no se recuperó por aliasing. Se registran resultados por modo en report.json; no se presenta esto como prueba de escáner físico ni se garantiza cualquier configuración. No se cambió el generador de barras ni la clave.
+- Ejemplo adicional de factura con logo ficticio SVG 2:1: proporción conservada y una página. Se inspeccionaron factura, NC, retención y continuaciones; captura adicional de factura en escala de grises. La representación en grises es comprobación visual digital, no impresión física.
+- `git diff --check` correcto. Sin cambios propios de backend, modelos, servicios, vistas, URL, XML, formularios ni migraciones. Los scripts de verificación y logs quedan fuera del checkout en /workspace/ride-runtime/.
+
+### Muestras y publicación
+
+Siete PDF ficticios en `propuestas/ride-b/`: los seis tipos y factura de 90 líneas. README, report.json y footers-report.json describen el alcance. Nueve capturas `capturas/ride-b-*.png`: seis documentos, primera/última de factura larga y factura en grises. Ningún adjunto real de la propietaria se guardó en el repositorio ni se usó como dato de prueba.
+
+Entrega local para revisión de Claude; **sin push ni despliegue**. Para publicar se necesitan el CSS nuevo (collectstatic), el include del pie y las seis plantillas. Los PDF autorizados ya almacenados conservan su diseño: esta tarea no los regenera, no reserva numeraciones y no reenvía XML al SRI. PostgreSQL, impresión/escaneo físicos y contraste de la referencia normativa oficial pendientes de Claude. La cursiva/ubicación del pie es la elección visual aprobada; no se declara como mandato normativo.
 ## 16/10/2026 — importación, menú nuevo y diseños de Codex publicados (Claude)
 
 - **Commit desplegado:** `c233b74` en la app y en la landing (02:30 UTC, respaldo `pre-20261016-023018-c233b745.dump`). Incluye la entrega de Codex `8f1003f`.

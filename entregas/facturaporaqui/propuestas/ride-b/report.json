@@ -1,0 +1,797 @@
+[
+  {
+    "document": "factura-corto",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.445459365844727,
+          43.85935974121094,
+          566.3006591796875,
+          798.490966796875
+        ],
+        "footer": true,
+        "emisor_count": 1
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  },
+  {
+    "document": "factura-largo",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.445459365844727,
+          43.85935974121094,
+          567.1631469726562,
+          798.490966796875
+        ],
+        "footer": true,
+        "emisor_count": 1
+      },
+      {
+        "page": 2,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 3,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 4,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 5,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 6,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 7,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          33.81782150268555,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  },
+  {
+    "document": "credito-corto",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.445459365844727,
+          43.85935974121094,
+          566.3006591796875,
+          798.9845581054688
+        ],
+        "footer": true,
+        "emisor_count": 1
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  },
+  {
+    "document": "credito-largo",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.445459365844727,
+          43.85935974121094,
+          567.1631469726562,
+          798.9845581054688
+        ],
+        "footer": true,
+        "emisor_count": 1
+      },
+      {
+        "page": 2,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 3,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 4,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 5,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 6,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 7,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  },
+  {
+    "document": "debito-corto",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.472457885742188,
+          43.85935974121094,
+          566.3006591796875,
+          798.9845581054688
+        ],
+        "footer": true,
+        "emisor_count": 1
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  },
+  {
+    "document": "debito-largo",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.472457885742188,
+          43.85935974121094,
+          566.953125,
+          798.9845581054688
+        ],
+        "footer": true,
+        "emisor_count": 1
+      },
+      {
+        "page": 2,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.02482223510742,
+          43.85935974121094,
+          566.953125,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 3,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.02482223510742,
+          43.85935974121094,
+          566.953125,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 4,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.02482223510742,
+          43.85935974121094,
+          566.953125,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 5,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          33.89882278442383,
+          43.85935974121094,
+          566.953125,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  },
+  {
+    "document": "retencion-corto",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.472457885742188,
+          43.85935974121094,
+          566.3006591796875,
+          798.490966796875
+        ],
+        "footer": true,
+        "emisor_count": 1
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  },
+  {
+    "document": "retencion-largo",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.472457885742188,
+          43.85935974121094,
+          566.6531372070312,
+          798.490966796875
+        ],
+        "footer": true,
+        "emisor_count": 1
+      },
+      {
+        "page": 2,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          566.6531372070312,
+          806.4097900390625
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 3,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          566.6531372070312,
+          806.4097900390625
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 4,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          33.67382049560547,
+          43.85935974121094,
+          566.6531372070312,
+          806.4097900390625
+        ],
+        "footer": true,
+        "emisor_count": 0
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  },
+  {
+    "document": "liquidacion-corto",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.472457885742188,
+          43.85935974121094,
+          566.3006591796875,
+          798.9845581054688
+        ],
+        "footer": true,
+        "emisor_count": 1
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  },
+  {
+    "document": "liquidacion-largo",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.472457885742188,
+          43.85935974121094,
+          567.1631469726562,
+          798.9845581054688
+        ],
+        "footer": true,
+        "emisor_count": 1
+      },
+      {
+        "page": 2,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 3,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 4,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 5,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 6,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 7,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          33.81782150268555,
+          43.85935974121094,
+          567.1631469726562,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  },
+  {
+    "document": "guia-corto",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.472457885742188,
+          43.85935974121094,
+          566.3006591796875,
+          798.9845581054688
+        ],
+        "footer": true,
+        "emisor_count": 1
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  },
+  {
+    "document": "guia-largo",
+    "pages": [
+      {
+        "page": 1,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          28.472457885742188,
+          43.85935974121094,
+          566.953125,
+          798.9845581054688
+        ],
+        "footer": true,
+        "emisor_count": 1
+      },
+      {
+        "page": 2,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          566.953125,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 3,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          566.953125,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 4,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.18682098388672,
+          43.85935974121094,
+          566.953125,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      },
+      {
+        "page": 5,
+        "size": [
+          595.2755737304688,
+          841.8897705078125
+        ],
+        "text_bounds": [
+          34.018306732177734,
+          43.85935974121094,
+          566.953125,
+          806.7608032226562
+        ],
+        "footer": true,
+        "emisor_count": 0
+      }
+    ],
+    "barcode_readable": true,
+    "barcode_modes": {
+      "300-no-smoothing": true,
+      "600-default": true,
+      "300-default": false,
+      "216-default": false
+    },
+    "table_header_count": 1,
+    "last_item_present": true,
+    "checks": []
+  }
+]

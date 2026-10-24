@@ -1,256 +1,94 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
-    <link rel="stylesheet" href="{% static 'lib/bootstrap-4.6.0/css/bootstrap.min.css' %}"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        @page {
-            size: A4 portrait;
-            margin: 0 auto;
-            padding-left: 10px;
-            padding-right: 0;
-        }
-
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 14px;
-        }
-
-        .content {
-            margin-top: 0;
-            padding: 0 0 5px 10px;
-            width: 78%;
-            display: flex;
-            flex-flow: row wrap;
-        }
-
-        .col-50 {
-            flex: 1;
-            width: 374px;
-            padding: 5px;
-        }
-
-        .col-100 {
-            flex: 1;
-            width: 748px;
-            padding: 5px;
-        }
-
-        .logo {
-            width: 100%;
-            height: 120px;
-            margin-bottom: 20px;
-        }
-
-        .text-content {
-            color: black;
-            background-color: #f6f6f6;
-            font-weight: normal;
-        }
-
-        .text-content p {
-            margin-bottom: 2px;
-            padding: 2px 10px;
-        }
-
-        .barcode {
-            width: 100%;
-            height: 188px;
-        }
-
-        .details th, details td {
-            padding: 5px 1px 1px 1px;
-            text-transform: uppercase;
-        }
-
-        .details tbody tr td {
-            border: 1px solid black;
-        }
-
-        .details thead tr {
-            background-color: #000000;
-            color: white;
-        }
-
-        .details thead tr th {
-            border: 1px solid #ffffff !important;
-        }
-
-        .totals {
-            text-transform: uppercase;
-        }
-    </style>
+    <title>Nota de crédito {{ credit_note.voucher_number_full }}</title>
+    <link rel="stylesheet" href="{% static 'css/facturaporaqui-ride.css' %}">
 </head>
-<body>
-<div class="content mt-3">
-    <div class="col-50">
-        <img class="img-fluid d-block mx-auto logo" alt="" src="{{ credit_note.company.get_image }}">
-        <div class="text-content"><p><b>Emisor:</b> {{ credit_note.company.tradename }}</p></div>
-        <div class="text-content"><p><b>Ruc:</b> {{ credit_note.company.ruc }}</p></div>
-        <div class="text-content"><p><b>Teléfono:</b> {{ credit_note.company.mobile }}</p></div>
-        <div class="text-content"><p><b>Matriz:</b> {{ credit_note.company.main_address }}</p></div>
-        <div class="text-content"><p><b>Correo:</b> {{ credit_note.company.email }}</p></div>
-        <div class="text-content"><p><b>Obligado a llevar contabilidad:</b> {{ credit_note.company.obligated_accounting }}</p></div>
-        {% if credit_note.company.leyenda_rimpe %}<div class="text-content"><p><b>{{ credit_note.company.leyenda_rimpe }}</b></p></div>{% endif %}
-        {% if credit_note.company.special_taxpayer and credit_note.company.special_taxpayer != '000' %}<div class="text-content"><p><b>Contribuyente Especial No.:</b> {{ credit_note.company.special_taxpayer }}</p></div>{% endif %}
-    </div>
-    <div class="col-50">
-        <div class="text-content">
-            <table>
-                <thead>
-                <tr>
-                    <th style="width: 50%;; text-align: left;">
-                        <p style="width: 100%; font-size: 16px; margin-bottom: 0"><b>Nota de Credito</b></p>
-                    </th>
-                    <th style="width: 50%;; text-align: right;">
-                        <p style="width: 100%; font-size: 22px; margin-bottom: 0"><b>{{ credit_note.voucher_number_full }}</b></p>
-                    </th>
-                </tr>
-                </thead>
-            </table>
-        </div>
-        <div class="text-content">
-            <p>
-                <b>Autorización:</b><br>
-                <span style="font-size: 12px">{{ credit_note.access_code }}</span>
-            </p>
-        </div>
-        <div class="text-content">
-            <p>
-                <b>Fecha de autorización:</b><br>
-                {{ credit_note.get_authorization_date }}
-            </p>
-        </div>
-        <div class="text-content">
-            <p>
-                <b>Clave de acceso:</b><br>
-                <img alt="" class="img-fluid barcode" src="{{ access_code_barcode }}">
-            </p>
-        </div>
-    </div>
-</div>
-<div class="content">
-    <div class="col-50">
-        <div class="text-content"><p><b>Razón Social:</b> {{ credit_note.sale.client.user.names }}</p></div>
-        <div class="text-content"><p><b>Fecha Emisión:</b> {{ credit_note.sale.get_date_joined }}</p></div>
-        <div class="text-content"><p><b>Correo electrónico:</b> {{ credit_note.sale.client.user.email }}</p></div>
-        <div class="text-content"><p><b>Comprobante que se modifica:</b> FACTURA {{ credit_note.sale.voucher_number_full }}</p></div>
-        <div class="text-content"><p><b>Razón de modificación:</b> {{ credit_note.motive }}</p></div>
-    </div>
-    <div class="col-50">
-        <div class="text-content"><p><b>RUC/CI:</b> {{ credit_note.sale.client.dni }}</p></div>
-        <div class="text-content"><p><b>Teléfono::</b> {{ credit_note.sale.client.mobile }}</p></div>
-        <div class="text-content"><p><b>Dirección:</b> {{ credit_note.sale.client.address }}</p></div>
-        <div class="text-content"><p><b>Fecha de emisión (Comprobante a modificar):</b> {{ credit_note.get_date_joined }}</p></div>
-    </div>
-</div>
-<div class="content">
-    <div class="col-100">
-        <table class="details" style="width: 100%;">
-            <thead>
+<body class="fp-ride">
+{% include 'ride/_pie.html' with proveedor=credit_note.get_proveedor %}
+<main class="hoja">
+    <table class="cabecera fp-ride-header">
+        <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+        <tbody><tr>
+            <td class="fp-ride-emisor" style="padding-right:5mm">
+                {% if credit_note.company.image %}<img class="logo" alt="Logotipo del emisor" src="{{ credit_note.company.get_image }}">{% endif %}
+                <p><b>{{ credit_note.company.business_name }}</b></p>
+                {% if credit_note.company.tradename and credit_note.company.tradename != credit_note.company.business_name %}<p>{{ credit_note.company.tradename }}</p>{% endif %}
+                <p><b>RUC:</b> {{ credit_note.company.ruc }}</p>
+                <p><b>Dirección matriz:</b> {{ credit_note.company.main_address }}</p>
+                <p><b>Establecimiento:</b> {{ credit_note.receipt.establishment_address|default:credit_note.company.establishment_address }}</p>
+                {% if credit_note.company.mobile %}<p><b>Teléfono:</b> {{ credit_note.company.mobile }}</p>{% endif %}
+                {% if credit_note.company.email %}<p><b>Correo:</b> {{ credit_note.company.email }}</p>{% endif %}
+                <p><b>Obligado a llevar contabilidad:</b> {{ credit_note.company.obligated_accounting }}</p>
+                {% if credit_note.company.special_taxpayer and credit_note.company.special_taxpayer != '000' %}<p><b>Contribuyente Especial No.:</b> {{ credit_note.company.special_taxpayer }}</p>{% endif %}
+                {% if credit_note.company.leyenda_rimpe %}<p><b>{{ credit_note.company.leyenda_rimpe }}</b></p>{% endif %}
+            </td>
+            <td class="fp-ride-control" style="padding-left:4mm">
+                <h1 class="titulo">NOTA DE CRÉDITO</h1>
+                <p class="numero">{{ credit_note.voucher_number_full }}</p>
+                <p><b>Número de autorización:</b><br><span class="clave">{{ credit_note.access_code }}</span></p>
+                <p><b>Fecha y hora de autorización:</b><br>{{ credit_note.get_authorization_date }}</p>
+                <p><b>Ambiente:</b> {{ credit_note.get_environment_type_display }} · <b>Emisión:</b> {{ credit_note.company.get_emission_type_display }}</p>
+                <p><b>Clave de acceso:</b></p>
+                {% if access_code_barcode %}<img class="barcode" alt="Código de barras de la clave de acceso" src="{{ access_code_barcode }}">{% endif %}
+            </td>
+        </tr></tbody>
+    </table>
+
+    <section class="bloque">
+        <p class="seccion">Datos del comprador</p>
+        <p><b>Razón social / nombres:</b> {{ credit_note.sale.client.user.names }}</p>
+        <p><b>Identificación:</b> {{ credit_note.sale.client.dni }} · <b>Fecha de emisión:</b> {% if credit_note.emission_date %}{{ credit_note.emission_date|date:"d/m/Y" }}{% else %}{{ credit_note.get_date_joined }}{% endif %}</p>
+        <p><b>Dirección:</b> {{ credit_note.sale.client.address }}</p>
+        {% if credit_note.sale.client.mobile %}<p><b>Teléfono:</b> {{ credit_note.sale.client.mobile }}</p>{% endif %}
+        {% if credit_note.sale.client.user.email %}<p><b>Correo electrónico:</b> {{ credit_note.sale.client.user.email }}</p>{% endif %}
+    </section>
+    <table class="detalle">
+        <colgroup><col style="width:11%"><col style="width:8%"><col style="width:45%"><col style="width:12%"><col style="width:11%"><col style="width:13%"></colgroup>
+        <thead><tr><th>Código</th><th class="num">Cant.</th><th>Descripción</th><th class="num">P. unitario</th><th class="num">Descuento</th><th class="num">Total</th></tr></thead>
+        <tbody>
+        {% for detail in credit_note.creditnotedetail_set.all %}
             <tr>
-                <th class="text-center" style="width: 15%;">COD.</th>
-                <th class="text-center" style="width: 5%;">CANT.</th>
-                <th class="text-center" style="width: 35%;">DESCRIPCION</th>
-                <th class="text-center" style="width: 15%;">P.U.</th>
-                <th class="text-center" style="width: 15%;">DSCTO</th>
-                <th class="text-center" style="width: 15%;">TOTAL</th>
+                <td>{{ detail.product.code }}</td>
+                <td class="num">{{ detail.cant }}</td>
+                <td>{{ detail.product.get_short_name }}</td>
+                <td class="num">{{ detail.price|floatformat:2 }}</td>
+                <td class="num">{{ detail.total_dscto|floatformat:2 }}</td>
+                <td class="num">{{ detail.total|floatformat:2 }}</td>
             </tr>
-            </thead>
-            <tbody>
-            {% for detail in credit_note.creditnotedetail_set.all %}
-                <tr>
-                    <td class="text-center">{{ detail.product.code }}</td>
-                    <td class="text-center">{{ detail.cant }}</td>
-                    <td>{{ detail.product.get_short_name }}</td>
-                    <td class="text-center">{{ detail.price|floatformat:2 }}</td>
-                    <td class="text-center">{{ detail.total_dscto|floatformat:2 }}</td>
-                    <td class="text-center">{{ detail.total|floatformat:2 }}</td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-<div class="content">
-    <div class="col-50">
-        <table class="details" style="width: 100%;">
-            <thead>
-            <tr>
-                <th colspan="2" class="text-center text-uppercase">información adicional</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-                <td class="text-left"><b>Teléfono</b></td>
-                <td class="text-center">{{ credit_note.sale.client.mobile }}</td>
-            </tr>
-            <tr>
-                <td class="text-left"><b>Email</b></td>
-                <td class="text-center">{{ credit_note.sale.client.user.email }}</td>
-            </tr>
-            <tr>
-                <td class="text-left"><b>Dirección</b></td>
-                <td class="text-center">{{ credit_note.sale.client.address }}</td>
-            </tr>
-            {% with proveedor=credit_note.get_proveedor %}{% if proveedor %}
-                    <tr>
-                        <td class="text-left"><b>RUC Proveedor</b></td>
-                        <td class="text-center">{{ proveedor.ruc }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-left"><b>Proveedor</b></td>
-                        <td class="text-center">{{ proveedor.nombre }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-left"><b>Email proveedor</b></td>
-                        <td class="text-center">{{ proveedor.email }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-left"><b>Dirección proveedor</b></td>
-                        <td class="text-center">{{ proveedor.direccion }}</td>
-                    </tr>
-                {% endif %}{% endwith %}
-            </tbody>
-        </table>
-    </div>
-    <div class="col-50">
-        <table class="totals" style="width: 100%;">
-            <thead>
-            <tr>
-                <th style="width: 90%;"></th>
-                <th style="width: 10%;"></th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-                <td class="float-right font-weight-bold">Subtotal sin impuestos</td>
-                <td class="text-right">{{ credit_note.get_subtotal_without_taxes|floatformat:2 }}</td>
-            </tr>
-            <tr>
-                <td class="float-right font-weight-bold">Descuentos</td>
-                <td class="text-right">{{ credit_note.total_dscto|floatformat:2 }}</td>
-            </tr>
-            {% with impuestos=credit_note.impuestos_por_tarifa %}{# subtotales e IVA por tarifa (15 %, 5 %, 0 %, no objeto, exento) #}
-            {% for t in impuestos %}<tr>
-                <td class="float-right font-weight-bold">Subtotal {{ t.nombre }}</td>
-                <td class="text-right">{{ t.base|floatformat:2 }}</td>
-            </tr>{% endfor %}
-            {% for t in impuestos %}{% if t.tarifa %}<tr>
-                <td class="float-right font-weight-bold">IVA {{ t.nombre }}</td>
-                <td class="text-right">{{ t.valor|floatformat:2 }}</td>
-            </tr>{% endif %}{% endfor %}
-            {% endwith %}
-            <tr>
-                <td class="float-right font-weight-bold">Total</td>
-                <td class="text-right">{{ credit_note.total|floatformat:2 }}</td>
-            </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <table class="cabecera fp-ride-summary">
+        <colgroup><col style="width:54%"><col style="width:46%"></colgroup>
+        <tbody><tr>
+            <td style="padding-right:5mm">
+                <section class="bloque">
+                    <p class="seccion">Documento modificado</p>
+                    <p><b>Comprobante que se modifica:</b> FACTURA {{ credit_note.sale.voucher_number_full }}</p>
+                    <p><b>Fecha de emisión del comprobante modificado:</b> {{ credit_note.sale.get_date_joined }}</p>
+                    <p><b>Razón de modificación:</b> {{ credit_note.motive }}</p>
+                </section>
+            </td>
+            <td>
+                <table class="totales">
+                    <colgroup><col style="width:68%"><col style="width:32%"></colgroup>
+                    <tbody>
+                        <tr><td>Subtotal sin impuestos</td><td class="num">{{ credit_note.get_subtotal_without_taxes|floatformat:2 }}</td></tr>
+                        <tr><td>Descuentos</td><td class="num">{{ credit_note.total_dscto|floatformat:2 }}</td></tr>
+                        {% with impuestos=credit_note.impuestos_por_tarifa %}
+                        {% for t in impuestos %}<tr><td>Subtotal {{ t.nombre }}</td><td class="num">{{ t.base|floatformat:2 }}</td></tr>{% endfor %}
+                        {% for t in impuestos %}{% if t.tarifa %}<tr><td>IVA {{ t.nombre }}</td><td class="num">{{ t.valor|floatformat:2 }}</td></tr>{% endif %}{% endfor %}
+                        {% endwith %}
+                        <tr class="total-final"><td><b>TOTAL USD</b></td><td class="num"><b>{{ credit_note.total|floatformat:2 }}</b></td></tr>
+                    </tbody>
+                </table>
+            </td>
+        </tr></tbody>
+    </table>
+</main>
 </body>
 </html>

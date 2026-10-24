@@ -1,0 +1,349 @@
+[
+  {
+    "document": "credito-corto.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 80.09,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  },
+  {
+    "document": "credito-largo.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 55.71,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 2,
+        "footer_clearance_pt": 58.43,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 3,
+        "footer_clearance_pt": 58.43,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 4,
+        "footer_clearance_pt": 58.43,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 5,
+        "footer_clearance_pt": 58.43,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 6,
+        "footer_clearance_pt": 58.43,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 7,
+        "footer_clearance_pt": 445.46,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  },
+  {
+    "document": "debito-corto.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 185.45,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  },
+  {
+    "document": "debito-largo.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 52.74,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 2,
+        "footer_clearance_pt": 22.3,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 3,
+        "footer_clearance_pt": 22.3,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 4,
+        "footer_clearance_pt": 22.3,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 5,
+        "footer_clearance_pt": 319.84,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  },
+  {
+    "document": "factura-corto.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 80.09,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  },
+  {
+    "document": "factura-largo.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 55.71,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 2,
+        "footer_clearance_pt": 58.43,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 3,
+        "footer_clearance_pt": 58.43,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 4,
+        "footer_clearance_pt": 58.43,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 5,
+        "footer_clearance_pt": 58.43,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 6,
+        "footer_clearance_pt": 58.43,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 7,
+        "footer_clearance_pt": 445.46,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  },
+  {
+    "document": "guia-corto.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 100.56,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  },
+  {
+    "document": "guia-largo.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 40.76,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 2,
+        "footer_clearance_pt": 22.3,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 3,
+        "footer_clearance_pt": 22.3,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 4,
+        "footer_clearance_pt": 22.3,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 5,
+        "footer_clearance_pt": 246.92,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  },
+  {
+    "document": "liquidacion-corto.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 136.79,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  },
+  {
+    "document": "liquidacion-largo.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 30.17,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 2,
+        "footer_clearance_pt": 60.21,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 3,
+        "footer_clearance_pt": 60.21,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 4,
+        "footer_clearance_pt": 60.21,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 5,
+        "footer_clearance_pt": 60.21,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 6,
+        "footer_clearance_pt": 60.21,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 7,
+        "footer_clearance_pt": 529.47,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  },
+  {
+    "document": "retencion-corto.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 127.28,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  },
+  {
+    "document": "retencion-largo.pdf",
+    "pages": [
+      {
+        "page": 1,
+        "footer_clearance_pt": 30.55,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 2,
+        "footer_clearance_pt": 29.47,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 3,
+        "footer_clearance_pt": 29.47,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      },
+      {
+        "page": 4,
+        "footer_clearance_pt": 590.89,
+        "footer_fonts": [
+          "OSDNAA+Liberation-Sans-Italic"
+        ]
+      }
+    ]
+  }
+]
