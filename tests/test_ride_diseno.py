@@ -82,7 +82,7 @@ def contexto_demo(tipo, cantidad=5, largo=False):
         company=empresa, client=cliente, receipt=receipt, voucher_number_full='001-001-000000123',
         access_code=CLAVE_DEMO, get_authorization_date='24/10/2026 12:30:00',
         authorization_date=datetime(2026, 10, 24, 12, 30, tzinfo=timezone.utc),
-        get_date_joined='20/10/2026', emission_date=date(2026, 10, 20),
+        get_date_joined='20/10/2026', date_joined=date(2026, 10, 20), emission_date=date(2026, 10, 20),
         get_environment_type_display='PRUEBAS', get_emission_type_display='NORMAL',
         get_proveedor=PROVEEDOR_DEMO, get_ruc_proveedor=PROVEEDOR_DEMO['ruc'],
         saledetail_set=filas, impuestos_por_tarifa=impuestos,
@@ -95,6 +95,8 @@ def contexto_demo(tipo, cantidad=5, largo=False):
     credit.sale = sale
     credit.emission_date = date(2026, 10, 24)
     credit.get_date_joined = '24/10/2026'
+    credit.date_joined = date(2026, 10, 24)   # campos reales del modelo, que usa la plantilla
+    credit.voucher_number = '000000123'
     credit.motive = 'Devolución ficticia de productos de demostración'
     credit.creditnotedetail_set = filas
     c = NS(

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Nota de débito {{ c.voucher_number_full }}</title>
-    <link rel="stylesheet" href="{% static 'css/facturaporaqui-ride.css' %}"/>
+    {% include 'ride/_estilos.html' %}
 </head>
 <body class="fp-ride">
 {% include 'ride/_pie.html' %}
@@ -40,26 +40,27 @@
 </div>
 <table class="detalle">
     <colgroup><col style="width:75%"><col style="width:25%"></colgroup>
-    <thead><tr><th>Razón de la modificación</th><th>Valor de la modificación</th></tr></thead>
+    <thead><tr><th>Razón de la modificación</th><th class="num">Valor de la modificación</th></tr></thead>
     <tbody>
     {% for m in c.motivos.all %}<tr><td>{{ m.razon }}</td><td class="num">{{ m.valor|floatformat:2 }}</td></tr>{% endfor %}
     </tbody>
 </table>
 <table class="cabecera fp-ride-summary" style="margin-top:5mm"><tr>
     <td style="width:58%; vertical-align:top; padding-right:5mm">
-        {% if c.direccion or c.correo %}
+        {% if c.direccion or c.correo or proveedor %}
         <table class="detalle" style="margin-top:0">
             <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
             <thead><tr><th colspan="2">Información adicional</th></tr></thead>
             <tbody>
                 {% if c.direccion %}<tr><td><b>Dirección</b></td><td>{{ c.direccion }}</td></tr>{% endif %}
                 {% if c.correo %}<tr><td><b>Email</b></td><td>{{ c.correo }}</td></tr>{% endif %}
+                {% if proveedor %}<tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>{% endif %}
             </tbody>
         </table>
         {% endif %}
         <table class="detalle">
             <colgroup><col style="width:70%"><col style="width:30%"></colgroup>
-            <thead><tr><th>Forma de pago</th><th>Valor</th></tr></thead>
+            <thead><tr><th>Forma de pago</th><th class="num">Valor</th></tr></thead>
             <tbody><tr><td>{{ c.forma_pago }} · {{ forma_pago }}</td><td class="num">{{ c.valor_total|floatformat:2 }}</td></tr></tbody>
         </table>
     </td>

@@ -1,0 +1,9 @@
+{% load static %}
+{# Respaldo mínimo en línea: si la hoja no se pudiera cargar, el RIDE sigue en A4 y sin imágenes desbordadas. #}
+<style>
+    @page { size: A4 portrait; margin: 10mm 10mm 28mm; }
+    .fp-ride .logo { max-width: 65mm; max-height: 18mm; }
+    .fp-ride .barcode { width: 86.6mm; height: auto; }
+    .fp-ride .fp-ride-footer img { width: 7mm; height: auto; }
+</style>
+<link rel="stylesheet" href="{% static 'css/facturaporaqui-ride.css' %}">

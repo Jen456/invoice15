@@ -1,5 +1,6 @@
 import mimetypes
 import os
+import re
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -13,6 +14,10 @@ from weasyprint.urls import URLFetcher, URLFetcherResponse
 
 from config import settings
 from core.security.views.files import resolve_media_path
+
+
+# Huella que ManifestStaticFilesStorage añade al nombre: facturaporaqui-ride.529f7e736de5.css
+HUELLA = re.compile(r'\.[0-9a-f]{12}(?=\.[^./]+$)')
 
 
 def _allowed_roots():
@@ -34,7 +39,11 @@ def _local_file(url_path, scheme='http'):
         if found:
             return found
         candidate = Path(settings.STATIC_ROOT) / relative
-        return str(candidate) if candidate.is_file() else None
+        if candidate.is_file():
+            return str(candidate)
+        # Con el manifiesto ya cargado pero sin el archivo con huella (collectstatic --clear en curso durante un
+        # despliegue), el original de esta misma versión es el mismo archivo: sin él, el RIDE salía sin estilos.
+        return finders.find(HUELLA.sub('', relative)) or None
     if url_path.startswith(settings.MEDIA_URL):
         try:
             return resolve_media_path(url_path[len(settings.MEDIA_URL):])[1]

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Comprobante de retención {{ c.voucher_number_full }}</title>
-    <link rel="stylesheet" href="{% static 'css/facturaporaqui-ride.css' %}"/>
+    {% include 'ride/_estilos.html' %}
 </head>
 <body class="fp-ride">
 {% include 'ride/_pie.html' %}
@@ -61,6 +61,7 @@
         {% if c.provider.address %}<tr><td><b>Dirección</b></td><td>{{ c.provider.address }}</td></tr>{% endif %}
         {% if c.correo %}<tr><td><b>Email</b></td><td>{{ c.correo }}</td></tr>{% endif %}
         <tr><td><b>Autorización del documento sustento</b></td><td class="clave">{{ c.aut_doc_sustento }}</td></tr>
+        {% if proveedor %}<tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>{% endif %}
     </tbody>
 </table>
 </main>

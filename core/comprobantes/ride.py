@@ -10,8 +10,12 @@ from core.pos.utilities import printer
 
 
 def codigo_de_barras(clave):
+    """Code 128 de la clave de acceso con módulos de 0,254 mm = 3 px exactos a 300 ppp y zona libre de 10 módulos. Con el
+    valor por defecto (0,2 mm = 2,36 px) las barras salían de 2 o 3 px y la lectura dependía de la resolución. El RIDE lo
+    coloca a su tamaño natural de 86,6 mm (.barcode en facturaporaqui-ride.css)."""
     salida = BytesIO()
-    barcode.Code128(clave, writer=ImageWriter()).write(salida, options={'text_distance': 3.0, 'font_size': 6})
+    barcode.Code128(clave, writer=ImageWriter(dpi=300)).write(salida, options={
+        'module_width': 0.254, 'module_height': 13.0, 'quiet_zone': 2.54, 'text_distance': 3.0, 'font_size': 6})
     return f'data:image/png;base64,{base64.b64encode(salida.getvalue()).decode("ascii")}'
 
 

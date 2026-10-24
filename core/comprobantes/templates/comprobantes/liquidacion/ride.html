@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Liquidación de compra {{ c.voucher_number_full }}</title>
-    <link rel="stylesheet" href="{% static 'css/facturaporaqui-ride.css' %}"/>
+    {% include 'ride/_estilos.html' %}
 </head>
 <body class="fp-ride">
 {% include 'ride/_pie.html' %}
@@ -40,8 +40,8 @@
     {% if c.direccion %}<p><b>Dirección:</b> {{ c.direccion }}</p>{% endif %}
 </div>
 <table class="detalle">
-    <colgroup><col style="width:10%"><col style="width:8%"><col style="width:46%"><col style="width:12%"><col style="width:10%"><col style="width:14%"></colgroup>
-    <thead><tr><th>Código</th><th>Cantidad</th><th>Descripción</th><th>Precio unitario</th><th>Descuento</th><th>Precio total</th></tr></thead>
+    <colgroup><col style="width:12%"><col style="width:11%"><col style="width:37%"><col style="width:13%"><col style="width:12%"><col style="width:15%"></colgroup>
+    <thead><tr><th>Código</th><th class="num">Cantidad</th><th>Descripción</th><th class="num">Precio unitario</th><th class="num">Descuento</th><th class="num">Precio total</th></tr></thead>
     <tbody>
     {% for d in c.detalles.all %}
         <tr><td>{{ d.codigo }}</td><td class="num">{{ d.cantidad|floatformat:"-6" }}</td><td>{{ d.descripcion }}</td>
@@ -52,19 +52,20 @@
 </table>
 <table class="cabecera fp-ride-summary" style="margin-top:5mm"><tr>
     <td style="width:58%; vertical-align:top; padding-right:5mm">
-        {% if c.correo or c.concepto %}
+        {% if c.correo or c.concepto or proveedor %}
         <table class="detalle" style="margin-top:0">
             <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
             <thead><tr><th colspan="2">Información adicional</th></tr></thead>
             <tbody>
                 {% if c.correo %}<tr><td><b>Email</b></td><td>{{ c.correo }}</td></tr>{% endif %}
                 {% if c.concepto %}<tr><td><b>Concepto</b></td><td>{{ c.concepto }}</td></tr>{% endif %}
+                {% if proveedor %}<tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>{% endif %}
             </tbody>
         </table>
         {% endif %}
         <table class="detalle">
             <colgroup><col style="width:70%"><col style="width:30%"></colgroup>
-            <thead><tr><th>Forma de pago</th><th>Valor</th></tr></thead>
+            <thead><tr><th>Forma de pago</th><th class="num">Valor</th></tr></thead>
             <tbody><tr><td>{{ c.forma_pago }} · {{ forma_pago }}</td><td class="num">{{ c.importe_total|floatformat:2 }}</td></tr></tbody>
         </table>
     </td>

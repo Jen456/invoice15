@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Guía de remisión {{ c.voucher_number_full }}</title>
-    <link rel="stylesheet" href="{% static 'css/facturaporaqui-ride.css' %}"/>
+    {% include 'ride/_estilos.html' %}
 </head>
 <body class="fp-ride">
 {% include 'ride/_pie.html' %}
@@ -51,17 +51,18 @@
 </div>
 <table class="detalle">
     <colgroup><col style="width:14%"><col style="width:66%"><col style="width:20%"></colgroup>
-    <thead><tr><th>Código principal</th><th>Descripción</th><th>Cantidad</th></tr></thead>
+    <thead><tr><th>Código principal</th><th>Descripción</th><th class="num">Cantidad</th></tr></thead>
     <tbody>
     {% for d in c.detalles.all %}<tr><td>{{ d.codigo }}</td><td>{{ d.descripcion }}</td><td class="num">{{ d.cantidad|floatformat:"-6" }}</td></tr>{% endfor %}
     </tbody>
 </table>
-{% if c.correo %}
+{% if c.correo or proveedor %}
 <table class="detalle" style="width:70%">
     <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
     <thead><tr><th colspan="2">Información adicional</th></tr></thead>
     <tbody>
         {% if c.correo %}<tr><td><b>Email</b></td><td>{{ c.correo }}</td></tr>{% endif %}
+        {% if proveedor %}<tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>{% endif %}
     </tbody>
 </table>
 {% endif %}

@@ -1,4 +1,3 @@
-import base64
 import math
 import tempfile
 import unicodedata
@@ -756,10 +755,8 @@ class Sale(TenantModel):
         return receipt.next_number_full()
 
     def generate_pdf_authorized(self):
-        rv = BytesIO()
-        barcode.Code128(self.access_code, writer=barcode.writer.ImageWriter()).write(rv, options={'text_distance': 3.0, 'font_size': 6})
-        file = base64.b64encode(rv.getvalue()).decode("ascii")
-        context = {'sale': self, 'access_code_barcode': f"data:image/png;base64,{file}"}
+        from core.comprobantes.ride import codigo_de_barras
+        context = {'sale': self, 'access_code_barcode': codigo_de_barras(self.access_code)}
         pdf_file = printer.create_pdf(context=context, template_name='sale/format/invoice.html')
         with tempfile.NamedTemporaryFile(delete=True) as file_temp:
             file_temp.write(pdf_file)
@@ -1311,10 +1308,8 @@ class CreditNote(TenantModel):
         return receipt.next_number_full()
 
     def generate_pdf_authorized(self):
-        rv = BytesIO()
-        barcode.Code128(self.access_code, writer=barcode.writer.ImageWriter()).write(rv, options={'text_distance': 3.0, 'font_size': 6})
-        file = base64.b64encode(rv.getvalue()).decode("ascii")
-        context = {'credit_note': self, 'access_code_barcode': f"data:image/png;base64,{file}"}
+        from core.comprobantes.ride import codigo_de_barras
+        context = {'credit_note': self, 'access_code_barcode': codigo_de_barras(self.access_code)}
         pdf_file = printer.create_pdf(context=context, template_name='credit_note/format/invoice.html')
         with tempfile.NamedTemporaryFile(delete=True) as file_temp:
             file_temp.write(pdf_file)

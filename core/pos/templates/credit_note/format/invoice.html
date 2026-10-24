@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Nota de crédito {{ credit_note.voucher_number_full }}</title>
-    <link rel="stylesheet" href="{% static 'css/facturaporaqui-ride.css' %}">
+    {% include 'ride/_estilos.html' %}
 </head>
 <body class="fp-ride">
 {% include 'ride/_pie.html' with proveedor=credit_note.get_proveedor %}
@@ -29,7 +29,7 @@
                 <h1 class="titulo">NOTA DE CRÉDITO</h1>
                 <p class="numero">{{ credit_note.voucher_number_full }}</p>
                 <p><b>Número de autorización:</b><br><span class="clave">{{ credit_note.access_code }}</span></p>
-                <p><b>Fecha y hora de autorización:</b><br>{{ credit_note.get_authorization_date }}</p>
+                <p><b>Fecha y hora de autorización:</b><br>{% if credit_note.authorization_date %}{{ credit_note.authorization_date|date:"d/m/Y H:i:s" }}{% else %}Pendiente de autorización{% endif %}</p>
                 <p><b>Ambiente:</b> {{ credit_note.get_environment_type_display }} · <b>Emisión:</b> {{ credit_note.company.get_emission_type_display }}</p>
                 <p><b>Clave de acceso:</b></p>
                 {% if access_code_barcode %}<img class="barcode" alt="Código de barras de la clave de acceso" src="{{ access_code_barcode }}">{% endif %}
@@ -40,7 +40,7 @@
     <section class="bloque">
         <p class="seccion">Datos del comprador</p>
         <p><b>Razón social / nombres:</b> {{ credit_note.sale.client.user.names }}</p>
-        <p><b>Identificación:</b> {{ credit_note.sale.client.dni }} · <b>Fecha de emisión:</b> {% if credit_note.emission_date %}{{ credit_note.emission_date|date:"d/m/Y" }}{% else %}{{ credit_note.get_date_joined }}{% endif %}</p>
+        <p><b>Identificación:</b> {{ credit_note.sale.client.dni }} · <b>Fecha de emisión:</b> {% if credit_note.emission_date %}{{ credit_note.emission_date|date:"d/m/Y" }}{% else %}{{ credit_note.date_joined|date:"d/m/Y" }}{% endif %}</p>
         <p><b>Dirección:</b> {{ credit_note.sale.client.address }}</p>
         {% if credit_note.sale.client.mobile %}<p><b>Teléfono:</b> {{ credit_note.sale.client.mobile }}</p>{% endif %}
         {% if credit_note.sale.client.user.email %}<p><b>Correo electrónico:</b> {{ credit_note.sale.client.user.email }}</p>{% endif %}
@@ -69,9 +69,21 @@
                 <section class="bloque">
                     <p class="seccion">Documento modificado</p>
                     <p><b>Comprobante que se modifica:</b> FACTURA {{ credit_note.sale.voucher_number_full }}</p>
-                    <p><b>Fecha de emisión del comprobante modificado:</b> {{ credit_note.sale.get_date_joined }}</p>
+                    <p><b>Fecha de emisión del comprobante modificado:</b> {{ credit_note.sale.date_joined|date:"d/m/Y" }}</p>
                     <p><b>Razón de modificación:</b> {{ credit_note.motive }}</p>
                 </section>
+                {% with proveedor=credit_note.get_proveedor %}
+                <table class="detalle">
+                    <colgroup><col style="width:32%"><col style="width:68%"></colgroup>
+                    <thead><tr><th colspan="2">Información adicional</th></tr></thead>
+                    <tbody>
+                        {% if credit_note.sale.client.address %}<tr><td><b>Dirección</b></td><td>{{ credit_note.sale.client.address }}</td></tr>{% endif %}
+                        {% if credit_note.sale.client.mobile %}<tr><td><b>Teléfono</b></td><td>{{ credit_note.sale.client.mobile }}</td></tr>{% endif %}
+                        <tr><td><b>Observación</b></td><td>NOTA_CREDITO # {{ credit_note.voucher_number }}</td></tr>
+                        {% if proveedor %}<tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>{% endif %}
+                    </tbody>
+                </table>
+                {% endwith %}
             </td>
             <td>
                 <table class="totales">

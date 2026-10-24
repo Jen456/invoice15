@@ -54,9 +54,11 @@ body.fp-ride {
 .fp-ride .numero { color: #CA462C; font-size: 12pt; font-weight: 700; margin-bottom: 3mm; }
 .fp-ride .fp-ride-subtitulo { font-size: 8pt; font-weight: 700; margin: 0 0 2mm; }
 .fp-ride .clave { font-size: 8pt; overflow-wrap: anywhere; word-break: break-all; }
+/* 1023 px a 300 ppp = 86,6 mm: un píxel de la imagen por punto de impresión (X = 0,254 mm, ver ride.codigo_de_barras). */
 .fp-ride .barcode {
     display: block;
-    width: 100%;
+    width: 86.6mm;
+    max-width: 100%;
     height: auto;
     object-fit: contain;
     object-position: left center;
@@ -94,6 +96,7 @@ body.fp-ride {
 .fp-ride thead { break-after: avoid; }
 .fp-ride tr { break-inside: avoid; }
 .fp-ride .num { text-align: right; font-variant-numeric: tabular-nums; }
+.fp-ride td.num { white-space: nowrap; overflow-wrap: normal; }
 .fp-ride table.detalle .num { text-align: right; }
 .fp-ride .fp-ride-summary { margin-top: 5mm; }
 .fp-ride table.totales { width: 100%; table-layout: fixed; break-inside: avoid; }

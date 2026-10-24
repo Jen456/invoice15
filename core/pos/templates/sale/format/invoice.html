@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Factura {{ sale.voucher_number_full }}</title>
-    <link rel="stylesheet" href="{% static 'css/facturaporaqui-ride.css' %}">
+    {% include 'ride/_estilos.html' %}
 </head>
 <body class="fp-ride">
 {% include 'ride/_pie.html' with proveedor=sale.get_proveedor %}
@@ -29,7 +29,7 @@
                 <h1 class="titulo">FACTURA</h1>
                 <p class="numero">{{ sale.voucher_number_full }}</p>
                 <p><b>Número de autorización:</b><br><span class="clave">{{ sale.access_code }}</span></p>
-                <p><b>Fecha de autorización:</b><br>{{ sale.get_authorization_date }}</p>
+                <p><b>Fecha de autorización:</b><br>{% if sale.authorization_date %}{{ sale.authorization_date|date:"d/m/Y" }}{% else %}Pendiente de autorización{% endif %}</p>
                 <p><b>Ambiente:</b> {{ sale.get_environment_type_display }} · <b>Emisión:</b> {{ sale.company.get_emission_type_display }}</p>
                 <p><b>Clave de acceso:</b></p>
                 {% if access_code_barcode %}<img class="barcode" alt="Código de barras de la clave de acceso" src="{{ access_code_barcode }}">{% endif %}
@@ -40,7 +40,7 @@
     <section class="bloque">
         <p class="seccion">Datos del comprador</p>
         <p><b>Razón social / nombres:</b> {{ sale.client.user.names }}</p>
-        <p><b>Identificación:</b> {{ sale.client.dni }} · <b>Fecha de emisión:</b> {% if sale.emission_date %}{{ sale.emission_date|date:"d/m/Y" }}{% else %}{{ sale.get_date_joined }}{% endif %}</p>
+        <p><b>Identificación:</b> {{ sale.client.dni }} · <b>Fecha de emisión:</b> {% if sale.emission_date %}{{ sale.emission_date|date:"d/m/Y" }}{% else %}{{ sale.date_joined|date:"d/m/Y" }}{% endif %}</p>
         <p><b>Dirección:</b> {{ sale.client.address }}</p>
         {% if sale.client.mobile %}<p><b>Teléfono:</b> {{ sale.client.mobile }}</p>{% endif %}
         {% if sale.client.user.email %}<p><b>Correo electrónico:</b> {{ sale.client.user.email }}</p>{% endif %}
@@ -63,6 +63,7 @@
         </tbody>
     </table>
 
+    {% with proveedor=sale.get_proveedor %}
     <table class="cabecera fp-ride-summary">
         <colgroup><col style="width:54%"><col style="width:46%"></colgroup>
         <tbody><tr>
@@ -76,7 +77,7 @@
                         <tr><td>Forma de pago</td><td>{{ sale.get_payment_method_display }}</td></tr>
                     </tbody>
                 </table>
-                {% if sale.additional_info %}
+                {% if sale.additional_info or proveedor %}
                 <table class="detalle">
                     <colgroup><col style="width:32%"><col style="width:68%"></colgroup>
                     <thead><tr><th colspan="2">Información adicional</th></tr></thead>
@@ -84,6 +85,7 @@
                     {% for additional_info in sale.additional_info %}{% if additional_info.value %}
                         <tr><td><b>{{ additional_info.name }}</b></td><td>{{ additional_info.value }}</td></tr>
                     {% endif %}{% endfor %}
+                    {% if proveedor %}<tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>{% endif %}
                     </tbody>
                 </table>
                 {% endif %}
@@ -104,6 +106,7 @@
             </td>
         </tr></tbody>
     </table>
+    {% endwith %}
 </main>
 </body>
 </html>
