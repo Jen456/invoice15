@@ -1036,3 +1036,15 @@ Leídos AGENTS, HANDOFF e informe antes de comenzar. Trabajo en frontend/etapa3.
 Sin cambios del backend, precios, campos, action ni CSRF. No se usaron datos privados ni se hicieron pagos o emisiones. No despliegue: Claude revisa, integra en plataforma, ejecuta PostgreSQL y publica con respaldo. Pruebas de teléfono físico y PostgreSQL quedan a cargo de la revisión posterior.
 
 **Recibo del cierre en GitHub:** commit **26c98d5d73c5ee9f567e0f7c62b012416d1c1af7**, «Optimiza PNG de marca sin pérdida y verifica landing de importación», subido después del primer push de 12a2800. `git ls-remote origin refs/heads/frontend/etapa3` confirmó exactamente 26c98d5d73c5ee9f567e0f7c62b012416d1c1af7. Este recibo se añade en un commit documental posterior (solo HANDOFF y RESULTADOS); no introduce cambios de aplicación ni requiere repetir pruebas.
+
+## 24/10/2026 — propuestas visuales de RIDE A4, antes de programar (Codex)
+
+Solicitud: mejorar la impresión de facturas y demás documentos usando como referencia el PDF actual adjunto y la captura de Tomebamba; presentar opciones antes de implementar. Se leyeron AGENTS, HANDOFF, auditoría SRI y plantillas actuales. El PDF adjunto es de una página A4 (595,276×841,89 puntos), renderizado solo para inspección local; ni el PDF ni la captura con datos reales se añaden al repo.
+
+Diagnóstico visual: logo grande/deformable, código de barras excesivamente alto, cabeceras negras pesadas, campos fiscales poco jerarquizados y datos del proveedor mezclados con información adicional del cliente. Propuestas A clásica, B profesional con marca (recomendada), C minimalista. Las tres conservan logo propio del emisor y proponen colibrí pequeño e identificación del proveedor en pie cursivo legible.
+
+Archivos: nuevo `propuestas/RIDE-A4-PROPUESTA.md`, nueva imagen ficticia `propuestas/ride-a4-comparativa.png`, actualización de HANDOFF y este informe. Imagen generada a partir del isotipo existente, sin referencias privadas en el prompt. Es una comparación conceptual, con campos abreviados y barras de muestra, no un RIDE fiscal completo ni una captura de implementación.
+
+Comprobaciones: dimensiones A4 del adjunto, inspección visual de referencia y comparativa, lectura de variantes factura/NC/ND/retención/liquidación/guía, revisión de datos de proveedor ya disponibles y `git diff --check`. No suite de aplicación: no se modificó código. Fuente normativa externa no revalidada: conexión a sri.gob.ec bloqueada con 403 del proxy. La obligación de RUC Proveedor se atribuye a la auditoría interna, y no se afirma que pie/cursiva sean mandatos del SRI. Datos XML y backend intactos.
+
+Pendiente: elección de la propietaria y verificación de la referencia oficial antes de implementar el traslado visual del proveedor. Después corresponderá probar paginación, textos largos, escala de grises, lectura del código de barras y diferencias por tipo de documento. Sin emisión, pagos, cambios de numeración, push ni despliegue en esta tarea.

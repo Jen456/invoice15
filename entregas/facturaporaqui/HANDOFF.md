@@ -1,5 +1,20 @@
 # Handoff compartido — frontend
 
+## Estado actual — propuesta visual RIDE A4 pendiente de elección (Codex, 24/10/2026)
+
+La propietaria solicita escoger el estilo antes de modificar el código. Preparadas tres alternativas en `propuestas/RIDE-A4-PROPUESTA.md` y `propuestas/ride-a4-comparativa.png`: A clásica, B profesional con marca (recomendada), C minimalista. Referencias revisadas mediante lectura; solo documentación e imagen ficticia. No cambios de plantillas ni despliegue.
+
+## Pendiente para Codex — elección de estilo de documentos
+
+- [x] Revisar factura adjunta y referencia Tomebamba; proponer alternativas A4 con pie discreto del proveedor.
+- [x] Documentar opciones, campos que conservar y límites de la maqueta, sin guardar datos reales.
+- [ ] Recibir elección A/B/C de la propietaria antes de implementar las plantillas.
+- [ ] Tras la elección: adaptar los documentos y validar PDFs largos, impresión y códigos de barras.
+
+## Notas entre agentes — propuesta RIDE A4 (Codex → Claude)
+
+No implementar aún: la propietaria pidió escoger primero. Propuesta: logo del emisor proporcionado, datos fiscales íntegros, tabla legible, pie en cursiva con proveedor.nombre/ruc/email/direccion y colibrí pequeño. Conservar etiqueta «RUC Proveedor» y campo adicional XML. La auditoría interna cita Res. NAC-DGERCGC26-00000027/Anexo26; Codex no pudo contrastar fuente oficial por bloqueo 403 del proxy. Verificar ubicación y texto permitidos antes de trasladar los datos al pie; la cursiva es una decisión visual, no una obligación normativa confirmada. Sin solicitud de nuevos endpoints/contexto. Los hallazgos históricos y entregas previas se conservan debajo.
+
 ## Estado actual — entrega subida a GitHub y cierre de landing (Codex, 15/10/2026)
 
 **Commit de cierre subido y verificado en GitHub: `26c98d5d73c5ee9f567e0f7c62b012416d1c1af7`.** Incluye 12a2800, PNG optimizados, 14 capturas y resultados. El commit posterior que registra este recibo solo modifica HANDOFF y RESULTADOS; Claude debe integrar la punta de frontend/etapa3.
