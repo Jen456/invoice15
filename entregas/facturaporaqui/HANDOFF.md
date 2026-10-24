@@ -14,6 +14,96 @@ La propietaria solicita escoger el estilo antes de modificar el código. Prepara
 ## Notas entre agentes — propuesta RIDE A4 (Codex → Claude)
 
 No implementar aún: la propietaria pidió escoger primero. Propuesta: logo del emisor proporcionado, datos fiscales íntegros, tabla legible, pie en cursiva con proveedor.nombre/ruc/email/direccion y colibrí pequeño. Conservar etiqueta «RUC Proveedor» y campo adicional XML. La auditoría interna cita Res. NAC-DGERCGC26-00000027/Anexo26; Codex no pudo contrastar fuente oficial por bloqueo 403 del proxy. Verificar ubicación y texto permitidos antes de trasladar los datos al pie; la cursiva es una decisión visual, no una obligación normativa confirmada. Sin solicitud de nuevos endpoints/contexto. Los hallazgos históricos y entregas previas se conservan debajo.
+## Estado actual — clientes del exterior, varios correos, teléfono opcional y migración desde Facturero Móvil (Claude, 24/10/2026)
+
+- **Pedido de la propietaria (24/10):** migrar a la empresa 6 (GARCIA MARTINEZ IGNACIO FERNANDO GABRIEL, 1303645616001) los productos, clientes y proveedores de su sistema anterior (Facturero Móvil); el teléfono del cliente no es obligatorio; admitir empresas extranjeras como compradores; guardar varios correos por cliente.
+- **Cliente (`pos 0018`):** `mobile` opcional y sin unicidad (había 25 compradores sin teléfono y dos empresas de un grupo con la misma central); `dni` de hasta 20 caracteres (el máximo de `identificacionComprador` en el XSD) para pasaporte (06) e identificación del exterior (08): letras, números, guiones y espacios, p. ej. `155652251-2-2017 DV7`; campo nuevo `extra_emails` («Otros correos (separados por comas)»). Etiqueta del 08 corregida: «IDENTIFICACION DEL EXTERIOR*».
+- **Reglas en un solo lugar:** `core/pos/clientes.py` → `validar_identificacion(tipo, numero)` (la usan `ClientForm` y el importador), `separar_correos`, `unir_correos`, `correo_valido`; `Client.correos()` = principal + adicionales sin repetir.
+- **Correo:** `SRI.notify_by_email` envía a todas las direcciones del cliente; la venta guarda «Email» con todas las que caben en 300 caracteres (infoAdicional); nota de débito y guía guardan las que caben en 254.
+- **Importador:** `manage.py importar_facturero --empresa RUC --productos F --clientes F --proveedores F` (ensayo por defecto; `--aplicar` guarda; `--informe x.json`). Lee los .txt originales (tabuladores, UTF-8 o Windows-1252), comprueba que el titular sea la empresa, no toca lo que ya existe y deja en el informe lo omitido y los avisos. Código en `core/pos/facturero.py`.
+
+## Pendiente para Codex — formulario de cliente
+
+- El formulario de cliente y el alta rápida desde Ventas muestran ya el campo `extra_emails` (las plantillas recorren los campos); falta darle diseño y una ayuda breve («Reciben las facturas junto con el correo principal»).
+- Validación en el navegador (`client/js/form.js`, `sale/admin/js/form.js`): teléfono y correo opcionales y sin comprobación de repetidos; la identificación se valida según el tipo con `identificacion_valida(tipo, numero)` de `static/js/functions.js` (mismas reglas que el servidor). Con 06/08 el campo admite letras, guiones y espacios.
+
+## Notas entre agentes — contrato de clientes (Claude → Codex)
+
+- `Client.toJSON()` incluye `extra_emails` (texto «a@x.com, b@y.com»). El servidor normaliza y rechaza direcciones inválidas con el error en `extra_emails`.
+- No reintroducir `notEmpty` ni `remote` en `mobile`/`email`: los datos migrados tienen clientes sin teléfono y correos compartidos.
+
+## Estado actual — clave de la firma (.p12) cifrada en la base, publicada `ede88cb` (Claude, 16/10/2026)
+
+- **Publicado** el 16/10/2026 a las 14:58 UTC (respaldo `pre-20261016-145810-ede88cb9.dump`, migración `pos 0017`; `claves_firma`: 1 cifrada, 0 ilegibles) y subido a GitHub.
+- **Verificado con la base real** (solo lectura, `verif-firma/verif_cifrado.py` y `verif_firma_cifrada.py`): la columna solo guarda el texto cifrado; la clave de la empresa 6, descifrada, abre su .p12 y firma XAdES-BES. En el dominio, la configuración (pasos 1 y 4), los datos de la empresa, el panel y las ventas cargan sin errores (`/root/capturas/fpa-cifrado-dominio.mjs`).
+- **Pruebas:** PostgreSQL 491 aprobadas; SQLite 484 aprobadas y 7 omitidas.
+- **Qué cambia:** `Company.electronic_signature_key` se guarda cifrada (Fernet) con la llave `FPA_CLAVES_CIFRADO` del entorno del servicio (`/etc/facturaporaqui/pruebas.env`, que ya la tenía desde la instalación). En la base solo queda `fernet:<token>`; el modelo entrega la clave en claro, así que firma, emisión y formularios no cambian. La clave del SMTP sigue igual (fuera de alcance por ahora).
+- **Código:** `core/tenancy/cifrado.py` (campo `ClaveCifrada`), comprobaciones `fpa.E002`/`fpa.E003` (sin llave válida el servidor no arranca), orden `manage.py claves_firma` (informe sin mostrar claves; `--recifrar` para rotar llaves) y migración `pos 0017`, que cifra las existentes y al revertirla las deja en claro.
+- **Seguridad ante errores:** una clave que no se pueda descifrar (llave equivocada o perdida) se trata como vacía, pero al guardar se conserva la original; `desplegar.sh` ejecuta `claves_firma` después de migrar y se detiene si alguna es ilegible.
+- **Llave y respaldos:** la llave vive en `/etc` de VM101, que el respaldo del hipervisor también copia al repositorio restic cifrado; un volcado de la base por sí solo ya no revela las claves.
+- **Ensayado** sobre una copia del volcado real: la clave de la empresa 6 quedó cifrada, descifrada abre su .p12, y la reversión la devuelve en claro.
+- **Revertir:** primero `migrate pos 0016` con el código nuevo (deja las claves en claro) y después `desplegar.sh pruebas --revertir`.
+
+## Estado actual — respaldo diario, leyenda RIMPE e IVA por producto publicados `4d76e04` (Claude, 16/10/2026)
+
+- **Publicado** el 16/10/2026 a las 14:30 UTC (respaldo `pre-20261016-143052-4d76e04b.dump`, migraciones `pos 0014–0016`) y subido a GitHub (`plataforma` = `frontend/etapa3` = `4d76e04`).
+- **En la base real** todos los productos y líneas tienen tarifa y los totales recalculados coinciden con los guardados.
+- **En el dominio** (`/root/capturas/fpa-iva-dominio.mjs`, DEMOSTRACIÓN, sin guardar): formulario de producto con las cinco tarifas y sin «¿Se cobra impuesto?», producto existente en 15 %, campo RIMPE en el paso 1 y venta calculada en el navegador con cinco tarifas (29,99 / 7,50 / 3,50 / 40,99, igual que el servidor); sin errores ni desbordes.
+
+## Estado actual — respaldo diario, leyenda RIMPE e IVA por producto — detalle (Claude, 16/10/2026)
+
+- **Respaldo diario** (`441a091`): `pg_dump` de todas las empresas a las 18:15 de Ecuador, con validación y 14 copias locales; el respaldo nocturno del hipervisor (19:00) lo lleva al NAS. Ya está instalado y activo en la VM (`facturaporaqui-respaldo@pruebas.timer`); se probó restaurándolo en una base temporal.
+- **Leyenda RIMPE** (`c20c2c0`, migración `pos 0014`):
+  - Campo «Régimen RIMPE» de la empresa: régimen general, RIMPE Emprendedor o RIMPE Negocio Popular.
+  - El XML lleva `<contribuyenteRimpe>` al final de `<infoTributaria>` en los seis comprobantes, y el RIDE muestra la leyenda.
+  - El SRI de pruebas aceptó las dos leyendas del Anexo 22.
+- **IVA por producto** (migraciones `pos 0015–0016`):
+  - Cada producto elige su tarifa: 15 %, 5 %, 0 %, exento o no objeto de IVA (tabla 17).
+  - Una factura puede mezclar tarifas. Cada línea guarda la tarifa con la que se vendió y la nota de crédito usa la de la línea que acredita.
+  - XML: un `totalImpuesto` por código de porcentaje. El IVA se calcula por línea con redondeo HALF_UP.
+  - RIDE y ticket: una fila «Subtotal …» por tarifa y una fila «IVA …» por cada tarifa con IVA.
+  - Los productos existentes se migran solos: con impuesto pasan a 15 % y sin impuesto a 0 %. Las líneas ya vendidas toman el IVA de su venta (12 % → código 2).
+  - El Excel de productos exporta e importa la columna «Tarifa de IVA». Un archivo sin esa columna conserva la tarifa si sigue de acuerdo con «¿Se cobra impuesto?».
+  - La liquidación de compra sugiere la tarifa del producto.
+- **Verificado:**
+  - Factura con las cinco tarifas y nota de crédito válidas contra sus XSD.
+  - **El SRI de pruebas autorizó** la factura 001-002-928441125 (15 %, 5 %, 0 %, exento y no objeto) y la nota de crédito 001-002-928441125 sobre la línea del 5 %. Se hizo con la empresa 6, sobre una copia temporal del respaldo diario con el código nuevo, y la copia se borró al terminar.
+  - En esa copia, las migraciones `0014–0016` dejaron todos los productos y líneas con tarifa, y los totales recalculados coinciden con los guardados.
+
+## Pendiente para Codex — tarifa de IVA y régimen RIMPE en pantallas
+
+- [ ] Formulario de producto: el campo `tarifa_iva` (select) reemplaza a «¿Se cobra impuesto?».
+- [ ] Venta: la tabla muestra la tarifa bajo el nombre del producto (`nombre_tarifa`); los totales dicen «Subtotal con IVA» e «IVA general %». Revisar si conviene un desglose por tarifa en pantalla.
+- [ ] Nota de crédito: los totales usan la tarifa de cada línea de la factura.
+- [ ] RIDE de factura, nota de crédito y ticket: filas por tarifa (conservar `.hoja` de 190 mm).
+- [ ] Configuración de la empresa: el campo `rimpe` en el paso 1.
+
+## Notas entre agentes — contrato de IVA por producto y RIMPE (Claude → Codex)
+
+- **No cambiar:** modelos, cálculos del servidor, XML ni migraciones. El servidor recalcula todo; el navegador solo muestra.
+- **JSON del producto:** `tarifa_iva` (código 4, 5, 0, 7 o 6), `tarifa` (porcentaje numérico) y `nombre_tarifa` («15 %», «exento de IVA»…).
+- **JSON de la línea de factura** (para la nota de crédito): `codigo_porcentaje` y `tarifa`.
+- **RIDE:** `OBJ.impuestos_por_tarifa` es una lista de `{codigo, nombre, tarifa, base, valor}` en el orden 15 %, 5 %, 0 %, no objeto, exento. Se muestra «IVA …» solo cuando `tarifa > 0`.
+- **Empresa:** `rimpe` (vacío, `emprendedor` o `negocio_popular`); la leyenda está en `company.leyenda_rimpe`.
+
+## Estado actual — importación, menú nuevo y diseños de Codex publicados `c233b74` (Claude, 16/10/2026)
+
+- **Publicado:**
+  - App `c233b74` el 16/10/2026 a las 02:30 UTC (respaldo `pre-20261016-023018-c233b745.dump`; migraciones `security 0003` e `importacion 0001–0004`; `pypdfium2` y `zxing-cpp` instaladas con hashes).
+  - Contenido: la entrega de Codex `8f1003f` (diseño de la importación y de la guía, menú accesible, PNG optimizados, landing) y el presupuesto de tiempo por petición.
+  - Temporizador `facturaporaqui-importacion@pruebas.timer` activo (cada 5 minutos).
+  - Landing desde `c233b74` (copia previa `private/landing-antes-20261016023121.tar.gz`).
+- **Pruebas:** PostgreSQL 450 aprobadas; SQLite 443 aprobadas y 7 omitidas.
+- **El lector de PDF** se probó con el aislamiento systemd del servicio.
+- **Verificado con el código publicado** y la base real, en una transacción deshecha con un usuario y una empresa temporales (`verif-firma/verif_importacion.py`):
+  - menú en el orden nuevo, «Facturas emitidas» y RLS en las 7 tablas;
+  - subida de XML y PDF (201); el XML se procesa y la clave del PDF se lee y se consulta en el SRI de pruebas («no existe», por ser ficticia), sin inventar datos;
+  - ruta privada; `/media/` bloquea (404) y la descarga con permiso funciona (200);
+  - las 5 páginas responden 200 y el Plan 1000 queda bloqueado (403, `plan: ilimitado`);
+  - se borraron los archivos y no quedó nada en la base.
+- **Navegador** (`/root/capturas/fpa-publicacion-importacion.mjs`):
+  - menú por procesos a 1366 y 390 px; páginas de importación, guías y facturas sin desborde, sin errores y sin respuestas ≥ 400;
+  - landing con la importación solo en Ilimitado y Multiempresa.
 
 ## Estado actual — entrega subida a GitHub y cierre de landing (Codex, 15/10/2026)
 
@@ -194,7 +284,7 @@ El Vendedor no tiene nada de la importación. El Contador y Consulta ven pero no
 |---|---|---|---|
 | `POST /importacion/api/lotes/` | add | multipart, campo `archivos` (varios) | 201 `{lote}` con `entradas` |
 | `POST /importacion/api/lotes/<id>/archivos/` | add | multipart `archivos` | 201 `{lote}` (agrega al mismo lote) |
-| `POST /importacion/api/lotes/<id>/procesar/` | add | — | `{lote}`; procesa hasta 3 entradas en cola y, cuando no queda cola, verifica en el SRI si las reglas lo piden |
+| `POST /importacion/api/lotes/<id>/procesar/` | add | — | `{lote}`; procesa hasta 3 entradas en cola, pero no empieza otra después de 20 s (cada llamada responde en menos de ~45 s); cuando no queda cola, verifica en el SRI si las reglas lo piden |
 | `GET /importacion/api/lotes/` | view | `?pagina=` | `{lotes, pagina, paginas}` |
 | `GET /importacion/api/lotes/<id>/` | view | — | `{lote}` con `entradas` (para el avance) |
 | `POST /importacion/api/entradas/<id>/clave/` | add | `clave` (form o JSON) | `{entrada}`; registra la clave y busca el XML en el SRI |

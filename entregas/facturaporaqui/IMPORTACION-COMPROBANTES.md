@@ -172,9 +172,9 @@ CREATE TABLE importacion_reglaimportacion (          -- una por empresa
 | Profundidad XML | 40 |
 | Anidamientos de comprobante | 2 |
 | Render del PDF | 200 dpi, tope de ~9,4 Mpx por página |
-| Trabajador del PDF | 20 s de reloj, 15 s de CPU, 768 MB de memoria virtual |
-| Consulta al SRI | 15 s por intento y 2 reintentos (solo si no responde) |
-| Procesamiento por petición | 3 entradas |
+| Trabajador del PDF | 15 s de reloj, 12 s de CPU, 768 MB de memoria virtual |
+| Consulta al SRI | 10 s por intento y 1 reintento (solo si no responde) |
+| Procesamiento por petición | hasta 3 entradas; no empieza otra después de 20 s (gunicorn corta a los 60 s) |
 
 ## 7. Pendiente y decisiones
 

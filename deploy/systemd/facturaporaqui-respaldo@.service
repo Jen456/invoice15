@@ -1,0 +1,25 @@
+# FacturaPorAquí — volcado diario de la base (deploy/scripts/respaldo-diario.sh). Lo lanza
+# facturaporaqui-respaldo@%i.timer. Instancia = entorno. Corre como root: lee /etc/facturaporaqui/%i.env.
+# El guion se instala en /usr/local/lib/facturaporaqui/ (instalar-servicio.sh): no depende de la versión publicada.
+[Unit]
+Description=FacturaPorAquí (%i) - volcado diario de la base
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /usr/local/lib/facturaporaqui/respaldo-diario.sh %i
+TimeoutStartSec=30min
+Nice=10
+IOSchedulingClass=idle
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ReadWritePaths=/home/facturaporaqui/datos/%i/respaldos /run
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true

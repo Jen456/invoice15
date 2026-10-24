@@ -1,0 +1,12 @@
+# Cada día a las 18:15 de Ecuador, antes del respaldo nocturno del hipervisor (19:00), que lo incluye en la
+# instantánea cifrada que descarga el NAS. Persistent: si VM101 estaba apagada a esa hora, corre al arrancar.
+[Unit]
+Description=FacturaPorAquí (%i) - volcado diario de la base
+
+[Timer]
+OnCalendar=*-*-* 18:15:00 America/Guayaquil
+RandomizedDelaySec=120
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -25,7 +25,7 @@
         <legend>Configuración tributaria</legend><p class="fp-section-description">Revisa el ambiente de emisión antes de facturar.</p>
         <div class="fp-form-grid">
         {% for field in form.visible_fields %}
-            {% if field.name in 'special_taxpayer,obligated_accounting,retention_agent,environment_type,emission_type,iva,vat_percentage' %}{% include 'company/field.html' %}{% endif %}
+            {% if field.name in 'special_taxpayer,obligated_accounting,retention_agent,rimpe,environment_type,emission_type,iva,vat_percentage' %}{% include 'company/field.html' %}{% endif %}
         {% endfor %}
         </div>
     </fieldset>
@@ -57,7 +57,7 @@
     {# Preserve additional fields from newer backend versions. #}
     <div class="fp-form-grid">
     {% for field in form.visible_fields %}
-        {% if field.name not in 'ruc,business_name,tradename,main_address,mobile,phone,email,website,description,image,special_taxpayer,obligated_accounting,retention_agent,environment_type,emission_type,iva,vat_percentage,establishment_address,establishment_code,issuing_point_code,electronic_signature,electronic_signature_key,email_host,email_port,email_host_user,email_host_password' %}
+        {% if field.name not in 'ruc,business_name,tradename,main_address,mobile,phone,email,website,description,image,special_taxpayer,obligated_accounting,retention_agent,rimpe,environment_type,emission_type,iva,vat_percentage,establishment_address,establishment_code,issuing_point_code,electronic_signature,electronic_signature_key,email_host,email_port,email_host_user,email_host_password' %}
             {% include 'company/field.html' %}
         {% endif %}
     {% endfor %}

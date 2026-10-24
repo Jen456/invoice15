@@ -116,7 +116,7 @@ class TestEmision:
         assert len(enviados) == 1 and enviados[0].to == [correo] and nota.enviar_correo
 
     def test_xml_firmado_valido_contra_el_xsd_oficial(self, empresa, factura, numeracion):  # noqa: F811
-        empresa.retention_agent, empresa.special_taxpayer = 'SI', '12345'
+        empresa.retention_agent, empresa.special_taxpayer, empresa.rimpe = 'SI', '12345', 'emprendedor'
         empresa.save()
         with company_context(empresa):
             with transaction.atomic():
@@ -131,6 +131,7 @@ class TestEmision:
         assert documento.findtext('infoNotaDebito/impuestos/impuesto/codigoPorcentaje') == '4'
         assert documento.findtext('infoNotaDebito/valorTotal') == '17.83' and len(documento.findall('motivos/motivo')) == 2
         assert documento.findtext('infoTributaria/agenteRetencion') == '1'
+        assert documento.findtext('infoTributaria/contribuyenteRimpe') == 'CONTRIBUYENTE RÉGIMEN RIMPE'
 
     def test_varias_notas_por_factura(self, web, empresa, factura, numeracion, sri):  # noqa: F811
         for _ in range(2):

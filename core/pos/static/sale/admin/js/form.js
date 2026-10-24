@@ -19,19 +19,21 @@ var sale = {
     },
     calculateInvoice: function () {
         var tax = this.detail.iva / 100;
+        // Tarifa de cada producto (15 %, 5 %, 0 %, exento o no objeto); el servidor recalcula y manda.
+        var redondear = function (valor) { return Math.round((valor + Number.EPSILON) * 100) / 100; };
         this.detail.products.forEach(function (value, index, array) {
-            value.iva = parseFloat(tax);
+            value.iva = value.tarifa !== undefined ? parseFloat(value.tarifa) / 100 : (value.with_tax ? parseFloat(tax) : 0);
             value.price_with_vat = value.price_current + (value.price_current * value.iva);
-            value.subtotal = value.price_current * value.cant;
-            value.total_dscto = value.subtotal * parseFloat((value.dscto / 100));
-            value.total_iva = (value.subtotal - value.total_dscto) * value.iva;
+            value.subtotal = redondear(value.price_current * value.cant);
+            value.total_dscto = redondear(value.subtotal * parseFloat((value.dscto / 100)));
             value.total = value.subtotal - value.total_dscto;
+            value.total_iva = redondear(value.total * value.iva);
         });
-        this.detail.subtotal_0 = this.detail.products.filter(value => !value.with_tax).reduce((a, b) => a + (b.total || 0), 0);
-        this.detail.subtotal_12 = this.detail.products.filter(value => value.with_tax).reduce((a, b) => a + (b.total || 0), 0);
+        this.detail.subtotal_0 = this.detail.products.filter(value => !value.iva).reduce((a, b) => a + (b.total || 0), 0);
+        this.detail.subtotal_12 = this.detail.products.filter(value => value.iva > 0).reduce((a, b) => a + (b.total || 0), 0);
         this.detail.total_dscto = this.detail.products.reduce((a, b) => a + (b.total_dscto || 0), 0);
         this.detail.subtotal = parseFloat(this.detail.subtotal_0) + parseFloat(this.detail.subtotal_12);
-        this.detail.total_iva = this.detail.products.filter(value => value.with_tax).reduce((a, b) => a + (b.total_iva || 0), 0);
+        this.detail.total_iva = this.detail.products.reduce((a, b) => a + (b.total_iva || 0), 0);
         this.detail.total = this.detail.subtotal + this.detail.total_iva;
         this.detail.total = parseFloat(this.detail.total.toFixed(2));
 
@@ -77,6 +79,13 @@ var sale = {
                             return '<span class="badge badge-danger badge-pill">' + row.stock + '</span>';
                         }
                         return '<span class="badge badge-secondary badge-pill">Sin stock</span>';
+                    }
+                },
+                {
+                    targets: [2],
+                    render: function (data, type, row) {
+                        var nombre = $('<div>').text(data).html();
+                        return row.nombre_tarifa ? nombre + '<br><small class="text-muted">IVA ' + $('<div>').text(row.nombre_tarifa).html() + '</small>' : nombre;
                     }
                 },
                 {
@@ -297,14 +306,10 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 dni: {
                     validators: {
                         notEmpty: {},
-                        stringLength: {
-                            min: 10
-                        },
-                        digits: {},
                         callback: {
-                            message: 'El número de cedula o ruc es incorrecto',
+                            message: 'La identificación no es válida para el tipo elegido',
                             callback: function (input) {
-                                return validate_dni_ruc(input.value);
+                                return identificacion_valida(fvClient.form.querySelector('[name="identification_type"]').value, input.value);
                             },
                         },
                         remote: {
@@ -324,54 +329,23 @@ document.addEventListener('DOMContentLoaded', function (e) {
                         }
                     }
                 },
+                // Opcionales y repetibles: hay compradores sin teléfono ni correo, y empresas de un mismo grupo comparten ambos.
                 mobile: {
                     validators: {
-                        notEmpty: {},
                         stringLength: {
                             min: 7
                         },
-                        digits: {},
-                        remote: {
-                            url: pathname,
-                            data: function () {
-                                return {
-                                    parameter: fvClient.form.querySelector('[name="mobile"]').value,
-                                    pattern: 'mobile',
-                                    action: 'validate_client'
-                                };
-                            },
-                            message: 'El número de teléfono ya se encuentra registrado',
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrftoken
-                            },
-                        }
+                        digits: {}
                     }
                 },
                 email: {
                     validators: {
-                        notEmpty: {},
                         stringLength: {
                             min: 5
                         },
                         regexp: {
                             regexp: /^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$/i,
                             message: 'El formato email no es correcto'
-                        },
-                        remote: {
-                            url: pathname,
-                            data: function () {
-                                return {
-                                    parameter: fvClient.form.querySelector('[name="email"]').value,
-                                    pattern: 'email',
-                                    action: 'validate_client'
-                                };
-                            },
-                            message: 'El email ya se encuentra registrado',
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrftoken
-                            },
                         }
                     }
                 },
@@ -852,8 +826,14 @@ $(function () {
         fvClient.resetForm(true);
     });
 
-    $('input[name="dni"]').on('keypress', function (e) {
-        return validate_text_box({'event': e, 'type': 'numbers'});
+    $('#frmClient input[name="dni"]').on('keypress', function (e) {
+        return es_identificacion_extranjera($('#frmClient select[name="identification_type"]').val()) || validate_text_box({'event': e, 'type': 'numbers'});
+    });
+
+    $('#frmClient select[name="identification_type"]').on('change', function () {
+        if ($('#frmClient input[name="dni"]').val()) {
+            fvClient.revalidateField('dni');
+        }
     });
 
     $('input[name="mobile"]').on('keypress', function (e) {

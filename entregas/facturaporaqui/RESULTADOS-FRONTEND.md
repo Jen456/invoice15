@@ -1048,3 +1048,10 @@ Archivos: nuevo `propuestas/RIDE-A4-PROPUESTA.md`, nueva imagen ficticia `propue
 Comprobaciones: dimensiones A4 del adjunto, inspección visual de referencia y comparativa, lectura de variantes factura/NC/ND/retención/liquidación/guía, revisión de datos de proveedor ya disponibles y `git diff --check`. No suite de aplicación: no se modificó código. Fuente normativa externa no revalidada: conexión a sri.gob.ec bloqueada con 403 del proxy. La obligación de RUC Proveedor se atribuye a la auditoría interna, y no se afirma que pie/cursiva sean mandatos del SRI. Datos XML y backend intactos.
 
 Pendiente: elección de la propietaria y verificación de la referencia oficial antes de implementar el traslado visual del proveedor. Después corresponderá probar paginación, textos largos, escala de grises, lectura del código de barras y diferencias por tipo de documento. Sin emisión, pagos, cambios de numeración, push ni despliegue en esta tarea.
+## 16/10/2026 — importación, menú nuevo y diseños de Codex publicados (Claude)
+
+- **Commit desplegado:** `c233b74` en la app y en la landing (02:30 UTC, respaldo `pre-20261016-023018-c233b745.dump`). Incluye la entrega de Codex `8f1003f`.
+- **Temporizador de importaciones:** activo.
+- **Pruebas:** PostgreSQL 450 aprobadas; SQLite 443 aprobadas y 7 omitidas.
+- **Verificación:** flujo completo con el código publicado en una transacción deshecha, sin dejar datos; navegador a 1366 y 390 px sin errores; landing correcta.
+- No se emitieron documentos reales ni se completaron pagos.

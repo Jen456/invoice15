@@ -1,9 +1,7 @@
-import re
-
 from django import forms
 
 from .models import *
-from core.login.identificacion import cedula_valida, ruc_valido
+from core.pos.clientes import correo_valido, separar_correos, validar_identificacion
 
 
 class ProviderForm(forms.ModelForm):
@@ -69,6 +67,11 @@ class ProductForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['name'].widget.attrs['autofocus'] = True
+        # La tarifa de IVA reemplaza a «¿Se cobra impuesto?» (que el modelo mantiene sincronizado).
+        self.fields['tarifa_iva'].required = True
+        self.fields['tarifa_iva'].choices = TARIFAS_IVA
+        if not self.instance.tarifa_iva:
+            self.initial['tarifa_iva'] = '0' if self.instance.pk and not self.instance.with_tax else '4'
 
     class Meta:
         model = Product
@@ -79,9 +82,10 @@ class ProductForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'placeholder': 'Ingrese una descripción', 'rows': 3, 'cols': 3}),
             'category': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
             'price': forms.TextInput(),
-            'pvp': forms.TextInput()
+            'pvp': forms.TextInput(),
+            'tarifa_iva': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
         }
-        exclude = ['stock', 'barcode']
+        exclude = ['stock', 'barcode', 'with_tax']
 
     def save(self, commit=True):
         data = {}
@@ -217,25 +221,33 @@ class PaymentsDebtsPayForm(forms.ModelForm):
         }
 
 
+class IdentificacionField(forms.CharField):
+    """Espacios repetidos en uno antes de medir el largo (ClientForm.clean normaliza el número según su tipo)."""
+
+    def to_python(self, value):
+        return ' '.join(super().to_python(value).split())
+
+
 class ClientForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def clean_extra_emails(self):
+        correos = separar_correos(self.cleaned_data.get('extra_emails'))
+        invalidos = [c for c in correos if not correo_valido(c)]
+        if invalidos:
+            raise forms.ValidationError(f'Correo no válido: {", ".join(invalidos)}')
+        texto = ', '.join(correos)
+        if len(texto) > 500:
+            raise forms.ValidationError('Los correos adicionales no pueden pasar de 500 caracteres.')
+        return texto
+
     def clean(self):
         """La identificación debe corresponder a su tipo (tabla 6 de la ficha técnica del SRI)."""
         datos = super().clean()
-        tipo = datos.get('identification_type')
-        dni = re.sub(r'\s', '', datos.get('dni') or '').upper()
-        if tipo == '05' and not cedula_valida(dni):
-            self.add_error('dni', 'La cédula no es válida: revisa los 10 dígitos.')
-        elif tipo == '04' and not ruc_valido(dni):
-            self.add_error('dni', 'El RUC no es válido: revisa los 13 dígitos.')
-        elif tipo == '07' and dni != '9999999999999':
-            self.add_error('dni', 'Para consumidor final la identificación es 9999999999999.')
-        elif tipo in ('06', '08') and not re.fullmatch(r'[A-Z0-9]{3,13}', dni):
-            self.add_error('dni', 'El pasaporte o la identificación del exterior admite de 3 a 13 letras y números.')
-        if tipo and tipo != '07' and dni == '9999999999999':
-            self.add_error('identification_type', 'El 9999999999999 solo se usa con «Venta a consumidor final».')
+        dni, errores = validar_identificacion(datos.get('identification_type'), datos.get('dni'))
+        for campo, mensaje in errores:
+            self.add_error(campo, mensaje)
         datos['dni'] = dni
         return datos
 
@@ -266,7 +278,13 @@ class ClientForm(forms.ModelForm):
                 'placeholder': 'Ingrese una dirección'
             }),
             'identification_type': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
+            'extra_emails': forms.TextInput(attrs={
+                'class': 'form-control',
+                'autocomplete': 'off',
+                'placeholder': 'Ej.: contabilidad@empresa.com, compras@empresa.com',
+            }),
         }
+        field_classes = {'dni': IdentificacionField}
         exclude = ['user']
 
 
@@ -451,7 +469,8 @@ class CompanyForm(forms.ModelForm):
     def _conservar_secreto(self, name):
         valor = self.cleaned_data.get(name) or ''
         if not valor and self.instance.pk is not None:
-            return getattr(self.instance, name) or ''
+            actual = getattr(self.instance, name)
+            return '' if actual is None else actual   # conserva también una clave guardada que no se pudo descifrar
         return valor
 
     def clean_electronic_signature_key(self):

@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from config import settings
 from core.pos.choices import VOUCHER_STAGE
+from core.pos.clientes import separar_correos
 from core.pos.utilities.firma import ErrorFirma, firmar_xml
 
 logger = logging.getLogger(__name__)
@@ -99,8 +100,8 @@ class SRI:
         """Entrega al comprador el XML autorizado y el RIDE (Res. NAC-DGERCGC18-00000233, art. 6)."""
         response = {'resp': False, 'stage': VOUCHER_STAGE[4][0]}
         try:
-            destinatario = (client.user.email or '').strip()
-            if not client.send_email_invoice or not destinatario:
+            destinatarios = [c for c in separar_correos(client.user.email, getattr(client, 'extra_emails', '')) if '@' in c]
+            if not client.send_email_invoice or not destinatarios:
                 response['resp'] = True
                 response['mensaje'] = 'El cliente no recibe comprobantes por correo: entrégale el RIDE impreso.'
                 return response
@@ -123,7 +124,7 @@ class SRI:
                          f'Clave de acceso y número de autorización: {instance.access_code}\n')
             correo = EmailMessage(subject=f'{instance.receipt.name.capitalize()} {instance.voucher_number_full} - '
                                           f'{company.tradename or company.business_name}',
-                                  body=contenido, from_email=remitente, to=[destinatario], reply_to=responder, connection=conexion)
+                                  body=contenido, from_email=remitente, to=destinatarios, reply_to=responder, connection=conexion)
             with instance.pdf_authorized.open('rb') as archivo:
                 correo.attach(f'{instance.access_code}.pdf', archivo.read(), 'application/pdf')
             with instance.xml_authorized.open('rb') as archivo:

@@ -164,7 +164,7 @@ class TestEmision:
         assert mail.outbox[0].to == ['productora501@example.com'] and 'Total: USD 123.00' in mail.outbox[0].body
 
     def test_xml_firmado_valido_contra_el_xsd_oficial(self, empresa, compra, numeracion):  # noqa: F811
-        empresa.retention_agent, empresa.special_taxpayer = 'SI', '12345'
+        empresa.retention_agent, empresa.special_taxpayer, empresa.rimpe = 'SI', '12345', 'emprendedor'
         empresa.save()
         with company_context(empresa):
             primera = compra.purchasedetail_set.order_by('pk').first()
@@ -177,6 +177,7 @@ class TestEmision:
         ok, errores, documento = valido(liq.xml_signed, XSD)
         assert ok, errores
         assert documento.get('version') == '1.1.0' and documento.findtext('infoTributaria/agenteRetencion') == '1'
+        assert documento.findtext('infoTributaria/contribuyenteRimpe') == 'CONTRIBUYENTE RÉGIMEN RIMPE'
         assert documento.findtext('infoLiquidacionCompra/tipoIdentificacionProveedor') == '05'
         assert [(t.findtext('codigoPorcentaje'), t.findtext('baseImponible'), t.findtext('valor'))
                 for t in documento.iter('totalImpuesto')] == [('5', '100.00', '5.00'), ('4', '20.00', '3.00')]

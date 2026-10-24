@@ -70,14 +70,10 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 dni: {
                     validators: {
                         notEmpty: {},
-                        stringLength: {
-                            min: 10
-                        },
-                        digits: {},
                         callback: {
-                            message: 'El número de cedula o ruc es incorrecto',
+                            message: 'La identificación no es válida para el tipo elegido',
                             callback: function (input) {
-                                return validate_dni_ruc(input.value);
+                                return identificacion_valida(fv.form.querySelector('[name="identification_type"]').value, input.value);
                             },
                         },
                         remote: {
@@ -97,54 +93,23 @@ document.addEventListener('DOMContentLoaded', function (e) {
                         }
                     }
                 },
+                // Opcionales y repetibles: hay compradores sin teléfono ni correo, y empresas de un mismo grupo comparten ambos.
                 mobile: {
                     validators: {
-                        notEmpty: {},
                         stringLength: {
                             min: 7
                         },
-                        digits: {},
-                        remote: {
-                            url: pathname,
-                            data: function () {
-                                return {
-                                    parameter: fv.form.querySelector('[name="mobile"]').value,
-                                    pattern: 'mobile',
-                                    action: 'validate_data'
-                                };
-                            },
-                            message: 'El número de teléfono ya se encuentra registrado',
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrftoken
-                            },
-                        }
+                        digits: {}
                     }
                 },
                 email: {
                     validators: {
-                        notEmpty: {},
                         stringLength: {
                             min: 5
                         },
                         regexp: {
                             regexp: /^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$/i,
                             message: 'El formato email no es correcto'
-                        },
-                        remote: {
-                            url: pathname,
-                            data: function () {
-                                return {
-                                    parameter: fv.form.querySelector('[name="email"]').value,
-                                    pattern: 'email',
-                                    action: 'validate_data'
-                                };
-                            },
-                            message: 'El email ya se encuentra registrado',
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrftoken
-                            },
                         }
                     }
                 },
@@ -253,8 +218,14 @@ $(function () {
             btn_search_ruc_in_sri.prop('disabled', dni.length < 10);
         })
         .on('keypress', function (e) {
-            return validate_text_box({'event': e, 'type': 'numbers'});
+            return es_identificacion_extranjera($('select[name="identification_type"]').val()) || validate_text_box({'event': e, 'type': 'numbers'});
         });
+
+    $('select[name="identification_type"]').on('change', function () {
+        if (input_dni.val()) {
+            fv.revalidateField('dni');
+        }
+    });
 
     $('input[name="mobile"]').on('keypress', function (e) {
         return validate_text_box({'event': e, 'type': 'numbers'});

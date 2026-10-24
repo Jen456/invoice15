@@ -16,13 +16,16 @@ MAX_ANIDAMIENTOS_CDATA = 2          # <autorizacion><comprobante>...<factura> y 
 # Trabajador del PDF (proceso aparte con límites del sistema operativo)
 PDF_DPI = 200
 PDF_MAX_PIXELES_PAGINA = 2600 * 3600   # ~ A4 a 300 dpi: una página enorme no agota la memoria
-PDF_TIEMPO_SEGUNDOS = 20
-PDF_CPU_SEGUNDOS = 15
+PDF_TIEMPO_SEGUNDOS = 15
+PDF_CPU_SEGUNDOS = 12
 PDF_MEMORIA_BYTES = 768 * MB
 
 # Consulta de autorización al SRI
-SRI_TIEMPO_SEGUNDOS = 15
-SRI_REINTENTOS = 2                  # intentos adicionales si no responde (no si responde «sin resultados»)
+SRI_TIEMPO_SEGUNDOS = 10
+SRI_REINTENTOS = 1                  # un intento adicional si no responde (no si responde «sin resultados»)
 
-# Procesamiento por petición (el navegador pide «procesar» hasta terminar el lote)
+# Procesamiento por petición (el navegador pide «procesar» hasta terminar el lote). gunicorn corta a los 60 s: no se
+# empieza otro archivo ni otra verificación después de PRESUPUESTO_PETICION_SEGUNDOS. Peor caso de una tarea:
+# PDF 15 s + SRI (10 s × 2 intentos + 1 s) ≈ 36 s; con el presupuesto, una petición queda por debajo de ~45 s.
 PROCESAR_POR_PETICION = 3
+PRESUPUESTO_PETICION_SEGUNDOS = 20

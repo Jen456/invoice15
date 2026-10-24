@@ -6,8 +6,7 @@ from xml.etree import ElementTree
 
 from django.utils import timezone
 
-from core.pos.choices import RETENTION_AGENT
-from core.pos.models import informacion_adicional
+from core.pos.models import info_tributaria_final, informacion_adicional
 from core.pos.utilities.sri import SRI
 
 # Tabla 17 de la ficha: código de porcentaje de IVA según la tarifa.
@@ -38,8 +37,7 @@ def generar_xml(ret):
                        ('estab', ret.receipt.establishment_code), ('ptoEmi', ret.receipt.issuing_point_code),
                        ('secuencial', ret.voucher_number), ('dirMatriz', company.main_address)):
         _sub(it, tag, valor)
-    if company.retention_agent == RETENTION_AGENT[0][0]:
-        _sub(it, 'agenteRetencion', '1')   # igual que en la factura y la nota de crédito
+    info_tributaria_final(company, it)   # agenteRetencion y contribuyenteRimpe (Anexo 22)
 
     info = ElementTree.SubElement(raiz, 'infoCompRetencion')
     _sub(info, 'fechaEmision', fecha.strftime('%d/%m/%Y'))

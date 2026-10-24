@@ -21,6 +21,8 @@ if os.path.isfile(_env_file):
 FPA_ENTORNO = env('FPA_ENTORNO', default='desarrollo')
 
 SECRET_KEY = env('SECRET_KEY')
+# Llaves Fernet de los secretos guardados en la base (core/tenancy/cifrado.py); la primera cifra, las demás descifran.
+FPA_CLAVES_CIFRADO = env.list('FPA_CLAVES_CIFRADO', default=[])
 
 DEBUG = env.bool('DEBUG', default=False)
 

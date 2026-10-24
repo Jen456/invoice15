@@ -94,6 +94,7 @@
         <div class="text-content"><p><b>Matriz:</b> {{ credit_note.company.main_address }}</p></div>
         <div class="text-content"><p><b>Correo:</b> {{ credit_note.company.email }}</p></div>
         <div class="text-content"><p><b>Obligado a llevar contabilidad:</b> {{ credit_note.company.obligated_accounting }}</p></div>
+        {% if credit_note.company.leyenda_rimpe %}<div class="text-content"><p><b>{{ credit_note.company.leyenda_rimpe }}</b></p></div>{% endif %}
         {% if credit_note.company.special_taxpayer and credit_note.company.special_taxpayer != '000' %}<div class="text-content"><p><b>Contribuyente Especial No.:</b> {{ credit_note.company.special_taxpayer }}</p></div>{% endif %}
     </div>
     <div class="col-50">
@@ -233,18 +234,16 @@
                 <td class="float-right font-weight-bold">Descuentos</td>
                 <td class="text-right">{{ credit_note.total_dscto|floatformat:2 }}</td>
             </tr>
-            <tr>
-                <td class="float-right font-weight-bold">Subtotal {{ credit_note.get_iva_percent }}%</td>
-                <td class="text-right">{{ credit_note.subtotal_12|floatformat:2 }}</td>
-            </tr>
-            <tr>
-                <td class="float-right font-weight-bold">Subtotal 0%</td>
-                <td class="text-right">{{ credit_note.subtotal_0|floatformat:2 }}</td>
-            </tr>
-            <tr>
-                <td class="float-right font-weight-bold">IVA {{ credit_note.get_iva_percent }}%</td>
-                <td class="text-right">{{ credit_note.total_iva|floatformat:2 }}</td>
-            </tr>
+            {% with impuestos=credit_note.impuestos_por_tarifa %}{# subtotales e IVA por tarifa (15 %, 5 %, 0 %, no objeto, exento) #}
+            {% for t in impuestos %}<tr>
+                <td class="float-right font-weight-bold">Subtotal {{ t.nombre }}</td>
+                <td class="text-right">{{ t.base|floatformat:2 }}</td>
+            </tr>{% endfor %}
+            {% for t in impuestos %}{% if t.tarifa %}<tr>
+                <td class="float-right font-weight-bold">IVA {{ t.nombre }}</td>
+                <td class="text-right">{{ t.valor|floatformat:2 }}</td>
+            </tr>{% endif %}{% endfor %}
+            {% endwith %}
             <tr>
                 <td class="float-right font-weight-bold">Total</td>
                 <td class="text-right">{{ credit_note.total|floatformat:2 }}</td>

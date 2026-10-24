@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from core.comprobantes.models import GuiaDetalle, GuiaRemision
 from core.login.identificacion import cedula_valida, ruc_valido
+from core.pos.clientes import unir_correos
 
 TIPO_GUIA = '06'
 NO_CUENTAN = ('returned', 'not_authorized', 'sequential_registered_error')
@@ -133,7 +134,7 @@ def crear(company, usuario, venta, datos, cantidades):
     cliente = venta.client
     receipt = receipt_para_emitir(company, TIPO_GUIA, electronica=True)
     numero = receipt.reservar_numero()
-    correo = (cliente.user.email or '').strip()
+    correo = unir_correos(cliente.correos(), 254)
     guia = GuiaRemision(
         company=company, receipt=receipt, voucher_number=numero,
         voucher_number_full=f'{receipt.establishment_code}-{receipt.issuing_point_code}-{numero}',

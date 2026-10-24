@@ -187,7 +187,8 @@ class TestLimitesGratuitos:
         with company_context(gratuita):
             categoria = Product.objects.first().category_id
         respuesta = client.post('/pos/product/add/', {'action': 'add', 'name': 'NUEVO', 'code': 'P3', 'category': categoria,
-                                                      'price': '1.00', 'pvp': '2.00', 'stock': '0', 'inventoried': 'on'})
+                                                      'price': '1.00', 'pvp': '2.00', 'stock': '0', 'inventoried': 'on',
+                                                      'tarifa_iva': '4'})
         assert 'plan gratuito permite hasta 2 productos' in respuesta.json()['error']
 
 

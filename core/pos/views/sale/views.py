@@ -16,7 +16,7 @@ from config import settings
 from core.pos.forms import SaleForm, ClientForm, ClientUserForm, Sale, SaleDetail, Client, Product, Company, Receipt, CreditNote, CreditNoteDetail, CtasCollect, INVOICE_STATUS, PAYMENT_TYPE, VOUCHER_TYPE
 from core.configuracion.servicios import receipt_para_emitir, requisitos_de_emision, secuencia_configurada
 from core.pos import emision
-from core.pos.clientes import consumidor_final, usuario_de_cliente
+from core.pos.clientes import consumidor_final, unir_correos, usuario_de_cliente
 from core.pos.notas_credito import crear as crear_nota_credito, es_consumidor_final
 from core.pos.utilities import printer
 from core.pos.utilities.access import can_print_voucher
@@ -132,7 +132,7 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     additional_info = [
                         {'name': 'Dirección', 'value': sale.client.address},
                         {'name': 'Teléfono', 'value': sale.client.mobile},
-                        {'name': 'Email', 'value': sale.client.user.email}
+                        {'name': 'Email', 'value': unir_correos(sale.client.correos(), 300)}
                     ]
                     additional_info_json = json.loads(request.POST['additional_info'])
                     if len(additional_info_json):

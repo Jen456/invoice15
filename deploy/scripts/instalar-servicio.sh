@@ -39,7 +39,7 @@ echo "FacturaPorAquí — servicio $ENTORNO ($DOMINIO, puerto $PUERTO) — modo 
 echo "== Comprobaciones"
 [ -n "$DOMINIO" ] && [ -n "$PUERTO" ] && ok "dominio y puerto en $ENVF" || mal "faltan ALLOWED_HOSTS o FPA_PUERTO en $ENVF"
 grep -rqs "DOMAIN='$DOMINIO'" $HESTIA/data/users/$USUARIO/web.conf && ok "$DOMINIO existe en Hestia ($USUARIO)" || mal "$DOMINIO no está en Hestia bajo $USUARIO"
-for f in hestia/nginx/fpa.tpl.in hestia/nginx/fpa.stpl.in systemd/facturaporaqui@.service systemd/facturaporaqui-sri@.service systemd/facturaporaqui-sri@.timer systemd/facturaporaqui-importacion@.service systemd/facturaporaqui-importacion@.timer logrotate/facturaporaqui; do
+for f in hestia/nginx/fpa.tpl.in hestia/nginx/fpa.stpl.in systemd/facturaporaqui@.service systemd/facturaporaqui-sri@.service systemd/facturaporaqui-sri@.timer systemd/facturaporaqui-importacion@.service systemd/facturaporaqui-importacion@.timer systemd/facturaporaqui-respaldo@.service systemd/facturaporaqui-respaldo@.timer scripts/respaldo-diario.sh logrotate/facturaporaqui; do
   [ -f "$REPO_DEPLOY/$f" ] && ok "fuente $f" || mal "falta $REPO_DEPLOY/$f"
 done
 if ss -ltn | grep -q "127.0.0.1:$PUERTO "; then echo "  [AVISO] el puerto $PUERTO ya escucha (¿servicio en marcha?)"; else ok "puerto $PUERTO libre"; fi
@@ -60,7 +60,7 @@ add_var() {  # añade VAR=valor al .env solo si la variable no existe
 case "$MODO" in
 --ensayo)
   echo "RESULTADO DEL ENSAYO: correcto. Se escribirían $TPL_DIR/$TPL.{tpl,stpl},"
-  echo "/etc/systemd/system/facturaporaqui@.service, facturaporaqui-sri@.{service,timer}, facturaporaqui-importacion@.{service,timer} y /etc/logrotate.d/facturaporaqui."
+  echo "/etc/systemd/system/facturaporaqui@.service, facturaporaqui-sri@.{service,timer}, facturaporaqui-importacion@.{service,timer}, facturaporaqui-respaldo@.{service,timer}, /usr/local/lib/facturaporaqui/respaldo-diario.sh y /etc/logrotate.d/facturaporaqui."
   ;;
 --aplicar)
   echo "== Paquete de fuentes para WeasyPrint"
@@ -75,11 +75,16 @@ case "$MODO" in
   install -m 644 "$REPO_DEPLOY/systemd/facturaporaqui-sri@.timer" /etc/systemd/system/facturaporaqui-sri@.timer
   install -m 644 "$REPO_DEPLOY/systemd/facturaporaqui-importacion@.service" /etc/systemd/system/facturaporaqui-importacion@.service
   install -m 644 "$REPO_DEPLOY/systemd/facturaporaqui-importacion@.timer" /etc/systemd/system/facturaporaqui-importacion@.timer
+  install -m 644 "$REPO_DEPLOY/systemd/facturaporaqui-respaldo@.service" /etc/systemd/system/facturaporaqui-respaldo@.service
+  install -m 644 "$REPO_DEPLOY/systemd/facturaporaqui-respaldo@.timer" /etc/systemd/system/facturaporaqui-respaldo@.timer
+  install -d -m 755 /usr/local/lib/facturaporaqui
+  install -m 755 "$REPO_DEPLOY/scripts/respaldo-diario.sh" /usr/local/lib/facturaporaqui/respaldo-diario.sh
   install -m 644 "$REPO_DEPLOY/logrotate/facturaporaqui" /etc/logrotate.d/facturaporaqui
   systemctl daemon-reload
   systemctl enable "facturaporaqui@$ENTORNO.service" >/dev/null 2>&1 && ok "facturaporaqui@$ENTORNO habilitado al arranque (se inicia con el primer despliegue)"
   systemctl enable --now "facturaporaqui-sri@$ENTORNO.timer" >/dev/null 2>&1 && ok "consulta periódica al SRI (facturaporaqui-sri@$ENTORNO.timer) activa"
   systemctl enable --now "facturaporaqui-importacion@$ENTORNO.timer" >/dev/null 2>&1 && ok "importaciones en cola (facturaporaqui-importacion@$ENTORNO.timer) activa"
+  systemctl enable --now "facturaporaqui-respaldo@$ENTORNO.timer" >/dev/null 2>&1 && ok "volcado diario de la base (facturaporaqui-respaldo@$ENTORNO.timer, 18:15 de Ecuador) activo"
   echo "== Variables no secretas en $ENVF"
   add_var FPA_WORKERS "$([ "$ENTORNO" = produccion ] && echo 3 || echo 2)"
   add_var SECURE_HSTS_SECONDS "$([ "$ENTORNO" = produccion ] && echo 31536000 || echo 3600)"

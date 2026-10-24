@@ -12,6 +12,7 @@ from decimal import Decimal, InvalidOperation
 from django.utils import timezone
 
 from core.comprobantes.models import NotaDebito, NotaDebitoMotivo, redondear
+from core.pos.clientes import unir_correos
 
 TIPO_NOTA_DEBITO = '05'
 MAX_MOTIVOS = 10
@@ -89,7 +90,7 @@ def crear(company, usuario, venta, datos, motivos):
     cliente = venta.client
     receipt = receipt_para_emitir(company, TIPO_NOTA_DEBITO, electronica=True)
     numero = receipt.reservar_numero()
-    correo = (cliente.user.email or '').strip()
+    correo = unir_correos(cliente.correos(), 254)
     nota = NotaDebito(
         company=company, receipt=receipt, voucher_number=numero,
         voucher_number_full=f'{receipt.establishment_code}-{receipt.issuing_point_code}-{numero}',

@@ -4,6 +4,7 @@ import tempfile
 import unicodedata
 import uuid
 from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
 from io import BytesIO
 from xml.etree import ElementTree
 
@@ -24,6 +25,7 @@ from config import settings
 from core.pos.choices import *
 from core.pos.utilities import printer
 from core.pos.utilities.sri import SRI
+from core.tenancy.cifrado import ClaveCifrada
 from core.tenancy.context import require_company
 from core.tenancy.models_base import TenantModel
 from core.tenancy.storage import CompanyPath
@@ -44,6 +46,8 @@ class Company(models.Model):
     environment_type = models.PositiveIntegerField(choices=ENVIRONMENT_TYPE, default=1, verbose_name='Tipo de Ambiente')
     emission_type = models.PositiveIntegerField(choices=EMISSION_TYPE, default=1, verbose_name='Tipo de Emisión')
     retention_agent = models.CharField(max_length=2, choices=RETENTION_AGENT, default=RETENTION_AGENT[1][0], verbose_name='Agente de Retención')
+    rimpe = models.CharField(max_length=20, choices=RIMPE, default='', blank=True, verbose_name='Régimen RIMPE',
+                             help_text='Si la empresa está en el RIMPE, sus comprobantes llevan la leyenda que exige el SRI.')
     mobile = models.CharField(max_length=10, verbose_name='Teléfono celular')
     phone = models.CharField(max_length=9, verbose_name='Teléfono convencional')
     email = models.CharField(max_length=50, verbose_name='Email')
@@ -52,7 +56,7 @@ class Company(models.Model):
     iva = models.DecimalField(default=0.00, decimal_places=2, max_digits=9, verbose_name='IVA')
     vat_percentage = models.IntegerField(choices=VAT_PERCENTAGE, default=VAT_PERCENTAGE[3][0], verbose_name='Porcentaje del IVA')
     electronic_signature = models.FileField(null=True, blank=True, upload_to=CompanyPath('firma'), verbose_name='Firma electrónica (Archivo P12)')
-    electronic_signature_key = models.CharField(max_length=100, verbose_name='Clave de firma electrónica')
+    electronic_signature_key = ClaveCifrada(verbose_name='Clave de firma electrónica')   # cifrada en la base (FPA_CLAVES_CIFRADO)
     email_host = models.CharField(max_length=30, default='smtp.gmail.com', verbose_name='Servidor de correo')
     email_port = models.IntegerField(default=587, verbose_name='Puerto del servidor de correo')
     email_host_user = models.CharField(max_length=100, verbose_name='Username del servidor de correo')
@@ -60,6 +64,11 @@ class Company(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     is_active = models.BooleanField(default=True, verbose_name='Activa')
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name='Fecha de alta')
+
+
+    @property
+    def leyenda_rimpe(self):
+        return LEYENDAS_RIMPE.get(self.rimpe or '', '')
 
     def __str__(self):
         return self.business_name
@@ -154,6 +163,8 @@ class Product(TenantModel):
     inventoried = models.BooleanField(default=True, verbose_name='¿Es inventariado?')
     stock = models.IntegerField(default=0)
     with_tax = models.BooleanField(default=True, verbose_name='¿Se cobra impuesto?')
+    tarifa_iva = models.CharField(max_length=2, choices=TARIFAS_IVA, default='', blank=True, verbose_name='Tarifa de IVA',
+                                  help_text='La que corresponde a este producto: 15 %, 5 %, 0 %, exento o no objeto de IVA.')
 
     def __str__(self):
         return self.get_full_name()
@@ -212,11 +223,27 @@ class Product(TenantModel):
         item['pvp'] = float(self.pvp)
         item['image'] = self.get_image()
         item['barcode'] = self.get_barcode()
+        item['tarifa_iva'] = self.tarifa_iva or ('4' if self.with_tax else '0')
+        item['tarifa'] = float(PORCENTAJE_IVA.get(item['tarifa_iva'], 0))
+        item['nombre_tarifa'] = NOMBRE_TARIFA_IVA.get(item['tarifa_iva'], '')
         return item
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
-        self.generate_barcode()
+        # La tarifa manda; sin tarifa (código que solo conoce «¿Se cobra impuesto?»), se deriva de with_tax.
+        if self.tarifa_iva:
+            self.with_tax = PORCENTAJE_IVA.get(self.tarifa_iva, Decimal('0')) > 0
+        else:
+            self.tarifa_iva = '4' if self.with_tax else '0'
+        # La imagen del código de barras se hace al crear el producto, al cambiar su código o si falta el archivo; antes se
+        # rehacía en cada guardado (cada venta o compra mueve el stock) y la anterior quedaba huérfana.
+        anterior = type(self).all_companies.filter(pk=self.pk).values_list('code', 'barcode').first() if self.pk else None
+        if anterior is None or anterior[0] != self.code or not self.barcode or not self.barcode.storage.exists(self.barcode.name):
+            reemplazada = anterior[1] if anterior else None
+            self.generate_barcode()
+            if reemplazada and reemplazada != self.barcode.name:
+                almacen = self.barcode.storage
+                transaction.on_commit(lambda: almacen.delete(reemplazada))
         super(Product, self).save()
 
     class Meta:
@@ -310,18 +337,25 @@ class PurchaseDetail(TenantModel):
 
 class Client(TenantModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='clients', verbose_name='Usuario')
-    dni = models.CharField(max_length=13, verbose_name='Número de cedula o ruc')
-    mobile = models.CharField(max_length=10, verbose_name='Teléfono')
+    dni = models.CharField(max_length=20, verbose_name='Número de cedula o ruc')
+    # Opcional y repetible: hay compradores sin teléfono y empresas de un mismo grupo que comparten la central.
+    mobile = models.CharField(max_length=10, blank=True, default='', verbose_name='Teléfono')
     birthdate = models.DateField(default=datetime.now, verbose_name='Fecha de nacimiento')
     address = models.CharField(max_length=500, verbose_name='Dirección')
     identification_type = models.CharField(max_length=30, choices=IDENTIFICATION_TYPE, default=IDENTIFICATION_TYPE[0][0], verbose_name='Tipo de identificación')
     send_email_invoice = models.BooleanField(default=True, verbose_name='¿Enviar email de factura?')
+    extra_emails = models.CharField(max_length=500, blank=True, default='', verbose_name='Otros correos (separados por comas)')
 
     def __str__(self):
         return self.get_full_name()
 
     def get_full_name(self):
         return f'{self.user.names} ({self.dni})'
+
+    def correos(self):
+        """Correo principal y adicionales, sin repetir: todos reciben los comprobantes."""
+        from core.pos.clientes import separar_correos
+        return separar_correos(self.user.email, self.extra_emails)
 
     def birthdate_format(self):
         return self.birthdate.strftime('%Y-%m-%d')
@@ -342,7 +376,7 @@ class Client(TenantModel):
             pass
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=['company', 'dni'], name='client_dni_por_empresa'), models.UniqueConstraint(fields=['company', 'mobile'], name='client_mobile_por_empresa')]
+        constraints = [models.UniqueConstraint(fields=['company', 'dni'], name='client_dni_por_empresa')]
         verbose_name = 'Cliente'
         verbose_name_plural = 'Clientes'
 
@@ -529,6 +563,88 @@ class Receipt(TenantModel):
 EXCLUIR_DEL_JSON = ('xml_signed', 'signed_at', 'sri_sent_at', 'emission_date')
 
 
+CENTAVO = Decimal('0.01')
+
+
+def calcular_linea_iva(detalle, codigo):
+    """Importes de una línea de venta o nota de crédito con la tarifa `codigo` (tabla 17). dscto es fracción (0.10 = 10 %).
+    IVA de la línea = base × tarifa, HALF_UP; los totales por tarifa suman las líneas."""
+    porcentaje = PORCENTAJE_IVA.get(codigo, Decimal('0'))
+    precio = Decimal(str(detalle.price))
+    subtotal = (precio * Decimal(detalle.cant)).quantize(CENTAVO, ROUND_HALF_UP)
+    descuento = (subtotal * Decimal(str(detalle.dscto))).quantize(CENTAVO, ROUND_HALF_UP)
+    detalle.codigo_porcentaje = codigo
+    detalle.iva = porcentaje / 100
+    detalle.price_with_vat = (precio * (1 + porcentaje / 100)).quantize(CENTAVO, ROUND_HALF_UP)
+    detalle.subtotal = subtotal
+    detalle.total_dscto = descuento
+    detalle.total = subtotal - descuento
+    detalle.total_iva = ((subtotal - descuento) * porcentaje / 100).quantize(CENTAVO, ROUND_HALF_UP)
+
+
+def codigo_de_linea(detalle):
+    """Tarifa guardada en la línea; las líneas anteriores al cambio se infieren de «¿Se cobra impuesto?»."""
+    return detalle.codigo_porcentaje or ('4' if detalle.product_id and detalle.product.with_tax else '0')
+
+
+def iva_de_linea(detalle, codigo):
+    """IVA de la línea; 0 en tarifas sin IVA (las líneas antiguas guardaban un IVA calculado que no se facturaba)."""
+    return Decimal(str(detalle.total_iva)) if PORCENTAJE_IVA.get(codigo, Decimal('0')) > 0 else Decimal('0')
+
+
+def impuestos_por_tarifa(detalles):
+    """[{codigo, nombre, tarifa, base, valor}] por código de porcentaje, en el orden del RIDE (15 %, 5 %, 0 %, no objeto, exento)."""
+    grupos = {}
+    for d in detalles:
+        codigo = codigo_de_linea(d)
+        base, valor = grupos.get(codigo, (Decimal('0'), Decimal('0')))
+        grupos[codigo] = (base + Decimal(str(d.total)), valor + iva_de_linea(d, codigo))
+    orden = sorted(grupos, key=lambda c: ORDEN_TARIFAS_IVA.index(c) if c in ORDEN_TARIFAS_IVA else 99)
+    return [{'codigo': c, 'nombre': NOMBRE_TARIFA_IVA.get(c, c), 'tarifa': PORCENTAJE_IVA.get(c, Decimal('0')),
+             'base': grupos[c][0].quantize(CENTAVO), 'valor': grupos[c][1].quantize(CENTAVO)} for c in orden]
+
+
+def totales_de_lineas(detalles):
+    """(subtotal gravado, subtotal 0 %/exento/no objeto, IVA, descuentos) de las líneas."""
+    gravado = cero = iva = descuento = Decimal('0')
+    for d in detalles:
+        codigo = codigo_de_linea(d)
+        if PORCENTAJE_IVA.get(codigo, Decimal('0')) > 0:
+            gravado += Decimal(str(d.total))
+        else:
+            cero += Decimal(str(d.total))
+        iva += iva_de_linea(d, codigo)
+        descuento += Decimal(str(d.total_dscto))
+    return gravado, cero, iva, descuento
+
+
+def xml_total_con_impuestos(nodo, detalles):
+    for grupo in impuestos_por_tarifa(detalles):
+        total = ElementTree.SubElement(nodo, 'totalImpuesto')
+        ElementTree.SubElement(total, 'codigo').text = str(TAX_CODES[0][0])
+        ElementTree.SubElement(total, 'codigoPorcentaje').text = grupo['codigo']
+        ElementTree.SubElement(total, 'baseImponible').text = f"{grupo['base']:.2f}"
+        ElementTree.SubElement(total, 'valor').text = f"{grupo['valor']:.2f}"
+
+
+def xml_impuesto_de_linea(nodo, detalle):
+    codigo = codigo_de_linea(detalle)
+    impuesto = ElementTree.SubElement(ElementTree.SubElement(nodo, 'impuestos'), 'impuesto')
+    ElementTree.SubElement(impuesto, 'codigo').text = str(TAX_CODES[0][0])
+    ElementTree.SubElement(impuesto, 'codigoPorcentaje').text = codigo
+    ElementTree.SubElement(impuesto, 'tarifa').text = f'{PORCENTAJE_IVA.get(codigo, Decimal(0)):.2f}'
+    ElementTree.SubElement(impuesto, 'baseImponible').text = f'{Decimal(str(detalle.total)):.2f}'
+    ElementTree.SubElement(impuesto, 'valor').text = f'{iva_de_linea(detalle, codigo):.2f}'
+
+
+def info_tributaria_final(company, info_tributaria):
+    """Últimos nodos de <infoTributaria> en todos los comprobantes: agenteRetencion y contribuyenteRimpe (Anexo 22)."""
+    if company.retention_agent == RETENTION_AGENT[0][0]:
+        ElementTree.SubElement(info_tributaria, 'agenteRetencion').text = '1'
+    if company.leyenda_rimpe:
+        ElementTree.SubElement(info_tributaria, 'contribuyenteRimpe').text = company.leyenda_rimpe
+
+
 def informacion_adicional(raiz, pares):
     """<infoAdicional> del comprobante: sin campos vacíos (el XSD exige al menos un carácter), sin saltos de
     línea, hasta 300 caracteres y como máximo 15 campos, incluido el «RUC Proveedor» (Anexo 26 de la ficha)."""
@@ -667,6 +783,7 @@ class Sale(TenantModel):
         ElementTree.SubElement(xml_tax_info, 'ptoEmi').text = self.receipt.issuing_point_code
         ElementTree.SubElement(xml_tax_info, 'secuencial').text = self.voucher_number
         ElementTree.SubElement(xml_tax_info, 'dirMatriz').text = self.company.main_address
+        info_tributaria_final(self.company, xml_tax_info)
         # infoFactura
         xml_info_invoice = ElementTree.SubElement(root, 'infoFactura')
         ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = fecha_emision.strftime('%d/%m/%Y')
@@ -678,21 +795,8 @@ class Sale(TenantModel):
         ElementTree.SubElement(xml_info_invoice, 'direccionComprador').text = self.client.address
         ElementTree.SubElement(xml_info_invoice, 'totalSinImpuestos').text = f'{self.get_full_subtotal():.2f}'
         ElementTree.SubElement(xml_info_invoice, 'totalDescuento').text = f'{self.total_dscto:.2f}'
-        # totalConImpuestos
-        xml_total_with_taxes = ElementTree.SubElement(xml_info_invoice, 'totalConImpuestos')
-        # totalImpuesto
-        if self.subtotal_0 != 0.0000:
-            xml_total_tax_0 = ElementTree.SubElement(xml_total_with_taxes, 'totalImpuesto')
-            ElementTree.SubElement(xml_total_tax_0, 'codigo').text = str(TAX_CODES[0][0])
-            ElementTree.SubElement(xml_total_tax_0, 'codigoPorcentaje').text = '0'
-            ElementTree.SubElement(xml_total_tax_0, 'baseImponible').text = f'{self.subtotal_0:.2f}'
-            ElementTree.SubElement(xml_total_tax_0, 'valor').text = '0.00'
-        if self.subtotal_12 != 0.0000:
-            xml_total_tax12 = ElementTree.SubElement(xml_total_with_taxes, 'totalImpuesto')
-            ElementTree.SubElement(xml_total_tax12, 'codigo').text = str(TAX_CODES[0][0])
-            ElementTree.SubElement(xml_total_tax12, 'codigoPorcentaje').text = str(self.company.vat_percentage)
-            ElementTree.SubElement(xml_total_tax12, 'baseImponible').text = f'{self.subtotal_12:.2f}'
-            ElementTree.SubElement(xml_total_tax12, 'valor').text = f'{self.total_iva:.2f}'
+        # totalConImpuestos: un totalImpuesto por tarifa de IVA de las líneas
+        xml_total_con_impuestos(ElementTree.SubElement(xml_info_invoice, 'totalConImpuestos'), self.saledetail_set.select_related('product'))
         ElementTree.SubElement(xml_info_invoice, 'propina').text = '0.00'
         ElementTree.SubElement(xml_info_invoice, 'importeTotal').text = f'{self.total:.2f}'
         ElementTree.SubElement(xml_info_invoice, 'moneda').text = 'DOLAR'
@@ -705,7 +809,7 @@ class Sale(TenantModel):
         ElementTree.SubElement(xml_payment, 'unidadTiempo').text = 'dias'
         # detalles
         xml_details = ElementTree.SubElement(root, 'detalles')
-        for detail in self.saledetail_set.all():
+        for detail in self.saledetail_set.select_related('product'):
             xml_detail = ElementTree.SubElement(xml_details, 'detalle')
             ElementTree.SubElement(xml_detail, 'codigoPrincipal').text = detail.product.code
             ElementTree.SubElement(xml_detail, 'descripcion').text = detail.product.name
@@ -713,19 +817,7 @@ class Sale(TenantModel):
             ElementTree.SubElement(xml_detail, 'precioUnitario').text = f'{detail.price:.2f}'
             ElementTree.SubElement(xml_detail, 'descuento').text = f'{detail.total_dscto:.2f}'
             ElementTree.SubElement(xml_detail, 'precioTotalSinImpuesto').text = f'{detail.total:.2f}'
-            xml_taxes = ElementTree.SubElement(xml_detail, 'impuestos')
-            xml_tax = ElementTree.SubElement(xml_taxes, 'impuesto')
-            ElementTree.SubElement(xml_tax, 'codigo').text = str(TAX_CODES[0][0])
-            if detail.product.with_tax:
-                ElementTree.SubElement(xml_tax, 'codigoPorcentaje').text = str(self.company.vat_percentage)
-                ElementTree.SubElement(xml_tax, 'tarifa').text = f'{detail.iva * 100:.2f}'
-                ElementTree.SubElement(xml_tax, 'baseImponible').text = f'{detail.total:.2f}'
-                ElementTree.SubElement(xml_tax, 'valor').text = f'{detail.total_iva:.2f}'
-            else:
-                ElementTree.SubElement(xml_tax, 'codigoPorcentaje').text = "0"
-                ElementTree.SubElement(xml_tax, 'tarifa').text = "0"
-                ElementTree.SubElement(xml_tax, 'baseImponible').text = f'{detail.total:.2f}'
-                ElementTree.SubElement(xml_tax, 'valor').text = "0"
+            xml_impuesto_de_linea(xml_detail, detail)
         # infoAdicional
         informacion_adicional(root, [(i.get('name'), i.get('value')) for i in (self.additional_info or [])])
         # Solo la declaración lleva comillas dobles: reemplazar todas las ' alteraba nombres como O'Brien.
@@ -764,23 +856,19 @@ class Sale(TenantModel):
         return item
 
     def calculate_detail(self):
-        for detail in self.saledetail_set.filter():
-            detail.price = float(detail.price)
-            detail.iva = float(self.iva)
-            detail.price_with_vat = detail.price + (detail.price * detail.iva)
-            detail.subtotal = detail.price * detail.cant
-            detail.total_dscto = detail.subtotal * float(detail.dscto)
-            detail.total_iva = (detail.subtotal - detail.total_dscto) * detail.iva
-            detail.total = detail.subtotal - detail.total_dscto
+        """Cada línea con la tarifa de su producto, fijada al vender (cambiar el producto después no altera la factura)."""
+        for detail in self.saledetail_set.select_related('product'):
+            calcular_linea_iva(detail, detail.codigo_porcentaje or detail.product.tarifa_iva or ('4' if detail.product.with_tax else '0'))
             detail.save()
 
     def calculate_invoice(self):
-        self.subtotal_0 = float(self.saledetail_set.filter(product__with_tax=False).aggregate(result=Coalesce(Sum('total'), 0.00, output_field=FloatField()))['result'])
-        self.subtotal_12 = float(self.saledetail_set.filter(product__with_tax=True).aggregate(result=Coalesce(Sum('total'), 0.00, output_field=FloatField()))['result'])
-        self.total_iva = float(self.saledetail_set.filter(product__with_tax=True).aggregate(result=Coalesce(Sum('total_iva'), 0.00, output_field=FloatField()))['result'])
-        self.total_dscto = float(self.saledetail_set.filter().aggregate(result=Coalesce(Sum('total_dscto'), 0.00, output_field=FloatField()))['result'])
-        self.total = float(self.get_full_subtotal()) + float(self.total_iva)
+        gravado, cero, iva, descuento = totales_de_lineas(self.saledetail_set.select_related('product'))
+        self.subtotal_12, self.subtotal_0, self.total_iva, self.total_dscto = gravado, cero, iva, descuento
+        self.total = gravado + cero + iva
         self.save()
+
+    def impuestos_por_tarifa(self):
+        return impuestos_por_tarifa(self.saledetail_set.select_related('product'))
 
     def edit(self):
         super(Sale, self).save()
@@ -841,6 +929,7 @@ class SaleDetail(TenantModel):
     dscto = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
     total_dscto = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
     total = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
+    codigo_porcentaje = models.CharField(max_length=2, default='', blank=True, verbose_name='Tarifa de IVA (código)')
 
     def __str__(self):
         return self.product.name
@@ -854,8 +943,10 @@ class SaleDetail(TenantModel):
         item['price'] = float(self.price)
         item['price_with_vat'] = float(self.price_with_vat)
         item['subtotal'] = float(self.subtotal)
-        item['iva'] = float(self.subtotal)
-        item['total_iva'] = float(self.subtotal)
+        item['iva'] = float(self.iva)
+        item['total_iva'] = float(self.total_iva)
+        item['codigo_porcentaje'] = codigo_de_linea(self)
+        item['tarifa'] = float(PORCENTAJE_IVA.get(item['codigo_porcentaje'], 0))
         item['dscto'] = float(self.dscto) * 100
         item['total_dscto'] = float(self.total_dscto)
         item['total'] = float(self.total)
@@ -1247,8 +1338,7 @@ class CreditNote(TenantModel):
         ElementTree.SubElement(xml_tax_info, 'ptoEmi').text = self.receipt.issuing_point_code
         ElementTree.SubElement(xml_tax_info, 'secuencial').text = self.voucher_number
         ElementTree.SubElement(xml_tax_info, 'dirMatriz').text = self.company.main_address
-        if self.company.retention_agent == RETENTION_AGENT[0][0]:
-            ElementTree.SubElement(xml_tax_info, 'agenteRetencion').text = '1'
+        info_tributaria_final(self.company, xml_tax_info)
         # infoNotaCredito
         xml_info_invoice = ElementTree.SubElement(root, 'infoNotaCredito')
         ElementTree.SubElement(xml_info_invoice, 'fechaEmision').text = fecha_emision.strftime('%d/%m/%Y')
@@ -1265,25 +1355,12 @@ class CreditNote(TenantModel):
         ElementTree.SubElement(xml_info_invoice, 'totalSinImpuestos').text = f'{self.get_full_subtotal():.2f}'
         ElementTree.SubElement(xml_info_invoice, 'valorModificacion').text = f'{self.total:.2f}'
         ElementTree.SubElement(xml_info_invoice, 'moneda').text = 'DOLAR'
-        # totalConImpuestos
-        xml_total_with_taxes = ElementTree.SubElement(xml_info_invoice, 'totalConImpuestos')
-        # totalImpuesto
-        if self.subtotal_0 != 0.0000:
-            xml_total_tax = ElementTree.SubElement(xml_total_with_taxes, 'totalImpuesto')
-            ElementTree.SubElement(xml_total_tax, 'codigo').text = str(TAX_CODES[0][0])
-            ElementTree.SubElement(xml_total_tax, 'codigoPorcentaje').text = '0'
-            ElementTree.SubElement(xml_total_tax, 'baseImponible').text = f'{self.subtotal_0:.2f}'
-            ElementTree.SubElement(xml_total_tax, 'valor').text = f'{0:.2f}'
-        if self.subtotal_12 != 0.0000:
-            xml_total_tax2 = ElementTree.SubElement(xml_total_with_taxes, 'totalImpuesto')
-            ElementTree.SubElement(xml_total_tax2, 'codigo').text = str(TAX_CODES[0][0])
-            ElementTree.SubElement(xml_total_tax2, 'codigoPorcentaje').text = str(self.company.vat_percentage)
-            ElementTree.SubElement(xml_total_tax2, 'baseImponible').text = f'{self.subtotal_12:.2f}'
-            ElementTree.SubElement(xml_total_tax2, 'valor').text = f'{self.total_iva:.2f}'
+        # totalConImpuestos: un totalImpuesto por tarifa de IVA de las líneas
+        xml_total_con_impuestos(ElementTree.SubElement(xml_info_invoice, 'totalConImpuestos'), self.creditnotedetail_set.select_related('product'))
         ElementTree.SubElement(xml_info_invoice, 'motivo').text = self.motive
         # detalles
         xml_details = ElementTree.SubElement(root, 'detalles')
-        for detail in self.creditnotedetail_set.all():
+        for detail in self.creditnotedetail_set.select_related('product', 'sale_detail__product'):
             xml_detail = ElementTree.SubElement(xml_details, 'detalle')
             ElementTree.SubElement(xml_detail, 'codigoInterno').text = detail.product.code
             ElementTree.SubElement(xml_detail, 'descripcion').text = detail.product.name
@@ -1291,19 +1368,7 @@ class CreditNote(TenantModel):
             ElementTree.SubElement(xml_detail, 'precioUnitario').text = f'{detail.price:.2f}'
             ElementTree.SubElement(xml_detail, 'descuento').text = f'{detail.total_dscto:.2f}'
             ElementTree.SubElement(xml_detail, 'precioTotalSinImpuesto').text = f'{detail.total:.2f}'
-            xml_taxes = ElementTree.SubElement(xml_detail, 'impuestos')
-            xml_tax = ElementTree.SubElement(xml_taxes, 'impuesto')
-            ElementTree.SubElement(xml_tax, 'codigo').text = str(TAX_CODES[0][0])
-            if detail.product.with_tax:
-                ElementTree.SubElement(xml_tax, 'codigoPorcentaje').text = str(self.company.vat_percentage)
-                ElementTree.SubElement(xml_tax, 'tarifa').text = f'{detail.iva * 100:.2f}'
-                ElementTree.SubElement(xml_tax, 'baseImponible').text = f'{detail.total:.2f}'
-                ElementTree.SubElement(xml_tax, 'valor').text = f'{detail.total_iva:.2f}'
-            else:
-                ElementTree.SubElement(xml_tax, 'codigoPorcentaje').text = "0"
-                ElementTree.SubElement(xml_tax, 'tarifa').text = "0"
-                ElementTree.SubElement(xml_tax, 'baseImponible').text = f'{detail.total:.2f}'
-                ElementTree.SubElement(xml_tax, 'valor').text = "0"
+            xml_impuesto_de_linea(xml_detail, detail)
         # infoAdicional
         informacion_adicional(root, [('dirCliente', self.sale.client.address), ('telfCliente', self.sale.client.mobile),
                                      ('Observacion', f'NOTA_CREDITO # {self.voucher_number}')])
@@ -1345,23 +1410,19 @@ class CreditNote(TenantModel):
         return datos_proveedor()
 
     def calculate_detail(self):
-        for detail in self.creditnotedetail_set.filter():
-            detail.price = float(detail.price)
-            detail.iva = float(self.iva)
-            detail.price_with_vat = detail.price + (detail.price * detail.iva)
-            detail.subtotal = detail.price * detail.cant
-            detail.total_dscto = detail.subtotal * float(detail.dscto)
-            detail.total_iva = (detail.subtotal - detail.total_dscto) * detail.iva
-            detail.total = detail.subtotal - detail.total_dscto
+        """Cada línea con la tarifa de la línea de la factura que acredita (no la del producto hoy)."""
+        for detail in self.creditnotedetail_set.select_related('product', 'sale_detail__product'):
+            calcular_linea_iva(detail, detail.codigo_porcentaje or codigo_de_linea(detail.sale_detail))
             detail.save()
 
     def calculate_invoice(self):
-        self.subtotal_0 = float(self.creditnotedetail_set.filter(product__with_tax=False).aggregate(result=Coalesce(Sum('total'), 0.00, output_field=FloatField()))['result'])
-        self.subtotal_12 = float(self.creditnotedetail_set.filter(product__with_tax=True).aggregate(result=Coalesce(Sum('total'), 0.00, output_field=FloatField()))['result'])
-        self.total_iva = float(self.creditnotedetail_set.filter(product__with_tax=True).aggregate(result=Coalesce(Sum('total_iva'), 0.00, output_field=FloatField()))['result'])
-        self.total_dscto = float(self.creditnotedetail_set.filter().aggregate(result=Coalesce(Sum('total_dscto'), 0.00, output_field=FloatField()))['result'])
-        self.total = float(self.get_full_subtotal()) + float(self.total_iva)
+        gravado, cero, iva, descuento = totales_de_lineas(self.creditnotedetail_set.select_related('product'))
+        self.subtotal_12, self.subtotal_0, self.total_iva, self.total_dscto = gravado, cero, iva, descuento
+        self.total = gravado + cero + iva
         self.save()
+
+    def impuestos_por_tarifa(self):
+        return impuestos_por_tarifa(self.creditnotedetail_set.select_related('product'))
 
     def edit(self):
         super(CreditNote, self).save()
@@ -1412,6 +1473,7 @@ class CreditNoteDetail(TenantModel):
     dscto = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
     total_dscto = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
     total = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
+    codigo_porcentaje = models.CharField(max_length=2, default='', blank=True, verbose_name='Tarifa de IVA (código)')
 
     def __str__(self):
         return self.product.name
@@ -1424,8 +1486,10 @@ class CreditNoteDetail(TenantModel):
         item['price'] = float(self.price)
         item['price_with_vat'] = float(self.price_with_vat)
         item['subtotal'] = float(self.subtotal)
-        item['iva'] = float(self.subtotal)
-        item['total_iva'] = float(self.subtotal)
+        item['iva'] = float(self.iva)
+        item['total_iva'] = float(self.total_iva)
+        item['codigo_porcentaje'] = codigo_de_linea(self)
+        item['tarifa'] = float(PORCENTAJE_IVA.get(item['codigo_porcentaje'], 0))
         item['dscto'] = float(self.dscto)
         item['total_dscto'] = float(self.total_dscto)
         item['total'] = float(self.total)

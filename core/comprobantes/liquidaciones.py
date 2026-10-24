@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from core.comprobantes.models import LiquidacionCompra, LiquidacionDetalle, redondear
 from core.login.identificacion import cedula_valida, ruc_valido
+from core.pos.choices import PORCENTAJE_IVA
 
 NO_CUENTAN = ('returned', 'not_authorized', 'sequential_registered_error')
 TIPO_LIQUIDACION = '03'
@@ -49,10 +50,12 @@ def liquidacion_vigente(compra):
 
 
 def lineas_de_compra(compra):
-    """Líneas de la compra con la tarifa sugerida (15 % si el producto cobra impuesto, 0 % si no)."""
+    """Líneas de la compra con la tarifa sugerida: la del producto (15 %, 5 % o 0 %; exento y no objeto, 0 %)."""
+    def sugerida(producto):
+        tarifa = redondear(PORCENTAJE_IVA.get(producto.tarifa_iva, TARIFAS[0] if producto.with_tax else TARIFAS[2]))
+        return tarifa if tarifa in TARIFAS else TARIFAS[2]
     return [{'detalle': d.pk, 'codigo': (d.product.code or '')[:25], 'descripcion': d.product.name[:300],
-             'cantidad': Decimal(d.cant), 'precio_unitario': Decimal(d.price),
-             'tarifa': TARIFAS[0] if d.product.with_tax else TARIFAS[2]}
+             'cantidad': Decimal(d.cant), 'precio_unitario': Decimal(d.price), 'tarifa': sugerida(d.product)}
             for d in compra.purchasedetail_set.select_related('product').order_by('pk')]
 
 
