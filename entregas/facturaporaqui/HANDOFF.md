@@ -1,8 +1,10 @@
 # Handoff compartido — frontend
 
-## Estado actual — RIDE A4 estilo B implementado (Codex, 24/10/2026)
+## Estado actual — RIDE A4 estilo B implementado y subido a GitHub (Codex, 24/10/2026)
 
-La propietaria eligió B y pidió encabezados simplificados **sin repetición**, márgenes de 10 mm, descripciones amplias y colibrí pequeño con datos del proveedor en cursiva al pie. Esta elección sustituye el estado anterior de espera. Implementadas las seis plantillas A4: factura, nota de crédito, nota de débito, retención, liquidación de compra y guía. Entrega local, sin push ni despliegue.
+La propietaria eligió B y pidió encabezados simplificados **sin repetición**, márgenes de 10 mm, descripciones amplias y colibrí pequeño con datos del proveedor en cursiva al pie. Esta elección sustituye el estado anterior de espera. Implementadas las seis plantillas A4: factura, nota de crédito, nota de débito, retención, liquidación de compra y guía. Entrega subida a GitHub, pendiente de integración y despliegue por Claude.
+
+**Recibo de subida:** `git ls-remote origin refs/heads/frontend/etapa3` confirmó **f1936d8d0a9b64f4a71f27eae16011750016a4ea** tras el push. Antes se hizo fetch de ambas ramas y merge de github/frontend/etapa3 y github/plataforma: ambas seguían en fb302af y ya estaban integradas. No se necesitó otro merge ni resolver conflictos. f17c177 y fb302af son ancestros de la entrega; la sección de Claude «clientes del exterior, varios correos…» se conserva íntegra. Sin force push. Plataforma permanece en fb302af. Este recibo se añade en un commit posterior de documentación, sin cambios de aplicación.
 
 Antes de editar se fusionó github/plataforma **fb302af** en frontend/etapa3: merge **e860058**. Conflictos solo en HANDOFF y RESULTADOS, conservando ambas secciones. Se mantienen IVA por producto, RIMPE y cambios recientes de clientes. Sin cambios propios de backend, XML, modelos, migraciones, URL, campos ni action.
 
@@ -14,6 +16,7 @@ Suite SQLite final: **517 aprobadas y 7 omitidas** (80,50 s), incluyendo ocho re
 - [x] Pie compartido con los cuatro datos del proveedor y colibrí de 7 mm; encabezados no repetidos.
 - [x] PDFs cortos/largos, desglose de impuestos, fechas de NC, márgenes y lectura digital de barras.
 - [x] Registrar muestras, limitaciones y suite SQLite.
+- [x] Subir f1936d8 a frontend/etapa3 y comprobar el SHA remoto para desbloquear la revisión de Claude.
 
 ## Notas entre agentes — entrega RIDE B (Codex → Claude)
 
@@ -24,7 +27,7 @@ Suite SQLite final: **517 aprobadas y 7 omitidas** (80,50 s), incluyendo ocho re
 - Proveedor: conservar proveedor.nombre/ruc/email/direccion y la etiqueta «RUC Proveedor». XML intacto. Ubicación y cursiva son la decisión visual aprobada; no se afirma una obligación normativa de ese estilo. La fuente oficial sigue pendiente de contraste por Claude, según la nota anterior de acceso al SRI.
 - Lectura digital exacta a 300 dpi sin suavizado y 600 dpi predeterminado. 216 dpi/300 dpi con suavizado fallan por aliasing en la matriz; revisar una impresión y escáner físico antes de dar por verificados esos dispositivos. Detalle reproducible en tests/test_ride_diseno.py e informes adjuntos.
 - El nuevo formato alcanza los PDF generados con estas plantillas. Los A4 autorizados ya guardados no se regeneran automáticamente; no reenviar XML ni emitir otra vez para cambiar diseño. Ticket térmico fuera de esta entrega A4. Ningún documento real fue modificado.
-- PostgreSQL y publicación con respaldo a cargo de Claude después de revisar. Esta entrega sigue local en frontend/etapa3; no se hizo push.
+- PostgreSQL y publicación con respaldo a cargo de Claude después de revisar. La entrega f1936d8 ya está en frontend/etapa3 de GitHub, incluido `propuestas/ride-b/README.md`, el CSS, el pie, las muestras y capturas. Hacer fetch y fusionar esa rama en plataforma sin reconstruir ni aplicar de nuevo los cambios. No se necesitan nuevos endpoints ni datos del backend para integrar esta entrega. Codex no desplegó.
 
 ## Estado actual — propuesta visual RIDE A4 pendiente de elección (Codex, 24/10/2026)
 

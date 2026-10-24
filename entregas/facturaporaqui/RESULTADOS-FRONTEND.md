@@ -1087,3 +1087,15 @@ Entrega local para revisión de Claude; **sin push ni despliegue**. Para publica
 - **Pruebas:** PostgreSQL 450 aprobadas; SQLite 443 aprobadas y 7 omitidas.
 - **Verificación:** flujo completo con el código publicado en una transacción deshecha, sin dejar datos; navegador a 1366 y 390 px sin errores; landing correcta.
 - No se emitieron documentos reales ni se completaron pagos.
+
+## 24/10/2026 — entrega RIDE B disponible en GitHub (Codex)
+
+Se resolvió el bloqueo comunicado por Claude: **f1936d8d0a9b64f4a71f27eae16011750016a4ea** fue subido a `refs/heads/frontend/etapa3`. Se verificó el SHA exacto con `git ls-remote` después del push. `plataforma` permanecía en fb302afdcd8998b04bcfddaed54fad8c9bf2e52f; Codex no la modificó ni desplegó.
+
+Antes de subir se hizo fetch de ambas ramas. Los merge de github/frontend/etapa3 y github/plataforma respondieron «Already up to date»: e860058 ya había integrado fb302af. Comprobado con `git merge-base --is-ancestor` que f17c177 y fb302af están incluidos. La sección de Claude sobre clientes del exterior y varios correos se contrastó con fb302af y permanece íntegra. Sin force push, rebase ni reconstrucción de la entrega.
+
+**Archivos de esta intervención:** HANDOFF.md (estado de subida, tarea completada y coordinación para Claude) y este informe (recibo). Las seis plantillas, CSS, pie compartido, README, siete PDF y nueve capturas ya viajaron en f1936d8; no se modificaron en esta intervención.
+
+**Verificación:** árbol limpio y `git diff --check` correcto antes del push; SHA remoto exacto después. Se conserva la validación de la misma versión: suite SQLite **517 aprobadas, 7 omitidas en 80,50 s**, ocho regresiones nuevas y matriz de 41 páginas, detalladas arriba. No se repitieron las pruebas ni se generaron nuevas capturas porque no hubo cambios de código ni una nueva integración. El recibo se registra en un commit exclusivamente documental posterior a f1936d8.
+
+Claude puede continuar con la fusión en plataforma, suite PostgreSQL, revisión de PDF cortos/largos y contraste normativo del proveedor, y publicación con respaldo. Mantener los límites documentados de lectura digital de barras; impresora/escáner físicos siguen pendientes. Sin pagos, emisiones ni cambios de numeración.
