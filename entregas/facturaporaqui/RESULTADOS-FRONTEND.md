@@ -1135,3 +1135,19 @@ Los PDF autorizados se generan una vez, al autorizarse, y quedan en `pdf_authori
 3. **Fidelidad:** antes de reemplazar, compara el texto del PDF nuevo con el XML autorizado (comprador, identificación, detalles, totales por tarifa, número y fecha de autorización, campos adicionales). Si algo difiere, por ejemplo porque se editó el cliente o el producto después de autorizar, **no lo regenera** y lo informa. Más adelante el contexto podría armarse directamente desde el XML autorizado.
 4. **Nunca sobrescribe:** escribe un archivo nuevo, conserva el anterior y su ruta en el informe y en un registro de auditoría, y solo con `--aplicar` apunta `pdf_authorized` al nuevo. Antes saca un volcado de la base y un tar de los PDF afectados.
 5. **Alcance sugerido:** las 2 facturas de la empresa 6, cuando la propietaria lo pida.
+
+## 25/10/2026 — diagnóstico del diseño que aparece al imprimir (Codex)
+
+La propietaria señala que no ve mejoras en comprobantes nuevos; confirma que ocurre en A4 y ticket. Leídos AGENTS, HANDOFF y este informe; fetch de ambas ramas y avance rápido de frontend/etapa3 desde 9a794c5 a 6b2d2c2, sin reescritura ni conflictos.
+
+**Hallazgos confirmados:** el ticket no se rediseñó: su plantilla es idéntica a fb302af y cada GET la vuelve a generar. La ruta A4 abre el archivo de `pdf_authorized` cuando existe, y el correo usa ese mismo archivo. En cambio, una generación nueva llama a `sale/format/invoice.html`, con estilo B. No se encontró un selector de plantilla antigua para nuevos A4. Sin el PDF concreto ni acceso al servidor no se puede afirmar por qué un documento nuevo de la propietaria conserva otro aspecto; no se da por explicado con caché o antigüedad.
+
+**Comprobación local:** catorce PDF ficticios (seis tipos A4 y un ticket, cada uno con y sin petición) mediante el renderizador de la aplicación. Los doce A4 cortos: una página de 595,276 × 841,890 pt, 40–42 KB. Ticket: 58 mm de ancho y 500 px de alto para cinco líneas, aspecto anterior. Se inspeccionaron las capturas de factura A4 y ticket: en A4 se ven la regla coral, tablas celestes, total destacado y colibrí en pie cursivo; en ticket las cinco columnas y el pie antiguo. Los datos son exclusivamente ficticios, no los adjuntos de la propietaria.
+
+**Pruebas:** `XDG_CACHE_HOME=/workspace/multi-runtime/cache /workspace/.venv-platform/bin/python -m pytest -o addopts= -q tests/test_ride_diseno.py tests/test_ride_integracion.py tests/test_impresion_a4.py`: **40 aprobadas en 27,00 s**, salida 0. Incluyen renderizado A4, barras, factura larga y apertura/generación del archivo con SRI simulado. No se repitió la suite completa: no hay modificaciones de código. No prueba de producción ni de impresora/escáner físicos.
+
+Revisión visual adicional de los otros cinco tipos: información adicional de NC, columnas de liquidación, RUC Proveedor y pie correctos para cinco líneas; sin cortes ni superposición. En retención la autorización del sustento ocupa dos líneas y se conserva completa. Se completa la revisión visual local solicitada por Claude, sin extender la conclusión al caso de producción ni a otros volúmenes de datos.
+
+**Archivos añadidos o actualizados:** HANDOFF.md y este informe; `propuestas/ride-b/diagnostico-20261025/README.md`, dos PDF ficticios (`factura-a4-actual-demo.pdf`, `ticket-actual-demo.pdf`) y capturas `diagnostico-20261025-factura-a4.png` / `diagnostico-20261025-ticket.png`. Scripts/logs temporales fuera del repositorio en `/workspace/ride-diagnostico-20261025/`.
+
+**Pendientes:** recibir el A4 reportado y contrastarlo con su generación en el servidor; diseñar el ticket con tipografía legible y confirmar la altura/paginación con backend. HANDOFF identifica ruta, campo, recursos y datos de diagnóstico exactos. No se modificaron plantillas, CSS, backend, XML, documentos reales ni numeración. No despliegue.

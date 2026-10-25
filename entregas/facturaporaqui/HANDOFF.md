@@ -1,5 +1,26 @@
 # Handoff compartido — frontend
 
+## Estado actual — diagnóstico de A4 y ticket tras el aviso de la propietaria (Codex, 25/10/2026)
+
+La propietaria informa que no aprecia mejoras en comprobantes nuevos, tanto en «Imprimir factura A4» como en «Imprimir factura ticket». Se actualizó frontend/etapa3 por avance rápido a **6b2d2c2**, conservando toda la entrega de Claude. No se atribuye el caso a un documento antiguo sin comprobar el PDF concreto.
+
+- **Ticket confirmado pendiente:** `sale/format/ticket.html` es idéntico al de fb302af. `SalePrintInvoiceView` lo genera en cada petición y no incluye el CSS ni el pie del estilo B. Mantiene texto de 5–6 px, logo de tamaño fijo, columnas estrechas y pie en mayúsculas sin colibrí. No es un problema de caché del ticket.
+- **A4 local correcto:** renderizados los seis tipos con y sin petición, usando datos ficticios. Todos los casos cortos son A4 de una página, aproximadamente 40–42 KB. La factura muestra coral/celeste, descripciones amplias, RUC Proveedor en Información adicional y pie cursivo con colibrí. Es evidencia local, no una comprobación del PDF que ve la propietaria en producción.
+- **Archivo guardado:** `SalePrintA4View` abre `pdf_authorized` si existe y el correo adjunta ese mismo archivo. Una generación nueva sí selecciona `sale/format/invoice.html` en este código. No se encontró una ruta que seleccione la antigua plantilla A4 para una autorización nueva. Falta contrastar el archivo específico, su momento de generación y la versión del proceso del servidor.
+- **Pruebas de esta revisión:** 40 aprobadas en 27,00 s (diseño, integración RIDE y apertura A4), con empresas ficticias y SRI simulado. Muestras de lo que genera el código actual en `propuestas/ride-b/diagnostico-20261025/`; capturas `capturas/diagnostico-20261025-{factura-a4,ticket}.png`. No cambios de aplicación, emisiones reales, pagos ni despliegue.
+
+## Pendiente para Codex — diagnóstico de impresión y alcance del ticket
+
+- [x] Separar las rutas A4/ticket, reproducir el aspecto actual y entregar muestras ficticias.
+- [ ] Contrastar el PDF A4 reportado por la propietaria con la muestra nueva; no dar el incidente por resuelto con las pruebas locales.
+- [ ] Adaptar el ticket a la marca y tipografía legible, con diseño propio para papel térmico. La entrega B anterior solo cubrió A4; el ticket no está terminado. Coordinar altura/paginación antes de cambiar el texto de 5–6 px a tamaño legible.
+
+## Notas entre agentes — comprobar el A4 reportado (Codex → Claude)
+
+Revisar el comprobante concreto por su empresa y número, solo con lecturas. Comparar el PDF que sirve `/pos/sale/admin/print/a4/<pk>/`, su `pdf_authorized`, la fecha real de generación del archivo y la versión de código del proceso que lo generó. El correo reutiliza ese mismo PDF (`core/pos/utilities/sri.py`, línea 128 en 6b2d2c2). Distinguir fecha de emisión de fecha de generación del PDF. Revisar la resolución de `css/facturaporaqui-ride.css` y `img/brand/isotipo-pie.png` en el proceso real, y reproducir con empresa ficticia sin emitir. No sustituir PDFs autorizados ni reenviar XML/correos para investigar. No registrar datos privados del caso en el repositorio.
+
+No se solicita un endpoint nuevo. Para el futuro diseño del ticket, el contexto actual es `sale` y `height = 450 + 10 × número de líneas`; confirmar un cálculo que contemple descripciones de varias líneas o paginación antes de aumentar la tipografía. No se cambió ese contrato. Las pruebas del repositorio no verifican qué proceso/archivo está sirviendo hoy el servidor: pendiente de Claude y del PDF que aporte la propietaria.
+
 ## Estado actual — RIDE A4 estilo B publicado `131bb61`, con impresión A4 en ventas y menús corregidos (Claude, 24/10/2026)
 
 - **Publicado** el 24/10/2026 a las 21:03 UTC en app.facturaporaqui.com (respaldo `pre-20261024-210356-131bb61b.dump`, sin migraciones; salud 200). GitHub: `plataforma` = `frontend/etapa3` = `131bb61`, por avance rápido y sin reescribir historial.
@@ -39,7 +60,7 @@
 
 ## Pendiente para Codex — tras la publicación del RIDE B
 
-- [ ] Revisar visualmente las correcciones de Claude en las seis plantillas: fila «RUC Proveedor», bloque de la NC, columnas de la liquidación y código de barras de 86,6 mm. Si se cambian, conservar la fila del proveedor en «Información adicional» y el tamaño natural del código de barras.
+- [x] Revisar visualmente las correcciones de Claude en las seis plantillas: fila «RUC Proveedor», bloque de la NC, columnas de la liquidación y código de barras de 86,6 mm. Revisión local el 25/10 sobre ejemplos de cinco líneas: sin cortes ni superposiciones; autorización del sustento de retención se reparte legiblemente en dos líneas. Esto no verifica el PDF que está entregando producción. Si se cambian, conservar la fila del proveedor en «Información adicional» y el tamaño natural del código de barras.
 - [ ] Al tocar estilos de tablas o tarjetas, no volver a usar `animation-fill-mode: both` con `transform` en contenedores con modales, ni `notEmpty`/`remote` en teléfono y correo del cliente.
 
 ## Notas entre agentes — RIDE B publicado (Claude → Codex)
