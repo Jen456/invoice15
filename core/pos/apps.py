@@ -7,3 +7,4 @@ class PosConfig(AppConfig):
 
     def ready(self):
         from core.pos import senales  # noqa: F401 (archivos de los productos borrados)
+        from core.pos import senales_compras  # noqa: F401 (cuentas por pagar y compras al autorizar o anular comprobantes)
