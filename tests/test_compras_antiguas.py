@@ -384,3 +384,24 @@ class TestPantallaCompletar:
         ajena = ayuda.compra_antigua(empresa_b, ayuda.crear_proveedor(empresa_b), '10.00')
         entrar(client, empresa, usuario=admin)
         assert client.get(self.url(ajena)).status_code == 404
+
+
+class TestPantallaReporte:
+
+    def test_reporte_de_compras_con_dos_totales(self, client, empresa, admin, proveedor, antigua):
+        with company_context(empresa):
+            factura = compras.crear_compra(empresa, admin, ayuda.datos_compra(proveedor, secuencial='10'),
+                                           [ayuda.linea_gasto(price='100.00', codigo='0')])
+            compras.crear_compra(empresa, admin, ayuda.datos_compra(
+                proveedor, secuencial='11', tipo_comprobante='04', tipo_doc_modificado='01', num_doc_modificado='001002000000010',
+                aut_doc_modificado='1234567890', fecha_doc_modificado=factura.fecha_emision.isoformat(), compra_modificada=factura.pk),
+                [ayuda.linea_gasto(price='20.00', codigo='0')])
+        entrar(client, empresa, usuario=admin)
+        assert client.get('/reports/purchase/').status_code == 200
+        respuesta = client.post('/reports/purchase/', {'action': 'totales', 'start_date': '', 'end_date': ''})
+        assert json.loads(respuesta.content) == {'completas': {'cantidad': 2, 'total': '80.00'},
+                                                 'incompletas': {'cantidad': 1, 'subtotal': '100.00'}}
+        filas = json.loads(client.post('/reports/purchase/', {'action': 'search_report', 'start_date': '',
+                                                              'end_date': ''}).content)
+        assert sorted(f['signo'] for f in filas) == [-1, 1, 1]
+        assert {f['cod_sustento']['id'] for f in filas} == {'06', ''}
