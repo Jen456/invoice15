@@ -24,7 +24,7 @@ Cuando el SRI cambie porcentajes o códigos, la plataforma los actualiza en su a
 | 304 / 304A | Servicios donde predomina el intelecto / comisiones | 10 | 10 |
 | 307 | Servicios donde predomina la mano de obra | 3 | 2 |
 | 309 | Medios de comunicación y agencias de publicidad | 3 | 2,75 |
-| 310 | Transporte privado de pasajeros o carga | 1 (0 en casos de la Res. 26-00000028) | 1 |
+| 310 | Transporte privado de pasajeros o carga | 1; desde 01/08/2026, 1 o 0 según la Res. 26-00000028 (el 332E, de la operadora a sus socios, pasa de 0 a 0 o 1; decisión D0) | 1 |
 | 311 | Liquidación de compra (nivel cultural o rusticidad) | 3 | 2 |
 | 312 | Transferencia de bienes muebles de naturaleza corporal | 2 | 1,75 |
 | 312A | Compras al productor (agrícola, bioacuático, forestal) | 1 | 1 |
