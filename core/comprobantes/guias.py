@@ -31,6 +31,8 @@ def validar_factura(venta, company):
     from core.pos.notas_credito import es_consumidor_final
     if venta.receipt.voucher_type != VOUCHER_TYPE[0][0]:
         raise ErrorGuia('Las guías de remisión se emiten sobre facturas.')
+    if getattr(venta, 'anulado_sri_fecha', None):
+        raise ErrorGuia(f'La factura {venta.voucher_number_full} está anulada en el SRI.')
     if venta.status not in AUTORIZADOS:
         raise ErrorGuia('La factura debe estar autorizada por el SRI para emitir su guía de remisión.')
     if es_consumidor_final(venta.client):
@@ -42,6 +44,7 @@ def validar_factura(venta, company):
 
 def trasladado_por_detalle(venta):
     filas = (GuiaDetalle.objects.filter(sale_detail__sale=venta).exclude(guia__status__in=NO_CUENTAN)
+             .filter(guia__anulado_sri_fecha__isnull=True)   # una guía anulada en el SRI ya no ampara el traslado
              .values('sale_detail_id').annotate(cantidad=Sum('cantidad')))
     return {f['sale_detail_id']: f['cantidad'] or Decimal('0') for f in filas}
 
@@ -128,7 +131,9 @@ def crear(company, usuario, venta, datos, cantidades):
     """Guía guardada (aún sin firmar). Llamar dentro de una transacción; la vista firma después."""
     from core.configuracion.servicios import receipt_para_emitir
     from core.pos.models import Sale
-    venta = Sale.objects.select_for_update().select_related('client__user', 'receipt').get(pk=venta.pk)   # una guía a la vez
+    # Una guía a la vez: bloquea solo la venta (no su cliente ni su secuencia) y lee lo relacionado aparte, sin bloqueo.
+    Sale.objects.select_for_update(of=('self',)).filter(pk=venta.pk).values_list('pk', flat=True).get()
+    venta = Sale.objects.select_related('client__user', 'receipt').get(pk=venta.pk)
     validar_factura(venta, company)
     doc, lineas = calcular(venta, datos, cantidades)
     cliente = venta.client

@@ -46,7 +46,8 @@ def validar_identificacion(tipo, identificacion):
 
 
 def liquidacion_vigente(compra):
-    return LiquidacionCompra.objects.filter(purchase=compra).exclude(status__in=NO_CUENTAN).first()
+    # Etapa 2 (O2): una liquidación anulada en el SRI deja de contar.
+    return LiquidacionCompra.objects.filter(purchase=compra, anulado_sri_fecha__isnull=True).exclude(status__in=NO_CUENTAN).first()
 
 
 def lineas_de_compra(compra):

@@ -98,6 +98,8 @@ class SRI:
 
     def notify_by_email(self, instance, company, client):
         """Entrega al comprador el XML autorizado y el RIDE (Res. NAC-DGERCGC18-00000233, art. 6)."""
+        if getattr(instance, 'anulado_sri_fecha', None):   # Etapa 2 (O2): marcado «Anulado en el SRI»
+            return {'resp': False, 'error': 'El comprobante está anulado en el SRI: no se envía por correo.'}
         response = {'resp': False, 'stage': VOUCHER_STAGE[4][0]}
         try:
             destinatarios = [c for c in separar_correos(client.user.email, getattr(client, 'extra_emails', '')) if '@' in c]
