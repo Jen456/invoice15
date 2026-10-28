@@ -3,7 +3,9 @@
 Se usa create_pdf_continuo, incluidos su cálculo de alto y sus recursos locales.
 Los objetos de estas pruebas están en memoria: no hay emisiones ni base real.
 """
+from datetime import date
 from decimal import Decimal
+import io
 import math
 import re
 from unittest.mock import patch
@@ -11,6 +13,7 @@ from unittest.mock import patch
 import pypdfium2 as pdfium
 import pytest
 from django.test import RequestFactory
+from PIL import Image
 
 from core.pos.utilities.printer import create_pdf_continuo
 from tests.test_ride_diseno import CLAVE_DEMO, PROVEEDOR_DEMO, contexto_demo
@@ -30,6 +33,9 @@ def contexto_ticket(cantidad=5, largo=False, factura=True, credito=False):
     sale.company.image = False
     sale.payment_type = 'credito' if credito else 'efectivo'
     sale.get_end_credit = '28/11/2026'
+    # Registrada el 20 y firmada el 21, con la numeración de un local distinto del que la empresa usa ahora.
+    sale.emission_date = date(2026, 10, 21)
+    sale.receipt.establishment_address = 'Local de la numeración de la venta, dirección ficticia 300'
     for i, detail in enumerate(sale.saledetail_set, 1):
         detail.product.name = f'Artículo ficticio {i:03d}'
         if largo:
@@ -110,7 +116,8 @@ def verificar_contenido(datos, contexto):
     # Cada descripción mantiene sus valores, no basta con hallar el total en otra línea.
     for i, detail in enumerate(sale.saledetail_set):
         inicio = posiciones[i] + len(compacto(detail.product.name))
-        fin = posiciones[i + 1] if i + 1 < len(posiciones) else len(texto)
+        # La última línea se cierra antes del resumen: sus valores no pueden hallarse en los totales ni en el cobro.
+        fin = posiciones[i + 1] if i + 1 < len(posiciones) else texto.index('Subtotalsinimpuestos', inicio)
         bloque = texto[inicio:fin]
         assert compacto(f'{detail.cant} × ${importe(detail.price)}') in bloque
         for valor in (detail.price, detail.total_dscto, detail.total):
@@ -120,7 +127,12 @@ def verificar_contenido(datos, contexto):
     assert importe(sale.total_dscto) in texto
     assert sale.get_subtotal_without_taxes - sum(d.total for d in sale.saledetail_set) == sale.total_dscto
     assert '0998888888001' in texto
+    # dirMatriz y dirEstablecimiento del XML: el local es el de la numeración de la venta, no el actual de la empresa.
+    assert compacto('Dirección matriz: ' + sale.company.main_address) in texto
+    assert compacto('Establecimiento: ' + sale.receipt.establishment_address) in texto
+    assert compacto(sale.company.establishment_address) not in texto
     if sale.is_invoice:
+        assert compacto(f'Fecha de emisión: {sale.emission_date:%Y-%m-%d}') in texto   # fechaEmision, no la de registro
         for valor in (CLAVE_DEMO, *PROVEEDOR_DEMO.values()):
             assert compacto(valor) in texto
         for impuesto in sale.impuestos_por_tarifa:
@@ -200,9 +212,14 @@ def test_ticket_importe_grande_no_separa_los_centavos(precio, descuento, tarifa)
     sale.total = detail.total + impuesto.valor
     sale.cash, sale.change = sale.total, Decimal('0')
     datos = inspeccionar_ticket(render_ticket(contexto), contexto)
-    # Verificar el texto sin compactarlo: 141974, + salto de línea + 94 sería un fallo.
-    for valor in (detail.price, detail.total, sale.total):
-        assert importe(valor) in datos['texto']
+    # Cada importe sale varias veces (precio, importe, subtotales, total, efectivo): basta con que una aparición se
+    # parta (141974, + salto de línea + 94) para fallar. Sin compactar deben contarse las mismas que compactado.
+    texto = datos['texto']
+    importes = {detail.price, detail.total_dscto, detail.total, sale.get_subtotal_without_taxes, impuesto.base,
+                impuesto.valor, sale.total, sale.cash}
+    for valor in sorted(v for v in importes if v):
+        cifra = importe(valor)
+        assert texto.count(cifra) == compacto(texto).count(cifra) > 0, (cifra, texto)
     assert datos['izquierda_mm'] >= 4.8 and datos['derecha_mm'] <= 53.2
 
 
@@ -216,3 +233,58 @@ def test_ticket_nombre_y_correo_sin_espacios_no_salen_del_papel():
     assert sale.company.tradename in texto
     assert sale.company.email in texto
     assert datos['izquierda_mm'] >= 4.8 and datos['derecha_mm'] <= 53.2
+
+
+def logo_png(ancho=120, alto=40):
+    """Logo ficticio pequeño (3:1), como el que sube un emisor."""
+    contenido = io.BytesIO()
+    Image.new('RGB', (ancho, alto), (22, 59, 80)).save(contenido, 'PNG')
+    return contenido.getvalue()
+
+
+def contexto_con_logo(settings, tmp_path, existe=True):
+    """Ticket de una empresa con logo en MEDIA; si no existe, el archivo registrado ya no está o no se puede leer."""
+    settings.MEDIA_ROOT = str(tmp_path)
+    nombre = 'empresas/00000000-0000-0000-0000-000000000000/logo/2026/10/logo-ficticio.png'
+    if existe:
+        ruta = tmp_path / nombre
+        ruta.parent.mkdir(parents=True)
+        ruta.write_bytes(logo_png())
+    contexto = contexto_ticket(1)
+    contexto['sale'].company.image = nombre
+    contexto['sale'].company.get_image = f'{settings.MEDIA_URL}{nombre}'   # como Company.get_image
+    return contexto
+
+
+def imagenes_mm(contenido):
+    """Límites (izquierda, abajo, derecha, arriba) en mm de cada imagen dibujada en la hoja."""
+    with pdfium.PdfDocument(contenido) as pdf:
+        imagenes = [obj for obj in pdf[0].get_objects() if isinstance(obj, pdfium.PdfImage)]
+        return [tuple(v / MM for v in obj.get_bounds()) for obj in imagenes]
+
+
+def test_ticket_logo_del_emisor_pequeno_dentro_del_area(settings, tmp_path):
+    contexto = contexto_con_logo(settings, tmp_path)
+    contenido = render_ticket(contexto)
+    datos = inspeccionar_ticket(contenido, contexto)
+    imagenes = imagenes_mm(contenido)
+    assert len(imagenes) == 2, imagenes   # logo del emisor y colibrí del pie
+    logo = max(imagenes, key=lambda limites: limites[3])
+    assert 4.8 <= logo[0] and logo[2] <= 53.2
+    assert logo[2] - logo[0] <= 22.1 and logo[3] - logo[1] <= 12.1   # proporcionado dentro de su caja de 22 × 12 mm
+    nombre = [o for o in datos['objetos'] if 'COMERCIAL DEMO' in o['texto']]
+    assert nombre and logo[1] >= max(o['limites'][3] for o in nombre) / MM   # sobre el nombre, sin superponerse
+    assert 'Logotipo' not in datos['texto']
+    assert datos['paginas'] == 1 and 0 < datos['blanco_final_mm'] < 12
+
+
+@pytest.mark.parametrize('con_peticion', [True, False])
+def test_ticket_logo_inexistente_no_imprime_texto_alternativo(settings, tmp_path, con_peticion):
+    contexto = contexto_con_logo(settings, tmp_path, existe=False)
+    contenido = render_ticket(contexto, con_peticion)
+    datos = inspeccionar_ticket(contenido, contexto)
+    assert len(imagenes_mm(contenido)) == 1   # solo el colibrí del pie
+    texto = compacto(datos['texto'])
+    # Ningún texto alternativo, con cualquier redacción: lo primero que se imprime es el nombre del emisor.
+    assert 'Logotipo' not in texto and texto.startswith(compacto(contexto['sale'].company.tradename)), texto[:80]
+    assert datos['paginas'] == 1 and 0 < datos['blanco_final_mm'] < 12
