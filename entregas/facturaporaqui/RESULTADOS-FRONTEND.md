@@ -1230,3 +1230,34 @@ Siete PDF ficticios en `propuestas/ticket-b/`: los seis casos solicitados y uno 
 Se conserva el valor actual de «Subtotal sin impuestos» y todas las decisiones fiscales pendientes; el A4 no se modifica. Sin emisiones, correos reales, pagos ni despliegue. No se añadieron datos privados a las muestras. Entrega en frontend/etapa3 para integración de Claude, pruebas PostgreSQL y publicación con respaldo. Prueba física en papel de 58 mm a tamaño real pendiente.
 
 **Cierre posterior a la suite completa:** se ajustó la condición del nombre legal para no repetirlo si el nombre comercial está vacío. `test_ticket_continuo.py`, `test_ticket_diseno.py` y `test_impresos.py`: **16 aprobadas en 19,07 s** sobre la plantilla final. Un PDF ficticio adicional sin nombre comercial confirma una sola aparición de la razón social, 58 mm y una página. No se repitió la suite general después de esta condición de presentación; los doce ejemplos publicados conservan nombre comercial y su aspecto no cambia.
+
+
+## 28/10/2026 — propuesta comercial y gráfica de Proformas, Bancos y Contabilidad (Codex)
+
+### Base y alcance
+
+Trabajo en `frontend/etapa3` sobre la entrega previa `165fbc7`. Al cierre se hizo fetch explícito de las dos ramas y se fusionó `plataforma` en `a8b893c` sin reescritura. Este commit de Claude incorporó el plan, norma y notas de fase contable; fueron leídos y conservados. No se modificaron sus documentos fiscales ni se implementaron cálculos normativos. Backend aún pendiente según su HANDOFF. No hubo despliegues, emisiones, pagos ni correos.
+
+### Archivos y decisiones
+
+- `landing/index.html`: title/description, cuatro secciones nuevas (Proformas, Complemento Contable, comparativa y FAQ), etiquetas Disponible/Próximamente, CTA hacia el contacto existente y JSON-LD SoftwareApplication. Solo tres ofertas con precio ($50/$85/$199 anuales, IVA incluido). Complemento «Precio por anunciar»; mejora $35 conservando vencimiento. Sin alterar data-plan ni opciones del formulario. Sin logos institucionales, homologaciones ni promesas de presentar declaraciones. El contribuyente presenta en SRI en Línea.
+- `landing/assets/brand/isotipo-fase.webp` y `favicon-fase.png`: versiones pequeñas para esta propuesta, conservando los archivos originales y el colibrí.
+- `propuestas/fase-contable/`: 21 páginas funcionales como simulación de diseño, catálogo, `fase.css`, `fase.js`, CSV ficticio, README y solicitudes de contrato. Proformas (7 estados y edición), complemento (3 estados), bancos/caja/libro/movimiento/importación/conciliación/reporte; cuentas/asiento/diario/mayor/balance/104/103/ATS/kardex/estados/calendario/ADI. No hay rutas nuevas ni peticiones de escritura. Los futuros templates reales extenderán skin.html cuando exista contrato.
+- Las tablas conservan el mismo contenido y pasan a tarjetas etiquetadas a 360 px. Conciliación mantiene su diferencia al pie, con espacio reservado para no tapar controles; el reporte vuelve al flujo de impresión. Tema colibrí, foco visible, contraste, márgenes y letras legibles. Sin nuevas librerías: AdminLTE/Bootstrap locales existentes en MANIFIESTO.
+- `proforma-pdf.django.html`, `proforma-pdf.html`, `proforma-demo.pdf`: muestra de una página A4, reutiliza literalmente `ride/_estilos.html` y `_pie.html`, colibrí y proveedor ficticio al pie. Sin clave, autorización ni barras. Los includes de producción no se tocaron. Documento largo pendiente al integrar líneas reales.
+- `redes/fase-contable/proformas.webp` y `contable.webp`: 1080 × 1350, 129284 y 123670 bytes respectivamente. Artes con referencia al colibrí, margen seguro invisible, fondos a sangre y sin logos de bancos/SRI/Supercias. README con copys, alt y guía. Anuncian Próximamente; no son publicaciones ni campañas activas.
+- `capturas/fase-contable-*.webp`: 85 capturas optimizadas, máximo 109520 bytes; 72 vistas de páginas, 12 vistas de nuevas secciones comerciales y una del PDF. Las páginas largas se recortan a los primeros 1800 px en los archivos versionados; las vistas adicionales cubren secciones de landing por desplazamiento. No se afirma haber probado un dispositivo físico.
+- HANDOFF actualizado con estado, tareas marcadas, integración pendiente y datos exactos solicitados al backend. Sin cambios en AGENTS al no introducir una convención de producción nueva.
+
+### Verificación
+
+- Navegador Chromium/Playwright: 24 páginas × 360/768/1360 = **72 vistas**. Sin desbordamiento horizontal del documento, errores JavaScript ni recursos con HTTP >=400. Capturas e inspección visual de móvil, conciliación y PDF. Movimiento reducido activo; enlace de salto con Tab/Enter y foco visible. Se conserva desplazamiento interno donde la tabla lo necesita.
+- Interacciones: filtro de Proformas, subtotal al editar cantidad, aviso al simular correo, diferencia debe/haber, selección y confirmación de conciliación, CSV con una fila válida y otra errónea, tres ofertas estructuradas y data-plan intactos. Se corrigió el escape de las expresiones regulares del CSV y se comprobó explícitamente tanto «Lista para revisión» como «Error en fecha o importe». Parser de demostración, no un importador bancario real.
+- Colores medidos: blanco/coral **4,75:1**; azul/pálido **10,28:1**; secundario/blanco **6,52:1**; títulos coral oscuro/fondo **6,27:1**; avisos **7,15:1**. No se afirma una auditoría integral WCAG.
+- PDF real renderizado con el motor existente: una página A4, título PROFORMA y sin validez tributaria, subtotal 100, IVA 15, total 115, sin datos fiscales de autorización. Datos ficticios exclusivamente.
+- `XDG_CACHE_HOME=/workspace/multi-runtime/cache /workspace/.venv-platform/bin/python -m pytest -o addopts= -q tests/test_estaticos.py tests/test_rutas.py`: **3 aprobadas en 8,89 s**. La fusión posterior solo trajo documentación. La corrección final del JS de simulación se verificó con la matriz de navegador y prueba CSV; no se repitió pytest por ese ajuste aislado.
+- `git diff --check` correcto. No se corrió la suite contable ni PostgreSQL: no se creó backend. Las simulaciones no prueban permisos, persistencia, cálculos fiscales o concurrencia.
+
+### Pendiente
+
+Aprobación visual/comercial de la propietaria; D9 para el complemento; contratos de contexto, URL, acciones, permisos y campos de Claude. Pasar cada propuesta a plantilla real conforme se termine su etapa, conservando el orden aprobado. El formulario comercial existente no guarda solicitudes y requiere su propio contrato si se habilita captación. Ninguna función próxima se presenta como ya operativa.

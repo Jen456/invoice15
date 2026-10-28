@@ -1,5 +1,25 @@
 # Handoff compartido — frontend
 
+## Estado actual — propuesta comercial y maquetas de fase contable (Codex, 28/10/2026)
+
+**Solo propuesta; no desplegada ni publicada en redes.** Rama `frontend/etapa3`: fusionada `github/plataforma` en `a8b893c`, conservando la entrega del ticket y todas las secciones de Claude. Leídos AGENTS, PLAN-PROFORMAS-BANCOS-CONTABILIDAD y NORMA-CONTABLE-TRIBUTARIA-2026-10. El plan llegó en la sincronización final; las notas que inicialmente lo señalaban ausente se actualizaron.
+
+- Landing: Proformas, Complemento Contable, comparativa y FAQ; funciones disponibles y próximas diferenciadas. Precios anuales $50/$85/$199, IVA, mejora por $35, data-plan y opciones intactos. Complemento con precio por anunciar. SEO y SoftwareApplication con solo las tres ofertas vigentes. Proformas incluidas en todos los planes pagados; importación exclusiva de Ilimitado/Multiempresa.
+- `propuestas/fase-contable/`: catálogo y 21 maquetas, vista HTML y PDF A4 de Proforma con los estilos/pie compartidos. Formularios y acciones solo simulados. Incluye Bancos/conciliación, complemento y las etapas contables/tributarias; no integra rutas reales.
+- `redes/fase-contable/`: dos artes 1080 × 1350, textos alternativos, copys y guía de publicación. Ambos anuncian Próximamente. La propietaria debe aprobar y Claude verificar disponibilidad antes de publicar.
+- Validación: 72 vistas (24 páginas × 360/768/1360), sin desbordes del documento, errores JS ni respuestas de recurso >=400. Teclado, movimiento reducido e interacciones locales revisados. Contrastes del tema entre 4,75:1 y 10,28:1 en las parejas medidas. `test_estaticos.py` + `test_rutas.py`: **3 aprobadas en 8,89 s**. 85 capturas WebP, máximo 109520 bytes. Las capturas largas se recortaron a 1800 px de alto; 12 adicionales muestran las secciones nuevas de la landing. PDF ficticio A4 de una página.
+- Ningún cambio a backend, modelos, servicios, migraciones, rutas, SRI, pagos ni plantillas activas de la app. Las bibliotecas locales ya estaban registradas; no se añade dependencia. Precio, cobertura y período del complemento pendientes de D9.
+
+## Notas entre agentes — fase contable (Codex → Claude)
+
+Revisar `propuestas/fase-contable/README.md` y `CONTRATOS-PENDIENTES.md`. Las maquetas son independientes y no deben desplegarse como pantallas funcionales. Al publicar cada backend, indicar rutas, contexto, campos, acciones y permisos definitivos para convertirlas en plantillas que extiendan `skin.html`.
+
+Datos requeridos: Proforma (estado/acciones permitidas, cliente o prospecto, líneas/impuestos/totales, factura vinculada y URLs de duplicado/PDF/correo/conversión); complemento (estado, vigencia, alcance por RUC y precio nullable); bancos (saldos, mapeo/errores/duplicados del extracto, coincidencias y diferencia); contabilidad/tributario (catálogos versionados, documentos de origen y advertencias). Respetar el plan: venta precargada con `?proforma=ID`, sin facturar dos veces; conciliación admite asignaciones parciales; kardex por promedio ponderado. La simulación visual no sustituye esas validaciones.
+
+Los casilleros DEMO, fechas de calendario y códigos de cuentas de las maquetas son ficticios: no copiarlos a catálogos oficiales. 104/103 preparan hojas; ATS genera XML cuando exista el servicio; el contribuyente presenta en SRI en Línea. No se anuncian declaraciones automáticas ni certificación institucional.
+
+La landing sigue siendo propuesta. Publicación con `publicar-landing.sh` solo por Claude tras aprobación de la propietaria. Su formulario de contacto actual es demostrativo: esta entrega no crea captación persistente. El ticket B previo sigue una entrega separada; no se modifica aquí.
+
 ## Estado actual — ticket térmico con diseño B listo para integrar (Codex, 28/10/2026)
 
 Actualizada frontend/etapa3 por avance rápido sobre **4ce7888**; leídas las entregas del 28/10 y el contrato del ticket. El A4 y la regeneración de documentos históricos quedan cerrados según la entrega de Claude; esta tarea solo cambia la presentación del ticket, sus pruebas y documentación. **Codex no desplegó.**
@@ -30,11 +50,13 @@ Se conserva `get_subtotal_without_taxes` con su significado actual; tampoco se c
 
 Plan aprobado por la propietaria: `PLAN-PROFORMAS-BANCOS-CONTABILIDAD.md`. Orden: 1 Proformas ∥ 2 Datos de origen → 3 Complemento «Contable» + Bancos → 4 104/103/ATS → 5 Núcleo contable → 6 Asientos automáticos + kardex → 7 EEFF Supercias y 101 → 8 ADI y pago a cuenta. Tu papel es lo comercial de la landing y el diseño gráfico de la app; el prompt completo está en el §9 del plan.
 
-- [ ] Landing: secciones Proformas y Complemento Contable, etiquetas Disponible / Próximamente, tarjeta del complemento con «Precio por anunciar» y piezas de redes en `redes/fase-contable/`.
-- [ ] Maquetas estáticas de Proformas (lista, crear/editar, PDF «sin validez tributaria») en `propuestas/fase-contable/`.
-- [ ] Tarjeta de compra y recuadro «Tu complemento» en /suscripcion/.
-- [ ] Maquetas de Bancos y conciliación.
-- [ ] Maquetas de Contabilidad y Tributario (por ahora solo maquetas).
+- [x] Propuesta entregada: Landing con secciones Proformas y Complemento Contable, etiquetas Disponible / Próximamente, tarjeta del complemento con «Precio por anunciar» y piezas de redes en `redes/fase-contable/`.
+- [x] Maquetas estáticas de Proformas (lista, crear/editar, PDF «sin validez tributaria») en `propuestas/fase-contable/`.
+- [x] Maqueta de tarjeta de compra y recuadro «Tu complemento»; integración en /suscripcion/ pendiente del contrato del backend.
+- [x] Maquetas de Bancos y conciliación.
+- [x] Maquetas de Contabilidad y Tributario (solo maquetas).
+- [ ] Integrar plantillas reales cuando Claude publique sus contratos; revisar con datos ficticios del backend.
+- [ ] Aprobación de la propuesta comercial por la propietaria y publicación a cargo de Claude.
 
 ## Notas entre agentes — fase contable (Claude → Codex)
 
