@@ -1,6 +1,7 @@
 """Vigencias del catálogo de retenciones (D0, Fase A): hoy cada resultado es el de 8d2eead, el catálogo guarda su
 historial por fecha (310 y 332E cortados el 01/08/2026 por la Res. NAC-DGERCGC26-00000028), lo emitido no cambia,
-«Emitir» solo emite lo revisado (huella) y el panel abre vigencias en vez de editar porcentajes.
+«Emitir» solo emite lo revisado (huella) y el panel abre vigencias, siempre después de hoy, en vez de editar porcentajes
+o fechas.
 
 Todo el archivo corre el 28/10/2026 a mediodía (Guayaquil), el día de la línea base; cada prueba viaja desde ahí.
 La ida y vuelta de las migraciones está en test_zzz_vigencias_migraciones.py (necesita transacciones reales).
@@ -91,6 +92,11 @@ def editar_en_panel(cliente, codigo, **cambios):
     return cliente.post(f'{ADMIN}{codigo.pk}/change/', {k: ('on' if v is True else v) for k, v in valores.items() if v is not False})
 
 
+def catalogo():
+    """Todas las filas del catálogo con todos sus campos."""
+    return list(CodigoRetencion.objects.order_by('pk').values_list())
+
+
 def volver_a_entrar(cliente, empresa):  # noqa: F811
     """La sesión dura 8 horas: tras viajar en el tiempo el dueño vuelve a entrar."""
     from core.user.models import User
@@ -151,7 +157,8 @@ class TestCorteDeLaRes28:
         for momento, de_compra in ((datetime(2026, 7, 31, 12, 0, tzinfo=GYE), compra), (datetime(2026, 8, 1, 12, 0, tzinfo=GYE),
                                                                                        otra_compra(empresa, 2))):
             with time_machine.travel(momento, tick=False), company_context(empresa), transaction.atomic():
-                ret = sv.crear(empresa, usuario, de_compra, DATOS, [(fila('310', CORTE).pk, None, '0')])
+                ret = sv.crear(empresa, usuario, de_compra, DATOS, [(fila('310', CORTE).pk, None, '0')],
+                               huella_revisada=sv.SIN_REVISION)
                 detalle = ret.detalles.get()
                 hechas.append((ret.date_joined, detalle.porcentaje, detalle.codigo_catalogo_id))
         assert hechas == [(VISPERA, Decimal('1.00'), fila('310').pk), (CORTE, Decimal('0.00'), fila('310', CORTE).pk)]
@@ -231,6 +238,21 @@ class TestRestricciones:
             nueva.nueva_vigencia(desde=date(2027, 1, 1), porcentaje=Decimal('1.00'), porcentaje_editable=True, fuente='X')
         assert CodigoRetencion.objects.filter(impuesto='1', codigo='310').count() == 3
 
+    @pytest.mark.parametrize('codigo, inicio, desde', [
+        ('310', CORTE, date(2026, 9, 1)),    # pasado: cerraría el 31/08 la fila con la que se emitió en septiembre y octubre
+        ('310', CORTE, HOY.date()),          # hoy: la fila usada hoy figuraría cerrada ayer
+        ('312', None, date(2026, 1, 1)),     # 2026 por 2027 en un código sin inicio: cambio inmediato y retroactivo
+    ])
+    def test_nueva_vigencia_empieza_despues_de_hoy(self, db, codigo, inicio, desde):
+        abierta, antes = fila(codigo, inicio), catalogo()
+        with pytest.raises(ValidationError, match='debe empezar después de hoy \\(28/10/2026\\): lo ya emitido no se reescribe'):
+            abierta.nueva_vigencia(desde=desde, porcentaje=Decimal('1.75'), porcentaje_editable=False, fuente='Prueba')
+        assert catalogo() == antes
+        manana = abierta.nueva_vigencia(desde=date(2026, 10, 29), porcentaje=Decimal('1.75'), porcentaje_editable=False,
+                                        fuente='Prueba')   # el primer día posible
+        assert CodigoRetencion.vigente('1', codigo, HOY.date()) == abierta and CodigoRetencion.vigente(
+            '1', codigo, date(2026, 10, 29)) == manana
+
 
 class TestFormulario:
 
@@ -282,6 +304,49 @@ class TestHuella:
         detalles, total, _ = foto(empresa, leer(empresa, lambda: Retencion.objects.get()))
         assert [(d[1], d[4]) for d in detalles] == [('310', Decimal('1.00'))] and total == Decimal('1.00')
 
+    def test_cambiar_la_base_o_el_documento_tras_revisar_vuelve_a_revisar(self, web, empresa, compra, numeracion,  # noqa: F811
+                                                                          sri):
+        url, r312 = f'{LISTA}nueva/{compra.pk}/', fila('312')
+        revision = web.post(url, {**formulario([(r312, '', '')]), 'action': 'calcular'}).content.decode()
+        for cambiado in (formulario([(r312, '50.00', '')]), formulario([(r312, '', '')], base_iva='60.00')):
+            html = web.post(url, {**cambiado, 'action': 'emitir', 'huella': huella(revision)}).content.decode()
+            assert 'ya no es el que revisaste' in html and huella(html) not in ('', huella(revision))
+        assert not leer(empresa, lambda: Retencion.objects.exists()) and not sri.recepciones
+        sri.respuestas_autorizacion = ['AUTORIZADO']
+        web.post(url, {**cambiado, 'action': 'emitir', 'huella': huella(html)})   # lo que se volvió a revisar sí se emite
+        ret = leer(empresa, lambda: Retencion.objects.get())
+        detalles, total, _ = foto(empresa, ret)
+        assert [(d[1], d[3], d[4]) for d in detalles] == [('312', Decimal('60.00'), Decimal('2.00'))] and total == Decimal('1.20')
+        assert ret.base_iva == Decimal('60.00')
+
+    def test_crear_exige_la_huella(self, empresa, compra, numeracion):  # noqa: F811
+        usuario, lineas = helpers.crear_usuario('emisor.huella', empresa), [(fila('312').pk, None, None)]
+        with company_context(empresa), transaction.atomic():
+            with pytest.raises(TypeError):
+                sv.crear(empresa, usuario, compra, DATOS, lineas)   # sin huella no hay valor por defecto que omita la revisión
+            for revisada in ('', None, '0' * 32):
+                with pytest.raises(sv.RevisionDesactualizada):
+                    sv.crear(empresa, usuario, compra, DATOS, lineas, huella_revisada=revisada)
+            assert not Retencion.objects.exists()
+            ret = sv.crear(empresa, usuario, compra, DATOS, lineas, huella_revisada=sv.huella(*sv.calcular(DATOS, lineas)[:2]))
+            assert ret.detalles.get().codigo_catalogo == fila('312')
+
+    def test_medianoche_entre_crear_y_preparar_la_misma_fecha(self, empresa, compra, numeracion):  # noqa: F811
+        """crear() fija la fecha una vez: la del catálogo, date_joined y la fecha de emisión (preparar() no la vuelve a leer)."""
+        usuario = helpers.crear_usuario('emisor.medianoche', empresa)
+        fila('310', CORTE).nueva_vigencia(desde=date(2027, 1, 1), porcentaje=Decimal('0.00'), porcentaje_editable=False,
+                                          fuente='Prueba')
+        with company_context(empresa), transaction.atomic():
+            with time_machine.travel(datetime(2026, 12, 31, 23, 59, 59, 999000, tzinfo=GYE), tick=False):
+                ret = sv.crear(empresa, usuario, compra, DATOS, [(fila('310', CORTE).pk, None, '')],
+                               huella_revisada=sv.SIN_REVISION)
+            with time_machine.travel(datetime(2027, 1, 1, 0, 0, 0, 1000, tzinfo=GYE), tick=False):
+                emision.preparar(ret)
+            ret = Retencion.objects.get(pk=ret.pk)
+            assert (ret.date_joined, ret.emission_date, ret.detalles.get().porcentaje) == (date(2026, 12, 31), date(2026, 12, 31),
+                                                                                           Decimal('1.00'))
+            assert '<fechaEmision>31/12/2026</fechaEmision>' in ret.xml_signed and ret.access_code.startswith('31122026')
+
 
 class TestLoEmitidoNoCambia:
 
@@ -323,12 +388,13 @@ class TestPanel:
     def test_sin_porcentaje_en_la_lista_y_vigencias_empezadas_de_solo_lectura(self, plataforma):
         assert 'porcentaje' not in CodigoRetencionAdmin.list_editable and plataforma.get(ADMIN).status_code == 200
         html = plataforma.get(f'{ADMIN}{fila("310", CORTE).pk}/change/').content.decode()
-        assert all(f'name="{campo}"' not in html for campo in ('porcentaje', 'concepto', 'vigente_desde', 'codigo'))
-        assert 'name="ayuda"' in html and 'name="vigente_hasta"' in html
+        assert all(f'name="{campo}"' not in html for campo in ('porcentaje', 'concepto', 'vigente_desde', 'vigente_hasta',
+                                                                'fuente', 'codigo'))
+        assert all(f'name="{campo}"' in html for campo in ('ayuda', 'activo', 'comun', 'orden'))
         futura = fila('310', CORTE).nueva_vigencia(desde=date(2027, 1, 1), porcentaje=Decimal('0.00'), porcentaje_editable=False,
                                                    fuente='Prueba')
         html = plataforma.get(f'{ADMIN}{futura.pk}/change/').content.decode()
-        assert 'name="porcentaje"' in html and 'name="vigente_desde"' in html
+        assert all(f'name="{campo}"' in html for campo in ('porcentaje', 'vigente_desde', 'vigente_hasta', 'fuente'))
 
     def test_accion_nueva_vigencia_cierra_crea_y_audita(self, plataforma):
         abierta = fila('310', CORTE)
@@ -337,7 +403,7 @@ class TestPanel:
         assert 'Nueva vigencia del código 310' in pagina and 'name="desde"' in pagina
         campos = {'aplicar': '1', 'porcentaje': '0.00', 'fuente': 'Resolución de prueba', 'ayuda': 'Ayuda 2027'}
         mala = plataforma.post(ADMIN, {**base, **campos, 'desde': '2026-08-01'}).content.decode()
-        assert 'debe empezar después del 01/08/2026' in mala
+        assert 'debe empezar después de hoy (28/10/2026)' in mala
         assert CodigoRetencion.objects.filter(impuesto='1', codigo='310').count() == 2 and not AuditLog.objects.filter(
             action='catalogo_vigencia_nueva').exists()
         assert plataforma.post(ADMIN, {**base, **campos, 'desde': '2027-01-01'}).status_code == 302
@@ -357,3 +423,48 @@ class TestPanel:
                                     follow=True)
         assert 'Elige filas de un solo código' in respuesta.content.decode()
         assert CodigoRetencion.objects.count() == CodigoRetencion.objects.filter(vigente_desde__isnull=True).count() + 2
+
+    @pytest.mark.parametrize('codigo, inicio, desde', [
+        ('310', CORTE, '2026-09-01'), ('310', CORTE, '2026-10-28'), ('312', None, '2026-01-01')])
+    def test_accion_nueva_vigencia_no_reescribe_el_pasado(self, plataforma, codigo, inicio, desde):
+        antes = catalogo()
+        respuesta = plataforma.post(ADMIN, {'action': 'nueva_vigencia', '_selected_action': [fila(codigo, inicio).pk],
+                                            'aplicar': '1', 'desde': desde, 'porcentaje': '1.75', 'fuente': 'Prueba'})
+        assert respuesta.status_code == 200 and 'debe empezar después de hoy (28/10/2026)' in respuesta.content.decode()
+        assert catalogo() == antes and not AuditLog.objects.filter(action='catalogo_vigencia_nueva').exists()
+
+    def test_editar_una_vigencia_empezada_no_cambia_sus_fechas_ni_su_fuente(self, plataforma):
+        """Abierta o cerrada: fechas y fuente son de solo lectura (el POST no las toca); cerrarla es «Nueva vigencia»."""
+        abierta, cerrada, antes = fila('310', CORTE), fila('310'), catalogo()
+        assert editar_en_panel(plataforma, abierta, vigente_hasta='2026-09-30', fuente='Otra fuente').status_code == 302
+        assert editar_en_panel(plataforma, cerrada, vigente_hasta='2026-06-30', vigente_desde='2026-01-01').status_code == 302
+        assert catalogo() == antes and CodigoRetencion.vigente('1', '310', HOY.date()) == abierta
+        assert editar_en_panel(plataforma, cerrada, activo=False).status_code == 302   # retirarla sigue siendo posible
+        assert not CodigoRetencion.objects.get(pk=cerrada.pk).activo
+
+    def test_alta_y_vigencia_futura_no_escriben_el_pasado(self, plataforma):
+        abierta, antes = fila('310', CORTE), catalogo()
+        alta = {'impuesto': '1', 'codigo': '310', 'concepto': abierta.concepto, 'porcentaje': '0.00', 'comun': 'on',
+                'activo': 'on', 'fuente': 'Prueba', 'orden': '0', 'ayuda': '', 'vigente_desde': '2026-10-01', 'vigente_hasta': ''}
+        for desde in ('2026-10-01', '2026-10-28', ''):   # otra vigencia de un código que ya existe: después de hoy
+            respuesta = plataforma.post(f'{ADMIN}add/', {**alta, 'vigente_desde': desde})
+            assert respuesta.status_code == 200 and 'debe empezar después de hoy (28/10/2026)' in respuesta.content.decode()
+        assert 'se solapa' in plataforma.post(f'{ADMIN}add/', {**alta, 'vigente_desde': '2027-01-01'}).content.decode()
+        assert catalogo() == antes
+
+        # Una vigencia que aún no empieza se edita, pero no se mueve a hoy ni al pasado.
+        futura = abierta.nueva_vigencia(desde=date(2027, 1, 1), porcentaje=Decimal('0.00'), porcentaje_editable=False,
+                                        fuente='Prueba')
+        antes = catalogo()
+        for cambios in ({'vigente_desde': '2026-10-01'}, {'vigente_desde': '2026-10-28'}, {'vigente_desde': ''}):
+            respuesta = editar_en_panel(plataforma, futura, **cambios)
+            assert respuesta.status_code == 200 and 'debe empezar después de hoy' in respuesta.content.decode()
+        assert catalogo() == antes and CodigoRetencion.vigente('1', '310', HOY.date()) == abierta
+        assert editar_en_panel(plataforma, futura, vigente_desde='2027-02-01').status_code == 302   # a otra fecha futura, sí
+
+        # Un código nuevo (sin otras filas) se da de alta, pero no con una vigencia que ya terminó.
+        nuevo = {**alta, 'codigo': 'X1', 'concepto': 'Código nuevo de prueba', 'vigente_desde': ''}
+        respuesta = plataforma.post(f'{ADMIN}add/', {**nuevo, 'vigente_hasta': '2026-10-27'})
+        assert respuesta.status_code == 200 and 'no puede terminar antes de hoy (28/10/2026)' in respuesta.content.decode()
+        assert plataforma.post(f'{ADMIN}add/', nuevo).status_code == 302
+        assert CodigoRetencion.vigente('1', 'X1', HOY.date()).concepto == 'Código nuevo de prueba'

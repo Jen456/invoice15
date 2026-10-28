@@ -153,7 +153,7 @@ class RetencionCrearView(GroupPermissionMixin, TemplateView):
             datos[f.add_prefix('codigo')] = str(d['codigo_obj'].pk)
         lineas = LineasRetencionFormSet(datos, prefix='lineas', form_kwargs={'fecha': timezone.localdate()})
         return self.render_to_response(self.get_context_data(form=form, lineas=lineas, aviso=aviso, resumen={
-            'doc': doc, 'detalle': detalle, 'total': total, 'huella': sv.huella(detalle),
+            'doc': doc, 'detalle': detalle, 'total': total, 'huella': sv.huella(doc, detalle),
             'total_sin_impuestos': doc['base_0'] + doc['base_iva'],
             'importe_total': doc['base_0'] + doc['base_iva'] + doc['valor_iva']}))
 

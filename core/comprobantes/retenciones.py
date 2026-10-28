@@ -6,7 +6,8 @@
 - Retenciones con la fila del catálogo (CodigoRetencion) vigente en la fecha de la retención: renta sobre la base sin
   impuestos e IVA sobre el valor del IVA; el porcentaje sale del catálogo salvo los códigos de porcentaje variable;
   valor = base × % (HALF_UP).
-- Emitir solo si el cálculo es el que se revisó: la huella de lo revisado (código, %, fila del catálogo) debe coincidir.
+- Emitir solo lo que se revisó: la huella de lo revisado (documento sustento y, por línea, código, fila del catálogo,
+  base, % y valor) debe coincidir con el cálculo al emitir.
 - Una compra tiene a lo sumo una retención vigente (las devueltas o no autorizadas no cuentan).
 """
 import hashlib
@@ -27,12 +28,18 @@ class ErrorRetencion(Exception):
 
 
 class RevisionDesactualizada(ErrorRetencion):
-    """El cálculo al emitir no es el revisado (cambió la vigencia o se editó el catálogo): lleva el cálculo nuevo."""
+    """El cálculo al emitir no es el revisado (se cambiaron datos tras revisar, cambió la vigencia o se editó el catálogo) o
+    falta la revisión: lleva el cálculo nuevo."""
 
     def __init__(self, doc, detalle, total):
-        super().__init__('El cálculo ya no es el que revisaste (cambió la vigencia o el catálogo de retenciones). '
+        super().__init__('El cálculo ya no es el que revisaste (cambiaron los datos, la vigencia o el catálogo de retenciones). '
                          'Revisa el nuevo cálculo y vuelve a emitir.')
         self.doc, self.detalle, self.total = doc, detalle, total
+
+
+# Para crear() sin el paso «Revisar» (usos internos que calculan y guardan a la vez, como las pruebas): explícito, para
+# que ningún llamador nuevo emita sin revisar por olvido.
+SIN_REVISION = object()
 
 
 def numero_documento(texto):
@@ -141,16 +148,20 @@ def calcular(datos, lineas, fecha=None):
     return doc, detalle, total
 
 
-def huella(detalle):
-    """Resumen de lo revisado (impuesto, código, % y fila del catálogo de cada línea) que viaja con «Emitir»."""
-    texto = '|'.join(f"{d['impuesto']}:{d['codigo']}:{redondear(d['porcentaje'])}:{d['codigo_obj'].pk}" for d in detalle)
+def huella(doc, detalle):
+    """Resumen de lo revisado que viaja con «Emitir»: el documento sustento normalizado (número, autorización, fecha,
+    bases, IVA, sustento, forma de pago) y, por línea, impuesto, código, fila del catálogo, base, % y valor retenido."""
+    texto = '|'.join([';'.join(f'{campo}={doc[campo]}' for campo in sorted(doc))] + [
+        f"{d['impuesto']}:{d['codigo']}:{d['codigo_obj'].pk}:{redondear(d['base_imponible'])}:{redondear(d['porcentaje'])}:"
+        f"{redondear(d['valor_retenido'])}" for d in detalle])
     return hashlib.sha256(texto.encode()).hexdigest()[:32]
 
 
-def crear(company, usuario, compra, datos, lineas, huella_revisada=None):
+def crear(company, usuario, compra, datos, lineas, *, huella_revisada):
     """Retención guardada (aún sin firmar) para `compra`. Llamar dentro de una transacción; la vista firma después.
 
-    Con `huella_revisada` (la de «Revisar»), si el cálculo de ahora es otro lanza RevisionDesactualizada y no guarda.
+    `huella_revisada` es obligatoria: la de «Revisar» (si el cálculo de ahora es otro, o viene vacía, lanza
+    RevisionDesactualizada y no guarda) o SIN_REVISION para los usos internos que no pasan por «Revisar».
     """
     from core.configuracion.servicios import receipt_para_emitir
     from core.pos.models import Purchase
@@ -163,7 +174,7 @@ def crear(company, usuario, compra, datos, lineas, huella_revisada=None):
     # cómo obtener esa fecha es la duda D0-d (Fase B): por eso calcular() ya la recibe como parámetro.
     fecha = timezone.localdate()
     doc, detalle, total = calcular(datos, lineas, fecha)
-    if huella_revisada is not None and huella_revisada != huella(detalle):
+    if huella_revisada is not SIN_REVISION and huella_revisada != huella(doc, detalle):
         raise RevisionDesactualizada(doc, detalle, total)
     proveedor = compra.provider
     receipt = receipt_para_emitir(company, TIPO_RETENCION, electronica=True)
@@ -171,7 +182,9 @@ def crear(company, usuario, compra, datos, lineas, huella_revisada=None):
     ret = Retencion(
         company=company, receipt=receipt, voucher_number=numero,
         voucher_number_full=f'{receipt.establishment_code}-{receipt.issuing_point_code}-{numero}',
-        employee=usuario, environment_type=company.environment_type, date_joined=fecha,
+        # La misma fecha para el catálogo, date_joined y la fecha de emisión (preparar() respeta una ya fijada): una
+        # medianoche entre crear() y preparar() no fecha el documento un día y lo calcula con la vigencia del anterior.
+        employee=usuario, environment_type=company.environment_type, date_joined=fecha, emission_date=fecha,
         purchase=compra, provider=proveedor, tipo_identificacion=tipo_identificacion(proveedor.ruc),
         identificacion=re.sub(r'\s', '', proveedor.ruc), razon_social=proveedor.name.strip(),
         tipo_sujeto='02' if len(proveedor.ruc.strip()) == 13 and proveedor.ruc.strip()[2] in '69' else '01',

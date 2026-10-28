@@ -14,7 +14,7 @@ escenario de la resolución (dudas D0-b…f) es la Fase B.
 
 Guardia: si el 310 o el 332E no tienen los valores de 0004 (se editaron en /plataforma/), se detiene sin tocar nada.
 Vuelta: los detalles de retención que apunten a las filas nuevas quedan sin fila (NULL), esas filas se borran y las
-de 0004 se reabren (el 310 vuelve a ser editable).
+de 0004 (las únicas sin inicio del código) se reabren aunque su cierre se haya movido (el 310 vuelve a ser editable).
 """
 from datetime import date, timedelta
 from decimal import Decimal
@@ -36,8 +36,9 @@ CARGADO_EN_0004 = {
 
 AYUDA = ('Desde el 01/08/2026 el Catálogo ATS admite {valores} en este código según la Res. NAC-DGERCGC26-00000028 '
          '(transporte terrestre comercial, excepto taxis). El porcentaje depende de quién paga a quién (operadora, socio o '
-         'accionista, cliente) y de si el servicio se presta con unidades propias o de los socios; rige un régimen '
-         'transitorio hasta el 31/12/2026. El sistema propone {defecto} %: confirma el porcentaje con tu contador.')
+         'accionista, cliente) y de si el servicio se presta con unidades propias o de los socios; para las operadoras '
+         'que continúan facturando a través de sus socios rige un régimen transitorio hasta el 31/12/2026. El sistema '
+         'propone {defecto} %: confirma el porcentaje con tu contador.')
 FUENTE = ('Catálogo ATS SRI (06/08/2026), tabla 3.10, bloque desde 01/08/2026: "{celda} según resolución '
           'NAC-DGERCGC26-00000028"; Res. NAC-DGERCGC26-00000028 (RO 5S 339, 03/08/2026)')
 NUEVAS = {
@@ -88,7 +89,8 @@ def atras(apps, schema_editor):
     nuevas.delete()
     for codigo in NUEVAS:
         cambios = {'vigente_hasta': None, **({'porcentaje_editable': True} if codigo == '310' else {})}
-        CodigoRetencion.objects.filter(impuesto='1', codigo=codigo, vigente_hasta=FIN_ANTERIOR).update(**cambios)
+        # Por identidad (la fila sin inicio es la de 0004; hay una sola por código), no por su fecha de cierre.
+        CodigoRetencion.objects.filter(impuesto='1', codigo=codigo, vigente_desde__isnull=True).update(**cambios)
     for fila in CodigoRetencion.objects.filter(impuesto='1', codigo='3440', fuente__endswith=NOTA_3440):
         fila.fuente = fila.fuente[:-len(NOTA_3440)]
         fila.save(update_fields=['fuente'])

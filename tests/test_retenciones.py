@@ -216,7 +216,8 @@ class TestEmision:
             from django.db import transaction
             with transaction.atomic():
                 ret = sv.crear(empresa, helpers.crear_usuario('firmante.ret', empresa), compra, datos(base_0='20.00'),
-                               [(codigos['bienes'].pk, None, None), (codigos['iva100'].pk, None, None)])
+                               [(codigos['bienes'].pk, None, None), (codigos['iva100'].pk, None, None)],
+                               huella_revisada=sv.SIN_REVISION)
                 emision.preparar(ret)
             ret.refresh_from_db()
         parser = etree.XMLParser(no_network=True, load_dtd=True, resolve_entities=True)
@@ -231,9 +232,12 @@ class TestEmision:
 
     def test_emitir_sin_revisar_vuelve_a_revisar(self, web, empresa, compra, codigos, numeracion, sri):
         post = {**formulario([(codigos['bienes'], '', '')]), 'action': 'emitir'}
-        for falsa in ({}, {'huella': '0' * 32}):   # sin la huella de «Revisar» o con otra
+        revisada = huella(web.post(f'{LISTA}nueva/{compra.pk}/', {**post, 'action': 'calcular'}).content.decode())
+        for falsa in ({}, {'huella': ''}, {'huella': '0' * 32}):   # sin la huella de «Revisar», vacía o con otra
             html = web.post(f'{LISTA}nueva/{compra.pk}/', {**post, **falsa}).content.decode()
-            assert 'ya no es el que revisaste' in html and 'Revisa antes de emitir' in html and f'value="{huella(html)}"' in html
+            assert 'ya no es el que revisaste' in html and 'Revisa antes de emitir' in html
+            # vuelve con la huella del cálculo de ahora: la misma que da «Revisar» con estos datos
+            assert re.fullmatch(r'[0-9a-f]{32}', huella(html)) and huella(html) == revisada
         assert not leer(empresa, lambda: Retencion.objects.exists()) and not sri.recepciones
 
     def test_una_retencion_por_compra(self, web, empresa, compra, codigos, numeracion, sri):

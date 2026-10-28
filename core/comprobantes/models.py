@@ -28,7 +28,11 @@ class CodigoRetencionQuerySet(models.QuerySet):
 
     def vigentes(self, fecha):
         """Filas disponibles el día `fecha`: activas y con `fecha` dentro de su vigencia (desde nulo = inicio no
-        documentado; hasta nulo = abierta). Como las vigencias de un código no se solapan, cada código sale una vez."""
+        documentado; hasta nulo = abierta). Como las vigencias de un código no se solapan, cada código sale una vez.
+
+        Que no se solapen lo garantiza clean() (panel y nueva_vigencia() pasan por full_clean) y las migraciones, no la
+        base de datos: un save() o update() directo que solape dos filas haría salir el código dos veces aquí (y vigente()
+        tomaría la de inicio más reciente)."""
         return self.filter(Q(vigente_desde__isnull=True) | Q(vigente_desde__lte=fecha),
                            Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=fecha), activo=True)
 
@@ -86,7 +90,7 @@ class CodigoRetencion(models.Model):
 
     @property
     def vigencia_empezada(self):
-        """Ya pudo usarse al emitir: su porcentaje y su concepto no se editan (se abre otra vigencia)."""
+        """Ya pudo usarse al emitir: su porcentaje, su concepto, sus fechas y su fuente no se editan (se abre otra vigencia)."""
         return self.vigente_desde is None or self.vigente_desde <= timezone.localdate()
 
     def clean(self):
@@ -104,12 +108,13 @@ class CodigoRetencion(models.Model):
 
     def nueva_vigencia(self, desde, porcentaje, porcentaje_editable, fuente, ayuda=''):
         """Cierra esta fila (la abierta del código) el día anterior a `desde` y crea la siguiente, con el mismo concepto,
-        orden y uso común. Devuelve la fila nueva; ValidationError si las fechas no encajan."""
+        orden y uso común. `desde` es posterior a hoy. Devuelve la fila nueva; ValidationError si las fechas no encajan."""
         with transaction.atomic():
             actual = CodigoRetencion.objects.select_for_update().get(pk=self.pk)
             if actual.vigente_hasta is not None:
                 raise ValidationError(f'La fila del código {self.codigo} ya está cerrada: la vigencia nueva se abre '
                                       'desde la fila abierta.')
+            exigir_inicio_futuro(desde)
             if actual.vigente_desde is not None and desde <= actual.vigente_desde:
                 raise ValidationError(f'La vigencia nueva debe empezar después del {actual.vigente_desde:%d/%m/%Y}.')
             actual.vigente_hasta = desde - timedelta(days=1)
@@ -121,6 +126,15 @@ class CodigoRetencion(models.Model):
             nueva.save()
         self.vigente_hasta = actual.vigente_hasta
         return nueva
+
+
+def exigir_inicio_futuro(desde):
+    """Una vigencia nueva de un código ya existente empieza después de hoy: si empezara antes, cerraría con efecto
+    retroactivo la fila con la que ya se emitió y cambiaría al instante el cálculo de todas las empresas. Una vigencia
+    retroactiva (una resolución publicada tarde) se carga con una migración revisada, como 0015."""
+    hoy = timezone.localdate()
+    if desde is None or desde <= hoy:
+        raise ValidationError(f'La vigencia nueva debe empezar después de hoy ({hoy:%d/%m/%Y}): lo ya emitido no se reescribe.')
 
 
 def _fecha(valor, vacio):
