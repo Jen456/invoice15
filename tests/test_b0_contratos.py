@@ -1,7 +1,7 @@
 """Contratos comunes de la fase contable (commit B0 del integrador), antes de Proformas, Compras y Ventas: señal
-comprobante_autorizado (un receptor que falla no cambia el estado y se vuelve a llamar al reenviar), menú generalizado
-por app, consultas de retenciones, dataclasses del 07 recibido, roles, borrado de una venta a crédito y mensajes de
-Django escapados dentro de JavaScript."""
+comprobante_autorizado (un receptor que falla no cambia el estado, ni al emitir ni en la tarea periódica, y se vuelve a
+llamar al reenviar), menú generalizado por app, consultas de retenciones, dataclasses del 07 recibido, roles, borrado
+de una venta a crédito y mensajes de Django escapados dentro de JavaScript."""
 import dataclasses
 import importlib
 from datetime import date, timedelta
@@ -14,6 +14,7 @@ from django.contrib.messages import constants
 from django.contrib.messages.storage.base import Message
 from django.contrib.messages.storage.cookie import CookieStorage
 from django.core import mail
+from django.core.management import call_command
 from django.db import connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.db.models import ProtectedError
@@ -31,8 +32,9 @@ from core.pos.models import (Client, CreditNote, CtasCollect, PaymentsCtaCollect
 from core.pos.senales_comprobantes import anulado_en_sri, comprobante_autorizado
 from core.security import menu
 from core.security.models import Dashboard, GroupModule, Module, ModuleType
+from core.suscripciones.models import QuotaReservation
 from core.tenancy import roles
-from core.tenancy.context import company_context
+from core.tenancy.context import company_context, current_company_id
 from core.tenancy.models import ROLE_ACCOUNTANT, ROLE_ADMIN, ROLE_CLIENT, ROLE_OWNER, ROLE_READONLY, ROLE_SELLER
 from core.user.models import User
 from tests.test_emision_sri import (VENTAS, accion, comprador, dueno, empresa, leer, p12, producto, refrescar,  # noqa: F401
@@ -102,6 +104,35 @@ class TestSenalAutorizado:
         assert r['resp'] is True and 'Ya estaba autorizada' in r['mensaje'] and venta.status == 'authorized'
         assert llamadas == [(Sale, venta.pk, 'authorized')] * 2 and len(sri.recepciones) == recepciones
         assert errores_de(empresa, venta) == [pendiente] * 2
+
+    def test_por_la_tarea_periodica_con_receptor_que_falla(self, web, empresa, comprador, producto, sri, receptores, capsys):
+        # El camino habitual de O1 y O2: el SRI tarda, la venta queda «En proceso» y la autoriza consultar_sri.
+        leer(empresa, lambda: Client.objects.filter(pk=comprador.pk).update(send_email_invoice=True))
+        User.objects.filter(pk=comprador.user_id).update(email='comprador@example.com')
+        llamadas = []
+
+        def falla(sender, comprobante, **kwargs):
+            # consultar_sri recorre todas las empresas: el receptor corre en la del comprobante (con su RLS en PostgreSQL).
+            llamadas.append((comprobante.status, current_company_id(), Sale.objects.filter(pk=comprobante.pk).exists()))
+            raise ValueError('ajuste de prueba')
+
+        receptores(falla, Sale)
+        r = vender(web, comprador, producto)
+        venta = venta_de(empresa, 271)
+        assert r['resp'] is True and venta.status == 'in_process' and llamadas == []
+        assert QuotaReservation.objects.get(voucher_id=venta.pk).status == 'reservada'
+        sri.respuestas_autorizacion = ['AUTORIZADO']
+        call_command('consultar_sri')
+        assert 'consultados 1, autorizados 1, en proceso 0, con error 0' in capsys.readouterr().out
+        venta = venta_de(empresa, 271)
+        assert llamadas == [('authorized', empresa.pk, True)]
+        assert venta.status == 'authorized_and_sent_by_email' and venta.pdf_authorized and len(mail.outbox) == 1
+        assert errores_de(empresa, venta) == [('xml_authorized', {
+            'stage': 'xml_authorized', 'error': 'Autorizada, pero un ajuste posterior quedó pendiente (ValueError).'})]
+        assert QuotaReservation.objects.get(voucher_id=venta.pk).status == 'consumida'      # el cupo se cuenta igual
+        # Ya enviada por correo, la pasada siguiente no la consulta: el ajuste pendiente lo retoma la orden de cada rama.
+        call_command('consultar_sri')
+        assert 'consultados 0' in capsys.readouterr().out and len(llamadas) == 1
 
     def test_despues_del_ride_y_de_la_factura_y_antes_del_correo(self, web, empresa, comprador, producto, sri, receptores):
         leer(empresa, lambda: Client.objects.filter(pk=comprador.pk).update(send_email_invoice=True))
