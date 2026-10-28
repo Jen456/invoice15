@@ -1,6 +1,18 @@
 # Handoff compartido — frontend
 
-## Estado actual — causa del A4 «antiguo» comprobada; ticket con alto medido (Claude, 27/10/2026, sin publicar)
+## Estado actual — publicado `3c7eb2a` y RIDE de la 271 y la 272 regenerados (Claude, 28/10/2026)
+
+- **Publicado** el 28/10/2026 a las 04:59 UTC (volcado `pre-20261028-045914-3c7eb2a0.dump`, sin migraciones; salud 200) y subido a GitHub.
+- **Botón real tras publicar** (venta ficticia temporal en DEMOSTRACIÓN, borrada): A4 con el diseño B en 1 página; ticket de 58 × 124 mm con 5 líneas, que termina justo después del pie (antes 132 mm). Captura `capturas/diagnostico-20261028-boton-ticket-despues.png`.
+- **Regeneración aplicada** con la aprobación de la propietaria (28/10, 05:01 UTC) a la 001-002-000000271 y la 001-002-000000272:
+  - antes: volcado de la base y copia de los dos PDF anteriores en `/home/facturaporaqui/datos/pruebas/respaldos/ride-regenerado-20261028-050100/`;
+  - los PDF nuevos son fieles al XML (26 de 26 datos cada uno) y los anteriores siguen en su ruta;
+  - hay dos registros `ride_regenerado` en la auditoría;
+  - estado, clave y XML sin cambios; no se envió ningún correo;
+  - «Imprimir factura A4» ya entrega el diseño B en las dos.
+- **Siguiente:** el orden de las líneas, aprobado como tarea aparte (abajo); el rediseño visual del ticket es de Codex.
+
+## Estado actual — causa del A4 «antiguo» comprobada; ticket con alto medido (Claude, 27/10/2026)
 
 - **Causa comprobada del A4.** No hay un fallo de despliegue, de recursos ni de generación. La propietaria abre el PDF **guardado** de una factura que se autorizó antes de publicar el diseño B:
   - **Única factura nueva:** desde el 23/10 solo hay una venta o nota de crédito en todo el sistema (cualquier empresa, ambiente o estado): la **001-002-000000272** de la empresa 6, emitida el 24/10.
@@ -31,7 +43,7 @@
   - Por defecto solo ensaya: genera en memoria y compara con el XML autorizado (`core/comprobantes/fidelidad.py`).
   - **Ensayo hecho en producción** con la base en solo lectura (`default_transaction_read_only=on`): la 271 y la 272 son **fieles**; los 26 datos de su XML aparecen en el PDF nuevo.
   - Con `--aplicar --respaldo DIR`: copia el PDF actual, guarda el nuevo como archivo distinto (nunca sobrescribe ni borra) y deja registro en la auditoría.
-  - **No se aplicó: falta la aprobación de la propietaria.**
+  - Aplicado el 28/10 con la aprobación de la propietaria (sección de arriba).
   - Diferencia visible que no figura en el XML: la 272 diría «CAMISETAS IMPRESAS (Bien)» en vez de «(Bienes)». La plantilla agrega la categoría del producto y esa categoría se renombró después de autorizar.
 - **Ticket:**
   - El alto ya no se estima (`450 + 10 × líneas`): `printer.create_pdf_continuo` maqueta en una hoja de 5000 mm, mide el contenido y genera una sola hoja de ese alto.
@@ -41,7 +53,7 @@
 - **Hallazgo pendiente de decisión — orden de las líneas:**
   - `SaleDetail` y `CreditNoteDetail` no tienen `ordering`, y el XML, el RIDE y el ticket recorren las líneas sin `order_by`. En PostgreSQL el orden no está garantizado.
   - `test_iva_tarifas::test_xml_valido_contra_el_xsd_y_agrupado_por_tarifa`, que espera el orden de ingreso, falló en 2 de 3 vueltas completas; nunca falló aislada.
-  - Arreglo propuesto: `ordering = ('pk',)` en ambos detalles, sin cambio de tablas. Cambia el orden de las líneas en el XML de los comprobantes futuros, así que queda para aprobación aparte (esta tarea no toca el XML).
+  - Arreglo propuesto: `ordering = ('pk',)` en ambos detalles, sin cambio de tablas. Cambia el orden de las líneas en el XML de los comprobantes futuros. La propietaria lo aprobó el 28/10 como tarea aparte.
 
 ## Pendiente para Codex — rediseño del ticket
 

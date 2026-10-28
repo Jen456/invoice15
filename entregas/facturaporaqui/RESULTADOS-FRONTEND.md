@@ -1174,10 +1174,20 @@ La propietaria seguía viendo el diseño antiguo en «Imprimir factura A4» y en
 **Ensayo de regeneración en producción** (base en solo lectura; PDF nuevos en `verif-firma/ride-diagnostico/`, fuera del repositorio): la 271 y la 272 son fieles; los 26 datos de su XML aparecen en el PDF nuevo. La 272 diría «(Bien)» en vez de «(Bienes)» tras la descripción, porque la categoría del producto se renombró después de autorizar y la plantilla la agrega (no está en el XML).
 
 **Pendiente:**
-- aprobación de la propietaria para aplicar la regeneración a la 271 y la 272;
 - rediseño visual del ticket por Codex (contrato en HANDOFF);
-- publicar la orden y el ticket con alto medido;
+- orden de las líneas de los comprobantes (aprobado como tarea aparte);
 - los puntos preexistentes del RIDE: contribuyenteEspecial, leyenda de agente de retención, «Subtotal sin impuestos» antes del descuento, fechaEmisionDocSustento de la NC y «(categoría)» en las descripciones.
 
 No se cambiaron XML, numeración, estados ni cupos. No se reenviaron comprobantes ni correos reales.
+
+### 28/10/2026 — publicado y aplicado (Claude)
+
+- **Publicado `3c7eb2a`** a las 04:59 UTC, con volcado previo. Con el botón real y una venta ficticia: A4 con el diseño B y ticket de 58 × 124 mm que termina tras el pie (`capturas/diagnostico-20261028-boton-ticket-despues.png`).
+- **Regenerados los RIDE de la 271 y la 272** con la aprobación de la propietaria:
+  - con volcado y copia previa de los PDF;
+  - fieles al XML;
+  - originales conservados y registro en la auditoría;
+  - sin correos ni cambios de estado, XML o numeración.
+- **Corregido:** el A4 de las dos facturas reales y la altura del ticket.
+- **Pendiente:** el diseño visual del ticket (Codex) y el orden de las líneas (tarea aparte).
 
