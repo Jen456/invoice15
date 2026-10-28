@@ -235,8 +235,10 @@ def post_json(client, url, datos):
     return respuesta.status_code, json.loads(respuesta.content)
 
 
-def nota_de_credito(empresa, usuario, proveedor, factura, valor='10.00'):  # noqa: F811
-    with company_context(empresa):
+def nota_de_credito(empresa, usuario, proveedor, factura_id, valor='10.00'):  # noqa: F811
+    from core.pos.models import Purchase
+    with company_context(empresa):               # en PostgreSQL la compra solo se ve dentro de la empresa (RLS)
+        factura = Purchase.objects.get(pk=factura_id)
         return compras.crear_compra(empresa, usuario, ayuda.datos_compra(
             proveedor, tipo_comprobante='04', tipo_doc_modificado='01', num_doc_modificado=f'001002{factura.secuencial}',
             aut_doc_modificado='1234567890', fecha_doc_modificado=factura.fecha_emision.isoformat(), compra_modificada=factura.pk),
@@ -277,7 +279,7 @@ class TestPantallasCuentasPorPagar:
 
     def test_pagos_y_abonos_en_la_lista_de_movimientos(self, web, empresa, admin, proveedor, deuda):  # noqa: F811
         pagar(empresa, deuda, admin, valor='5.00')
-        nota = nota_de_credito(empresa, admin, proveedor, deuda.purchase)
+        nota = nota_de_credito(empresa, admin, proveedor, deuda.purchase_id)
         _, filas = post_json(web, URL_LISTA, {'action': 'search_pays', 'id': deuda.pk})
         assert [(f['index'], f['tipo'], f['valor'], f['puede_borrar']) for f in filas] == [
             (1, 'pago', '5.00', True), (2, 'nota_credito', '10.00', False)]
@@ -292,7 +294,7 @@ class TestPantallasCuentasPorPagar:
         assert data == {'error': 'Tiene pagos registrados: elimínalos primero.'}
         with company_context(empresa):
             pago.delete()
-        nota = nota_de_credito(empresa, admin, proveedor, deuda.purchase)
+        nota = nota_de_credito(empresa, admin, proveedor, deuda.purchase_id)
         _, data = post_json(web, f'{URL_LISTA}delete/{deuda.pk}/', {})
         assert data == {'error': 'Tiene retenciones o notas de crédito aplicadas.'}
         with company_context(empresa):
@@ -306,7 +308,8 @@ class TestPantallasCuentasPorPagar:
         url = '/pos/debts/pay/add/'
         respuesta = web.get(url)
         assert respuesta.status_code == 200 and respuesta.context['form']['medio_pago'].value() in (None, '')
-        _, data = post_json(web, url, {'action': 'search_debts_pay', 'term': deuda.purchase.secuencial[-3:]})
+        secuencial = ayuda.en(empresa, lambda: DebtsPay.objects.select_related('purchase').get(pk=deuda.pk).purchase.secuencial)
+        _, data = post_json(web, url, {'action': 'search_debts_pay', 'term': secuencial[-3:]})
         assert [(d['id'], d['saldo']) for d in data] == [(deuda.pk, 115.0)] and data[0]['text']
         base = {'action': 'add', 'debts_pay': deuda.pk, 'date_joined': hoy().isoformat(), 'valor': '15.00',
                 'referencia': '', 'description': 'Abono'}
@@ -342,7 +345,7 @@ class TestPantallasCuentasPorPagar:
 
 def test_reporte_de_cuentas_por_pagar_con_base_pagado_y_abonado(web, empresa, admin, proveedor, deuda):  # noqa: F811
     pagar(empresa, deuda, admin, valor='5.00')
-    nota_de_credito(empresa, admin, proveedor, deuda.purchase)
+    nota_de_credito(empresa, admin, proveedor, deuda.purchase_id)
     anterior = ayuda.compra_antigua(empresa, proveedor, '40.00', credito=True)
     assert web.get('/reports/debts/pay/').status_code == 200
     _, filas = post_json(web, '/reports/debts/pay/', {'action': 'search_report', 'start_date': '', 'end_date': ''})
