@@ -910,7 +910,9 @@ def revisar_datos(compra, datos):
     return {'cambios': [{'campo': c, 'etiqueta': ETIQUETAS.get(c, c), 'antes': para_auditoria(a), 'despues': para_auditoria(d)}
                         for c, (a, d) in plan.cambios.items()],
             'advertencias': [{'codigo': c, 'texto': t} for c, t in plan.advertencias],
-            'confirmaciones': plan.confirmaciones, 'faltantes': [{'codigo': c, 'texto': t} for c, t in faltantes(copia)],
+            'confirmaciones': plan.confirmaciones,
+            'textos_confirmacion': {c: _texto_confirmacion_completar(c, compra, plan) for c in plan.confirmaciones},
+            'faltantes': [{'codigo': c, 'texto': t} for c, t in faltantes(copia)],
             'total': texto_importe(plan.nuevos.get('total', compra.total))}
 
 
@@ -1086,3 +1088,74 @@ def total_con_signo():
     """Expresión ORM del total con IVA con signo (NULL en compras sin importes)."""
     return Case(When(tipo_comprobante='04', then=-F('total')), default=F('total'),
                 output_field=DecimalField(max_digits=12, decimal_places=2))
+
+
+# ------------------------------------------------------------------ pantallas (paso 2: §4 y §6)
+
+NOMBRES_TARIFA_FORMULARIO = {'4': '15 %', '5': '5 %', '0': '0 %', '6': 'No objeto de IVA', '7': 'Exento de IVA',
+                             '2': '12 % (comprobantes anteriores al 01/04/2024)', '8': 'IVA diferenciado (escribe la tarifa)'}
+
+
+def opciones_formulario():
+    """Catálogos para la pantalla «Nueva compra» (se pasan al navegador con json_script)."""
+    return {
+        'tipos_comprobante': [list(t) for t in cat.TIPOS_COMPROBANTE_COMPRA],
+        'sustentos': [list(s) for s in cat.SUSTENTOS],
+        'comprobantes_por_sustento': {c: sorted(t) for c, t in cat.COMPROBANTES_POR_SUSTENTO.items()},
+        'tipo_id_por_comprobante': {t: sorted(i) for t, i in cat.TIPO_ID_POR_COMPROBANTE.items()},
+        'formas_pago': [list(f) for f in cat.FORMAS_PAGO],
+        'tarifas': [{'codigo': c, 'nombre': NOMBRES_TARIFA_FORMULARIO[c],
+                     'tarifa': texto_importe(cat.TARIFA_POR_CODIGO[c]) if c in cat.TARIFA_POR_CODIGO else None,
+                     'tarifa_variable': c in cat.CODIGOS_CON_TARIFA_VARIABLE} for c in cat.CODIGOS_IVA_COMPRA],
+        'pago_loc_ext': [list(p) for p in cat.PAGO_LOC_EXT],
+        'tipos_con_doc_modificado': list(cat.TIPOS_CON_DOC_MODIFICADO),
+        'tipos_sin_forma_pago': list(cat.TIPOS_SIN_FORMA_PAGO),
+        'tipos_sin_iva_discriminado': list(cat.TIPOS_SIN_IVA_DISCRIMINADO),
+        'codigos_iva_nota_venta': list(cat.CODIGOS_IVA_NOTA_VENTA),
+        'umbral_bancarizacion': texto_importe(cat.UMBRAL_BANCARIZACION),
+    }
+
+
+def comprobante_registrado(proveedor_id, tipo, estab, pto_emi, secuencial, excluir=None):
+    """Compra ya registrada con ese comprobante del proveedor (o None). El secuencial se completa con ceros a 9 dígitos."""
+    secuencial = _texto(secuencial)
+    if not secuencial.isdigit() or int(secuencial) == 0:
+        return None
+    return _comprobante_registrado(proveedor_id, _texto(tipo), _texto(estab), _texto(pto_emi), secuencial.zfill(9),
+                                   excluir=excluir)
+
+
+def documento_importado_pendiente(proveedor, tipo, estab, pto_emi, secuencial):
+    """XML recibido de ese proveedor y con ese número que todavía no tiene compra (pendiente o aprobado), o None."""
+    from core.importacion.models import DocumentoImportado
+    secuencial = _texto(secuencial)
+    if proveedor is None or not secuencial.isdigit() or int(secuencial) == 0:
+        return None
+    return (DocumentoImportado.objects.filter(emisor_ruc=re.sub(r'\s', '', proveedor.ruc or ''), cod_doc=_texto(tipo),
+                                              estab=_texto(estab), pto_emi=_texto(pto_emi), secuencial=secuencial.zfill(9),
+                                              clasificacion='recibido', compra__isnull=True,
+                                              estado_revision__in=('pendiente', 'aprobado'))
+            .order_by('pk').first())
+
+
+def filtrar_listado(queryset, *, inicio='', fin='', fecha='registro', incompletas=False):
+    """Filtros del listado y del reporte de compras. Con fecha de emisión, las compras sin ella (anteriores o «Completar
+    después») no aparecen: solo se ven al filtrar por fecha de registro."""
+    campo = 'fecha_emision' if fecha == 'emision' else 'date_joined'
+    if campo == 'fecha_emision':
+        queryset = queryset.filter(fecha_emision__isnull=False)
+    if inicio and fin:
+        queryset = queryset.filter(**{f'{campo}__range': [inicio, fin]})
+    if incompletas:
+        queryset = queryset.filter(datos_incompletos=True)
+    return queryset
+
+
+def totales_listado(queryset):
+    """Pie del listado y del reporte: total con IVA de las compras completas (las notas de crédito restan) y, aparte, las
+    compras con datos incompletos con su subtotal registrado (subtotal_con_signo). Importes como texto."""
+    from django.db.models import Count, Sum
+    completas = queryset.filter(datos_incompletos=False).aggregate(total=Sum(total_con_signo()), n=Count('id'))
+    incompletas = queryset.filter(datos_incompletos=True).aggregate(subtotal=Sum(subtotal_con_signo()), n=Count('id'))
+    return {'completas': {'cantidad': completas['n'], 'total': texto_importe(completas['total'] or CERO)},
+            'incompletas': {'cantidad': incompletas['n'], 'subtotal': texto_importe(incompletas['subtotal'] or CERO)}}
