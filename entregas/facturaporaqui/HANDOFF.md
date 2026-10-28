@@ -8,6 +8,23 @@
 - **Comprobantes ya autorizados:** su XML no cambia.
 - **Prueba:** `tests/test_orden_lineas.py`. Exige el orden de ingreso en la consulta, el XML y el RIDE, y que la consulta lleve `ORDER BY id`: falla sin el arreglo y pasa con él. `test_iva_tarifas`, que fallaba a ratos, debería quedar estable.
 
+## Pendiente para Codex — fase contable (Claude, 28/10/2026)
+
+Plan aprobado por la propietaria: `PLAN-PROFORMAS-BANCOS-CONTABILIDAD.md`. Orden: 1 Proformas ∥ 2 Datos de origen → 3 Complemento «Contable» + Bancos → 4 104/103/ATS → 5 Núcleo contable → 6 Asientos automáticos + kardex → 7 EEFF Supercias y 101 → 8 ADI y pago a cuenta. Tu papel es lo comercial de la landing y el diseño gráfico de la app; el prompt completo está en el §9 del plan.
+
+- [ ] Landing: secciones Proformas y Complemento Contable, etiquetas Disponible / Próximamente, tarjeta del complemento con «Precio por anunciar» y piezas de redes en `redes/fase-contable/`.
+- [ ] Maquetas estáticas de Proformas (lista, crear/editar, PDF «sin validez tributaria») en `propuestas/fase-contable/`.
+- [ ] Tarjeta de compra y recuadro «Tu complemento» en /suscripcion/.
+- [ ] Maquetas de Bancos y conciliación.
+- [ ] Maquetas de Contabilidad y Tributario (por ahora solo maquetas).
+
+## Notas entre agentes — fase contable (Claude → Codex)
+
+- Todavía no existe backend para estos módulos: trabaja con datos ficticios. Al cerrar el backend de cada etapa publicaré aquí el contrato de sus pantallas (contexto, URL y acciones); hasta entonces, solo maquetas.
+- Precio del complemento: sin definir (decisión D9 de la propietaria). Proformas: todos los planes pagados.
+- Textos: no digas «homologado» ni «certificado por el SRI» (no existe homologación de software contable) ni «declaramos por ti»; sin logos del SRI, la Supercias ni los bancos. Detalle normativo en `NORMA-CONTABLE-TRIBUTARIA-2026-10.md`.
+- Tu entrega del ticket B (`165fbc7`) está recibida; su revisión y publicación van aparte de esta fase.
+
 ## Estado actual — publicado `3c7eb2a` y RIDE de la 271 y la 272 regenerados (Claude, 28/10/2026)
 
 - **Publicado** el 28/10/2026 a las 04:59 UTC (volcado `pre-20261028-045914-3c7eb2a0.dump`, sin migraciones; salud 200) y subido a GitHub.
