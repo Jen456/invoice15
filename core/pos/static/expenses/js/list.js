@@ -1,3 +1,5 @@
+// Gastos sin comprobante (espec-etapa2-compras §6.F): medio de pago («Sin dato» en los anteriores) y referencia.
+// Texto escapado con render.text.
 var input_date_range;
 var expenses = {
     list: function (all) {
@@ -25,15 +27,17 @@ var expenses = {
             },
             columns: [
                 {data: "id"},
-                {data: "type_expense.name"},
+                {data: "type_expense.name", render: $.fn.dataTable.render.text()},
                 {data: "date_joined"},
                 {data: "valor"},
-                {data: "description"},
+                {data: "medio_pago.name", render: $.fn.dataTable.render.text()},
+                {data: "referencia", render: $.fn.dataTable.render.text()},
+                {data: "description", render: $.fn.dataTable.render.text()},
                 {data: "id"},
             ],
             columnDefs: [
                 {
-                    targets: [-3],
+                    targets: [-5],
                     class: 'text-center',
                     render: function (data, type, row) {
                         return '$' + data.toFixed(2);
@@ -43,8 +47,9 @@ var expenses = {
                     targets: [-1],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        var buttons = '<a href="' + pathname + 'update/' + row.id + '/" data-toggle="tooltip" title="Editar" class="btn btn-warning btn-xs btn-flat"><i class="fas fa-edit"></i></a> ';
-                        buttons += '<a href="' + pathname + 'delete/' + row.id + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
+                        var id = parseInt(row.id, 10);
+                        var buttons = '<a href="' + pathname + 'update/' + id + '/" data-toggle="tooltip" title="Editar" class="btn btn-warning btn-xs btn-flat"><i class="fas fa-edit"></i></a> ';
+                        buttons += '<a href="' + pathname + 'delete/' + id + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
                         return buttons;
                     }
                 },
@@ -55,8 +60,8 @@ var expenses = {
             initComplete: function (settings, json) {
                 $('[data-toggle="tooltip"]').tooltip();
                 $(this).wrap('<div class="dataTables_scroll"><div/>');
-                var total = json.reduce((a, b) => a + (b.valor || 0), 0);
-                $('.total').html('$' + total.toFixed(2));
+                var total = json.reduce((a, b) => a + Math.round((b.valor || 0) * 100), 0);
+                $('.total').text('$' + (total / 100).toFixed(2));
             }
         });
     }
