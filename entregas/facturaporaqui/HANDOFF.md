@@ -1,5 +1,12 @@
 # Handoff compartido — frontend
 
+## Estado actual — README de FacturaPorAquí actualizado (Codex, 28/10/2026)
+
+- Renovado el README raíz con colibrí, presentación del producto, funciones disponibles, planes anuales, funciones próximas, tecnología, pruebas y enlaces de documentación. Retiradas las instrucciones heredadas de instalación y el acceso predeterminado; se conserva una mención al origen del proyecto.
+- Solo documentación. Leído el estado de plataforma `a8b893c` y fusión comprobada: ya integrada. Rama `frontend/etapa3`; sin cambios de backend ni despliegue.
+- Verificados enlaces locales e imagen, comandos contra requisitos/pytest y `git diff --check`. No se ejecutó la suite por este cambio de texto.
+- **Pendiente de integración:** el README nuevo estará visible en frontend/etapa3. GitHub mantiene main como rama predeterminada histórica; su portada no cambia hasta integrar allí el README o acordar una nueva rama principal. No se modificó main ni la configuración del repositorio.
+
 ## Estado actual — propuesta comercial y maquetas de fase contable (Codex, 28/10/2026)
 
 **Solo propuesta; no desplegada ni publicada en redes.** Rama `frontend/etapa3`: fusionada `github/plataforma` en `a8b893c`, conservando la entrega del ticket y todas las secciones de Claude. Leídos AGENTS, PLAN-PROFORMAS-BANCOS-CONTABILIDAD y NORMA-CONTABLE-TRIBUTARIA-2026-10. El plan llegó en la sincronización final; las notas que inicialmente lo señalaban ausente se actualizaron.

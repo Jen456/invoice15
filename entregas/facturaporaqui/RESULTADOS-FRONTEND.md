@@ -1261,3 +1261,11 @@ Trabajo en `frontend/etapa3` sobre la entrega previa `165fbc7`. Al cierre se hiz
 ### Pendiente
 
 Aprobación visual/comercial de la propietaria; D9 para el complemento; contratos de contexto, URL, acciones, permisos y campos de Claude. Pasar cada propuesta a plantilla real conforme se termine su etapa, conservando el orden aprobado. El formulario comercial existente no guarda solicitudes y requiere su propio contrato si se habilita captación. Ninguna función próxima se presenta como ya operativa.
+
+
+## 28/10/2026 — README principal renovado (Codex)
+
+- **Archivos:** README.md, HANDOFF.md y este informe. Presentación con colibrí, funciones disponibles, tres planes con IVA/cobro anual, mejora por $35 y Complemento Contable sin precio. Proformas/contabilidad se mantienen próximas. Añadidos estructura, ramas, preparación del entorno de pruebas, documentación y condiciones de publicación; reconocido el origen AlgoriSoft.
+- **Correcciones:** se sustituyen rutas antiguas de requirements, activación incorrecta del entorno, creación de migraciones durante instalación y acceso predeterminado. No se reproducen credenciales. Los comandos usan Python 3.12 y ambos archivos fijados de requirements. No se promete que pytest con SQLite valide RLS/concurrencia ni que el formulario comercial guarde contactos.
+- **Verificación:** enlaces relativos e isotipo existentes, concordancia de dependencias con requirements/base.in y dev.in, pytest.ini/settings_test, scripts de despliegue y documentos vigentes. `git diff --check` correcto. Sin pruebas de aplicación ni capturas nuevas: solo documentación, sin cambios visuales de app.
+- **Entrega:** frontend/etapa3, plataforma a8b893c ya integrada. No se cambia main, que sigue siendo la rama predeterminada histórica. Claude debe considerar por separado la integración de este README a la portada principal. Sin despliegues ni modificaciones del backend.

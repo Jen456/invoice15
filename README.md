@@ -1,170 +1,160 @@
-# Pasos para la instalación del Sistema Invoice
+<div align="center">
+  <img src="static/img/brand/isotipo-pie.png" alt="Colibrí Ingenioso de FacturaPorAquí" width="88">
+  <h1>FacturaPorAquí</h1>
+  <p><strong>Tu negocio, en orden.</strong></p>
+  <p>Facturación electrónica y gestión empresarial para Ecuador.</p>
+  <p>
+    <a href="https://facturaporaqui.com">Conocer los planes</a> ·
+    <a href="https://app.facturaporaqui.com">Ingresar a la aplicación</a> ·
+    <a href="entregas/facturaporaqui/HANDOFF.md">Estado del proyecto</a>
+  </p>
+</div>
 
-# Cursos de respaldo
+## Qué es FacturaPorAquí
 
-- [Curso de Python con Django de 0 a Máster | Español](https://youtube.com/playlist?list=PLxm9hnvxnn-j5ZDOgQS63UIBxQytPdCG7 "Curso de Python con Django de 0 a Máster | Español")
-- [Curso de Deploy de un Proyecto Django en un VPS Ubuntu | Español](https://youtube.com/playlist?list=PLxm9hnvxnn-hFNSoNrWM0LalFnSv5oMas "Curso de Deploy de un Proyecto Django en un VPS Ubuntu | Español")
-- [Curso de Python con Django Avanzado I | Español](https://www.youtube.com/playlist?list=PLxm9hnvxnn-gvB0h0sEWjAf74ge4tkTOO "Curso de Python con Django Avanzado I | Español")
-- [Curso de Python con Django Avanzado II | Español](https://www.youtube.com/playlist?list=PLxm9hnvxnn-jL7Fqr-GL2iSPfgJ99BhEC "Curso de Python con Django Avanzado II | Español")
+Una plataforma web para gestionar comprobantes electrónicos, clientes, productos, compras, ventas, cobros y pagos. Permite trabajar con varias empresas mediante un selector, roles por empresa y aislamiento de datos.
 
-# Instaladores
+Este repositorio contiene la aplicación Django, la landing comercial, pruebas, recursos de marca y documentación de desarrollo. **El contenido de una rama puede incluir propuestas aún no publicadas**: consulta [HANDOFF.md](entregas/facturaporaqui/HANDOFF.md) para conocer lo que está en producción.
 
-| Nombre                   | Instalador                                                                                                                                                                                                                                           |
-|:-------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| 
-| `Compilador`             | [Python3](https://www.python.org/downloads/release/python-396/ "Python3")                                                                                                                                                                            |
-| `IDE de programación`    | [Visual Studio Code](https://code.visualstudio.com/ "Visual Studio Code"), [Sublime Text](https://www.sublimetext.com/ "Sublime Text"), [Pycharm](https://www.jetbrains.com/es-es/pycharm/download/#section=windows "Pycharm")                       |
-| `Motor de base de datos` | [Sqlite Studio](https://github.com/pawelsalawa/sqlitestudio/releases "Sqlite Studio"), [PostgreSQL](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads "PostgreSQL"), [MySQL](https://www.apachefriends.org/es/index.html "MySQL") |
+## Funciones disponibles
 
-# Pasos de instalación
+| Área | Alcance |
+| --- | --- |
+| Comprobantes electrónicos | Facturas, notas de crédito, notas de débito, retenciones, liquidaciones de compra y guías de remisión. |
+| Configuración de facturación | Asistente para configurar establecimientos, puntos de emisión y numeración. |
+| Gestión comercial | Clientes, proveedores, productos, compras, ventas, inventario, cuentas por cobrar y por pagar. |
+| Multiempresa | Empresas separadas, membresías, roles y selector de empresa activa. |
+| Importación | Recepción y revisión de XML/RIDE; incluida en Ilimitado y Multiempresa. |
+| Suscripciones | Planes anuales y pagos mediante PayPhone. |
+| Documentos imprimibles | RIDE A4 y ticket térmico; consulta el estado de cada actualización visual en HANDOFF. |
 
-##### 1) Descomprimir el proyecto en una carpeta de tu sistema operativo
+## Planes anuales
 
-##### 2) Instalar Java en su computador, esto es importante para poder firmar los comprobantes con la firma electrónica
+Precios en dólares de Estados Unidos, **IVA incluido**.
 
-Para windows:
+| Plan | Precio anual | Empresas | Comprobantes | Importación XML/RIDE |
+| --- | ---: | --- | --- | --- |
+| Plan 1000 | $50 | 1 RUC | Hasta 1000 por año | No incluida |
+| Ilimitado | $85 | 1 RUC | Ilimitados | Incluida |
+| Multiempresa | $199 | Hasta 10 RUC distintos | Ilimitados | Incluida |
 
-```bash
-https://www.java.com/es/download/
+La mejora de Plan 1000 a Ilimitado cuesta **$35** y conserva el vencimiento del período actual: no inicia una nueva anualidad.
+
+### Próximamente
+
+- **Proformas**, incluidas en todos los planes pagados: cotizaciones en PDF y por correo, sin envío al SRI ni consumo del cupo; conversión a factura para revisión.
+- **Complemento Contable**, con contratación aparte y **precio por anunciar**: bancos y caja, importación de extractos, conciliación, plan de cuentas, asientos, kardex, libros, balances y estados financieros.
+- **Herramientas tributarias** del complemento: preparación de hojas del 104 y del 103, generación de XML del ATS y las etapas de apoyo al 101, ADI y pago a cuenta previstas en el plan.
+
+El contribuyente revisa y presenta su información en **SRI en Línea**. Estas herramientas no se presentan como declaraciones automáticas ni como software homologado o certificado por el SRI.
+
+Consulta el [plan de Proformas, Bancos y Contabilidad](entregas/facturaporaqui/PLAN-PROFORMAS-BANCOS-CONTABILIDAD.md) y las [maquetas de la fase contable](entregas/facturaporaqui/propuestas/fase-contable/README.md). Son propuestas hasta que se confirme su implementación y publicación.
+
+## Tecnología
+
+- **Backend:** Python 3.12 y Django 5.2.
+- **Base de datos:** PostgreSQL en el entorno multiempresa; SQLite para pruebas locales compatibles.
+- **Interfaz:** plantillas Django, AdminLTE 3.2, Bootstrap 4.6, JavaScript y Chart.js.
+- **Documentos:** XML y PDF, con WeasyPrint para impresión.
+- **Infraestructura:** scripts de despliegue, servicios y temporizadores systemd; aplicación y landing en dominios separados.
+
+Las bibliotecas de la app se sirven desde `static/lib`. Su inventario se encuentra en [MANIFIESTO.json](static/lib/MANIFIESTO.json); consulta también [DEPENDENCIAS-FRONTEND.md](entregas/facturaporaqui/DEPENDENCIAS-FRONTEND.md).
+
+## Organización del repositorio
+
+```text
+core/                         Aplicaciones Django y lógica del negocio
+config/                       Configuración y rutas del proyecto
+templates/                    Plantillas compartidas y estilos/pie del RIDE
+static/                       Tema, JavaScript, marca y bibliotecas locales
+landing/                      Sitio comercial independiente
+requirements/                 Dependencias fijadas con hashes
+tests/                        Pruebas automatizadas
+deploy/                       Herramientas de operación y despliegue
+entregas/facturaporaqui/       Coordinación, informes, capturas y propuestas
 ```
 
-Para linux:
+### Ramas y coordinación
+
+- **`plataforma`**: desarrollo del backend e integración a cargo de Claude.
+- **`frontend/etapa3`**: diseño de la aplicación, marca y propuesta comercial a cargo de Codex.
+- **`main`**: conserva la base histórica; no asumir que contiene la última versión operativa.
+
+Antes de trabajar, leer [AGENTS.md](entregas/facturaporaqui/AGENTS.md) y [HANDOFF.md](entregas/facturaporaqui/HANDOFF.md). Integrar los cambios compartidos sin reescribir el historial y registrar cada entrega. Las propuestas de `entregas/` no son módulos desplegados.
+
+## Preparar un entorno de pruebas
+
+Se necesita acceso al repositorio privado, Python 3.12 y las bibliotecas de sistema requeridas por [WeasyPrint](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html). Para validar PostgreSQL se requiere además una base dedicada a pruebas.
 
 ```bash
-https://www.digitalocean.com/community/tutorials/how-to-install-java-with-apt-on-ubuntu-20-04-es
+git clone --branch frontend/etapa3 https://github.com/Jen456/invoice15.git
+cd invoice15
+python3.12 -m venv .venv
 ```
 
-##### 3) Crear un entorno virtual para posteriormente instalar las librerias del proyecto
-
-Para windows:
+Activar el entorno en Linux/macOS:
 
 ```bash
-python3 -m venv venv 
+source .venv/bin/activate
 ```
 
-Para linux:
+En PowerShell, después de crear el entorno con Python 3.12:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Instalar las dependencias de aplicación y pruebas:
 
 ```bash
-virtualenv venv -ppython3 
+python -m pip install --require-hashes -r requirements/base.txt -r requirements/dev.txt
 ```
 
-##### 4) Instalar el complemento de [weasyprint](https://weasyprint.org/ "weasyprint")
-
-Si estas usando Windows debe descargar el complemento de [GTK3 installer](https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases "GTK3 installer"). En algunas ocaciones se debe colocar en las variables de entorno como primera para que funcione y se debe reiniciar el computador.
-
-Si estas usando Linux debes instalar las [librerias](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#linux "librerias") correspondientes a la distribución que tenga instalado en su computador.
-
-##### 5) Activar el entorno virtual de nuestro proyecto
-
-Para windows:
+Ejecutar la suite local:
 
 ```bash
-cd venv\Scripts\activate.bat 
+python -m pytest
 ```
 
-Para Linux:
+`pytest.ini` selecciona `config.settings_test`: utiliza SQLite en memoria y correo en memoria. Las pruebas específicas de concurrencia y aislamiento por filas requieren PostgreSQL mediante `FPA_TEST_DATABASE_URL`, apuntando exclusivamente a una base de pruebas. Un resultado en SQLite no sustituye esas verificaciones.
+
+Para una revisión acotada de recursos y rutas:
 
 ```bash
-source venv/bin/active
+python -m pytest tests/test_estaticos.py tests/test_rutas.py
 ```
 
-##### 6) Instalar todas las librerias del proyecto que se encuentran en la carpeta deploy
+Estos pasos preparan **pruebas**, no un servidor de producción. La puesta en marcha de una instancia requiere su configuración de entorno, base de datos y almacenamiento privado. No crear migraciones como paso de instalación ni utilizar usuarios o contraseñas predeterminados.
+
+### Ver la landing y las maquetas
+
+Desde la raíz del repositorio:
 
 ```bash
-pip install -r deploy/txt/requirements.txt
+python -m http.server 8031 --bind 127.0.0.1
 ```
 
-##### 7) Crear la tablas de la base de datos a partir de las migraciones
+- Landing: <http://localhost:8031/landing/>
+- Maquetas contables: <http://localhost:8031/entregas/facturaporaqui/propuestas/fase-contable/>
 
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
+Las maquetas usan datos ficticios. El formulario de contacto de la landing sigue siendo demostrativo mientras no se configure e integre un destino real; no implica captación persistente de solicitudes.
 
-##### 8) Insertar datos en las entidades de los modulos de seguridad y usuario del sistema
+## Documentación y marca
 
-```bash
-python manage.py start_installation
-```
+- [Estado, contratos y pendientes entre agentes](entregas/facturaporaqui/HANDOFF.md).
+- [Resultados y verificaciones del frontend](entregas/facturaporaqui/RESULTADOS-FRONTEND.md).
+- [Importación de comprobantes](entregas/facturaporaqui/IMPORTACION-COMPROBANTES.md).
+- [Plan de la fase contable](entregas/facturaporaqui/PLAN-PROFORMAS-BANCOS-CONTABILIDAD.md).
+- [Investigación normativa y puntos por confirmar](entregas/facturaporaqui/NORMA-CONTABLE-TRIBUTARIA-2026-10.md).
+- [Propuesta RIDE A4](entregas/facturaporaqui/propuestas/ride-b/README.md) y [ticket térmico](entregas/facturaporaqui/propuestas/ticket-b/README.md).
+- [Material comercial de la fase contable](entregas/facturaporaqui/redes/fase-contable/README.md).
 
-##### 9) Insertar datos iniciales de categorías, productos, clientes, compras y ventas (Paso opcional)
+La identidad utiliza el **colibrí Ingenioso**, coral `#CA462C`, celeste `#44BADD`, azul claro `#E5F1F6` y azul oscuro `#163B50`. Se priorizan lectura, contraste, foco visible, adaptación móvil y movimiento reducido.
 
-```bash
-python manage.py insert_test_data
-```
+## Publicación y contribuciones
 
-##### 10) Iniciar el servidor del proyecto
+Los procedimientos se mantienen en [desplegar.sh](deploy/scripts/desplegar.sh) y [publicar-landing.sh](deploy/scripts/publicar-landing.sh). La publicación requiere revisión, autorización de la propietaria, respaldo y verificación posterior. Un push a GitHub no equivale a un despliegue.
 
-```bash
-python manage.py runserver 
-```
+Trabajar con empresas y documentos ficticios. No incluir credenciales, claves privadas, firmas electrónicas ni datos de clientes en commits, documentación o capturas. Los cambios fiscales y de datos deben coordinarse con el responsable del backend.
 
-Si deseas verlo en toda tu red puedes ejecutarlo asi:
-
-```bash
-python manage.py runserver 0:8000 o python manage.py runserver 0.0.0.0:8000
-```
-
-##### 11) Iniciar sesión en el sistema (Puede cambiar la clave y usuario que se crea en el archivo core/management/commands/start_installation.py del paso 8)
-
-```bash
-username: admin
-password: hacker94
-```
-
-#### Si estas usando Linux, puedes ejecutar el bash de instalación que hara todos los pasos de instalación
-
-```bash
-bash deploy/sh/install.sh
-```
-
-# Pasos para la creación del cron de envió de comprobantes electrónicos
-
-##### 1) Tener instalado cron en tu servidor de linux
-
-```bash
-sudo apt install cron
-```
-
-##### 2) Crear una nueva tarea en tu cron
-
-```bash
-crontab -e
-```
-
-##### 3) Crear la tarea de envio de correos en el cron, la palabra user hace referencia al usuario de tu server
-
-```bash
-*/1 * * * * bash /home/user/invoice/deploy/sh/electronic_billing.sh
-```
-
-##### 4) Reiniciar el servicio del cron en el servidor
-
-```bash
-sudo /etc/init.d/cron restart
-```
-
-------------
-
-# Gracias por adquirir mi producto ✅🙏
-
-#### Esto me sirve mucho para seguir produciendo mi contenido 🤗​
-
-### ¡Apóyame! para seguir haciéndolo siempre 😊👏
-
-Paso la mayor parte de mi tiempo creando contenido y ayudando a futuros programadores sobre el desarrollo web con tecnología open source.
-
-🤗💪¡Muchas Gracias!💪🤗
-
-**Puedes apoyarme de la siguiente manera.**
-
-**Suscribiéndote**
-https://www.youtube.com/c/AlgoriSoft?sub_confirmation=1
-
-**Siguiendo**
-https://www.facebook.com/algorisoft
-
-**Donando por PayPal**
-williamjair94@hotmail.com
-
-***AlgoriSoft te desea lo mejor en tu aprendizaje y crecimiento profesional como programador 🤓.***
-
+Este proyecto evolucionó a partir de Sistema Invoice de AlgoriSoft. Se reconoce ese origen; la marca y las adaptaciones actuales corresponden a FacturaPorAquí. La disponibilidad del repositorio no concede por sí sola una licencia de redistribución: revisar los términos aplicables al proyecto original y a sus dependencias.
