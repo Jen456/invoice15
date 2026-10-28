@@ -2,6 +2,7 @@
 auditoría y sin tocar líneas, stock, subtotal ni la cuenta por pagar salvo decisión explícita (ajustar_cxp), y la orden
 compras_incompletas solo completa desde un XML vinculado y verificado, con decisión escrita. Datos ficticios."""
 import csv
+import json
 from datetime import timedelta
 from decimal import Decimal
 from io import StringIO
@@ -288,3 +289,98 @@ class TestOrdenComprasIncompletas:
         acciones = {int(f['compra']): f['accion'] for f in csv.DictReader(open(tmp_path / 'c.csv', encoding='utf-8'))}
         assert acciones[escenario['cuadra'].pk] == 'conflicto: difiere del XML estab'
         assert ayuda.en(empresa, lambda: Purchase.objects.get(pk=escenario['cuadra'].pk).total) is None
+
+
+# ---------------------------------------------------------------- pantallas (paso 2: §6.C y §6.I)
+
+def entrar(client, empresa, rol=ROLE_OWNER, usuario=None):
+    from tests import helpers
+    usuario = usuario or helpers.crear_usuario(f'usuario.antiguas.{rol}'.lower(), empresa, rol)
+    helpers.iniciar_sesion(client, usuario, empresa=empresa)
+    return usuario
+
+
+class TestPantallaCompletar:
+
+    def url(self, compra):
+        return f'/pos/purchase/complete/{compra.pk}/'
+
+    def test_revisar_muestra_los_cambios_y_completar_guarda_auditado(self, client, empresa, admin, antigua):
+        antes = foto(empresa, antigua)
+        entrar(client, empresa, usuario=admin)
+        respuesta = client.get(self.url(antigua))
+        assert respuesta.status_code == 200
+        form = respuesta.context['form']
+        assert 'base_gravada' in form.fields and 'ajustar_cxp' in form.fields and respuesta.context['bloqueados'] == []
+        assert respuesta.context['faltantes'][0]['codigo'] == 'importes' and respuesta.context['puede_ajustar_cxp'] is True
+        assert respuesta.context['cuenta_por_pagar']['base_calculo']['id'] == 'subtotal'
+        contenido = respuesta.content.decode()
+        assert 'Las líneas, el stock y el subtotal registrado no cambian.' in contenido
+        assert 'Cambia la deuda de $100.00 (sin IVA)' in contenido
+        datos = {**cabecera(), **IMPORTES}
+        respuesta = client.post(self.url(antigua), {**datos, 'action': 'revisar'})
+        resumen = respuesta.context['resumen']
+        assert respuesta.status_code == 200 and resumen['total'] == '112.00' and resumen['faltantes'] == []
+        assert {'campo': 'base_gravada', 'etiqueta': 'Base gravada', 'antes': None, 'despues': '80.00'} in resumen['cambios']
+        assert ayuda.en(empresa, lambda: Purchase.objects.get(pk=antigua.pk).total) is None
+        respuesta = client.post(self.url(antigua), {**datos, 'action': 'completar'})
+        assert respuesta.status_code == 302 and respuesta['Location'] == '/pos/purchase/'
+        with company_context(empresa):
+            compra = Purchase.objects.get(pk=antigua.pk)
+            assert not compra.datos_incompletos and compra.total == Decimal('112.00')
+        assert foto(empresa, antigua) == antes
+        registro = AuditLog.objects.get(action='purchase_complete', company=empresa)
+        assert registro.user_id == admin.pk and registro.detail['cambios']['total'] == [None, '112.00']
+
+    def test_confirmaciones_y_ajuste_de_la_cuenta(self, client, empresa, admin, antigua):
+        entrar(client, empresa, usuario=admin)
+        distintos = {**cabecera(), **IMPORTES, 'base_0': '30.00'}      # 110,00 sin impuestos frente a 100,00 registrados
+        respuesta = client.post(self.url(antigua), {**distintos, 'action': 'completar'})
+        assert respuesta.status_code == 200
+        assert any('$110.00' in e for e in respuesta.context['form'].non_field_errors())
+        assert respuesta.context['confirmaciones_visibles'] == ['confirmar_diferencia']
+        respuesta = client.post(self.url(antigua), {**distintos, 'action': 'revisar'})
+        assert respuesta.context['resumen']['confirmaciones'] == ['confirmar_diferencia']
+        assert '$110.00' in respuesta.context['textos_confirmacion']['confirmar_diferencia']
+        respuesta = client.post(self.url(antigua), {**distintos, 'confirmar_diferencia': 'on', 'ajustar_cxp': 'on',
+                                                    'action': 'completar'})
+        assert respuesta.status_code == 302
+        with company_context(empresa):
+            deuda = DebtsPay.objects.get(purchase=antigua)
+            assert (deuda.debt, deuda.saldo, deuda.base_calculo) == (Decimal('122.00'), Decimal('122.00'), 'total')
+        registro = AuditLog.objects.get(action='purchase_debt_adjust', company=empresa)
+        assert (registro.detail['deuda_antes'], registro.detail['deuda_despues']) == ('100.00', '122.00')
+
+    def test_compra_nueva_sin_importes_y_numeracion_del_xml_bloqueada(self, client, empresa, admin, proveedor):
+        with company_context(empresa):
+            compra = compras.crear_compra(empresa, admin, ayuda.datos_compra(proveedor, secuencial='400', cod_sustento='02'),
+                                          [ayuda.linea_gasto(price='10.00')], origen='importacion')
+        entrar(client, empresa, usuario=admin)
+        respuesta = client.get(self.url(compra))
+        form = respuesta.context['form']
+        assert 'base_gravada' not in form.fields and 'ajustar_cxp' not in form.fields
+        assert respuesta.context['bloqueados'] == list(compras.CAMPOS_NUMERACION)
+        assert form.fields['secuencial'].disabled and not form.fields['cod_sustento'].disabled
+        assert 'vienen del XML autorizado' in respuesta.content.decode()
+        datos = {**cabecera(secuencial='999', cod_sustento='06'), 'action': 'completar'}
+        respuesta = client.post(self.url(compra), datos)
+        assert respuesta.status_code == 302
+        with company_context(empresa):
+            compra.refresh_from_db()
+            assert (compra.secuencial, compra.cod_sustento) == ('000000400', '06')
+
+    @pytest.mark.parametrize('rol, permitido', [(ROLE_ADMIN, True), (ROLE_ACCOUNTANT, False), (ROLE_READONLY, False),
+                                                (ROLE_SELLER, False)])
+    def test_solo_propietario_y_administrador_entran(self, client, empresa, antigua, rol, permitido):
+        entrar(client, empresa, rol=rol)
+        respuesta = client.get(self.url(antigua))
+        assert respuesta.status_code == (200 if permitido else 302)
+        if not permitido:
+            respuesta = client.post(self.url(antigua), {**cabecera(), 'action': 'completar'})
+            assert respuesta.status_code == 403
+            assert ayuda.en(empresa, lambda: Purchase.objects.get(pk=antigua.pk).cod_sustento) == ''
+
+    def test_compra_de_otra_empresa_no_existe(self, client, empresa, admin, empresa_b):
+        ajena = ayuda.compra_antigua(empresa_b, ayuda.crear_proveedor(empresa_b), '10.00')
+        entrar(client, empresa, usuario=admin)
+        assert client.get(self.url(ajena)).status_code == 404

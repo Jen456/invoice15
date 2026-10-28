@@ -486,3 +486,209 @@ class TestJson:
         assert item['total_iva'] is None and item['numero_comprobante'] == antigua.number and item['clase'] == 'inventario'
         assert item['faltantes'][0]['codigo'] == 'importes'
         assert linea['codigo_porcentaje'] == '' and linea['nombre_tarifa'] == '—' and linea['total'] is None
+
+
+# ---------------------------------------------------------------- pantallas (paso 2: §4 y §6.A–§6.B)
+
+def entrar(client, empresa, rol=None, usuario=None):
+    from core.tenancy.models import ROLE_OWNER
+    usuario = usuario or helpers.crear_usuario(f'usuario.compras.{rol or "dueno"}'.lower().replace(' ', '.'), empresa,
+                                               rol or ROLE_OWNER)
+    helpers.iniciar_sesion(client, usuario, empresa=empresa)
+    return usuario
+
+
+def post_json(client, url, datos):
+    respuesta = client.post(url, datos)
+    return respuesta.status_code, json.loads(respuesta.content)
+
+
+def formulario(datos, lineas, accion='add', **extra):
+    return {**{k: v for k, v in datos.items() if v is not None}, 'action': accion, 'lineas': json.dumps(lineas), **extra}
+
+
+class TestPantallaNuevaCompra:
+    URL = '/pos/purchase/add/'
+
+    def test_formulario_sin_valores_de_oficio(self, client, empresa, admin):
+        entrar(client, empresa, usuario=admin)
+        respuesta = client.get(self.URL)
+        assert respuesta.status_code == 200
+        form = respuesta.context['form']
+        assert type(form).__name__ == 'CompraForm' and respuesta.context['tipo_inicial'] == 'inventario'
+        assert form['forma_pago'].value() in (None, '') and form['cod_sustento'].value() in (None, '')
+        assert form['parte_relacionada'].value() in (None, '') and form['modo_comprobante'].value() == 'si'
+        opciones = respuesta.context['opciones']
+        assert [t['codigo'] for t in opciones['tarifas']] == ['4', '5', '0', '6', '7', '2', '8']
+        assert next(t for t in opciones['tarifas'] if t['codigo'] == '8')['tarifa_variable'] is True
+        contenido = respuesta.content.decode()
+        assert 'id="fp-compra-opciones"' in contenido and 'validate_purchase' not in contenido
+        assert '03' not in [c[0] for c in form.fields['tipo_comprobante'].choices]
+
+    def test_calcular_y_registrar_por_la_vista(self, client, empresa, admin, proveedor, producto):
+        entrar(client, empresa, usuario=admin)
+        datos = ayuda.datos_compra(proveedor, secuencial='77', payment_type='credito',
+                                   end_credit=(hoy() + timedelta(days=30)).isoformat())
+        lineas = [ayuda.linea_producto(producto, cant=2, price='10.00'), ayuda.linea_gasto('Flete', price='5.00', codigo='0')]
+        estado, resumen = post_json(client, self.URL, formulario(datos, lineas, 'calcular'))
+        assert estado == 200 and 'error' not in resumen, resumen
+        assert (resumen['base_gravada'], resumen['base_0'], resumen['total_iva'], resumen['total']) == (
+            '20.00', '5.00', '3.00', '28.00')
+        assert [g['nombre'] for g in resumen['por_tarifa']] == ['15 %', '0 %'] and resumen['faltantes'] == []
+        assert ayuda.en(empresa, Purchase.objects.count) == 0
+        estado, data = post_json(client, self.URL, formulario(datos, lineas))
+        assert estado == 200 and 'error' not in data, data
+        with company_context(empresa):
+            compra = Purchase.objects.get(pk=data['id'])
+            assert (compra.version_datos, compra.datos_incompletos, compra.total) == (2, False, Decimal('28.00'))
+            assert DebtsPay.objects.get(purchase=compra).base_calculo == 'total'
+            assert Product.objects.get(pk=producto.pk).stock == 102
+
+    def test_confirmacion_pendiente_devuelve_su_codigo(self, client, empresa, admin, proveedor):
+        entrar(client, empresa, usuario=admin)
+        datos = ayuda.datos_compra(proveedor, iva_factura='14.00')
+        lineas = [ayuda.linea_gasto(price='100.00')]
+        estado, data = post_json(client, self.URL, formulario(datos, lineas))
+        assert estado == 200 and data['confirmacion'] == 'confirmar_iva' and '$1.00' in data['error']
+        estado, data = post_json(client, self.URL, formulario(datos, lineas, confirmar_iva='on'))
+        assert 'error' not in data and ayuda.en(empresa, lambda: Purchase.objects.get(pk=data['id']).total_iva) == Decimal('14.00')
+
+    def test_errores_de_formato_y_de_negocio(self, client, empresa, admin, proveedor):
+        entrar(client, empresa, usuario=admin)
+        _, data = post_json(client, self.URL, formulario(ayuda.datos_compra(proveedor, fecha_emision='2026-13-45'), []))
+        assert data['error'].startswith('Fecha de emisión del comprobante:')
+        _, data = post_json(client, self.URL, {**formulario(ayuda.datos_compra(proveedor), []), 'lineas': '{x'})
+        assert data['error'] == 'Las líneas de la compra no tienen un formato válido.'
+        _, data = post_json(client, self.URL, formulario(ayuda.datos_compra(proveedor, forma_pago=''), [ayuda.linea_gasto()]))
+        assert data['error'] == 'Elige la forma de pago del comprobante (ATS).'
+
+    def test_validar_comprobante_y_xml_importado(self, client, empresa, admin, proveedor):
+        entrar(client, empresa, usuario=admin)
+        compra = crear(empresa, admin, ayuda.datos_compra(proveedor, secuencial='55'), [ayuda.linea_gasto()])
+        consulta = {'action': 'validate_comprobante', 'provider': proveedor.pk, 'tipo_comprobante': '01', 'estab': '001',
+                    'pto_emi': '002', 'secuencial': '55'}
+        _, data = post_json(client, self.URL, consulta)
+        assert (data['valid'], data['compra_id'], data['documento_importado']) == (False, compra.pk, None)
+        with company_context(empresa):
+            documento = DocumentoImportado.objects.create(
+                importado_por=admin, origen='xml', clave_acceso=fabricas_sri.clave(secuencial='000000056'), cod_doc='01',
+                ambiente=2, estab='001', pto_emi='002', secuencial='000000056', numero='001-002-000000056', emisor_ruc=RUC,
+                clasificacion='recibido')
+        _, data = post_json(client, self.URL, {**consulta, 'secuencial': '56'})
+        assert data['valid'] is True and data['documento_importado'] == {'id': documento.pk,
+                                                                         'url': f'/importacion/documentos/{documento.pk}/'}
+        _, data = post_json(client, self.URL, {**consulta, 'secuencial': '57'})
+        assert data == {'valid': True, 'compra_id': None, 'mensaje': '', 'documento_importado': None}
+
+    def test_busquedas_de_tipo_de_gasto_y_compra_modificada(self, client, empresa, admin, proveedor):
+        entrar(client, empresa, usuario=admin)
+        tipo = ayuda.crear_tipo_gasto(empresa, 'SERVICIOS BÁSICOS', cod_sustento='02')
+        factura = crear(empresa, admin, ayuda.datos_compra(proveedor, secuencial='90'), [ayuda.linea_gasto()])
+        _, data = post_json(client, self.URL, {'action': 'search_type_expense', 'term': 'servicios'})
+        assert data == [{'id': tipo.pk, 'text': 'SERVICIOS BÁSICOS', 'cod_sustento': '02'}]
+        _, data = post_json(client, self.URL, {'action': 'search_compra_modificada', 'provider': proveedor.pk, 'term': '90'})
+        assert [d['id'] for d in data] == [factura.pk] and '001-002-000000090' in data[0]['text']
+        otro = ayuda.crear_proveedor(empresa, tipo='04')
+        _, data = post_json(client, self.URL, {'action': 'search_compra_modificada', 'provider': otro.pk, 'term': ''})
+        assert data == []
+
+    @pytest.mark.parametrize('rol', ['Vendedor', 'Consulta', 'Contador'])
+    def test_sin_permiso_de_registrar(self, client, empresa, proveedor, rol):
+        from core.tenancy.models import ROLE_ACCOUNTANT, ROLE_READONLY, ROLE_SELLER
+        rol = {'Vendedor': ROLE_SELLER, 'Consulta': ROLE_READONLY, 'Contador': ROLE_ACCOUNTANT}[rol]
+        entrar(client, empresa, rol=rol)
+        estado, data = post_json(client, self.URL, formulario(ayuda.datos_compra(proveedor), [ayuda.linea_gasto()]))
+        assert estado == 403 and 'error' in data
+        assert client.get(self.URL).status_code == 302
+        assert ayuda.en(empresa, Purchase.objects.count) == 0
+
+
+class TestPantallaListado:
+    URL = '/pos/purchase/'
+
+    @pytest.fixture
+    def escenario(self, empresa, admin, proveedor, producto):
+        factura = crear(empresa, admin, ayuda.datos_compra(proveedor, secuencial='10', payment_type='credito',
+                                                           end_credit=(hoy() + timedelta(days=30)).isoformat()),
+                        [ayuda.linea_gasto(price='100.00', codigo='0')])
+        nota = crear(empresa, admin, ayuda.datos_compra(
+            proveedor, secuencial='11', tipo_comprobante='04', tipo_doc_modificado='01', num_doc_modificado='001002000000010',
+            aut_doc_modificado='1234567890', fecha_doc_modificado=factura.fecha_emision.isoformat(), compra_modificada=factura.pk),
+            [ayuda.linea_gasto(price='20.00', codigo='0')])
+        antigua = ayuda.compra_antigua(empresa, proveedor, '30.00', producto=producto, cantidad=3)
+        despues = crear(empresa, admin, ayuda.datos_compra(proveedor, modo_comprobante='despues', tipo_comprobante='',
+                                                           secuencial='', autorizacion='', fecha_emision='', forma_pago=''),
+                        [ayuda.linea_gasto(price='7.00', codigo='0')])
+        return factura, nota, antigua, despues
+
+    def buscar(self, client, **filtros):
+        _, data = post_json(client, self.URL, {'action': 'search', 'start_date': '', 'end_date': '', **filtros})
+        return data
+
+    def test_filtros_por_fecha_de_emision_e_incompletas(self, client, empresa, admin, escenario):
+        factura, nota, antigua, despues = escenario
+        entrar(client, empresa, usuario=admin)
+        assert sorted(c['id'] for c in self.buscar(client)) == sorted(c.pk for c in escenario)
+        assert sorted(c['id'] for c in self.buscar(client, fecha='emision')) == sorted([factura.pk, nota.pk])
+        assert sorted(c['id'] for c in self.buscar(client, incompletas='1')) == sorted([antigua.pk, despues.pk])
+        hace_diez = (hoy() - timedelta(days=10)).isoformat()
+        assert [c['id'] for c in self.buscar(client, start_date=hace_diez, end_date=hace_diez)] == [antigua.pk]
+        fila = next(c for c in self.buscar(client) if c['id'] == antigua.pk)
+        assert (fila['version_datos'], fila['datos_incompletos'], fila['total']) == (1, True, None)
+        assert 'faltantes' not in fila
+
+    def test_totales_las_notas_restan_y_las_incompletas_aparte(self, client, empresa, admin, escenario):
+        entrar(client, empresa, usuario=admin)
+        _, data = post_json(client, self.URL, {'action': 'totales', 'start_date': '', 'end_date': ''})
+        assert data == {'completas': {'cantidad': 2, 'total': '80.00'}, 'incompletas': {'cantidad': 2, 'subtotal': '37.00'}}
+
+    def test_detalle_de_una_compra(self, client, empresa, admin, escenario):
+        factura, nota, antigua, despues = escenario
+        entrar(client, empresa, usuario=admin)
+        _, data = post_json(client, self.URL, {'action': 'detalle', 'id': factura.pk})
+        assert data['compra']['faltantes'] == [] and data['compra']['clase'] == 'gasto'
+        assert data['cuenta_por_pagar']['base_calculo']['id'] == 'total' and data['cuenta_por_pagar']['saldo'] == '80.00'
+        assert data['cuenta_por_pagar']['abonos'][0]['tipo'] == 'nota_credito' and data['cuenta_por_pagar']['abonos'][0]['valor'] == '20.00'
+        assert data['por_tarifa'] == [{'codigo': '0', 'nombre': '0 %', 'tarifa': '0.00', 'base': '100.00', 'valor': '0.00'}]
+        assert (data['retencion'], data['liquidacion'], data['documento_importado']) == (None, None, None)
+        _, data = post_json(client, self.URL, {'action': 'detalle', 'id': antigua.pk})
+        assert data['compra']['faltantes'][0]['codigo'] == 'importes' and data['cuenta_por_pagar'] is None
+        assert data['por_tarifa'][0]['valor'] is None and data['lineas'][0]['total'] is None
+        _, data = post_json(client, self.URL, {'action': 'detalle', 'id': 999999})
+        assert data == {'error': 'La compra no existe.'}
+
+    def test_contexto_por_permisos_y_texto_sin_interpretar(self, client, empresa, admin):
+        from core.tenancy.models import ROLE_ACCOUNTANT
+        proveedor = ayuda.crear_proveedor(empresa, tipo='04', nombre=XSS)
+        crear(empresa, admin, ayuda.datos_compra(proveedor), [ayuda.linea_gasto(XSS, price='10.00')])
+        entrar(client, empresa, usuario=admin)
+        contexto = client.get(self.URL).context
+        assert (contexto['puede_crear'], contexto['puede_completar'], contexto['puede_eliminar']) == (True, True, True)
+        assert contexto['url_gasto'] == '/pos/purchase/add/?tipo=gasto'
+        respuesta = client.post(self.URL, {'action': 'search', 'start_date': '', 'end_date': ''})
+        assert json.loads(respuesta.content)[0]['provider']['name'] == XSS
+        client.logout()
+        entrar(client, empresa, rol=ROLE_ACCOUNTANT)
+        contexto = client.get(self.URL).context
+        assert (contexto['puede_crear'], contexto['puede_completar'], contexto['puede_eliminar']) == (False, False, False)
+
+
+class TestPantallaEliminar:
+
+    def test_eliminar_por_la_vista_audita_y_rechaza_con_pagos(self, client, empresa, admin, proveedor, producto):
+        credito = {'payment_type': 'credito', 'end_credit': (hoy() + timedelta(days=30)).isoformat()}
+        compra = crear(empresa, admin, ayuda.datos_compra(proveedor, secuencial='31', **credito),
+                       [ayuda.linea_producto(producto, cant=2)])
+        con_pago = crear(empresa, admin, ayuda.datos_compra(proveedor, secuencial='32', **credito), [ayuda.linea_gasto()])
+        with company_context(empresa):
+            cuentas_por_pagar.registrar_pago(DebtsPay.objects.get(purchase=con_pago).pk, admin, fecha=hoy(), valor='1.00',
+                                             medio_pago='efectivo')
+        entrar(client, empresa, usuario=admin)
+        _, data = post_json(client, f'/pos/purchase/delete/{con_pago.pk}/', {})
+        assert data == {'error': 'Tiene pagos registrados: elimínalos primero en Cuentas por pagar.'}
+        _, data = post_json(client, f'/pos/purchase/delete/{compra.pk}/', {})
+        assert data == {}
+        with company_context(empresa):
+            assert not Purchase.objects.filter(pk=compra.pk).exists() and Product.objects.get(pk=producto.pk).stock == 100
+        registro = AuditLog.objects.get(action='purchase_delete', company=empresa)
+        assert registro.detail['compra'] == compra.pk and registro.user_id == admin.pk

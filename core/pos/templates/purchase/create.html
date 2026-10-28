@@ -6,173 +6,281 @@
     <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
     <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}">
     <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
-    <link rel="stylesheet" href="{% static 'lib/bootstrap-touchspin-4.2.5/css/jquery.bootstrap-touchspin.css' %}"/>
-    <script src="{% static 'lib/bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js' %}"></script>
     <script src="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js' %}"></script>
     <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
     <script src="{% static 'purchase/js/form.js' %}"></script>
 {% endblock %}
 
 {% block form_fields %}
-    <div class="row">
-        <div class="col-lg-2">
-            <div class="form-group">
-                <label>{{ form.number.label }}:</label>
-                {{ form.number }}
-            </div>
+    {{ opciones|json_script:"fp-compra-opciones" }}
+    {{ tipo_inicial|json_script:"fp-compra-tipo-inicial" }}
+    {{ sustento_gasto_sugerido|json_script:"fp-compra-sustento-sugerido" }}
+    {% if tipo_inicial == 'gasto' %}
+        <div class="alert alert-info" role="status">
+            Compra de gasto: registra la factura con líneas de gasto (sin producto). Sustenta el IVA y el ATS; no mueve stock.
         </div>
-        <div class="col-lg-2">
-            <div class="form-group">
-                <label>{{ form.date_joined.label }}:</label>
-                {{ form.date_joined }}
-            </div>
-        </div>
-        <div class="col-lg-4">
-            <div class="form-group">
-                <label>{{ form.provider.label }}:</label>
-                <div class="input-group input-group-search">
-                    {{ form.provider }}
-                    <div class="input-group-append">
-                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-tasks"></i>
-                        </button>
-                        <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
-                            <a class="dropdown-item btnAddProvider">
+    {% endif %}
+
+    <section class="mb-3 fp-compra-seccion" aria-labelledby="fp-compra-registro">
+        <h2 class="h6 font-weight-bold" id="fp-compra-registro">1. Proveedor y registro</h2>
+        <div class="row">
+            <div class="col-lg-5">
+                <div class="form-group">
+                    <label for="{{ form.provider.id_for_label }}">{{ form.provider.label }}:</label>
+                    <div class="input-group input-group-search">
+                        {{ form.provider }}
+                        <div class="input-group-append">
+                            <button class="btn btn-primary btnAddProvider" type="button" title="Crear proveedor">
                                 <i class="fas fa-plus"></i> Crear proveedor
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </div>
+                <div class="alert alert-warning d-none" id="fp-proveedor-aviso" role="status"></div>
             </div>
-        </div>
-        <div class="col-lg-2">
-            <div class="form-group">
-                <label>{{ form.payment_type.label }}:</label>
-                {{ form.payment_type }}
+            <div class="col-lg-2">
+                <div class="form-group">
+                    <label for="date_joined">{{ form.date_joined.label }}:</label>
+                    {{ form.date_joined }}
+                </div>
             </div>
-        </div>
-        <div class="col-lg-2">
-            <div class="form-group">
-                <label>{{ form.end_credit.label }}:</label>
-                {{ form.end_credit }}
+            <div class="col-lg-2">
+                <div class="form-group">
+                    <label for="{{ form.payment_type.id_for_label }}">{{ form.payment_type.label }}:</label>
+                    {{ form.payment_type }}
+                </div>
             </div>
-        </div>
-    </div>
-    <hr>
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="form-group">
-                <label>Búsqueda de productos:</label>
-                <div class="input-group input-group-search">
-                    <input type="text" class="form-control" autocomplete="off" name="search_product" placeholder="Ingrese el nombre de un producto">
-                    <div class="input-group-append">
-                        <button class="btn btn-primary dropdown-toggle" type="button"
-                                data-toggle="dropdown" aria-haspopup="true"
-                                aria-expanded="false"><i class="fas fa-tasks"></i>
-                        </button>
-                        <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
-                            <a class="dropdown-item btnSearchProducts"><i class="fas fa-search"></i>
-                                Buscar productos</a>
-                            <a class="dropdown-item btnClearProducts"><i class="fas fa-times"></i>
-                                Limpiar búsqueda</a>
-                            <a class="dropdown-item btnRemoveAllProducts"><i
-                                    class="fas fa-trash-alt"></i> Borrar todo</a>
-                        </div>
-                    </div>
+            <div class="col-lg-3" id="fp-plazo-credito">
+                <div class="form-group">
+                    <label for="end_credit">{{ form.end_credit.label }}:</label>
+                    {{ form.end_credit }}
                 </div>
             </div>
         </div>
-    </div>
-    <div class="row">
-        <div class="col-lg-12">
-            <table style="width:100%;" class="table table-bordered" id="tblProducts">
-                <thead>
-                <tr>
-                    <th style="width: 5%;">Eliminar</th>
-                    <th style="width: 10%;">Código</th>
-                    <th style="width: 40%;">Producto</th>
-                    <th style="width: 20%;">Cantidad</th>
-                    <th style="width: 15%;">P./Unitario</th>
-                    <th style="width: 10%;">Subtotal</th>
-                </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-    </div>
-{% endblock %}
+    </section>
 
-{% block content_form_before %}
-    <div id="myModalProvider" class="modal fade" role="dialog">
-        <form class="form" id="frmProvider" method="POST" autocomplete="off">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title font-weight-bold">
-                            <i class="fa fa-plus"></i> Nuevo registro de un proveedor
-                        </h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="container-fluid">
-                            {% for field in frmProvider.visible_fields %}
-                                <div class="form-group">
-                                    <label>{{ field.label }}:</label>
-                                    {{ field|add_class:'form-control' }}
-                                </div>
-                            {% endfor %}
+    <section class="mb-3 fp-compra-seccion" aria-labelledby="fp-compra-comprobante">
+        <h2 class="h6 font-weight-bold" id="fp-compra-comprobante">2. Comprobante del proveedor</h2>
+        <fieldset class="form-group">
+            <legend class="col-form-label pt-0">{{ form.modo_comprobante.label }}:</legend>
+            {% for opcion in form.modo_comprobante %}
+                <div class="form-check form-check-inline">
+                    {{ opcion.tag }}
+                    <label class="form-check-label" for="{{ opcion.id_for_label }}">{{ opcion.choice_label }}</label>
+                </div>
+            {% endfor %}
+        </fieldset>
+        <div class="alert alert-info d-none" id="fp-aviso-liquidacion" role="status">
+            La numeración la da la liquidación que emitirás desde Compras.
+        </div>
+        <div class="alert alert-warning d-none" id="fp-aviso-despues" role="status">
+            La compra quedará con datos incompletos.
+        </div>
+        <div class="row">
+            <div class="col-lg-4" id="fp-grupo-tipo">
+                <div class="form-group">
+                    <label for="{{ form.tipo_comprobante.id_for_label }}">{{ form.tipo_comprobante.label }}:</label>
+                    {{ form.tipo_comprobante }}
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="form-group">
+                    <label for="{{ form.cod_sustento.id_for_label }}">{{ form.cod_sustento.label }}:</label>
+                    {{ form.cod_sustento }}
+                    {% if tipo_inicial == 'gasto' %}
+                        <div class="small mt-1 fp-sugerencia" id="fp-sugerencia-sustento">
+                            Sugerencia: <strong>{{ sustento_gasto_sugerido }}</strong> — {{ nombre_sustento_sugerido }}.
+                            <button type="button" class="btn btn-link btn-sm p-0 align-baseline" id="fp-usar-sugerencia">Usar sugerencia</button>
+                            <br><span class="text-muted">01 da crédito tributario de IVA; 02 no. Confírmalo con tu contador.</span>
                         </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="row" id="fp-numeracion">
+            <div class="col-6 col-lg-1">
+                <div class="form-group">
+                    <label for="{{ form.estab.id_for_label }}">Estab.:</label>
+                    {{ form.estab|attr:"maxlength:3"|attr:"inputmode:numeric"|attr:"placeholder:001" }}
+                </div>
+            </div>
+            <div class="col-6 col-lg-1">
+                <div class="form-group">
+                    <label for="{{ form.pto_emi.id_for_label }}">Punto:</label>
+                    {{ form.pto_emi|attr:"maxlength:3"|attr:"inputmode:numeric"|attr:"placeholder:001" }}
+                </div>
+            </div>
+            <div class="col-lg-2">
+                <div class="form-group">
+                    <label for="{{ form.secuencial.id_for_label }}">{{ form.secuencial.label }}:</label>
+                    {{ form.secuencial|attr:"inputmode:numeric" }}
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="form-group">
+                    <label for="{{ form.autorizacion.id_for_label }}">{{ form.autorizacion.label }}:</label>
+                    {{ form.autorizacion|attr:"inputmode:numeric" }}
+                    <small class="form-text text-muted">{{ form.autorizacion.help_text }}</small>
+                </div>
+            </div>
+            <div class="col-lg-3" id="fp-grupo-fecha-emision">
+                <div class="form-group">
+                    <label for="fecha_emision">{{ form.fecha_emision.label }}:</label>
+                    {{ form.fecha_emision }}
+                </div>
+            </div>
+        </div>
+        <div class="alert alert-warning d-none" id="fp-comprobante-aviso" role="status"></div>
+        <div class="row">
+            <div class="col-lg-5" id="fp-grupo-forma-pago">
+                <div class="form-group">
+                    <label for="{{ form.forma_pago.id_for_label }}">{{ form.forma_pago.label }}:</label>
+                    {{ form.forma_pago }}
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <div class="form-group">
+                    <label for="{{ form.parte_relacionada.id_for_label }}">{{ form.parte_relacionada.label }}:</label>
+                    {{ form.parte_relacionada }}
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="form-group">
+                    <label for="{{ form.pago_loc_ext.id_for_label }}">{{ form.pago_loc_ext.label }}:</label>
+                    {{ form.pago_loc_ext }}
+                </div>
+            </div>
+        </div>
+        <div class="d-none" id="fp-doc-modificado">
+            <h3 class="h6">Documento que modifica la nota de crédito o débito</h3>
+            <div class="row">
+                <div class="col-lg-3">
+                    <div class="form-group">
+                        <label for="{{ form.tipo_doc_modificado.id_for_label }}">{{ form.tipo_doc_modificado.label }}:</label>
+                        {{ form.tipo_doc_modificado }}
                     </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary btn-flat btn-block">
-                            <i class="fas fa-save"></i> Guardar registro
-                        </button>
+                </div>
+                <div class="col-lg-3">
+                    <div class="form-group">
+                        <label for="{{ form.num_doc_modificado.id_for_label }}">{{ form.num_doc_modificado.label }}:</label>
+                        {{ form.num_doc_modificado }}
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="form-group">
+                        <label for="{{ form.aut_doc_modificado.id_for_label }}">{{ form.aut_doc_modificado.label }}:</label>
+                        {{ form.aut_doc_modificado }}
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="form-group">
+                        <label for="fecha_doc_modificado">{{ form.fecha_doc_modificado.label }}:</label>
+                        {{ form.fecha_doc_modificado }}
+                    </div>
+                </div>
+                <div class="col-lg-12">
+                    <div class="form-group">
+                        <label for="{{ form.compra_modificada.id_for_label }}">{{ form.compra_modificada.label }} (opcional):</label>
+                        {{ form.compra_modificada }}
+                        <small class="form-text text-muted">Con la factura enlazada, la nota de crédito abona su cuenta por pagar.
+                            Las notas de crédito y débito no mueven stock en esta etapa.</small>
                     </div>
                 </div>
             </div>
-        </form>
+        </div>
+    </section>
 
-    </div>
-    <div id="myModalSearchProducts" class="modal fade" role="dialog">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title font-weight-bold">
-                        <i class="fa fa-search"></i> Búsqueda de productos
-                    </h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
+    <section class="mb-3 fp-compra-seccion" aria-labelledby="fp-compra-lineas">
+        <h2 class="h6 font-weight-bold" id="fp-compra-lineas">3. Líneas</h2>
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="form-group">
+                    <label for="fp-buscar-producto">Agregar un producto:</label>
+                    <input type="text" class="form-control" autocomplete="off" name="search_product" id="fp-buscar-producto"
+                           placeholder="Escribe el nombre o el código de un producto">
+                </div>
+            </div>
+            <div class="col-lg-4 d-flex align-items-end">
+                <div class="form-group w-100">
+                    <button type="button" class="btn btn-outline-primary btn-block" id="fp-agregar-gasto">
+                        <i class="fas fa-plus"></i> Agregar línea de gasto
                     </button>
                 </div>
-                <div class="modal-body">
-                    <div class="container-fluid">
-                        <table style="width:100%;" class="table table-bordered table-sm" id="tblSearchProducts">
-                            <thead>
-                            <tr>
-                                <th style="width: 5%;">Código</th>
-                                <th style="width: 45%;">Nombre</th>
-                                <th style="width: 15%;">P./Compra</th>
-                                <th style="width: 15%;">P./Venta</th>
-                                <th style="width: 10%;">Stock</th>
-                                <th style="width: 10%;">Agregar</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            </tbody>
-                        </table>
-                    </div>
+            </div>
+        </div>
+        <p class="small text-muted">El stock solo sube en las líneas con un producto inventariado. Las líneas de gasto no
+            mueven stock.</p>
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm" id="tblLineas">
+                <thead>
+                <tr>
+                    <th style="width: 22%;">Producto o descripción</th>
+                    <th style="width: 14%;">Tipo de gasto</th>
+                    <th style="width: 8%;">Cantidad</th>
+                    <th style="width: 9%;">Precio</th>
+                    <th style="width: 9%;">Descuento ($)</th>
+                    <th style="width: 14%;">Tarifa de IVA</th>
+                    <th style="width: 8%;">Tarifa %</th>
+                    <th style="width: 7%;" class="text-right">Base</th>
+                    <th style="width: 6%;" class="text-right">IVA</th>
+                    <th style="width: 3%;"><span class="sr-only">Quitar</span></th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="mb-3 fp-compra-seccion" aria-labelledby="fp-compra-totales">
+        <h2 class="h6 font-weight-bold" id="fp-compra-totales">4. Totales</h2>
+        <div class="row">
+            <div class="col-lg-3">
+                <div class="form-group">
+                    <label for="{{ form.total_ice.id_for_label }}">{{ form.total_ice.label }}:</label>
+                    {{ form.total_ice }}
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <div class="form-group">
+                    <label for="{{ form.propina.id_for_label }}">{{ form.propina.label }}:</label>
+                    {{ form.propina }}
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="form-group">
+                    <label for="{{ form.iva_factura.id_for_label }}">{{ form.iva_factura.label }}:</label>
+                    {{ form.iva_factura }}
+                    <small class="form-text text-muted">{{ form.iva_factura.help_text }}</small>
                 </div>
             </div>
         </div>
-    </div>
-    <script type="application/javascript">
-        $(function () {
-            purchase.listProducts();
-        });
-    </script>
+        <button type="button" class="btn btn-outline-secondary mb-2" id="fp-calcular">
+            <i class="fas fa-calculator"></i> Calcular totales
+        </button>
+        <div id="fp-resumen" aria-live="polite">
+            <div class="alert alert-danger d-none" id="fp-resumen-error" role="alert"></div>
+            <div class="table-responsive">
+                <table class="table table-sm d-none" id="fp-resumen-tarifas">
+                    <thead><tr><th>Tarifa</th><th class="text-right">Base</th><th class="text-right">IVA</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <dl class="row d-none" id="fp-resumen-totales"></dl>
+            <div class="alert alert-warning d-none" id="fp-resumen-advertencias" role="status"><ul class="mb-0"></ul></div>
+            <div class="alert alert-secondary d-none" id="fp-resumen-faltantes" role="status">
+                <strong>La compra quedará con datos incompletos:</strong>
+                <ul class="mb-0"></ul>
+            </div>
+        </div>
+        <div class="form-check d-none fp-confirmacion" data-confirmacion="confirmar_iva">
+            {{ form.confirmar_iva|add_class:"form-check-input" }}
+            <label class="form-check-label" for="{{ form.confirmar_iva.id_for_label }}">{{ form.confirmar_iva.label }}</label>
+        </div>
+        <div class="form-check d-none fp-confirmacion" data-confirmacion="confirmar_plazo_ats">
+            {{ form.confirmar_plazo_ats|add_class:"form-check-input" }}
+            <label class="form-check-label" for="{{ form.confirmar_plazo_ats.id_for_label }}">{{ form.confirmar_plazo_ats.label }}</label>
+        </div>
+    </section>
 {% endblock %}
 
 {% block buttons %}
@@ -186,7 +294,44 @@
             </a>
         </div>
         <div class="col-lg-4 text-right">
-            <h1 class="font-weight-bold subtotal">$0.00</h1>
+            <span class="text-muted">Total con IVA</span>
+            <h1 class="font-weight-bold fp-total-compra" aria-live="polite">—</h1>
         </div>
+    </div>
+{% endblock %}
+
+{% block content_form_before %}
+    <div id="myModalProvider" class="modal fade" role="dialog" aria-labelledby="fp-proveedor-titulo">
+        <form class="form" id="frmProvider" method="POST" autocomplete="off">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title font-weight-bold" id="fp-proveedor-titulo">
+                            <i class="fa fa-plus"></i> Nuevo registro de un proveedor
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="container-fluid">
+                            <div class="alert alert-danger d-none" id="fp-proveedor-errores" role="alert"></div>
+                            {% for field in frmProvider.visible_fields %}
+                                <div class="form-group">
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                                    {{ field|add_class:'form-control' }}
+                                    {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary btn-flat btn-block">
+                            <i class="fas fa-save"></i> Guardar registro
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
     </div>
 {% endblock %}

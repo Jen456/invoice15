@@ -84,3 +84,27 @@ def test_liquidacion_lista_lineas_de_gasto_con_su_tarifa(empresa, admin):
     assert [(l['codigo'], l['descripcion'], l['cantidad'], l['precio_unitario'], l['tarifa']) for l in lineas] == [
         ('CACAO-1', 'PRODUCTO CACAO-1', Decimal('2'), Decimal('50.00'), Decimal('0.00')),
         ('FLETE', 'Transporte de la cosecha', Decimal('1'), Decimal('20.00'), Decimal('15.00'))]
+
+
+def test_botones_de_retencion_y_liquidacion_segun_el_tipo(client, empresa, admin, proveedor):
+    """El listado (§6.A) ofrece «Retención» solo con tipo '', '01' o '03' y «Liquidación» solo con '' o '03': el JS decide
+    con el tipo que trae el toJSON de cada compra."""
+    import json
+    from pathlib import Path
+
+    from django.conf import settings
+
+    from tests import helpers
+    factura = compra_con(empresa, admin, proveedor, [ayuda.linea_gasto(price='10.00')])
+    nota = compra_con(empresa, admin, proveedor, [ayuda.linea_gasto(price='2.00')], secuencial='272', tipo_comprobante='04',
+                      tipo_doc_modificado='01', num_doc_modificado='001002000000271', aut_doc_modificado='1' * 37,
+                      fecha_doc_modificado=factura.fecha_emision.isoformat(), compra_modificada=factura.pk)
+    liquidacion = compra_con(empresa, admin, ayuda.crear_proveedor(empresa, tipo='05'), [ayuda.linea_gasto(price='5.00')],
+                             modo_comprobante='liquidacion', secuencial='', autorizacion='', estab='', pto_emi='')
+    antigua = ayuda.compra_antigua(empresa, proveedor, '3.00')
+    helpers.iniciar_sesion(client, admin, empresa=empresa)
+    filas = json.loads(client.post('/pos/purchase/', {'action': 'search', 'start_date': '', 'end_date': ''}).content)
+    tipos = {f['id']: f['tipo_comprobante']['id'] for f in filas}
+    assert tipos == {factura.pk: '01', nota.pk: '04', liquidacion.pk: '03', antigua.pk: ''}
+    js = Path(settings.BASE_DIR, 'core/pos/static/purchase/js/list.js').read_text()
+    assert "['', '01', '03'].indexOf(tipo) >= 0" in js and "['', '03'].indexOf(tipo) >= 0" in js
