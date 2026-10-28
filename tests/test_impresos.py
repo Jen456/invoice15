@@ -56,7 +56,10 @@ def test_ticket_de_factura_sin_firmar_con_los_datos_del_xml(client, admin, empre
     helpers.iniciar_sesion(client, admin)
     respuesta = client.get(f"/pos/sale/admin/print/invoice/{venta.id}/")
     texto = "".join(PdfReader(io.BytesIO(respuesta.content)).pages[0].extract_text().split())
-    assert venta.access_code is None and "None" not in texto
+    with company_context(empresa):
+        # La venta que lee la vista, no el objeto en memoria de crear_venta; get() falla si la venta no existe.
+        assert Sale.objects.values_list("access_code", flat=True).get(pk=venta.pk) is None
+    assert "None" not in texto
     assert "Comprobantependientedeautorización" in texto and "Clavedeacceso:" not in texto
     assert "Direcciónmatriz:" + "".join(xml.findtext("infoTributaria/dirMatriz").split()) in texto
     assert "Establecimiento:" + "".join(xml.findtext("infoFactura/dirEstablecimiento").split()) in texto

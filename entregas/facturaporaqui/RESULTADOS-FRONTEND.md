@@ -1261,3 +1261,33 @@ Trabajo en `frontend/etapa3` sobre la entrega previa `165fbc7`. Al cierre se hiz
 ### Pendiente
 
 Aprobación visual/comercial de la propietaria; D9 para el complemento; contratos de contexto, URL, acciones, permisos y campos de Claude. Pasar cada propuesta a plantilla real conforme se termine su etapa, conservando el orden aprobado. El formulario comercial existente no guarda solicitudes y requiere su propio contrato si se habilita captación. Ninguna función próxima se presenta como ya operativa.
+
+## 28/10/2026 — ticket térmico: correcciones de la revisión, sin publicar (Claude)
+
+**Base y alcance:** rama `fase/ticket-correcciones` sobre `8d2eead`, con la entrega `165fbc7` de Codex. Commits `dc274d4` y el de la segunda revisión. Archivos: `core/pos/templates/sale/format/ticket.html`, `tests/test_ticket_diseno.py`, `tests/test_impresos.py`, este informe y HANDOFF. Sin cambios en `@page`, `alto_pagina`, `create_pdf_continuo`, la vista, la URL, modelos, XML ni SRI.
+
+**Cambios en el ticket:**
+- Cabecera: «Dirección matriz» (`company.main_address`, dirMatriz) y «Establecimiento» del local de la numeración de la venta (`sale.receipt.establishment_address|default:sale.company.establishment_address`, dirEstablecimiento). Al reimprimir después de cambiar el punto de emisión sigue saliendo el local de la venta.
+- Fecha de emisión: `emission_date` (fechaEmision), con respaldo a la fecha de registro.
+- Factura aún sin clave: aviso en cursiva «Comprobante pendiente de autorización: aún no tiene clave de acceso.». Ni «Clave de acceso: None» ni «Cliente: None».
+- Logo del emisor ausente o ilegible: `alt=""`, sin texto impreso.
+
+**Medidas** (renderizador de la app con los contextos de `test_ticket_diseno.py`):
+- La línea de matriz añade 5,0 mm con una dirección de una línea y 8,7 mm con una de dos.
+- 1/5/40 líneas: 330/423/1231 mm; largas: 352/530/2088 mm. Antes: 318/410/1219 y 339/518/2076. De la diferencia, 3,7 mm son la dirección de establecimiento más larga del contexto de prueba.
+- El aviso de pendiente ocupa lo mismo que la clave.
+
+**Pruebas:**
+- `test_impresos.py::test_ticket_de_factura_sin_firmar_con_los_datos_del_xml`, por la vista real: matriz, establecimiento y fecha iguales al XML, aviso de pendiente y ningún «None». La clave nula se lee de la base dentro de `company_context`: con una clave guardada en la base, esa aserción falla por sí misma (antes leía el objeto en memoria y solo fallaba la siguiente).
+- `test_ticket_diseno.py`: logo real pequeño dentro del área; logo inexistente sin texto alternativo, con y sin petición; importe grande contado en todas sus apariciones; última línea cerrada antes de «Subtotal sin impuestos».
+- Archivos del ticket (`test_ticket_continuo.py`, `test_ticket_diseno.py`, `test_impresos.py`): **20 aprobadas** en SQLite (32,95 s) y en PostgreSQL (118,10 s).
+- Suite SQLite: **575 aprobadas y 7 omitidas en 289,78 s**.
+- `white-space: nowrap` del importe de línea queda sin prueba: con importes que admite la base (hasta 9999999,99) el PDF sale idéntico con y sin la regla.
+
+Sin capturas nuevas: las muestras de `propuestas/ticket-b/` siguen siendo las de `165fbc7`.
+
+**Pendiente:**
+- Integración en `plataforma`, publicación con la aprobación de la propietaria y prueba en papel de 58 mm real.
+- RIDE A4 de factura y nota de crédito con `alt="Logotipo del emisor"`: con un logo que ya no está imprimen esa frase (comprobado con datos ficticios). Tarea aparte.
+
+Sin despliegue, emisiones, pagos ni correos.
