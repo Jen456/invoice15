@@ -1,6 +1,7 @@
 """Contratos comunes de la fase contable (commit B0 del integrador), antes de Proformas, Compras y Ventas: señal
 comprobante_autorizado (un receptor que falla no cambia el estado y se vuelve a llamar al reenviar), menú generalizado
-por app, consultas de retenciones, dataclasses del 07 recibido, roles y borrado de una venta a crédito."""
+por app, consultas de retenciones, dataclasses del 07 recibido, roles, borrado de una venta a crédito y mensajes de
+Django escapados dentro de JavaScript."""
 import dataclasses
 import importlib
 from datetime import date, timedelta
@@ -9,12 +10,16 @@ from decimal import Decimal
 import pytest
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.messages import constants
+from django.contrib.messages.storage.base import Message
+from django.contrib.messages.storage.cookie import CookieStorage
 from django.core import mail
 from django.db import connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.db.models import ProtectedError
 from django.dispatch import Signal
 from django.utils import timezone
+from django.utils.html import escapejs
 
 from core.comprobantes import retenciones as sv
 from core.comprobantes.models import CodigoRetencion, Retencion
@@ -25,7 +30,7 @@ from core.pos.models import (Client, CreditNote, CtasCollect, PaymentsCtaCollect
                              SaleDetail, VoucherErrors)
 from core.pos.senales_comprobantes import anulado_en_sri, comprobante_autorizado
 from core.security import menu
-from core.security.models import GroupModule, Module, ModuleType
+from core.security.models import Dashboard, GroupModule, Module, ModuleType
 from core.tenancy import roles
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_ACCOUNTANT, ROLE_ADMIN, ROLE_CLIENT, ROLE_OWNER, ROLE_READONLY, ROLE_SELLER
@@ -342,3 +347,19 @@ class TestBorrarVenta:
                 Sale.objects.get(pk=venta.pk).delete()                       # la cuenta por cobrar la protege
             assert SaleDetail.objects.filter(sale=venta).count() == 1
         assert self.stock(empresa, producto) == 97          # antes quedaban el stock devuelto y los detalles borrados
+
+
+# ---------------------------------------------------------------- mensajes de Django dentro de JavaScript
+
+class TestMensajesEnJavaScript:
+    TEXTO = 'Línea con \'comillas\' y "dobles" </script><script>alert(1)</script> & \\ barra\nsegunda línea'
+
+    @pytest.mark.parametrize('layout, plantilla', [(1, 'vtc_body.html'), (2, 'hzt_body.html')])
+    def test_mensaje_escapado_para_la_cadena_de_javascript(self, web, layout, plantilla):
+        Dashboard.objects.update(layout=layout)
+        web.cookies['messages'] = CookieStorage(None)._encode([Message(constants.ERROR, self.TEXTO)])
+        respuesta = web.get('/dashboard/')
+        html = respuesta.content.decode()
+        assert respuesta.status_code == 200 and plantilla in [t.name for t in respuesta.templates]
+        assert f"errors += '{escapejs(self.TEXTO)}\\n';" in html
+        assert 'alert(1)</script>' not in html and '&#x27;comillas&#x27;' not in html

@@ -59,7 +59,7 @@
         {% if messages %}
             var errors = '';
             {% for message in messages %}{% if 'plan' not in message.tags and 'configuracion' not in message.tags %}
-                errors += '{{ message }}\n';
+                errors += '{{ message|escapejs }}\n';
             {% endif %}{% endfor %}
             // Los avisos del plan se muestran dentro de «Plan y pagos».
             if (errors) { message_error(errors); }
