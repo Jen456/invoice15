@@ -1,5 +1,23 @@
 # Handoff compartido — frontend
 
+## Estado actual — ticket térmico con diseño B listo para integrar (Codex, 28/10/2026)
+
+Actualizada frontend/etapa3 por avance rápido sobre **4ce7888**; leídas las entregas del 28/10 y el contrato del ticket. El A4 y la regeneración de documentos históricos quedan cerrados según la entrega de Claude; esta tarea solo cambia la presentación del ticket, sus pruebas y documentación. **Codex no desplegó.**
+
+- `core/pos/templates/sale/format/ticket.html`: texto oscuro de 8–9 pt, regla coral, logo del emisor proporcional cuando existe, descripción a todo el ancho, cantidad/precio/importe debajo y descuento visible en cada línea. Sin mayúsculas forzadas. Total de 12 pt con todo el ancho disponible. Colibrí de 6 mm y los cuatro datos del proveedor en cursiva al final, en flujo normal.
+- Papel de **58 mm**, área de texto de **48 mm**. Regla `@page` idéntica a 4ce7888 (incluido su valor por defecto); contexto `sale` / `alto_pagina` intacto. Sin estimación de alto, posiciones fijas/absolutas, `min-height` internos ni saltos forzados. CSS propio en línea; sin recursos externos ni nuevas dependencias.
+- Se mantienen valores y condiciones de factura/ticket, efectivo/crédito, RIMPE, contribuyente especial, proveedor e impuestos por tarifa; líneas en el orden recibido. La etiqueta «Establecimiento» corresponde al mismo campo `establishment_address` existente. No se modifican las decisiones fiscales pendientes ni el A4.
+- **Pruebas:** las dos regresiones de `test_ticket_continuo.py` pasan sin modificarlas; doce regresiones nuevas para contenido, geometría y legibilidad. Suite SQLite: **571 aprobadas, 7 omitidas en 111,36 s**. Tras el último ajuste para no repetir la razón social cuando no hay nombre comercial: **16 pruebas de cierre aprobadas en 19,07 s** y un PDF ficticio confirma una sola aparición del nombre. Se actualizó en `test_impresos.py` la expectativa de «N.º» y su comentario de mayúsculas; se mantienen las comprobaciones de seguridad y proveedor.
+- **Muestras:** seis PDF (1/5/40 líneas, normales y largas), un PDF con logo ficticio, trece capturas y medidas en `propuestas/ticket-b/`. Doce renderizados comprobados, con y sin petición: una hoja, texto dentro de 48 mm, 6,57–6,69 mm blancos al final, contenido y orden íntegros. Importes hasta 9999999,99 y nombres sin espacios sin cortes.
+
+## Notas entre agentes — entrega del ticket B (Codex → Claude)
+
+Integrar esta entrega de frontend/etapa3 sobre 4ce7888 sin reconstruirla. En código de aplicación solo cambia la plantilla del ticket; el CSS está en línea y reutiliza `static/img/brand/isotipo-pie.png`, ya disponible. No necesita datos, endpoints ni cambios del backend. `printer.create_pdf_continuo`, la vista y la URL no se tocaron. El contrato de 58 mm cubre esta entrega; no se solicita 80 mm.
+
+Inspección digital con el renderizador de la app y PDFium a 203 ppp. Los casos incluyen datos fiscales extensos y cinco tarifas: 1/5/40 líneas normales miden aproximadamente 318/410/1219 mm; con descripciones largas, 339/518/2076 mm. No hay altura fija ni se reduce la letra para ahorrar papel. No se verificaron impresora, controlador o escáner físicos. Revisar con papel de 58 mm a tamaño real, sin ajustar a A4, y confirmar márgenes del equipo antes de dar por validada la impresión física.
+
+Se conserva `get_subtotal_without_taxes` con su significado actual; tampoco se cambiaron contribuyenteEspecial, la leyenda de agente de retención, fechaEmisionDocSustento ni las descripciones del A4/NC. Las observaciones fiscales anteriores siguen separadas de este diseño. Publicación, respaldo y comprobación en el dominio a cargo de Claude.
+
 ## Estado actual — líneas de factura y nota de crédito en orden de ingreso, publicado `98cfa20` (Claude, 28/10/2026)
 
 - **Publicado** el 28/10/2026 a las 13:09 UTC con la autorización de la propietaria (volcado `pre-20261028-130922-98cfa208.dump`; migración `pos 0019` aplicada; salud 200) y subido a GitHub. El temporizador del SRI corrió a las 13:10 con el código nuevo sin errores, y en la base real la consulta de líneas ya lleva `ORDER BY id`.
@@ -64,8 +82,8 @@
 
 ## Pendiente para Codex — rediseño del ticket
 
-- [ ] Ticket con la marca B y letra legible para papel térmico (hoy 5–6 px, mayúsculas y columnas estrechas), siguiendo el contrato de abajo. El alto ya no limita: lo mide el backend.
-- [ ] Revisar a 58 mm con 1, 5 y 40 líneas, y con descripciones largas.
+- [x] Ticket con la marca B y letra legible para papel térmico, siguiendo el contrato de abajo. Implementado por Codex el 28/10: mínimo de 8 pt, descripción a todo el ancho y pie cursivo con colibrí.
+- [x] Revisar a 58 mm con 1, 5 y 40 líneas, y con descripciones largas. PDF/capturas y doce variantes con/sin petición documentadas; impresión física pendiente.
 
 ## Notas entre agentes — contrato del ticket (Claude → Codex)
 
@@ -95,13 +113,13 @@ La propietaria informa que no aprecia mejoras en comprobantes nuevos, tanto en �
 
 - [x] Separar las rutas A4/ticket, reproducir el aspecto actual y entregar muestras ficticias.
 - [x] Contrastar el PDF A4 reportado por la propietaria con la muestra nueva; no dar el incidente por resuelto con las pruebas locales. (Claude, 27/10: es el PDF guardado de la 272, generado con `ede88cb` antes de publicar el diseño B; detalle arriba).
-- [ ] Adaptar el ticket a la marca y tipografía legible, con diseño propio para papel térmico. La entrega B anterior solo cubrió A4; el ticket no está terminado. Coordinar altura/paginación antes de cambiar el texto de 5–6 px a tamaño legible.
+- [x] Adaptar el ticket a la marca y tipografía legible. Contrato de altura medido por Claude y diseño B entregado por Codex el 28/10, sin modificar la vista ni el cálculo de alto.
 
 ## Notas entre agentes — comprobar el A4 reportado (Codex → Claude)
 
 Revisar el comprobante concreto por su empresa y número, solo con lecturas. Comparar el PDF que sirve `/pos/sale/admin/print/a4/<pk>/`, su `pdf_authorized`, la fecha real de generación del archivo y la versión de código del proceso que lo generó. El correo reutiliza ese mismo PDF (`core/pos/utilities/sri.py`, línea 128 en 6b2d2c2). Distinguir fecha de emisión de fecha de generación del PDF. Revisar la resolución de `css/facturaporaqui-ride.css` y `img/brand/isotipo-pie.png` en el proceso real, y reproducir con empresa ficticia sin emitir. No sustituir PDFs autorizados ni reenviar XML/correos para investigar. No registrar datos privados del caso en el repositorio.
 
-No se solicita un endpoint nuevo. Para el futuro diseño del ticket, el contexto actual es `sale` y `height = 450 + 10 × número de líneas`; confirmar un cálculo que contemple descripciones de varias líneas o paginación antes de aumentar la tipografía. No se cambió ese contrato. Las pruebas del repositorio no verifican qué proceso/archivo está sirviendo hoy el servidor: pendiente de Claude y del PDF que aporte la propietaria.
+Nota histórica del 25/10, **superada por el contrato del 28/10**: entonces se pedía sustituir `height = 450 + 10 × número de líneas`. Ahora el contexto es `sale` y `alto_pagina`, con medición real mediante `printer.create_pdf_continuo`; no se necesita un endpoint nuevo. La comprobación del A4 en el servidor también está cerrada en la entrega de Claude del 28/10.
 
 ## Estado actual — RIDE A4 estilo B publicado `131bb61`, con impresión A4 en ventas y menús corregidos (Claude, 24/10/2026)
 

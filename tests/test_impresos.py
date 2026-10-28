@@ -1,5 +1,5 @@
 """Documentos impresos: el ticket de una factura no muestra usuario ni clave del portal (la clave era la
-cédula), dice «FACTURA N°», y el ticket y el RIDE muestran los datos del proveedor sin teléfono."""
+cédula), identifica la factura y su número, y el ticket y el RIDE muestran los datos del proveedor sin teléfono."""
 import io
 
 import pytest
@@ -22,8 +22,9 @@ def venta(settings, empresa, admin):
 def test_ticket_de_factura(client, admin, venta):
     helpers.iniciar_sesion(client, admin)
     respuesta = client.get(f"/pos/sale/admin/print/invoice/{venta.id}/")
-    texto = " ".join(PdfReader(io.BytesIO(respuesta.content)).pages[0].extract_text().split()).upper()   # el ticket imprime en mayúsculas
-    assert f"FACTURA N° {venta.voucher_number_full}" in texto and "TICKET N°" not in texto
+    # Normalizar espacios y caja; el diseño usa texto natural y la abreviatura «N.º».
+    texto = " ".join(PdfReader(io.BytesIO(respuesta.content)).pages[0].extract_text().split()).upper()
+    assert f"FACTURA N.º {venta.voucher_number_full}" in texto and "TICKET N.º" not in texto
     assert "FACTURAPORAQUI" in texto and "0941609729001" in texto and "SOPORTE@FACTURAPORAQUI.COM" in texto
     assert "MILAGRO, MANTA Y RUMIÑAHUI" in texto
     assert " Y CLAVE " not in texto and "SU USUARIO" not in texto and "PORTAL" not in texto

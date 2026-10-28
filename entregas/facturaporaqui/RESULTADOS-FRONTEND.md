@@ -1197,3 +1197,36 @@ No se cambiaron XML, numeración, estados ni cupos. No se reenviaron comprobante
 - **Pruebas:** `test_orden_lineas.py` (2), que falla sin el arreglo; SQLite 559 + 7 omitidas, PostgreSQL 566.
 - **Verificado tras publicar:** salud 200, temporizador del SRI sin errores y `ORDER BY id` en la consulta de líneas de la base real (solo lectura).
 - **Pendiente:** el diseño visual del ticket (Codex) y los puntos preexistentes del RIDE.
+
+## 28/10/2026 — rediseño B del ticket térmico (Codex)
+
+**Base y alcance:** fetch de plataforma y frontend/etapa3, ambas en 4ce7888, e integración por avance rápido. Leídos AGENTS, las secciones del 28/10 y el contrato del ticket. La regeneración de los A4 y el orden de ingreso ya estaban resueltos por Claude; no se modifican en esta entrega.
+
+### Diseño y archivos
+
+- `core/pos/templates/sale/format/ticket.html`: papel térmico de 58 mm, márgenes interiores laterales de 5 mm y área útil de 48 mm. Texto oscuro y regla coral, sin fondos pesados. Cuerpo de 8,5 pt, secundarios/pie de 8 pt, descripciones/valores de 9 pt, nombre comercial de 11 pt y total de 12 pt. Se conserva la caja del texto almacenado, sin forzar mayúsculas.
+- Logo del emisor, cuando existe, dentro de 22 × 12 mm con `object-fit: contain`; nombre comercial y razón social diferenciados si no coinciden. Sin icono genérico de imagen ausente. Se conserva `establishment_address`, con etiqueta «Establecimiento» en lugar de la etiqueta anterior de matriz.
+- Cada producto tiene descripción completa a todo el ancho, cantidad × precio unitario e importe debajo, y descuento visible. No se añade categoría ni se cambia el orden. Los importes no separan sus centavos; el total dispone de todo el ancho para cantidades de siete dígitos.
+- Pie en flujo normal con `img/brand/isotipo-pie.png` a 6 mm y proveedor en cursiva. Se conservan nombre, RUC, correo, dirección y contacto del emisor cuando corresponde. El ticket no electrónico mantiene su identificación y condiciones de pago.
+- CSS en línea y selectores propios, sin dependencia de Bootstrap en el HTML ni recursos externos. La regla `@page` es **idéntica** a 4ce7888, con `alto_pagina` y su valor por defecto. Sin `height` antiguo, alto fijo del contenedor, pie fijo/absoluto, `min-height` internos ni saltos forzados. Renderizador, vista, URL y contexto intactos.
+- `tests/test_ticket_diseno.py` (nuevo): doce regresiones PDF para contenido/orden por línea, importes, impuestos, área imprimible, legibilidad real, cursiva/separación del pie, efectivo/crédito, ticket no electrónico, generación con/sin petición, nombres sin espacios y cantidades grandes.
+- `tests/test_impresos.py`: actualización de la expectativa de «N°» a «N.º» y del comentario de mayúsculas. Se mantienen las comprobaciones de factura/número, proveedor y ausencia de credenciales.
+- AGENTS añade la convención del ticket continuo; HANDOFF marca el diseño terminado y retira como vigente la fórmula de altura del 25/10. Se añaden este informe, muestras y capturas.
+
+### Pruebas y revisiones
+
+- `tests/test_ticket_continuo.py` sin modificar: **2 aprobadas en 10,47 s** con el primer diseño; incluidas también en la suite final. Una hoja de 58 mm, menos de 12 mm blancos al final y 40 descripciones largas completas.
+- Doce regresiones nuevas: **12 aprobadas**. La revisión detectó inicialmente un total grande partido y un nombre comercial sin espacios fuera del papel; se corrigieron con total a todo el ancho, cifras indivisibles y ajuste de palabras en títulos, con regresiones específicas.
+- Primera suite general: 570 aprobadas, 7 omitidas y un fallo por la abreviatura antigua del número. Tras actualizar esa expectativa, `test_impresos.py`: **2 aprobadas en 8,59 s**. Suite SQLite completa: **571 aprobadas y 7 omitidas en 111,36 s**, salida 0. Comando: `XDG_CACHE_HOME=/workspace/multi-runtime/cache /workspace/.venv-platform/bin/python -m pytest -o addopts= -q`. Las siete omitidas requieren PostgreSQL.
+- Matriz de doce PDF: 1/5/40 líneas normales y largas, con y sin petición. Todos en una hoja de 58 mm; texto entre x=5,03 y 52,91 mm; 6,57–6,69 mm en blanco al final. Cada descripción, posición, cantidad, precio, descuento e importe comprobados. Descripciones de 9 pt, mínimo real de 8 pt en el PDF, proveedor en fuente cursiva y sin solapamiento.
+- Altos con petición: normales 318,03 / 410,37 / 1218,67 mm; largos 339,46 / 517,52 / 2075,92 mm. Contextos deliberadamente amplios: datos fiscales extensos y cinco tarifas. El alto crece con el texto y la legibilidad; no se fuerza una longitud ni se reduce la letra.
+- Revisión visual de cinco líneas, inicio/final de cuarenta largas, nombre sin espacios e importes hasta 9999999,99. Ejemplo adicional con logo ficticio SVG 4:1 proporcionado; render en grises legible. Capturas de detalle a 203 ppp y vistas completas largas a 100 ppp. No es una prueba física de impresora/controlador.
+- `git diff --check` y comprobación literal del contrato `@page` correctos. Revisión independiente sin pérdida de campos/condiciones del ticket. Sin cambios propios de modelos, migraciones, vistas, URL, servicios, `.env`, XML, SRI ni cálculos fiscales.
+
+### Entrega y límites
+
+Siete PDF ficticios en `propuestas/ticket-b/`: los seis casos solicitados y uno con logo de prueba. README y `verificacion.json` detallan las medidas. Trece capturas `capturas/ticket-b-*.png`, incluida comparación anterior y recortes del mismo PDF continuo para revisar el caso largo. Guiones y logs fuera del checkout en `/workspace/ticket-b-runtime/`.
+
+Se conserva el valor actual de «Subtotal sin impuestos» y todas las decisiones fiscales pendientes; el A4 no se modifica. Sin emisiones, correos reales, pagos ni despliegue. No se añadieron datos privados a las muestras. Entrega en frontend/etapa3 para integración de Claude, pruebas PostgreSQL y publicación con respaldo. Prueba física en papel de 58 mm a tamaño real pendiente.
+
+**Cierre posterior a la suite completa:** se ajustó la condición del nombre legal para no repetirlo si el nombre comercial está vacío. `test_ticket_continuo.py`, `test_ticket_diseno.py` y `test_impresos.py`: **16 aprobadas en 19,07 s** sobre la plantilla final. Un PDF ficticio adicional sin nombre comercial confirma una sola aparición de la razón social, 58 mm y una página. No se repitió la suite general después de esta condición de presentación; los doce ejemplos publicados conservan nombre comercial y su aspecto no cambia.

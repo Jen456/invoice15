@@ -1,10 +1,9 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>{{ title }}</title>
-    <link rel="stylesheet" href="{% static 'lib/bootstrap-4.6.0/css/bootstrap.min.css' %}"/>
+    <title>{% if sale.is_invoice %}Factura {{ sale.voucher_number_full }}{% else %}Ticket {{ sale.voucher_number }}{% endif %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         /* Contrato con el backend (printer.create_pdf_continuo): ancho fijo y alto {{ alto_pagina }} medido del contenido. */
@@ -13,188 +12,162 @@
             margin: 0;
         }
 
-        body {
+        /* Diseño B para papel térmico: texto oscuro, sin fondos que gasten papel/tinta.
+           El contenido ocupa 48 mm; el pie forma parte del flujo que mide el backend. */
+        html, body { margin: 0; padding: 0; }
+        body.fp-ticket-body {
+            min-width: 0 !important;
+            color: #111;
+            background: #fff;
             font-family: Arial, Helvetica, sans-serif;
-            padding: 0;
-            margin: 0;
-            font-size: 6px;
-            color: black !important;
-            min-height: 100%;
+            font-size: 8.5pt;
+            line-height: 1.35;
         }
-
-        .content {
-            width: 58mm;
-            padding: 10px;
+        .fp-ticket, .fp-ticket * { box-sizing: border-box; }
+        .fp-ticket { width: 58mm; padding: 4mm 5mm 2mm; }
+        .fp-ticket p, .fp-ticket h1, .fp-ticket h2 { margin: 0; }
+        .fp-ticket p, .fp-ticket h1, .fp-ticket h2, .fp-ticket td, .fp-ticket th { overflow-wrap: anywhere; }
+        .fp-ticket strong { font-weight: 700; }
+        .fp-ticket-header { border-top: .6mm solid #CA462C; padding-top: 3mm; }
+        .fp-ticket-logo {
+            display: block;
+            width: 22mm;
+            height: 12mm;
+            object-fit: contain;
+            margin: 0 auto 2mm;
         }
-
-        .head-name {
-            margin-top: 10px;
-            font-size: 15px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-bottom: 0;
-            text-align: center;
-        }
-
-        .head-voucher-number {
-            font-size: 10px;
-            text-align: center;
-            margin-top: 0;
-            margin-bottom: 0;
-            font-weight: bold;
-        }
-
-        .head-details {
-            margin-top: 0;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-
-        .head-data {
-            text-align: left;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-        }
-
-        .table {
-            color: black;
-        }
-
-        #details thead tr th {
-            border-bottom: 1px outset black;
-        }
-
-        .table td, .table th {
-            padding: 0;
-            color: black;
-            font-size: 5px;
-            text-transform: uppercase;
-        }
-
-        .img-logo {
-            margin-top: 5px;
-            width: 20px;
-            height: 20px;
-            margin-bottom: 5px;
-        }
-
-        .terms {
-            text-align: center;
-            text-transform: uppercase;
-        }
+        .fp-ticket h1 { font-size: 11pt; line-height: 1.2; font-weight: 700; text-align: center; }
+        .fp-ticket-legal-name { font-size: 8pt; text-align: center; margin-top: 1mm !important; }
+        .fp-ticket-company { margin-top: 2.5mm; font-size: 8pt; }
+        .fp-ticket-company p { margin-bottom: 1mm; }
+        .fp-ticket-document { margin-top: 3mm; padding: 2mm 0; border-top: .3mm solid #111; border-bottom: .3mm solid #111; text-align: center; }
+        .fp-ticket-document h2 { font-size: 10pt; line-height: 1.2; font-weight: 700; }
+        .fp-ticket-number { font-size: 10pt; font-weight: 700; margin-top: 1mm !important; }
+        .fp-ticket-meta { margin-top: 2.5mm; font-size: 8pt; }
+        .fp-ticket-meta p { margin-bottom: 1mm; }
+        .fp-ticket-key { display: block; font-family: 'Courier New', monospace; font-size: 8pt; overflow-wrap: anywhere; }
+        .fp-ticket-section { margin-top: 3mm; }
+        .fp-ticket h2.fp-ticket-section-title { font-size: 9pt; font-weight: 700; padding-bottom: 1.5mm; border-bottom: .25mm solid #111; }
+        .fp-ticket-line { padding: 2mm 0; border-bottom: .2mm dashed #555; }
+        .fp-ticket-description { font-size: 9pt; line-height: 1.35; font-weight: 700; margin-bottom: 1.5mm !important; }
+        .fp-ticket table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; color: #111; }
+        .fp-ticket th, .fp-ticket td { padding: 0; vertical-align: top; border: 0; }
+        .fp-ticket-values th { font-size: 8pt; font-weight: 400; text-align: left; }
+        .fp-ticket-values td { font-size: 9pt; padding-top: .4mm; font-variant-numeric: tabular-nums; }
+        .fp-ticket .fp-ticket-amount { text-align: right; white-space: nowrap; overflow-wrap: normal; }
+        .fp-ticket-money { white-space: nowrap; }
+        .fp-ticket-discount { font-size: 8pt; margin-top: .8mm !important; }
+        .fp-ticket-totals { margin-top: 3mm !important; }
+        .fp-ticket-totals td { font-size: 8.5pt; padding: .8mm 0; }
+        .fp-ticket-totals td:first-child { padding-right: 1.5mm; }
+        .fp-ticket-totals td:last-child { text-align: right; white-space: nowrap; overflow-wrap: normal; font-variant-numeric: tabular-nums; }
+        .fp-ticket-total { border-top: .5mm solid #111; border-bottom: .5mm solid #111; padding: 2mm 0; margin-top: 1mm; }
+        .fp-ticket-total p { font-size: 9pt; font-weight: 700; }
+        .fp-ticket-total .fp-ticket-total-value { margin-top: .5mm; font-size: 12pt; text-align: right; white-space: nowrap; overflow-wrap: normal; }
+        .fp-ticket-payment { font-size: 8.5pt; margin-top: 2mm; }
+        .fp-ticket-payment p { margin-bottom: 1mm; }
+        .fp-ticket-footer { margin-top: 3mm; border-top: .25mm solid #111; padding-top: 2.5mm; text-align: center; font-size: 8pt; font-style: italic; line-height: 1.35; }
+        .fp-ticket-bird { display: block; width: 6mm; height: auto; margin: 0 auto 1.5mm; }
+        .fp-ticket-footer p { margin-bottom: 1mm; }
+        .fp-ticket-contact { margin-top: 2mm !important; }
     </style>
 </head>
-<body>
-<div class="content">
-    <img alt="" src="{{ sale.company.get_image }}" class="img-fluid d-block mx-auto img-logo">
-    <h1 class="head-name">{{ sale.company.tradename|upper }}</h1>
-    <p class="text-center head-details">
-        Dirección matriz: {{ sale.company.establishment_address }}<br>
-        Ruc: {{ sale.company.ruc }}<br>
-        {% if sale.is_invoice %}
-            Obligado a llevar contabilidad: {{ sale.company.get_obligated_accounting_display }}<br>
-            {% if sale.company.leyenda_rimpe %}{{ sale.company.leyenda_rimpe }}<br>{% endif %}
+<body class="fp-ticket-body">
+<main class="fp-ticket">
+    <header class="fp-ticket-header">
+        {% if sale.company.image %}<img src="{{ sale.company.get_image }}" alt="Logotipo del emisor" class="fp-ticket-logo">{% endif %}
+        <h1>{{ sale.company.tradename|default:sale.company.business_name }}</h1>
+        {% if sale.company.tradename and sale.company.business_name and sale.company.business_name != sale.company.tradename %}
+            <p class="fp-ticket-legal-name">{{ sale.company.business_name }}</p>
         {% endif %}
-        Teléfono: {{ sale.company.phone }} / Celular: {{ sale.company.mobile }}
-    </p>
-    <p class="text-center head-voucher-number">{% if sale.is_invoice %}FACTURA N° {{ sale.voucher_number_full }}{% else %}TICKET N° {{ sale.voucher_number }}{% endif %}</p>
-    <p class="head-data">
+        <div class="fp-ticket-company">
+            <p><strong>RUC:</strong> {{ sale.company.ruc }}</p>
+            <p><strong>Establecimiento:</strong> {{ sale.company.establishment_address }}</p>
+            {% if sale.company.phone %}<p><strong>Teléfono:</strong> {{ sale.company.phone }}</p>{% endif %}
+            {% if sale.company.mobile %}<p><strong>Celular:</strong> {{ sale.company.mobile }}</p>{% endif %}
+            {% if sale.is_invoice %}
+                <p><strong>Obligado a llevar contabilidad:</strong> {{ sale.company.get_obligated_accounting_display }}</p>
+                {% if sale.company.leyenda_rimpe %}<p>{{ sale.company.leyenda_rimpe }}</p>{% endif %}
+                {% if sale.company.special_taxpayer and sale.company.special_taxpayer != '000' %}<p><strong>Contribuyente Especial No.:</strong> {{ sale.company.special_taxpayer }}</p>{% endif %}
+            {% endif %}
+        </div>
+    </header>
+
+    <section class="fp-ticket-document" aria-label="Identificación del documento">
+        <h2>{% if sale.is_invoice %}Factura{% else %}Ticket{% endif %}</h2>
+        <p class="fp-ticket-number">N.º {% if sale.is_invoice %}{{ sale.voucher_number_full }}{% else %}{{ sale.voucher_number }}{% endif %}</p>
+    </section>
+
+    <div class="fp-ticket-meta">
         {% if sale.is_invoice %}
-            <b>Fecha de autorización:</b> {{ sale.get_authorization_date }}<br>
-            <b>Fecha de emisión:</b> {{ sale.get_date_joined }}<br>
+            <p><strong>Fecha de emisión:</strong> {{ sale.get_date_joined }}</p>
+            <p><strong>Fecha de autorización:</strong> {{ sale.get_authorization_date }}</p>
+            <p><strong>Ambiente:</strong> {{ sale.get_environment_type_display }}<br><strong>Emisión:</strong> {{ sale.company.get_emission_type_display }}</p>
+            <p><strong>Clave de acceso:</strong><span class="fp-ticket-key">{{ sale.access_code }}</span></p>
         {% endif %}
-        {% if sale.is_invoice %}
-            <b>Factura:</b> {{ sale.voucher_number_full }}<br>
-            <b>Ambiente:</b> {{ sale.get_environment_type_display }}<br>
-            <b>Emisión:</b> {{ sale.company.get_emission_type_display }}<br>
-            <b>Clave de acceso:</b> {{ sale.access_code }}<br>
-        {% endif %}
-        <b>Cliente:</b> {{ sale.client.user.names }}<br>
-        <b>Identificación:</b> {{ sale.client.dni }}<br>
-        {% if sale.is_invoice %}
-            <b>Método de pago:</b> {{ sale.get_payment_method_display }}
-        {% endif %}
-    </p>
-    <table class="table table-borderless table-sm" id="details" style="margin-bottom: 0">
-        <thead>
-        <tr>
-            <th style="width: 15%;">Cantidad</th>
-            <th style="width: 40%;">Descripción</th>
-            <th style="width: 15%;">P./Unitario</th>
-            <th style="width: 15%;">Dscto</th>
-            <th style="width: 15%;" class="text-right">Subtotal</th>
-        </tr>
-        </thead>
-        <tbody>
+        <p><strong>Cliente:</strong> {{ sale.client.user.names }}</p>
+        <p><strong>Identificación:</strong> {{ sale.client.dni }}</p>
+        {% if sale.is_invoice %}<p><strong>Método de pago:</strong> {{ sale.get_payment_method_display }}</p>{% endif %}
+    </div>
+
+    <section class="fp-ticket-section" aria-label="Productos y valores">
+        <h2 class="fp-ticket-section-title">Detalle</h2>
         {% for detail in sale.saledetail_set.all %}
-            <tr>
-                <td>{{ detail.cant }}</td>
-                <td>{{ detail.product.name }}</td>
-                <td>{{ detail.price|floatformat:2 }}</td>
-                <td>{{ detail.total_dscto|floatformat:2 }}</td>
-                <td class="text-right">{{ detail.total|floatformat:2 }}</td>
-            </tr>
+            <div class="fp-ticket-line">
+                <p class="fp-ticket-description">{{ detail.product.name }}</p>
+                <table class="fp-ticket-values" aria-label="Cantidad, precio unitario e importe">
+                    <colgroup><col style="width:55%"><col style="width:45%"></colgroup>
+                    <tbody>
+                    <tr><th scope="col">Cant. × p. unit.</th><th scope="col" class="fp-ticket-amount">Importe</th></tr>
+                    <tr><td>{{ detail.cant }} × <span class="fp-ticket-money">${{ detail.price|floatformat:2 }}</span></td><td class="fp-ticket-amount">${{ detail.total|floatformat:2 }}</td></tr>
+                    </tbody>
+                </table>
+                <p class="fp-ticket-discount">Descuento: ${{ detail.total_dscto|floatformat:2 }}</p>
+            </div>
         {% endfor %}
-        </tbody>
-    </table>
-    <table class="table table-borderless table-sm text-uppercase">
-        <thead>
-        <tr>
-            <th style="width: 80%;"></th>
-            <th style="width: 20%;"></th>
-        </tr>
-        </thead>
+    </section>
+
+    <table class="fp-ticket-totals" aria-label="Resumen de impuestos y total en dólares">
+        <colgroup><col style="width:60%"><col style="width:40%"></colgroup>
         <tbody>
-        <tr>
-            <td class="float-right font-weight-bold">Subtotal sin impuestos</td>
-            <td class="text-right">{{ sale.get_subtotal_without_taxes|floatformat:2 }}</td>
-        </tr>
-        <tr>
-            <td class="float-right font-weight-bold">Descuentos</td>
-            <td class="text-right">{{ sale.total_dscto|floatformat:2 }}</td>
-        </tr>
-        {% with impuestos=sale.impuestos_por_tarifa %}{# subtotales e IVA por tarifa (15 %, 5 %, 0 %, no objeto, exento) #}
-        {% for t in impuestos %}<tr>
-            <td class="float-right font-weight-bold">Subtotal {{ t.nombre }}</td>
-            <td class="text-right">{{ t.base|floatformat:2 }}</td>
-        </tr>{% endfor %}
-        {% for t in impuestos %}{% if t.tarifa %}<tr>
-            <td class="float-right font-weight-bold">IVA {{ t.nombre }}</td>
-            <td class="text-right">{{ t.valor|floatformat:2 }}</td>
-        </tr>{% endif %}{% endfor %}
+        <tr><td>Subtotal sin impuestos</td><td>{{ sale.get_subtotal_without_taxes|floatformat:2 }}</td></tr>
+        <tr><td>Descuentos</td><td>{{ sale.total_dscto|floatformat:2 }}</td></tr>
+        {% with impuestos=sale.impuestos_por_tarifa %}{# Conservar valores y desglose existentes, sin recalcular. #}
+            {% for t in impuestos %}<tr><td>Subtotal {{ t.nombre }}</td><td>{{ t.base|floatformat:2 }}</td></tr>{% endfor %}
+            {% for t in impuestos %}{% if t.tarifa %}<tr><td>IVA {{ t.nombre }}</td><td>{{ t.valor|floatformat:2 }}</td></tr>{% endif %}{% endfor %}
         {% endwith %}
-        <tr>
-            <td class="float-right font-weight-bold">Total</td>
-            <td class="text-right">{{ sale.total|floatformat:2 }}</td>
-        </tr>
-        {% if sale.payment_type == 'efectivo' %}
-            <tr>
-                <td class="float-right font-weight-bold">Efectivo</td>
-                <td class="text-right">{{ sale.cash|floatformat:2 }}</td>
-            </tr>
-            <tr>
-                <td class="float-right font-weight-bold">Cambio</td>
-                <td class="text-right">{{ sale.change|floatformat:2 }}</td>
-            </tr>
-        {% else %}
-            <tr>
-                <td class="float-right font-weight-bold">Fecha limite de credito</td>
-                <td class="text-right">{{ sale.get_end_credit }}</td>
-            </tr>
-        {% endif %}
         </tbody>
     </table>
-    {% if sale.is_invoice %}
-        <p class="terms">
-            {% if sale.company.special_taxpayer and sale.company.special_taxpayer != '000' %}Contribuyente Especial No.: {{ sale.company.special_taxpayer }}<br>{% endif %}
-            {# Sin usuario ni clave del portal (se exponía la cédula como clave); el portal genérico queda para más adelante. #}
-            {% with proveedor=sale.get_proveedor %}{% if proveedor %}
-            Sistema de facturación electrónica: {{ proveedor.nombre }} · RUC Proveedor: {{ proveedor.ruc }}<br>
-            {{ proveedor.email }} · {{ proveedor.direccion }}<br>
-            {% endif %}{% endwith %}
-            Consultas sobre este comprobante: {{ sale.company.email }}
-        </p>
-    {% endif %}
-</div>
+    <div class="fp-ticket-total" aria-label="Total en dólares">
+        <p>Total USD</p>
+        <p class="fp-ticket-total-value">{{ sale.total|floatformat:2 }}</p>
+    </div>
+    <div class="fp-ticket-payment">
+        {% if sale.payment_type == 'efectivo' %}
+            <p><strong>Efectivo:</strong> ${{ sale.cash|floatformat:2 }}</p>
+            <p><strong>Cambio:</strong> ${{ sale.change|floatformat:2 }}</p>
+        {% else %}
+            <p><strong>Fecha límite de crédito:</strong> {{ sale.get_end_credit }}</p>
+        {% endif %}
+    </div>
+
+    <footer class="fp-ticket-footer" aria-label="Sistema de facturación">
+        <img src="{% static 'img/brand/isotipo-pie.png' %}" alt="" class="fp-ticket-bird">
+        {% if sale.is_invoice %}
+            {% with proveedor=sale.get_proveedor %}
+                {% if proveedor %}
+                    <p>Sistema de facturación electrónica:<br>{{ proveedor.nombre }}</p>
+                    <p>RUC Proveedor: {{ proveedor.ruc }}</p>
+                    <p>{{ proveedor.email }}<br>{{ proveedor.direccion }}</p>
+                {% else %}
+                    <p>FacturaPorAquí</p>
+                {% endif %}
+            {% endwith %}
+            {% if sale.company.email %}<p class="fp-ticket-contact">Consultas sobre este comprobante:<br>{{ sale.company.email }}</p>{% endif %}
+        {% else %}
+            <p>FacturaPorAquí</p>
+        {% endif %}
+    </footer>
+</main>
 </body>
 </html>
