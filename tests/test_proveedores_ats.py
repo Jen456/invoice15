@@ -8,6 +8,7 @@ from django.core.management import CommandError, call_command
 
 from core.pos.models import Provider
 from core.pos.proveedores import sugerencia, sujeto_de_ruc, validar_proveedor
+from core.tenancy.context import company_context
 from core.tenancy.models import AuditLog
 from tests import ayuda_compras as ayuda
 
@@ -140,3 +141,87 @@ class TestOrdenProveedoresIncompletos:
                                    'decision': decision, 'informe': str(informe)}
         assert sorted(f['accion'] for f in csv.DictReader(open(informe, encoding='utf-8'))) == [
             'llenado', 'llenado', 'sin cambios: revisar a mano']
+
+
+# ---------------------------------------------------------------- formulario y pantallas (paso 2: §6.D)
+
+def _datos_proveedor(**cambios):
+    datos = {'name': 'PROVEEDOR DE PANTALLA S.A.', 'tipo_identificacion': '04', 'ruc': '0990000001001', 'tipo_sujeto': '',
+             'parte_relacionada': 'no', 'mobile': '0991112233', 'email': 'pantalla@example.com', 'address': 'Av. Ficticia 1'}
+    datos.update(cambios)
+    return datos
+
+
+@pytest.mark.django_db
+class TestFormulario:
+
+    def formulario(self, empresa, datos, instancia=None):
+        from core.pos.forms import ProviderForm
+        with company_context(empresa):
+            form = ProviderForm(datos, instance=instancia)
+            return form, form.is_valid()
+
+    def test_parte_relacionada_sin_valor_inicial_y_obligatoria(self, empresa):
+        from core.pos.forms import ProviderForm
+        assert ProviderForm()['parte_relacionada'].value() in ('', None)
+        form, valido = self.formulario(empresa, _datos_proveedor(parte_relacionada=''))
+        assert not valido and form.errors['parte_relacionada'] == ['Indica si es parte relacionada']
+        form, valido = self.formulario(empresa, _datos_proveedor(tipo_identificacion=''))
+        assert not valido and 'tipo_identificacion' in form.errors
+
+    def test_sujeto_derivado_o_elegido_y_numero_segun_el_tipo(self, empresa):
+        form, valido = self.formulario(empresa, _datos_proveedor(tipo_sujeto='01'))
+        assert valido and form.cleaned_data['tipo_sujeto'] == '02' and form.cleaned_data['parte_relacionada'] is False
+        form, valido = self.formulario(empresa, _datos_proveedor(tipo_identificacion='06', ruc='AB123456'))
+        assert not valido and form.errors['tipo_sujeto'] == ['Elige si es persona natural o sociedad']
+        form, valido = self.formulario(empresa, _datos_proveedor(tipo_identificacion='05', ruc='0912345678'))
+        assert not valido and 'ruc' in form.errors
+        form, valido = self.formulario(empresa, _datos_proveedor(tipo_identificacion='08', ruc='EXT-1234567890',
+                                                                 tipo_sujeto='01', parte_relacionada='si'))
+        assert valido and form.advertencias == [{'codigo': 'ats_longitud',
+                                                 'texto': 'El ATS admite hasta 13 caracteres en la identificación del proveedor'}]
+
+    def test_edicion_muestra_lo_guardado(self, empresa):
+        from core.pos.forms import ProviderForm
+        proveedor = ayuda.crear_proveedor(empresa, tipo='04', parte_relacionada=True)
+        assert ProviderForm(instance=proveedor)['parte_relacionada'].value() == 'si'
+        anterior = ayuda.crear_proveedor(empresa, tipo='')
+        assert ProviderForm(instance=anterior)['parte_relacionada'].value() in ('', None)
+
+
+@pytest.mark.django_db
+class TestPantallas:
+
+    def entrar(self, client, empresa, admin):
+        from tests import helpers
+        helpers.iniciar_sesion(client, admin, empresa=empresa)
+
+    def test_alta_por_la_pantalla_y_listado_con_insignia(self, client, empresa, admin):
+        import json
+        anterior = ayuda.crear_proveedor(empresa, tipo='', nombre='<img src=x onerror=alert(1)>')
+        self.entrar(client, empresa, admin)
+        assert client.get('/pos/provider/add/').status_code == 200
+        data = json.loads(client.post('/pos/provider/add/', {**_datos_proveedor(parte_relacionada=''), 'action': 'add'}).content)
+        assert 'Indica si es parte relacionada' in json.dumps(data['error'], ensure_ascii=False)
+        data = json.loads(client.post('/pos/provider/add/', {**_datos_proveedor(), 'action': 'add'}).content)
+        assert data['tipo_sujeto'] == {'id': '02', 'name': 'Sociedad'} and data['datos_completos'] is True
+        filas = json.loads(client.post('/pos/provider/', {'action': 'search'}).content)
+        fila = next(f for f in filas if f['id'] == anterior.pk)
+        assert fila['name'] == '<img src=x onerror=alert(1)>' and fila['datos_completos'] is False
+        assert fila['faltantes'][0] == {'codigo': 'tipo_identificacion', 'texto': 'Falta el tipo de identificación'}
+        respuesta = client.get(f'/pos/provider/update/{anterior.pk}/')
+        assert respuesta.status_code == 200 and respuesta.context['form']['parte_relacionada'].value() in ('', None)
+
+    def test_modal_de_compra_crea_proveedor_completo(self, client, empresa, admin):
+        import json
+        self.entrar(client, empresa, admin)
+        respuesta = client.get('/pos/purchase/add/')
+        assert respuesta.context['frmProvider'].auto_id == 'fp_proveedor_%s'
+        data = json.loads(client.post('/pos/purchase/add/', {**_datos_proveedor(tipo_identificacion='05', ruc=CEDULA),
+                                                             'action': 'create_provider'}).content)
+        assert data['datos_completos'] is True and data['tipo_identificacion']['id'] == '05'
+        assert data['tipo_sujeto']['id'] == '01' and data['parte_relacionada'] is False and data['text']
+        with company_context(empresa):
+            assert Provider.objects.get(pk=data['id']).faltantes_ats() == []
+        data = json.loads(client.post('/pos/purchase/add/', {'action': 'search_provider', 'term': CEDULA[:6]}).content)
+        assert [p['ruc'] for p in data] == [CEDULA]
