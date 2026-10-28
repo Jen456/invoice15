@@ -275,12 +275,22 @@ class SaleDeleteView(GroupPermissionMixin, DeleteView):
     def post(self, request, *args, **kwargs):
         data = {}
         try:
-            sale = self.get_object()
-            if sale.status in emision.BLOQUEAN_BORRADO:
-                data['error'] = ('Esta factura ya fue enviada al SRI y no se puede eliminar. Para dejarla sin efecto, anúlala en '
-                                 '«SRI en línea» (hasta el día 7 del mes siguiente) o emite una nota de crédito.')
-            else:
-                sale.delete()
+            with transaction.atomic():
+                # Con la venta bloqueada, un borrado doble o una emisión a la vez no devuelven el stock dos veces.
+                sale = Sale.objects.select_for_update(of=('self',)).get(pk=self.get_object().pk)
+                if sale.status in emision.BLOQUEAN_BORRADO:
+                    data['error'] = ('Esta factura ya fue enviada al SRI y no se puede eliminar. Para dejarla sin efecto, anúlala en '
+                                     '«SRI en línea» (hasta el día 7 del mes siguiente) o emite una nota de crédito.')
+                else:
+                    cuentas = list(sale.ctascollect_set.select_for_update(of=('self',)))
+                    if any(cuenta.paymentsctacollect_set.exists() for cuenta in cuentas):
+                        # Antes de tocar el stock: con cobros registrados no se borra nada.
+                        data['error'] = ('Esta venta a crédito tiene cobros registrados en «Cuentas por cobrar». Elimina '
+                                         'esos cobros antes de eliminar la venta.')
+                    else:
+                        for cuenta in cuentas:   # la cuenta por cobrar (sin abonos) protege a la venta: se borra con ella
+                            cuenta.delete()
+                        sale.delete()
         except Exception as e:
             data['error'] = str(e)
         return HttpResponse(json.dumps(data), content_type='application/json')

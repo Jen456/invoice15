@@ -1,6 +1,6 @@
 """Contratos comunes de la fase contable (commit B0 del integrador), antes de Proformas, Compras y Ventas: señal
 comprobante_autorizado (un receptor que falla no cambia el estado y se vuelve a llamar al reenviar), menú generalizado
-por app, consultas de retenciones, dataclasses del 07 recibido y roles."""
+por app, consultas de retenciones, dataclasses del 07 recibido, roles y borrado de una venta a crédito."""
 import dataclasses
 import importlib
 from datetime import date, timedelta
@@ -12,6 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.db import connection, transaction
 from django.db.migrations.executor import MigrationExecutor
+from django.db.models import ProtectedError
 from django.dispatch import Signal
 from django.utils import timezone
 
@@ -20,7 +21,8 @@ from core.comprobantes.models import CodigoRetencion, Retencion
 from core.configuracion import servicios as cfg
 from core.importacion import recibidos
 from core.pos import choices
-from core.pos.models import Client, CreditNote, Provider, Purchase, Sale, VoucherErrors
+from core.pos.models import (Client, CreditNote, CtasCollect, PaymentsCtaCollect, Product, Provider, Purchase, Sale,
+                             SaleDetail, VoucherErrors)
 from core.pos.senales_comprobantes import anulado_en_sri, comprobante_autorizado
 from core.security import menu
 from core.security.models import GroupModule, Module, ModuleType
@@ -28,8 +30,8 @@ from core.tenancy import roles
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_ACCOUNTANT, ROLE_ADMIN, ROLE_CLIENT, ROLE_OWNER, ROLE_READONLY, ROLE_SELLER
 from core.user.models import User
-from tests.test_emision_sri import (accion, comprador, dueno, empresa, leer, p12, producto, refrescar, sri, vender,  # noqa: F401
-                                    venta_de, web)
+from tests.test_emision_sri import (VENTAS, accion, comprador, dueno, empresa, leer, p12, producto, refrescar,  # noqa: F401
+                                    sri, vender, venta_de, web)
 
 pytestmark = pytest.mark.django_db
 ROLES = (ROLE_OWNER, ROLE_ADMIN, ROLE_ACCOUNTANT, ROLE_SELLER, ROLE_READONLY, ROLE_CLIENT)
@@ -298,3 +300,45 @@ def test_medios_de_pago_y_su_forma_de_pago_del_sri():
     assert all(len(m) <= 15 for m in medios)                                  # CharField(max_length=15) de O1 y O2
     assert set(choices.FORMA_PAGO_SRI_DE_MEDIO) == set(medios) - {'otro'}
     assert set(choices.FORMA_PAGO_SRI_DE_MEDIO.values()) <= set(dict(choices.PAYMENT_METHOD))
+
+
+# ---------------------------------------------------------------- borrar una venta a crédito
+
+class TestBorrarVenta:
+
+    @pytest.fixture
+    def venta(self, web, empresa, comprador, producto, sri):
+        sri.respuestas_recepcion = [('DEVUELTA', [('35', 'ARCHIVO NO CUMPLE ESTRUCTURA XML')])]   # devuelta: se puede borrar
+        vender(web, comprador, producto, cantidad=3, payment_type='credito', end_credit='2026-11-30')
+        venta = venta_de(empresa, 271)
+        assert venta.status == 'returned' and self.stock(empresa, producto) == 97
+        assert leer(empresa, lambda: CtasCollect.objects.filter(sale=venta).count()) == 1
+        return venta
+
+    def stock(self, empresa, producto):
+        return leer(empresa, lambda: Product.objects.get(pk=producto.pk).stock)
+
+    def test_a_credito_sin_abonos_se_elimina_y_devuelve_el_stock(self, web, empresa, producto, venta):
+        assert web.post(f'{VENTAS}delete/{venta.pk}/').json() == {}
+        assert self.stock(empresa, producto) == 100
+        with company_context(empresa):
+            assert not Sale.objects.filter(pk=venta.pk).exists() and not CtasCollect.objects.exists()
+            assert not SaleDetail.objects.exists()
+
+    def test_con_abonos_se_rechaza_sin_tocar_nada(self, web, empresa, producto, venta):
+        with company_context(empresa):
+            cuenta = CtasCollect.objects.get(sale=venta)
+            PaymentsCtaCollect.objects.create(ctas_collect=cuenta, valor=Decimal('5.00'), description='Abono de prueba')
+        r = web.post(f'{VENTAS}delete/{venta.pk}/').json()
+        assert 'cobros registrados en «Cuentas por cobrar»' in r['error']
+        assert self.stock(empresa, producto) == 97
+        with company_context(empresa):
+            assert Sale.objects.filter(pk=venta.pk).exists() and SaleDetail.objects.filter(sale=venta).count() == 1
+            assert CtasCollect.objects.filter(sale=venta).count() == 1 and PaymentsCtaCollect.objects.count() == 1
+
+    def test_borrar_la_venta_es_todo_o_nada(self, empresa, producto, venta):
+        with company_context(empresa):
+            with pytest.raises(ProtectedError):
+                Sale.objects.get(pk=venta.pk).delete()                       # la cuenta por cobrar la protege
+            assert SaleDetail.objects.filter(sale=venta).count() == 1
+        assert self.stock(empresa, producto) == 97          # antes quedaban el stock devuelto y los detalles borrados

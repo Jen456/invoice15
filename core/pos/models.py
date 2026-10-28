@@ -882,14 +882,13 @@ class Sale(TenantModel):
             self.receipt.registrar_usado(self.voucher_number)
 
     def delete(self, using=None, keep_parents=False):
-        try:
+        # Todo o nada: el stock vuelve con F() (suma en la base, sin pisar otra venta a la vez) y, si algo falla (p. ej. la
+        # cuenta por cobrar que protege a la venta), nada cambia. SaleDeleteView borra antes la CxC sin abonos.
+        with transaction.atomic():
             for i in self.saledetail_set.filter(product__inventoried=True):
-                i.product.stock += i.cant
-                i.product.save()
+                Product.all_companies.filter(pk=i.product_id).update(stock=models.F('stock') + i.cant)
                 i.delete()
-        except:
-            pass
-        super(Sale, self).delete()
+            super(Sale, self).delete()
 
     def generate_electronic_invoice(self):
         # Envía el XML firmado guardado o consulta su autorización (core/pos/emision.py); el cupo se
