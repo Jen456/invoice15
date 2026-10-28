@@ -14,15 +14,16 @@ CLIENT_URLS = {'/pos/client/update/profile/', '/pos/sale/client/', '/pos/credit/
 REPORT_URLS = {'/reports/sale/', '/reports/purchase/', '/reports/expenses/', '/reports/debts/pay/',
                '/reports/ctas/collect/', '/reports/results/', '/reports/earnings/'}
 SELLER_URLS = {'/pos/client/', '/pos/sale/admin/', '/pos/credit/note/admin/', '/pos/product/', '/pos/promotions/',
-               '/reports/sale/'} | PROFILE_URLS
+               '/reports/sale/', '/proformas/'} | PROFILE_URLS
 ACCOUNTANT_URLS = REPORT_URLS | {'/pos/sale/admin/', '/pos/credit/note/admin/', '/pos/purchase/', '/pos/expenses/',
                                  '/pos/ctas/collect/', '/pos/debts/pay/', '/pos/voucher/errors/', '/pos/client/',
                                  '/pos/provider/', '/comprobantes/retenciones/',
                                  '/comprobantes/liquidaciones/', '/comprobantes/notas-debito/', '/comprobantes/guias/',
-                                 '/importacion/lotes/', '/importacion/pendientes/', '/importacion/recibidos/'} | PROFILE_URLS
+                                 '/importacion/lotes/', '/importacion/pendientes/', '/importacion/recibidos/',
+                                 '/proformas/', '/comprobantes/retenciones-recibidas/'} | PROFILE_URLS
 # Permisos que un rol de solo lectura nunca recibe aunque el módulo esté en su menú.
 WRITE_PREFIXES = ('add_', 'change_', 'delete_', 'adjust_')
-SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note'}
+SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note', 'add_proforma', 'change_proforma'}
 
 
 def role_modules(role, modules):

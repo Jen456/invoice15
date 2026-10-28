@@ -21,6 +21,7 @@ from django.utils import timezone
 from lxml import etree
 
 from core.login.identificacion import ruc_valido
+from core.pos.senales_comprobantes import comprobante_autorizado
 from core.pos.utilities.firma import ErrorFirma, firmar_xml
 
 logger = logging.getLogger(__name__)
@@ -297,7 +298,12 @@ def _ejecutar(comprobante, esperas):
 
 
 def _despues_de_autorizar(comprobante):
-    """RIDE, nota de crédito sobre la factura y correo: sus fallos no cambian el estado autorizado."""
+    """RIDE, nota de crédito sobre la factura, señal comprobante_autorizado y correo.
+
+    Sus fallos no cambian el estado autorizado. _ejecutar la vuelve a llamar cuando se reenvía o consulta un comprobante
+    que ya estaba AUTORIZADA (no si ya se envió por correo): los receptores de la señal deben ser idempotentes
+    (core/pos/senales_comprobantes.py).
+    """
     from core.pos.utilities.sri import SRI
     try:
         comprobante.generate_pdf_authorized()
@@ -316,6 +322,14 @@ def _despues_de_autorizar(comprobante):
         cliente = SimpleNamespace(send_email_invoice=enviar, user=SimpleNamespace(names=nombre, email=correo))
     else:
         cliente = comprobante.client
+    # Ajustes de otros módulos (cuentas por cobrar y por pagar…), ya con el RIDE y la factura de la nota actualizados.
+    # Un receptor que falla queda en «Errores de comprobantes»: el comprobante sigue autorizado y el correo sale igual.
+    for receptor, resultado in comprobante_autorizado.send_robust(sender=type(comprobante), comprobante=comprobante):
+        if isinstance(resultado, Exception):
+            logger.exception('Ajuste posterior (%s) fallido para %s', getattr(receptor, '__qualname__', receptor),
+                             comprobante.access_code, exc_info=resultado)
+            _registrar_error(comprobante, 'xml_authorized',
+                             f'Autorizada, pero un ajuste posterior quedó pendiente ({resultado.__class__.__name__}).')
     SRI().notify_by_email(instance=comprobante, company=comprobante.company, client=cliente)
 
 

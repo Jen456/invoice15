@@ -1,9 +1,11 @@
 """Organización del menú de empresa (tipos de módulo, nombres y orden), en un solo lugar.
 
-La usan start_installation (instalaciones nuevas) y la migración importacion 0003 (instalaciones existentes). Recibe los
-modelos para poder trabajar con los históricos de una migración. Los módulos se identifican por URL (las URL no cambian
-para no romper enlaces); solo cambian el grupo, el nombre visible y el orden. Un módulo que no exista en la base no se
-crea aquí (salvo los de importación, que se definen en MODULOS_NUEVOS): nunca se muestra algo que no está implementado.
+La usan start_installation (instalaciones nuevas) y, en instalaciones existentes, las migraciones de las apps que
+añaden módulos (importacion 0003 y 0004, y las de cada app que declare uno en MODULOS_NUEVOS). Recibe los modelos para
+poder trabajar con los históricos de una migración. Los módulos se identifican por URL (las URL no cambian para no
+romper enlaces); solo cambian el grupo, el nombre visible y el orden. Un módulo que no exista en la base no se crea aquí,
+salvo los de MODULOS_NUEVOS y solo cuando su app ya tiene sus permisos (está migrada): nunca se muestra algo que no está
+implementado.
 """
 
 # (nombre del grupo, icono —único—, orden, [(url, nombre visible, orden)])
@@ -54,17 +56,18 @@ ESTRUCTURA = (
 # Grupos antiguos que se renombran (conservan su id y sus módulos que no se mueven)
 RENOMBRAR = {'Facturación': 'Comprobantes Electrónicos'}
 
-# Módulos de la importación: (url, icono, descripción, [(app, modelo, codename)])
+# Módulos que organizar_menu crea si faltan: (app, url, icono, descripción, codenames de la app). El nombre visible, el
+# grupo y el orden salen de ESTRUCTURA.
 MODULOS_NUEVOS = (
-    ('/importacion/recibidos/', 'fas fa-inbox', 'Facturas recibidas importadas desde XML o RIDE',
+    ('importacion', '/importacion/recibidos/', 'fas fa-inbox', 'Facturas recibidas importadas desde XML o RIDE',
      ('view_documentoimportado', 'add_documentoimportado', 'change_documentoimportado')),
-    ('/importacion/nueva/', 'fas fa-file-upload', 'Importar comprobantes XML del SRI o RIDE en PDF',
+    ('importacion', '/importacion/nueva/', 'fas fa-file-upload', 'Importar comprobantes XML del SRI o RIDE en PDF',
      ('view_documentoimportado', 'add_documentoimportado')),
-    ('/importacion/lotes/', 'fas fa-layer-group', 'Lotes de importación y su historial',
+    ('importacion', '/importacion/lotes/', 'fas fa-layer-group', 'Lotes de importación y su historial',
      ('view_documentoimportado', 'add_documentoimportado')),
-    ('/importacion/pendientes/', 'fas fa-tasks', 'Documentos importados pendientes de revisión',
+    ('importacion', '/importacion/pendientes/', 'fas fa-tasks', 'Documentos importados pendientes de revisión',
      ('view_documentoimportado', 'change_documentoimportado')),
-    ('/importacion/reglas/', 'fas fa-sliders-h', 'Reglas de importación y contabilización',
+    ('importacion', '/importacion/reglas/', 'fas fa-sliders-h', 'Reglas de importación y contabilización',
      ('view_reglaimportacion', 'change_reglaimportacion')),
 )
 
@@ -83,10 +86,13 @@ def organizar_menu(ModuleType, Module, Permission):
             tipo.orden = orden
             tipo.save(update_fields=['orden'])
         tipos[nombre] = tipo
-    for url, icono, descripcion, codigos in MODULOS_NUEVOS:
+    for app, url, icono, descripcion, codigos in MODULOS_NUEVOS:
+        permisos = Permission.objects.filter(content_type__app_label=app, codename__in=codigos)
+        if not permisos.exists():
+            continue   # app aún sin migrar: nunca se muestra un módulo sin implementar
         modulo = Module.objects.filter(url=url).first() or Module.objects.create(
             url=url, name=nombres[url][0], icon=icono, description=descripcion)
-        modulo.permissions.set(Permission.objects.filter(content_type__app_label='importacion', codename__in=codigos))
+        modulo.permissions.set(permisos)
     for nombre, _, _, modulos in ESTRUCTURA:
         for url, visible, orden in modulos:
             Module.objects.filter(url=url).update(name=visible, orden=orden, module_type=tipos[nombre])

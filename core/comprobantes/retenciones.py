@@ -13,6 +13,7 @@ from decimal import Decimal, InvalidOperation
 from django.utils import timezone
 
 from core.comprobantes.models import CodigoRetencion, Retencion, RetencionDetalle, redondear
+from core.pos.emision import AUTORIZADOS
 
 NO_CUENTAN = ('returned', 'not_authorized', 'sequential_registered_error')
 MAX_LINEAS = 10
@@ -49,6 +50,35 @@ def tipo_identificacion(identificacion):
 
 def retencion_vigente(compra):
     return Retencion.objects.filter(purchase=compra).exclude(status__in=NO_CUENTAN).first()
+
+
+def retenciones_autorizadas(compra):
+    """Retenciones emitidas sobre la compra que autorizó el SRI: las que abonan a su cuenta por pagar.
+
+    Es la única regla de «retención que cuenta» (Compras no filtra el estado por su cuenta); O2 le añade el filtro de
+    las anuladas en el SRI.
+    """
+    return Retencion.objects.filter(purchase=compra, status__in=AUTORIZADOS)
+
+
+# El catálogo de retenciones se consulta solo con estas dos funciones: con las vigencias habrá varias filas por
+# (impuesto, código). Cuerpos provisionales (una fila por pareja; `fecha` aún no se usa): D0 programa la vigencia.
+
+def codigo_retencion_vigente(impuesto, codigo, fecha, incluir_inactivos=False):
+    """Fila del catálogo de la pareja (impuesto, código) vigente en `fecha`, o None.
+
+    incluir_inactivos=True también devuelve los códigos que ya no se ofrecen para emitir (p. ej. los que usa un cliente
+    al retenernos).
+    """
+    # D0 programa la vigencia
+    return CodigoRetencion.objects.filter(impuesto=impuesto, codigo=codigo,
+                                          **({} if incluir_inactivos else {'activo': True})).first()
+
+
+def codigos_retencion_vigentes(fecha, incluir_inactivos=False):
+    """Una fila por pareja (impuesto, código) vigente en `fecha`, con el orden del catálogo."""
+    # D0 programa la vigencia
+    return CodigoRetencion.objects.filter(**({} if incluir_inactivos else {'activo': True}))
 
 
 def _decimal(valor, campo):

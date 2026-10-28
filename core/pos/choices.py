@@ -115,3 +115,13 @@ PORCENTAJE_IVA = {'0': Decimal('0'), '2': Decimal('12'), '3': Decimal('14'), '4'
 NOMBRE_TARIFA_IVA = {'4': '15 %', '5': '5 %', '0': '0 %', '7': 'exento de IVA', '6': 'no objeto de IVA', '2': '12 %', '3': '14 %',
                      '10': '13 %'}
 ORDEN_TARIFAS_IVA = ('4', '10', '3', '2', '5', '0', '6', '7')
+
+# Medio con el que se cobra o se paga (cobros, pagos a proveedores y gastos). Común a O1 y O2 (commit B0).
+MEDIOS_DE_PAGO = (
+    ('efectivo', 'Efectivo'), ('transferencia', 'Transferencia'), ('deposito', 'Depósito'), ('cheque', 'Cheque'),
+    ('tarjeta_debito', 'Tarjeta de débito'), ('tarjeta_credito', 'Tarjeta de crédito'),
+    ('compensacion', 'Compensación de deudas'), ('otro', 'Otro'),
+)
+# Forma de pago del SRI (tabla 13 del ATS / PAYMENT_METHOD) que corresponde a cada medio; 'otro' no tiene equivalente.
+FORMA_PAGO_SRI_DE_MEDIO = {'efectivo': '01', 'transferencia': '20', 'deposito': '20', 'cheque': '20',
+                           'tarjeta_debito': '16', 'tarjeta_credito': '19', 'compensacion': '15'}
