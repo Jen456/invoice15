@@ -958,6 +958,7 @@ class SaleDetail(TenantModel):
     class Meta:
         verbose_name = 'Detalle de Venta'
         verbose_name_plural = 'Detalle de Ventas'
+        ordering = ('id',)   # las líneas en el orden en que se ingresaron (XML, RIDE y ticket)
         default_permissions = ()
 
 
@@ -1497,4 +1498,5 @@ class CreditNoteDetail(TenantModel):
     class Meta:
         verbose_name = 'Detalle Devolución Ventas'
         verbose_name_plural = 'Detalle Devoluciones Ventas'
+        ordering = ('id',)   # las líneas en el orden en que se ingresaron (XML, RIDE y ticket)
         default_permissions = ()

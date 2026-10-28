@@ -1,5 +1,12 @@
 # Handoff compartido — frontend
 
+## Estado actual — líneas de factura y nota de crédito en orden de ingreso (Claude, 28/10/2026)
+
+- **Qué cambia:** `SaleDetail` y `CreditNoteDetail` tienen `ordering = ('id',)`, como ya tenían los detalles de retención, liquidación, nota de débito y guía. Migración `pos 0019`, que solo cambia opciones del modelo, no las tablas.
+- **Efecto:** el XML, el RIDE A4 y el ticket de los comprobantes futuros listan las líneas en el orden en que se ingresaron. Antes, en PostgreSQL ese orden no estaba garantizado.
+- **Comprobantes ya autorizados:** su XML no cambia.
+- **Prueba:** `tests/test_orden_lineas.py`. Exige el orden de ingreso en la consulta, el XML y el RIDE, y que la consulta lleve `ORDER BY id`: falla sin el arreglo y pasa con él. `test_iva_tarifas`, que fallaba a ratos, debería quedar estable.
+
 ## Estado actual — publicado `3c7eb2a` y RIDE de la 271 y la 272 regenerados (Claude, 28/10/2026)
 
 - **Publicado** el 28/10/2026 a las 04:59 UTC (volcado `pre-20261028-045914-3c7eb2a0.dump`, sin migraciones; salud 200) y subido a GitHub.
