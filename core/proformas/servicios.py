@@ -1,4 +1,5 @@
-"""Servicios de Proformas: numeración, validación, cálculo, estados, PDF, correo y JSON de las pantallas.
+"""Servicios de Proformas: numeración, validación, cálculo, estados, PDF, correo, conversión en factura y JSON de las
+pantallas.
 
 Reglas comunes:
 - importes en Decimal, cuantizados a centavos (HALF_UP) antes de guardar; en el JSON, texto con 2 decimales;
@@ -8,7 +9,8 @@ Reglas comunes:
   externo y, sin `of`, un join interno bloquearía también la otra tabla). En SQLite no tiene efecto;
 - el `detail` de AuditLog solo lleva str, int, bool o listas de ellos (el campo no tiene encoder);
 - ningún texto escrito por el usuario va a los `messages` de Django (se insertan en un literal JS).
-Una proforma no usa Receipt, reservar_numero, cupo, stock, cuentas por cobrar ni el SRI.
+Una proforma no usa Receipt, reservar_numero, cupo, stock, cuentas por cobrar ni el SRI: al facturarla, todo eso lo
+hace la venta (SaleCreateView), en cuya transacción la proforma se bloquea antes que la secuencia y se marca al final.
 """
 import json
 import logging
@@ -19,11 +21,11 @@ from types import SimpleNamespace
 
 from django.core.mail import EmailMessage
 from django.db import IntegrityError, transaction
-from django.db.models import Max, Prefetch, Q
+from django.db.models import Case, Max, Prefetch, Q, Value, When
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from core.pos.choices import PAYMENT_METHOD, PORCENTAJE_IVA
+from core.pos.choices import NOMBRE_TARIFA_IVA, PAYMENT_METHOD, PORCENTAJE_IVA
 from core.pos.clientes import correo_valido, separar_correos, unir_correos
 from core.proformas.models import ContadorProforma, Proforma, ProformaDetalle
 from core.tenancy.context import require_company
@@ -122,7 +124,7 @@ LINEAS = {
     'descripcion': 'La descripción admite hasta 300 caracteres.',
 }
 
-# Avisos (duplicar y, en el paso de la conversión, la precarga de la venta).
+# Avisos (duplicar y la precarga de la venta).
 AVISOS = {
     'emitir': 'Al guardar se emite la factura y se envía al SRI. Revisa el cliente, los productos y la forma de pago.',
     'producto_eliminado': 'La línea «{descripcion}» no se cargó: el producto ya no existe.',
@@ -132,6 +134,8 @@ AVISOS = {
     'precio_distinto': '«{nombre}»: se usa el precio de la proforma (USD {precio}) y no el actual (USD {actual}).',
     'descripcion': 'La factura usa el nombre de cada producto, no la descripción escrita en la proforma.',
     'prospecto': 'La proforma es para un prospecto: registra al cliente antes de emitir.',
+    'pruebas': ('La empresa está en PRUEBAS: la factura no tendrá validez tributaria y la proforma quedará facturada con '
+                'ella. Para volver a cotizar, duplícala.'),
 }
 
 AVISO_EDITAR_ENVIADA = 'Al guardar, la proforma vuelve a borrador y tendrás que enviarla de nuevo.'
@@ -726,6 +730,159 @@ def enviar_por_correo(proforma_id, usuario, destinatarios='', mensaje='', reques
         p.save(update_fields=['estado', 'enviada_en', 'enviada_a', 'envios', 'actualizada_en'])
         _auditar(request, usuario, 'proforma_enviada', p, destinatarios=len(lista), envio=int(p.envios))
     return p
+
+
+# ---------------------------------------------------------------- conversión en factura (§3.4–§3.6)
+
+def _url_ver(pk):
+    return f'{URL_LISTA}ver/{pk}/'
+
+
+def _error_ya_facturada(p):
+    from core.pos.models import Sale
+    factura = Sale.all_companies.filter(pk=p.venta_id).values_list('voucher_number_full', flat=True).first() or ''
+    return ErrorProforma(MENSAJES['ya_facturada'].format(numero=p.numero_completo, factura=factura), estado_http=409,
+                         url=_url_ver(p.pk))
+
+
+def _error_no_facturable(p, hoy=None):
+    if p.esta_vencida(hoy):
+        return ErrorProforma(MENSAJES['vencida'].format(numero=p.numero_completo, fecha=_fecha_texto(p.valida_hasta),
+                                                        accion=VERBOS['facturar']), estado_http=409, url=_url_ver(p.pk))
+    return ErrorProforma(MENSAJES['no_facturable'].format(numero=p.numero_completo, estado=_estado_en_texto(p, hoy)),
+                         estado_http=409, url=_url_ver(p.pk))
+
+
+def _exigir_facturable(p, hoy=None):
+    """Sin factura vinculada y «aceptada» o «enviada» vigente. El ambiente no cuenta: en PRUEBAS se factura igual
+    (decisión de la propietaria del 28/10/2026) y la pantalla avisa que esa factura no tiene validez tributaria."""
+    if p.venta_id is not None:
+        raise _error_ya_facturada(p)
+    if not (p.estado == 'aceptada' or (p.estado == 'enviada' and not p.esta_vencida(hoy))):
+        raise _error_no_facturable(p, hoy)
+
+
+def _fila_del_pos(producto, cant, linea):
+    """Línea en el formato del POS (sale/admin/js/form.js calcula con números): precio y descuento de la proforma."""
+    item = producto.toJSON()
+    item.update({'cant': int(cant), 'price_current': float(linea.price), 'dscto': float(linea.dscto * 100),
+                 'total_dscto': 0.0, 'pvp': float(producto.pvp), 'value': producto.get_full_name()})
+    return item
+
+
+def precarga_para_venta(proforma_id, hoy=None):
+    """Datos para abrir la pantalla de venta precargada con la proforma. SOLO LECTURA: no reserva número, cupo ni stock.
+    Lanza ErrorProforma con `url` (lista o ficha) si no se puede facturar."""
+    from core.pos import emision
+    hoy = hoy or _hoy()
+    p = Proforma.objects.select_related('cliente__user').filter(pk=_id(proforma_id)).first()
+    if p is None:
+        raise ErrorProforma(MENSAJES['no_existe'], estado_http=404, url=URL_LISTA)
+    _exigir_facturable(p, hoy)
+    avisos = [AVISOS['emitir']]
+    if require_company().environment_type != emision.PRODUCCION:
+        avisos.append(AVISOS['pruebas'])
+    lineas, descripcion_distinta = [], False
+    for linea in p.detalles.select_related('product__category'):
+        producto = linea.product if linea.product_id else None
+        if producto is None:
+            avisos.append(AVISOS['producto_eliminado'].format(descripcion=linea.descripcion))
+            continue
+        cant = linea.cant
+        if producto.inventoried and producto.stock <= 0:   # como en la venta: no se vende sin stock
+            avisos.append(AVISOS['sin_stock'].format(nombre=producto.name, cant=linea.cant))
+            continue
+        if producto.inventoried and producto.stock < cant:
+            cant = producto.stock
+            avisos.append(AVISOS['stock_parcial'].format(nombre=producto.name, stock=producto.stock, cant=linea.cant))
+        tarifa = tarifa_de_producto(producto)
+        if tarifa != linea.codigo_porcentaje:
+            avisos.append(AVISOS['tarifa_cambiada'].format(
+                nombre=producto.name, antes=NOMBRE_TARIFA_IVA.get(linea.codigo_porcentaje, linea.codigo_porcentaje),
+                ahora=NOMBRE_TARIFA_IVA.get(tarifa, tarifa)))
+        actual = _cuantizar(producto.get_price_current())
+        if linea.price != actual:
+            avisos.append(AVISOS['precio_distinto'].format(nombre=producto.name, precio=_dinero(linea.price),
+                                                           actual=_dinero(actual)))
+        descripcion_distinta = descripcion_distinta or linea.descripcion != producto.name
+        lineas.append(_fila_del_pos(producto, cant, linea))
+    if not lineas:
+        raise ErrorProforma(MENSAJES['sin_lineas_facturables'].format(numero=p.numero_completo), estado_http=409,
+                            url=_url_ver(p.pk))
+    if descripcion_distinta:
+        avisos.append(AVISOS['descripcion'])
+    prospecto = None
+    if p.cliente_id is None:
+        prospecto = {'nombre': p.cliente_nombre, 'identificacion': p.cliente_identificacion, 'correo': p.cliente_correo,
+                     'telefono': p.cliente_telefono, 'direccion': p.cliente_direccion}
+        avisos.append(AVISOS['prospecto'])
+    return {'proforma': {'id': int(p.pk), 'numero': p.numero_completo, 'total': _dinero(p.total),
+                         'valida_hasta': p.valida_hasta.isoformat(), 'url_ver': _url_ver(p.pk)},
+            'cliente': p.cliente.toJSON() if p.cliente_id else None, 'prospecto': prospecto, 'lineas': lineas,
+            'forma_pago': p.forma_pago_sugerida, 'info_adicional': [{'name': 'Proforma', 'value': p.numero_completo}],
+            'avisos': avisos}
+
+
+def bloquear_para_facturar(proforma_id, tipo_comprobante):
+    """Dentro de la transacción de la venta y ANTES de reservar su número (orden fijo de bloqueos: proforma → secuencia).
+    Una segunda conversión espera aquí, ve la venta vinculada y falla sin gastar número."""
+    if str(tipo_comprobante) != '01':
+        raise ErrorProforma(MENSAJES['solo_factura'])
+    p = bloquear(proforma_id)
+    _exigir_facturable(p)
+    return p
+
+
+def _mismas_lineas(proforma, venta):
+    def clave(linea):
+        return (linea.product_id or 0, int(linea.cant), _cuantizar(linea.price), _cuantizar(linea.dscto))
+    return (sorted(clave(l) for l in proforma.detalles.all())
+            == sorted(clave(d) for d in venta.saledetail_set.all()))
+
+
+@transaction.atomic
+def marcar_facturada(proforma, venta, usuario, request=None):
+    """Vincula la venta y deja la proforma «facturada» con un UPDATE condicional (sin venta y en un estado facturable),
+    que no depende del bloqueo (SQLite no bloquea filas) ni de que el objeto en memoria esté al día. Si no actualiza
+    exactamente 1 fila lanza ErrorProforma: dentro de la transacción de la venta, eso la deshace entera."""
+    ahora, hoy = timezone.now(), _hoy()
+    cambios = dict(venta=venta, estado='facturada', facturada_en=ahora, facturada_por=usuario, actualizada_en=ahora)
+    if proforma.cliente_id is None:
+        cambios['cliente_id'] = venta.client_id   # el prospecto queda ligado al cliente; las copias no cambian
+    filas = (Proforma.objects.filter(pk=proforma.pk, venta__isnull=True)
+             .filter(Q(estado='aceptada') | Q(estado='enviada', valida_hasta__gte=hoy))
+             .update(**cambios))
+    if filas != 1:
+        actual = Proforma.objects.filter(pk=proforma.pk).first()
+        if actual is None:
+            raise ErrorProforma(MENSAJES['no_existe'], estado_http=404, url=URL_LISTA)
+        raise _error_ya_facturada(actual) if actual.venta_id is not None else _error_no_facturable(actual, hoy)
+    proforma.refresh_from_db(fields=['venta', 'estado', 'cliente', 'facturada_en', 'facturada_por', 'actualizada_en'])
+    total_proforma, total_factura = _dinero(proforma.total), _dinero(venta.total)
+    _auditar(request, usuario, 'proforma_facturada', proforma, venta_id=int(venta.pk), factura=venta.voucher_number_full,
+             total_proforma=total_proforma, total_factura=total_factura,
+             coincide=total_proforma == total_factura and _mismas_lineas(proforma, venta),
+             ambiente=int(venta.environment_type))
+
+
+def liberar_por_venta_eliminada(venta):
+    """Receptor de pre_delete de la venta (senales.py): la proforma vuelve a «aceptada» si alguna vez se aceptó y si no a
+    «enviada», en un solo UPDATE y antes del SET NULL del borrado, así la CHECK «facturada ⇔ con venta» nunca se viola.
+    Si el borrado falla después, se deshace con él."""
+    import crum
+
+    from core.tenancy.models import audit
+    proformas = Proforma.all_companies.filter(company_id=venta.company_id, venta_id=venta.pk)
+    filas = list(proformas.values_list('pk', 'numero_completo', 'aceptada_en'))
+    if not filas:
+        return
+    proformas.update(venta=None, facturada_en=None, facturada_por=None, actualizada_en=timezone.now(),
+                     estado=Case(When(aceptada_en__isnull=False, then=Value('aceptada')), default=Value('enviada')))
+    request = crum.get_current_request()
+    for pk, numero, aceptada_en in filas:
+        audit(request, 'proforma_venta_eliminada', company=venta.company, proforma=numero, proforma_id=int(pk),
+              venta_id=int(venta.pk), factura=venta.voucher_number_full,
+              estado='aceptada' if aceptada_en is not None else 'enviada')
 
 
 # ---------------------------------------------------------------- consultas y JSON de las pantallas
