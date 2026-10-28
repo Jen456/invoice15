@@ -1191,3 +1191,9 @@ No se cambiaron XML, numeración, estados ni cupos. No se reenviaron comprobante
 - **Corregido:** el A4 de las dos facturas reales y la altura del ticket.
 - **Pendiente:** el diseño visual del ticket (Codex) y el orden de las líneas (tarea aparte).
 
+### 28/10/2026 — orden de las líneas publicado `98cfa20` (Claude)
+
+- **Corregido y publicado** a las 13:09 UTC con volcado previo (`pre-20261028-130922-98cfa208.dump`): `SaleDetail` y `CreditNoteDetail` con `ordering = ('id',)` y migración `pos 0019`, que solo cambia opciones del modelo. El XML, el RIDE A4 y el ticket de los comprobantes futuros listan las líneas en el orden en que se ingresaron; el XML de los ya autorizados no cambia.
+- **Pruebas:** `test_orden_lineas.py` (2), que falla sin el arreglo; SQLite 559 + 7 omitidas, PostgreSQL 566.
+- **Verificado tras publicar:** salud 200, temporizador del SRI sin errores y `ORDER BY id` en la consulta de líneas de la base real (solo lectura).
+- **Pendiente:** el diseño visual del ticket (Codex) y los puntos preexistentes del RIDE.

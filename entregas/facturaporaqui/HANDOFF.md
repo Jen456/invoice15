@@ -1,7 +1,8 @@
 # Handoff compartido — frontend
 
-## Estado actual — líneas de factura y nota de crédito en orden de ingreso (Claude, 28/10/2026)
+## Estado actual — líneas de factura y nota de crédito en orden de ingreso, publicado `98cfa20` (Claude, 28/10/2026)
 
+- **Publicado** el 28/10/2026 a las 13:09 UTC con la autorización de la propietaria (volcado `pre-20261028-130922-98cfa208.dump`; migración `pos 0019` aplicada; salud 200) y subido a GitHub. El temporizador del SRI corrió a las 13:10 con el código nuevo sin errores, y en la base real la consulta de líneas ya lleva `ORDER BY id`.
 - **Qué cambia:** `SaleDetail` y `CreditNoteDetail` tienen `ordering = ('id',)`, como ya tenían los detalles de retención, liquidación, nota de débito y guía. Migración `pos 0019`, que solo cambia opciones del modelo, no las tablas.
 - **Efecto:** el XML, el RIDE A4 y el ticket de los comprobantes futuros listan las líneas en el orden en que se ingresaron. Antes, en PostgreSQL ese orden no estaba garantizado.
 - **Comprobantes ya autorizados:** su XML no cambia.
@@ -57,10 +58,9 @@
   - 1 línea: 105 mm (antes 132). 40 líneas largas: 337 mm en 1 hoja (antes se partía).
   - En la plantilla solo cambió la regla `@page`. **El diseño visual del ticket sigue siendo el antiguo y le toca a Codex**, con el contrato de abajo.
 - **Pruebas:** `test_regenerar_ride.py` (6) y `test_ticket_continuo.py` (2); las de A4 y RIDE (40) siguen pasando. SQLite 557 + 7 omitidas; PostgreSQL 564.
-- **Hallazgo pendiente de decisión — orden de las líneas:**
-  - `SaleDetail` y `CreditNoteDetail` no tienen `ordering`, y el XML, el RIDE y el ticket recorren las líneas sin `order_by`. En PostgreSQL el orden no está garantizado.
+- **Hallazgo — orden de las líneas (corregido y publicado en `98cfa20`, sección de arriba):**
+  - `SaleDetail` y `CreditNoteDetail` no tenían `ordering`, y el XML, el RIDE y el ticket recorrían las líneas sin `order_by`. En PostgreSQL el orden no estaba garantizado.
   - `test_iva_tarifas::test_xml_valido_contra_el_xsd_y_agrupado_por_tarifa`, que espera el orden de ingreso, falló en 2 de 3 vueltas completas; nunca falló aislada.
-  - Arreglo propuesto: `ordering = ('pk',)` en ambos detalles, sin cambio de tablas. Cambia el orden de las líneas en el XML de los comprobantes futuros. La propietaria lo aprobó el 28/10 como tarea aparte.
 
 ## Pendiente para Codex — rediseño del ticket
 
