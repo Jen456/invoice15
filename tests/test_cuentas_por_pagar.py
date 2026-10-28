@@ -222,3 +222,132 @@ def test_el_listado_no_consulta_por_fila(empresa, admin, proveedor):  # noqa: F8
     fila = next(f for f in veinte if f['id'] == deuda.pk)
     assert (fila['pagado'], fila['abonado'], fila['saldo_a_favor']) == ('15.00', '0.00', False)
     assert fila['base_calculo'] == {'id': 'total', 'name': 'Total con IVA'} and fila['saldo'] == 100.0
+
+
+# ---------------------------------------------------------------- pantallas (paso 2: §4 y §6.E)
+
+URL_LISTA = '/pos/debts/pay/'
+
+
+def post_json(client, url, datos):
+    import json
+    respuesta = client.post(url, datos)
+    return respuesta.status_code, json.loads(respuesta.content)
+
+
+def nota_de_credito(empresa, usuario, proveedor, factura, valor='10.00'):  # noqa: F811
+    with company_context(empresa):
+        return compras.crear_compra(empresa, usuario, ayuda.datos_compra(
+            proveedor, tipo_comprobante='04', tipo_doc_modificado='01', num_doc_modificado=f'001002{factura.secuencial}',
+            aut_doc_modificado='1234567890', fecha_doc_modificado=factura.fecha_emision.isoformat(), compra_modificada=factura.pk),
+            [ayuda.linea_gasto(price=valor, codigo='0')])
+
+
+class TestPantallasCuentasPorPagar:
+
+    @pytest.mark.parametrize('rol', [ROLE_ACCOUNTANT, ROLE_READONLY])
+    def test_contador_y_consulta_no_borran_pagos(self, client, empresa, admin, deuda, rol):  # noqa: F811
+        pago = pagar(empresa, deuda, admin)
+        helpers.iniciar_sesion(client, helpers.crear_usuario(f'lector.{rol}'.lower(), empresa, rol), empresa=empresa)
+        assert client.get(URL_LISTA).context['puede_borrar'] is False
+        estado, data = post_json(client, URL_LISTA, {'action': 'delete_pay', 'id': pago.pk})
+        assert (estado, data) == (403, {'error': 'Tu perfil no puede eliminar pagos.'})
+        assert ayuda.en(empresa, PaymentsDebtsPay.objects.filter(pk=pago.pk).exists)
+        _, filas = post_json(client, URL_LISTA, {'action': 'search_pays', 'id': deuda.pk})
+        assert [(f['tipo'], f['puede_borrar']) for f in filas] == [('pago', False)]
+        estado, _ = post_json(client, f'{URL_LISTA}delete/{deuda.pk}/', {})
+        assert estado == 403 and ayuda.en(empresa, DebtsPay.objects.filter(pk=deuda.pk).exists)
+
+    def test_propietario_borra_el_pago_recalcula_y_audita(self, web, empresa, admin, deuda):  # noqa: F811
+        pago = pagar(empresa, deuda, admin, valor='15.00', medio_pago='cheque', referencia='CH-77')
+        assert web.get(URL_LISTA).context['puede_borrar'] is True
+        _, filas = post_json(web, URL_LISTA, {'action': 'search_pays', 'id': deuda.pk})
+        assert filas == [{'tipo': 'pago', 'id': pago.pk, 'date_joined': hoy().isoformat(), 'valor': '15.00',
+                          'medio_pago': {'id': 'cheque', 'name': 'Cheque'}, 'referencia': 'CH-77', 'description': 's/n',
+                          'puede_borrar': True, 'index': 1}]
+        assert saldo(empresa, deuda) == Decimal('100.00')
+        estado, data = post_json(web, URL_LISTA, {'action': 'delete_pay', 'id': pago.pk})
+        assert (estado, data) == (200, {})
+        assert saldo(empresa, deuda) == Decimal('115.00')
+        registro = AuditLog.objects.get(action='debt_payment_delete', company=empresa)
+        assert (registro.detail['valor'], registro.detail['fecha'], registro.detail['medio_pago'], registro.detail['referencia']) == (
+            '15.00', hoy().isoformat(), 'cheque', 'CH-77')
+        _, data = post_json(web, URL_LISTA, {'action': 'delete_pay', 'id': pago.pk})
+        assert data == {'error': 'El pago no existe.'}
+
+    def test_pagos_y_abonos_en_la_lista_de_movimientos(self, web, empresa, admin, proveedor, deuda):  # noqa: F811
+        pagar(empresa, deuda, admin, valor='5.00')
+        nota = nota_de_credito(empresa, admin, proveedor, deuda.purchase)
+        _, filas = post_json(web, URL_LISTA, {'action': 'search_pays', 'id': deuda.pk})
+        assert [(f['index'], f['tipo'], f['valor'], f['puede_borrar']) for f in filas] == [
+            (1, 'pago', '5.00', True), (2, 'nota_credito', '10.00', False)]
+        assert filas[1]['id'] == nota.pk and filas[1]['medio_pago'] == {'id': '', 'name': 'No aplica'}
+        _, lista = post_json(web, URL_LISTA, {'action': 'search', 'start_date': '', 'end_date': ''})
+        fila = next(f for f in lista if f['id'] == deuda.pk)
+        assert (fila['pagado'], fila['abonado'], fila['saldo']) == ('5.00', '10.00', 100.0)
+
+    def test_eliminar_la_cuenta_solo_sin_pagos_ni_abonos(self, web, empresa, admin, proveedor, deuda):  # noqa: F811
+        pago = pagar(empresa, deuda, admin, valor='5.00')
+        _, data = post_json(web, f'{URL_LISTA}delete/{deuda.pk}/', {})
+        assert data == {'error': 'Tiene pagos registrados: elimínalos primero.'}
+        with company_context(empresa):
+            pago.delete()
+        nota = nota_de_credito(empresa, admin, proveedor, deuda.purchase)
+        _, data = post_json(web, f'{URL_LISTA}delete/{deuda.pk}/', {})
+        assert data == {'error': 'Tiene retenciones o notas de crédito aplicadas.'}
+        with company_context(empresa):
+            compras.eliminar_compra(nota, admin)
+        _, data = post_json(web, f'{URL_LISTA}delete/{deuda.pk}/', {})
+        assert data == {} and not ayuda.en(empresa, DebtsPay.objects.filter(pk=deuda.pk).exists)
+        registro = AuditLog.objects.get(action='debt_delete', company=empresa)
+        assert (registro.detail['deuda'], registro.detail['debt'], registro.detail['saldo']) == (deuda.pk, '115.00', '115.00')
+
+    def test_registrar_pago_por_la_pantalla(self, web, empresa, deuda):  # noqa: F811
+        url = '/pos/debts/pay/add/'
+        respuesta = web.get(url)
+        assert respuesta.status_code == 200 and respuesta.context['form']['medio_pago'].value() in (None, '')
+        _, data = post_json(web, url, {'action': 'search_debts_pay', 'term': deuda.purchase.secuencial[-3:]})
+        assert [(d['id'], d['saldo']) for d in data] == [(deuda.pk, 115.0)] and data[0]['text']
+        base = {'action': 'add', 'debts_pay': deuda.pk, 'date_joined': hoy().isoformat(), 'valor': '15.00',
+                'referencia': '', 'description': 'Abono'}
+        _, data = post_json(web, url, {**base, 'medio_pago': ''})
+        assert data == {'error': 'Elige el medio de pago.'}
+        _, data = post_json(web, url, {**base, 'medio_pago': 'cheque'})
+        assert data == {'error': 'Escribe el número del cheque.'}
+        _, data = post_json(web, url, {**base, 'medio_pago': 'transferencia', 'cuenta_bancaria': '3'})
+        assert data == {'error': 'Las cuentas bancarias llegan en la Etapa 3.'}
+        _, data = post_json(web, url, {**base, 'medio_pago': 'transferencia', 'referencia': 'TRX-9'})
+        assert data == {}
+        with company_context(empresa):
+            pago = PaymentsDebtsPay.objects.get(debts_pay=deuda)
+            assert (pago.medio_pago, pago.referencia, pago.valor, pago.registrado_por_id is not None) == (
+                'transferencia', 'TRX-9', Decimal('15.00'), True)
+        assert saldo(empresa, deuda) == Decimal('100.00')
+
+    def test_el_listado_por_la_pantalla_no_consulta_por_fila(self, web, empresa, admin, proveedor):  # noqa: F811
+        def consultas_del_listado():
+            with CaptureQueriesContext(connection) as consultas:
+                estado, filas = post_json(web, URL_LISTA, {'action': 'search', 'start_date': '', 'end_date': ''})
+            assert estado == 200
+            return len(filas), len(consultas)
+
+        _, deuda = compra_a_credito(empresa, admin, proveedor)   # noqa: F811
+        pagar(empresa, deuda, admin, valor='15.00')
+        filas_una, una = consultas_del_listado()
+        for _ in range(19):
+            compra_a_credito(empresa, admin, proveedor)
+        filas_veinte, veinte = consultas_del_listado()
+        assert (filas_una, filas_veinte) == (1, 20) and una == veinte
+
+
+def test_reporte_de_cuentas_por_pagar_con_base_pagado_y_abonado(web, empresa, admin, proveedor, deuda):  # noqa: F811
+    pagar(empresa, deuda, admin, valor='5.00')
+    nota_de_credito(empresa, admin, proveedor, deuda.purchase)
+    anterior = ayuda.compra_antigua(empresa, proveedor, '40.00', credito=True)
+    assert web.get('/reports/debts/pay/').status_code == 200
+    _, filas = post_json(web, '/reports/debts/pay/', {'action': 'search_report', 'start_date': '', 'end_date': ''})
+    por_compra = {f['purchase']['id']: f for f in filas}
+    nueva = por_compra[deuda.purchase_id]
+    assert (nueva['base_calculo']['id'], nueva['pagado'], nueva['abonado'], nueva['saldo']) == ('total', '5.00', '10.00', 100.0)
+    vieja = por_compra[anterior.pk]
+    assert (vieja['base_calculo']['id'], vieja['pagado'], vieja['abonado'], vieja['saldo']) == ('subtotal', '0.00', '0.00', 40.0)
