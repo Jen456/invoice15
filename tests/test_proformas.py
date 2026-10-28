@@ -1,4 +1,4 @@
-"""Proformas (Etapa 1, paso 1): numeración propia, totales por tarifa, datos del cliente, estados, duplicar, PDF, correo,
+"""Proformas (Etapa 1): numeración propia, totales por tarifa, datos del cliente, estados, duplicar, PDF, correo,
 roles, plan, lista/JSON, texto seguro, menú, auditoría, bloqueos y seguridad por filas. Datos ficticios; SRI simulado y
 correo en memoria. La conversión en factura se prueba en test_proformas_conversion.py."""
 import json
@@ -39,6 +39,7 @@ LISTA = '/proformas/'
 ES_PG = connection.vendor == 'postgresql'
 CODIGOS_PASO_1 = ('proforma_enviada', 'proforma_marcada_enviada', 'proforma_aceptada', 'proforma_rechazada',
                   'proforma_anulada', 'proforma_eliminada')
+CODIGOS = CODIGOS_PASO_1 + ('proforma_facturada', 'proforma_venta_eliminada')   # los 8 del §9
 
 
 @pytest.fixture
@@ -842,27 +843,39 @@ class TestAuditoria:
             otra = crear_proforma(empresa, dueno)
             servicios.cambiar_estado(otra.pk, 'marcar_enviada', dueno)
             servicios.eliminar(crear_proforma(empresa, dueno).pk, dueno)
+            facturada = crear_proforma(empresa, dueno, estado='aceptada')
+            cliente = helpers.crear_cliente('cliente.auditoria', empresa, '0990000012001', '0990000012')
+            venta = helpers.crear_venta(empresa, cliente, dueno, Product.objects.get(code='P15'))
+            servicios.marcar_facturada(facturada, venta, dueno)
+            Sale.objects.get(pk=venta.pk).delete()   # la señal libera la proforma
         registros = list(AuditLog.objects.filter(action__startswith='proforma_'))
-        assert {r.action for r in registros} == set(CODIGOS_PASO_1)
+        assert {r.action for r in registros} == set(CODIGOS)
         for registro in registros:
             json.dumps(registro.detail)   # sin DjangoJSONEncoder
             assert all(isinstance(v, (str, int, bool, list)) for v in registro.detail.values())
-            assert registro.user_id == dueno.pk   # sin petición, el servicio registra al usuario
+            # Sin petición, el servicio registra al usuario; la señal de la venta eliminada no tiene usuario.
+            assert registro.user_id == (None if registro.action == 'proforma_venta_eliminada' else dueno.pk)
+        detalle = next(r.detail for r in registros if r.action == 'proforma_facturada')
+        assert re.fullmatch(r'\d+\.\d{2}', detalle['total_proforma']) and re.fullmatch(r'\d+\.\d{2}', detalle['total_factura'])
+        assert isinstance(detalle['coincide'], bool) and isinstance(detalle['ambiente'], int)
+        assert next(r.detail for r in registros if r.action == 'proforma_venta_eliminada')['estado'] == 'aceptada'
 
 
 # ---------------------------------------------------------------- bloqueos y seguridad por filas (PostgreSQL)
 
 @pytest.mark.skipif(not ES_PG, reason='FOR UPDATE OF es de PostgreSQL')
 def test_bloqueo_usa_for_update_of_sin_join(empresa, dueno):
-    p = crear_proforma(empresa, dueno)
+    p = crear_proforma(empresa, dueno, estado='aceptada')
     with company_context(empresa), transaction.atomic():
         with CaptureQueriesContext(connection) as capturadas:
             servicios.bloquear(p.pk)
+            servicios.bloquear_para_facturar(p.pk, '01')
             servicios.siguiente_numero()
     bloqueos = [q['sql'] for q in capturadas if 'FOR UPDATE' in q['sql']]
-    assert len(bloqueos) == 2
-    assert 'FOR UPDATE OF "proformas_proforma"' in bloqueos[0] and 'JOIN' not in bloqueos[0]
-    assert 'FOR UPDATE OF "proformas_contadorproforma"' in bloqueos[1] and 'JOIN' not in bloqueos[1]
+    assert len(bloqueos) == 3
+    for sql in bloqueos[:2]:
+        assert 'FOR UPDATE OF "proformas_proforma"' in sql and 'JOIN' not in sql
+    assert 'FOR UPDATE OF "proformas_contadorproforma"' in bloqueos[2] and 'JOIN' not in bloqueos[2]
 
 
 rls = pytest.mark.skipif(not ES_PG, reason='La seguridad por filas es de PostgreSQL')
