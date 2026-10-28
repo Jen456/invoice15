@@ -180,7 +180,8 @@ class TestMenu:
     def test_cada_modulo_nuevo_declara_su_app_sin_entradas_nuevas(self):
         assert [m[:2] for m in menu.MODULOS_NUEVOS] == [
             ('importacion', '/importacion/recibidos/'), ('importacion', '/importacion/nueva/'), ('importacion', '/importacion/lotes/'),
-            ('importacion', '/importacion/pendientes/'), ('importacion', '/importacion/reglas/')]
+            ('importacion', '/importacion/pendientes/'), ('importacion', '/importacion/reglas/'),
+            ('comprobantes', '/comprobantes/retenciones-recibidas/')]   # Etapa 2 (O2)
 
     def test_importacion_queda_igual_y_se_recrea_igual(self):
         antes = estado_menu()
@@ -225,7 +226,8 @@ class TestRoles:
         antes = estado_menu()
         roles.sync_roles(Group, Module, GroupModule)
         assert estado_menu() == antes
-        assert not Module.objects.filter(url__in=['/proformas/', '/comprobantes/retenciones-recibidas/']).exists()
+        # Retenciones recibidas ya existe (Etapa 2, O2: comprobantes 0023 y start_installation); Proformas aún no.
+        assert not Module.objects.filter(url='/proformas/').exists()
 
     def test_con_el_modulo_vendedor_escribe_y_contador_solo_lee(self):
         # Módulo simulado (la app de Proformas aún no existe): el reparto por rol ya queda listo.

@@ -43,6 +43,7 @@ ESTRUCTURA = (
     ('Administrativo', 'fas fa-hand-holding-usd', 60, (
         ('/pos/ctas/collect/', 'Cuentas por cobrar', 1),
         ('/pos/debts/pay/', 'Cuentas por pagar', 2),
+        ('/comprobantes/retenciones-recibidas/', 'Retenciones recibidas', 3),   # Etapa 2 (O2)
     )),
     ('Reportes', 'fas fa-chart-pie', 70, ()),   # sin cambios de nombre
     ('Configuración', 'fas fa-cogs', 80, (
@@ -69,6 +70,10 @@ MODULOS_NUEVOS = (
      ('view_documentoimportado', 'change_documentoimportado')),
     ('importacion', '/importacion/reglas/', 'fas fa-sliders-h', 'Reglas de importación y contabilización',
      ('view_reglaimportacion', 'change_reglaimportacion')),
+    # Etapa 2 (O2): lo crea comprobantes 0023 en instalaciones existentes y start_installation en las nuevas.
+    ('comprobantes', '/comprobantes/retenciones-recibidas/', 'fas fa-hand-holding-usd',
+     'Retenciones que te hicieron tus clientes sobre tus facturas',
+     ('view_retencionrecibida', 'add_retencionrecibida', 'change_retencionrecibida')),
 )
 
 
