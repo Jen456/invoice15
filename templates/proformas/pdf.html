@@ -1,0 +1,103 @@
+{% load static %}<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Proforma {{ proforma.numero_completo }} · Documento sin validez tributaria</title>
+    {% include 'ride/_estilos.html' %}
+    <style>
+        .fp-ride .fp-proforma-aviso { font-weight: bold; margin-top: 1mm; }
+        .fp-ride .fp-proforma-estado { margin-top: 1mm; }
+        .fp-ride .fp-proforma-banda { border: 1.2pt solid #CA462C; color: #CA462C; font-weight: bold; text-align: center;
+                                      font-size: 13pt; padding: 1.2mm 0; margin: 0 0 3mm; }
+        .fp-ride .fp-proforma-texto { white-space: pre-line; }
+    </style>
+</head>
+<body class="fp-ride">
+{% include 'ride/_pie.html' with proveedor=proveedor %}
+<main class="hoja">
+    {# Cabecera y encabezados de tabla una sola vez (no se repiten en las páginas siguientes). Sin datos de comprobante: no es una factura. #}
+    <table class="cabecera fp-ride-header">
+        <colgroup><col style="width:56%"><col style="width:44%"></colgroup>
+        <tbody><tr>
+            <td class="fp-ride-emisor" style="padding-right:5mm">
+                {% if empresa.image %}<img class="logo" alt="Logotipo del emisor" src="{{ empresa.get_image }}">{% endif %}
+                <p><b>{{ empresa.business_name }}</b></p>
+                {% if empresa.tradename and empresa.tradename != empresa.business_name %}<p>{{ empresa.tradename }}</p>{% endif %}
+                <p><b>RUC:</b> {{ empresa.ruc }}</p>
+                <p><b>Dirección matriz:</b> {{ empresa.main_address }}</p>
+                {% if establecimiento %}<p><b>Establecimiento:</b> {{ establecimiento }}</p>{% endif %}
+                {% if empresa.mobile %}<p><b>Teléfono:</b> {{ empresa.mobile }}</p>{% endif %}
+                {% if empresa.email %}<p><b>Correo:</b> {{ empresa.email }}</p>{% endif %}
+            </td>
+            <td class="fp-ride-control" style="padding-left:4mm">
+                <h1 class="titulo">PROFORMA</h1>
+                <p class="numero">{{ proforma.numero_completo }}</p>
+                <p class="fp-proforma-aviso">Documento sin validez tributaria</p>
+                <p><b>Fecha:</b> {{ proforma.fecha|date:"d/m/Y" }}</p>
+                <p><b>Válida hasta:</b> {{ proforma.valida_hasta|date:"d/m/Y" }}</p>
+                {% if estado == 'vencida' or estado == 'rechazada' or estado == 'anulada' or estado == 'facturada' %}
+                    <p class="fp-proforma-estado"><b>Estado:</b> {{ estado_nombre }}{% if factura %} con la factura {{ factura }}{% if factura_pruebas %} (PRUEBAS, sin validez tributaria){% endif %}{% endif %}</p>
+                {% endif %}
+            </td>
+        </tr></tbody>
+    </table>
+
+    {% if estado == 'anulada' %}<p class="fp-proforma-banda">ANULADA</p>{% endif %}
+
+    <section class="bloque">
+        <p class="seccion">Cliente</p>
+        <p><b>Nombre:</b> {{ proforma.cliente_nombre }}</p>
+        {% if proforma.cliente_identificacion %}<p><b>Identificación:</b> {{ proforma.cliente_identificacion }}</p>{% endif %}
+        {% if proforma.cliente_direccion %}<p><b>Dirección:</b> {{ proforma.cliente_direccion }}</p>{% endif %}
+        {% if proforma.cliente_correo %}<p><b>Correo electrónico:</b> {{ proforma.cliente_correo }}</p>{% endif %}
+        {% if proforma.cliente_telefono %}<p><b>Teléfono:</b> {{ proforma.cliente_telefono }}</p>{% endif %}
+    </section>
+
+    <table class="detalle">
+        <colgroup><col style="width:11%"><col style="width:8%"><col style="width:45%"><col style="width:12%"><col style="width:11%"><col style="width:13%"></colgroup>
+        <thead><tr><th>Código</th><th class="num">Cant.</th><th>Descripción</th><th class="num">P. unitario</th><th class="num">Descuento</th><th class="num">Total</th></tr></thead>
+        <tbody>
+        {% for linea in lineas %}
+            <tr>
+                <td>{{ linea.codigo }}</td>
+                <td class="num">{{ linea.cant }}</td>
+                <td>{{ linea.descripcion }}<br><small>IVA {{ linea.nombre_tarifa }}</small></td>
+                <td class="num">{{ linea.price|floatformat:2 }}</td>
+                <td class="num">{{ linea.total_dscto|floatformat:2 }}</td>
+                <td class="num">{{ linea.total|floatformat:2 }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <table class="cabecera fp-ride-summary">
+        <colgroup><col style="width:54%"><col style="width:46%"></colgroup>
+        <tbody><tr>
+            <td style="padding-right:5mm">
+                <table class="detalle">
+                    <colgroup><col style="width:36%"><col style="width:64%"></colgroup>
+                    <thead><tr><th colspan="2">Condiciones de la propuesta</th></tr></thead>
+                    <tbody>
+                        {% if forma_pago %}<tr><td>Forma de pago sugerida</td><td>{{ forma_pago }}</td></tr>{% endif %}
+                        {% if vendedor %}<tr><td>Vendedor</td><td>{{ vendedor }}</td></tr>{% endif %}
+                        {% if proforma.condiciones %}<tr><td colspan="2" class="fp-proforma-texto">{{ proforma.condiciones }}</td></tr>{% endif %}
+                        <tr><td colspan="2">Esta proforma es una cotización: no es una factura ni un comprobante de venta.</td></tr>
+                    </tbody>
+                </table>
+            </td>
+            <td>
+                <table class="totales">
+                    <colgroup><col style="width:68%"><col style="width:32%"></colgroup>
+                    <tbody>
+                        {% for t in impuestos %}<tr><td>Subtotal {{ t.nombre }}</td><td class="num">{{ t.base|floatformat:2 }}</td></tr>{% endfor %}
+                        <tr><td>Descuentos</td><td class="num">{{ proforma.total_descuento|floatformat:2 }}</td></tr>
+                        {% for t in impuestos %}{% if t.tarifa %}<tr><td>IVA {{ t.nombre }}</td><td class="num">{{ t.valor|floatformat:2 }}</td></tr>{% endif %}{% endfor %}
+                        <tr class="total-final"><td><b>TOTAL USD</b></td><td class="num"><b>{{ proforma.total|floatformat:2 }}</b></td></tr>
+                    </tbody>
+                </table>
+            </td>
+        </tr></tbody>
+    </table>
+</main>
+</body>
+</html>

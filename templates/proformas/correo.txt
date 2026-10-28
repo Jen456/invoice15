@@ -1,0 +1,13 @@
+{% autoescape off %}Estimado(a) {{ proforma.cliente_nombre }}:
+
+{{ empresa }} le envía la proforma {{ proforma.numero_completo }} por un total de USD {{ total }}, válida hasta el {{ valida_hasta }}. La encontrará adjunta en PDF.
+
+Este documento es una cotización sin validez tributaria: no es una factura.
+{% if mensaje %}
+{{ mensaje }}
+{% endif %}{% if proforma.condiciones %}
+Condiciones:
+{{ proforma.condiciones }}
+{% endif %}
+Para responder, conteste este correo.
+{% endautoescape %}
