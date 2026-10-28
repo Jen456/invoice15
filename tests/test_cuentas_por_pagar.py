@@ -92,7 +92,8 @@ class TestPagos:
         pagar(empresa, deuda, admin, valor='0.20', medio_pago='efectivo', referencia='')
         with company_context(empresa):
             actual = DebtsPay.objects.get(pk=deuda.pk)
-        assert actual.saldo == Decimal('0.00') and actual.state is False and actual.toJSON()['pagado'] == '0.30'
+            pagado = actual.toJSON()['pagado']
+        assert actual.saldo == Decimal('0.00') and actual.state is False and pagado == '0.30'
 
 
 class TestBorrados:
@@ -125,7 +126,7 @@ class TestBorrados:
             cxp.eliminar_deuda(dueno, deuda.pk)
         with company_context(empresa):
             cxp.eliminar_pago(dueno, pago.pk)
-        factura = deuda.purchase
+            factura = deuda.purchase
         nota = ayuda.datos_compra(proveedor, tipo_comprobante='04', tipo_doc_modificado='01',
                                   num_doc_modificado=factura.numero_comprobante, aut_doc_modificado=factura.autorizacion,
                                   fecha_doc_modificado=factura.fecha_emision.isoformat(), compra_modificada=factura.pk)

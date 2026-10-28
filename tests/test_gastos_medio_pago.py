@@ -32,14 +32,14 @@ def test_tipo_de_gasto_con_cuenta_y_sustento_sin_indicar(empresa):
 
 
 def test_sustento_sugerido_segun_lo_que_vende_la_empresa(empresa):
-    assert compras.sustento_gasto_sugerido(empresa) == '02'
+    assert ayuda.en(empresa, compras.sustento_gasto_sugerido, empresa) == '02'
     ayuda.crear_producto(empresa, tarifa='0')
-    assert compras.sustento_gasto_sugerido(empresa) == '02'
+    assert ayuda.en(empresa, compras.sustento_gasto_sugerido, empresa) == '02'
     ayuda.crear_producto(empresa, tarifa='5')
-    assert compras.sustento_gasto_sugerido(empresa) == '01'
+    assert ayuda.en(empresa, compras.sustento_gasto_sugerido, empresa) == '01'
     otra = helpers.crear_empresa('OTRA CON IVA')
     ayuda.crear_producto(otra, tarifa='4')
-    assert compras.sustento_gasto_sugerido(otra) == '01'
+    assert ayuda.en(otra, compras.sustento_gasto_sugerido, otra) == '01'
 
 
 def test_compra_de_gasto_sin_productos(empresa, admin):
