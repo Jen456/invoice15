@@ -1151,3 +1151,33 @@ Revisión visual adicional de los otros cinco tipos: información adicional de N
 **Archivos añadidos o actualizados:** HANDOFF.md y este informe; `propuestas/ride-b/diagnostico-20261025/README.md`, dos PDF ficticios (`factura-a4-actual-demo.pdf`, `ticket-actual-demo.pdf`) y capturas `diagnostico-20261025-factura-a4.png` / `diagnostico-20261025-ticket.png`. Scripts/logs temporales fuera del repositorio en `/workspace/ride-diagnostico-20261025/`.
 
 **Pendientes:** recibir el A4 reportado y contrastarlo con su generación en el servidor; diseñar el ticket con tipografía legible y confirmar la altura/paginación con backend. HANDOFF identifica ruta, campo, recursos y datos de diagnóstico exactos. No se modificaron plantillas, CSS, backend, XML, documentos reales ni numeración. No despliegue.
+
+## 27/10/2026 — causa del A4 «antiguo» y alto del ticket (Claude)
+
+La propietaria seguía viendo el diseño antiguo en «Imprimir factura A4» y en «Imprimir factura ticket». Integré el diagnóstico de Codex (`5f2d8e3`, avance rápido) y lo contrasté en producción, solo con lecturas y con datos ficticios.
+
+**Causa comprobada (A4):** el botón entrega el PDF guardado de la factura. La única factura emitida desde el 23/10 en todo el sistema es la 001-002-000000272 de la empresa 6. Su PDF se escribió el 24/10 a las 05:56:44 UTC, cuando estaba activa `ede88cb` (RIDE antiguo). El diseño B se publicó ese mismo día a las 21:03 UTC. El correo de esa factura salió al autorizarse con ese mismo PDF. La 271 (13/10) está igual. No hay un fallo de despliegue ni de recursos:
+- gunicorn ejecuta `131bb61` desde el 24/10 a las 21:04;
+- el temporizador del SRI arranca desde `current` en cada ejecución;
+- con ese código, el RIDE carga las plantillas del diseño B, el CSS `facturaporaqui-ride.125c3dc149cf.css` y el isotipo `isotipo-pie.99bd3cd8b8b0.png` publicados.
+
+**Reproducción sin emitir al SRI:**
+- **Recorrido de autorización:** con el código publicado, en el aislamiento del temporizador y en una transacción deshecha, sale el diseño B, y el adjunto del correo (a una conexión en memoria) es idéntico al PDF guardado.
+- **Botón real en el dominio:** con una venta ficticia temporal en DEMOSTRACIÓN, el A4 sale con el diseño B y el ticket con la plantilla antigua. La venta y sus archivos se borraron.
+- **Capturas:** `capturas/diagnostico-20261027-boton-a4-produccion.png`, `diagnostico-20261027-boton-ticket-antes.png` y `diagnostico-20261027-menu-opciones.png`.
+
+**Corregido (sin publicar):**
+- **Orden `manage.py regenerar_ride`:** por defecto solo ensaya; compara el PDF nuevo con el XML autorizado (`core/comprobantes/fidelidad.py`). Con `--aplicar --respaldo DIR` guarda un archivo nuevo, conserva el anterior y deja registro en la auditoría.
+- **Ticket:** alto medido del contenido (`printer.create_pdf_continuo`), una sola hoja de 58 mm. 1 línea: 105 mm (antes 132, con un tercio en blanco). 40 líneas largas: 337 mm sin cortes (antes se partía en 2 hojas).
+- **Pruebas:** `test_regenerar_ride.py` (6) y `test_ticket_continuo.py` (2).
+
+**Ensayo de regeneración en producción** (base en solo lectura; PDF nuevos en `verif-firma/ride-diagnostico/`, fuera del repositorio): la 271 y la 272 son fieles; los 26 datos de su XML aparecen en el PDF nuevo. La 272 diría «(Bien)» en vez de «(Bienes)» tras la descripción, porque la categoría del producto se renombró después de autorizar y la plantilla la agrega (no está en el XML).
+
+**Pendiente:**
+- aprobación de la propietaria para aplicar la regeneración a la 271 y la 272;
+- rediseño visual del ticket por Codex (contrato en HANDOFF);
+- publicar la orden y el ticket con alto medido;
+- los puntos preexistentes del RIDE: contribuyenteEspecial, leyenda de agente de retención, «Subtotal sin impuestos» antes del descuento, fechaEmisionDocSustento de la NC y «(categoría)» en las descripciones.
+
+No se cambiaron XML, numeración, estados ni cupos. No se reenviaron comprobantes ni correos reales.
+

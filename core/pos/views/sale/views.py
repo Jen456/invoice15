@@ -306,8 +306,8 @@ class SalePrintInvoiceView(LoginRequiredMixin, View):
             if sale and not can_print_voucher(request, sale):
                 sale = None
             if sale:
-                context = {'sale': sale, 'height': 450 + sale.saledetail_set.all().count() * 10}
-                pdf_file = printer.create_pdf(context=context, template_name='sale/format/ticket.html')
+                # Papel continuo: el alto sale del contenido (printer.create_pdf_continuo), no de una estimación por líneas.
+                pdf_file = printer.create_pdf_continuo(context={'sale': sale}, template_name='sale/format/ticket.html')
                 return HttpResponse(pdf_file, content_type='application/pdf')
         except Exception:
             logger.exception('No se pudo generar el PDF de la venta %s', self.kwargs['pk'])

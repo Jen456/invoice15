@@ -1,5 +1,68 @@
 # Handoff compartido — frontend
 
+## Estado actual — causa del A4 «antiguo» comprobada; ticket con alto medido (Claude, 27/10/2026, sin publicar)
+
+- **Causa comprobada del A4.** No hay un fallo de despliegue, de recursos ni de generación. La propietaria abre el PDF **guardado** de una factura que se autorizó antes de publicar el diseño B:
+  - **Única factura nueva:** desde el 23/10 solo hay una venta o nota de crédito en todo el sistema (cualquier empresa, ambiente o estado): la **001-002-000000272** de la empresa 6, emitida el 24/10.
+  - **Su PDF es anterior al diseño B:** se escribió el 24/10 a las 05:56:44 UTC (00:56 en Ecuador), 6 s después de firmarse. El diseño B (`131bb61`) se publicó a las 21:03 UTC de ese día.
+  - **Versión que lo generó:** a esa hora estaba activa `ede88cb` (16/10, RIDE antiguo). La siguiente, `f17c177`, llegó a las 06:33:45. Consta en las carpetas de versiones y en los volcados previos de cada despliegue.
+  - **El botón no regenera:** «Imprimir factura A4» (`SalePrintA4View`) devuelve `pdf_authorized` si existe.
+  - **El correo llevó ese PDF:** se envió al autorizarse (`authorized_and_sent_by_email`) y `notify_by_email` adjunta ese mismo `pdf_authorized`.
+  - **La 271** (13/10) está igual. Las dos se ven con el diseño anterior: cabeceras negras y proveedor, correo y dirección como filas de «Información adicional».
+- **Lo que ejecuta hoy el servidor:**
+  - Gunicorn corre `131bb61` desde el 24/10 a las 21:04.
+  - El temporizador `facturaporaqui-sri@pruebas` arranca desde `current` en cada ejecución.
+  - Con ese código, el RIDE A4 carga:
+    - `core/pos/templates/sale/format/invoice.html`, `templates/ride/_estilos.html` y `templates/ride/_pie.html`, todos de la versión `131bb61`;
+    - `static/css/facturaporaqui-ride.125c3dc149cf.css` y `static/img/brand/isotipo-pie.99bd3cd8b8b0.png`, desde `public_html/static`.
+- **Reproducido sin emitir al SRI:**
+  - **Recorrido de autorización** (`emision._despues_de_autorizar`, el mismo que tras «AUTORIZADO»), con el código publicado, en el aislamiento systemd del temporizador:
+    - transacción deshecha en DEMOSTRACIÓN, PRUEBAS;
+    - correo a una conexión en memoria (`locmem`);
+    - resultado: diseño B; el adjunto del correo es idéntico byte a byte al PDF guardado;
+    - guion: `verif-firma/repro_autorizacion.py`.
+  - **Botón real en el dominio:**
+    - venta ficticia temporal en DEMOSTRACIÓN (PRUEBAS, punto 999, sin SRI ni cupo), borrada después junto con sus archivos;
+    - Opciones → «Imprimir factura A4» devolvió 200 y un PDF A4 de 1 página con el diseño B, generado por gunicorn;
+    - «Imprimir factura ticket» devolvió la plantilla antigua, en 58 × 132 mm;
+    - capturas `capturas/diagnostico-20261027-{boton-a4-produccion,boton-ticket-antes,menu-opciones}.png`;
+    - guiones: `verif-firma/ensayo_boton.sh` y `/root/capturas/fpa-boton-impresion.mjs`.
+- **Regeneración de los PDF guardados:** nueva orden `manage.py regenerar_ride`.
+  - Por defecto solo ensaya: genera en memoria y compara con el XML autorizado (`core/comprobantes/fidelidad.py`).
+  - **Ensayo hecho en producción** con la base en solo lectura (`default_transaction_read_only=on`): la 271 y la 272 son **fieles**; los 26 datos de su XML aparecen en el PDF nuevo.
+  - Con `--aplicar --respaldo DIR`: copia el PDF actual, guarda el nuevo como archivo distinto (nunca sobrescribe ni borra) y deja registro en la auditoría.
+  - **No se aplicó: falta la aprobación de la propietaria.**
+  - Diferencia visible que no figura en el XML: la 272 diría «CAMISETAS IMPRESAS (Bien)» en vez de «(Bienes)». La plantilla agrega la categoría del producto y esa categoría se renombró después de autorizar.
+- **Ticket:**
+  - El alto ya no se estima (`450 + 10 × líneas`): `printer.create_pdf_continuo` maqueta en una hoja de 5000 mm, mide el contenido y genera una sola hoja de ese alto.
+  - 1 línea: 105 mm (antes 132). 40 líneas largas: 337 mm en 1 hoja (antes se partía).
+  - En la plantilla solo cambió la regla `@page`. **El diseño visual del ticket sigue siendo el antiguo y le toca a Codex**, con el contrato de abajo.
+- **Pruebas:** `test_regenerar_ride.py` (6) y `test_ticket_continuo.py` (2); las de A4 y RIDE (40) siguen pasando. SQLite 557 + 7 omitidas; PostgreSQL 564.
+- **Hallazgo pendiente de decisión — orden de las líneas:**
+  - `SaleDetail` y `CreditNoteDetail` no tienen `ordering`, y el XML, el RIDE y el ticket recorren las líneas sin `order_by`. En PostgreSQL el orden no está garantizado.
+  - `test_iva_tarifas::test_xml_valido_contra_el_xsd_y_agrupado_por_tarifa`, que espera el orden de ingreso, falló en 2 de 3 vueltas completas; nunca falló aislada.
+  - Arreglo propuesto: `ordering = ('pk',)` en ambos detalles, sin cambio de tablas. Cambia el orden de las líneas en el XML de los comprobantes futuros, así que queda para aprobación aparte (esta tarea no toca el XML).
+
+## Pendiente para Codex — rediseño del ticket
+
+- [ ] Ticket con la marca B y letra legible para papel térmico (hoy 5–6 px, mayúsculas y columnas estrechas), siguiendo el contrato de abajo. El alto ya no limita: lo mide el backend.
+- [ ] Revisar a 58 mm con 1, 5 y 40 líneas, y con descripciones largas.
+
+## Notas entre agentes — contrato del ticket (Claude → Codex)
+
+- **Ancho:**
+  - papel de 58 mm: `@page { size: 58mm {{ alto_pagina }}; margin: 0; }`;
+  - los márgenes van dentro del contenedor; el área impresa típica de una térmica de 58 mm es de unos 48 mm;
+  - si se necesita 80 mm, pedirlo: sería un ajuste del backend.
+- **Alto:**
+  - lo pone el backend en `{{ alto_pagina }}` tras medir el contenido, así que no hay que estimar ni fijar alturas;
+  - no usar `position: fixed`/`absolute` pegado al pie, ni `min-height` en contenedores internos (`html` y `body` sí pueden tenerlo), ni saltos de página (`break-before`/`page-break-*`).
+- **Paginación:** una sola hoja continua; solo si el contenido pasara de 5000 mm seguiría en otra hoja, sin perder nada.
+- **Contexto:** `sale` (los mismos datos que el A4) y `alto_pagina`. Se retiró `height`.
+- **Recursos:** CSS en línea o en `static/` y logo con tamaño fijo en mm; el isotipo `img/brand/isotipo-pie.png` está disponible. El generador solo lee `/static/` y `/media/` locales; no hay URL externas.
+- **Comprobación:** `tests/test_ticket_continuo.py` exige 1 hoja de 58 mm, menos de 12 mm de papel en blanco bajo el último renglón y 40 líneas largas sin corte. Mantenerlo al cambiar la plantilla.
+- **No cambiar:** vista, URL, ni la regla `@page` (salvo el ancho, coordinándolo).
+
 ## Estado actual — diagnóstico de A4 y ticket tras el aviso de la propietaria (Codex, 25/10/2026)
 
 La propietaria informa que no aprecia mejoras en comprobantes nuevos, tanto en «Imprimir factura A4» como en «Imprimir factura ticket». Se actualizó frontend/etapa3 por avance rápido a **6b2d2c2**, conservando toda la entrega de Claude. No se atribuye el caso a un documento antiguo sin comprobar el PDF concreto.
@@ -12,7 +75,7 @@ La propietaria informa que no aprecia mejoras en comprobantes nuevos, tanto en �
 ## Pendiente para Codex — diagnóstico de impresión y alcance del ticket
 
 - [x] Separar las rutas A4/ticket, reproducir el aspecto actual y entregar muestras ficticias.
-- [ ] Contrastar el PDF A4 reportado por la propietaria con la muestra nueva; no dar el incidente por resuelto con las pruebas locales.
+- [x] Contrastar el PDF A4 reportado por la propietaria con la muestra nueva; no dar el incidente por resuelto con las pruebas locales. (Claude, 27/10: es el PDF guardado de la 272, generado con `ede88cb` antes de publicar el diseño B; detalle arriba).
 - [ ] Adaptar el ticket a la marca y tipografía legible, con diseño propio para papel térmico. La entrega B anterior solo cubrió A4; el ticket no está terminado. Coordinar altura/paginación antes de cambiar el texto de 5–6 px a tamaño legible.
 
 ## Notas entre agentes — comprobar el A4 reportado (Codex → Claude)

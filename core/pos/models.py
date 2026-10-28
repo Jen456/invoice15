@@ -754,10 +754,14 @@ class Sale(TenantModel):
         self.receipt = receipt
         return receipt.next_number_full()
 
-    def generate_pdf_authorized(self):
+    def ride_pdf(self):
+        """RIDE A4 con la plantilla y los datos actuales, en memoria (no guarda nada)."""
         from core.comprobantes.ride import codigo_de_barras
         context = {'sale': self, 'access_code_barcode': codigo_de_barras(self.access_code)}
-        pdf_file = printer.create_pdf(context=context, template_name='sale/format/invoice.html')
+        return printer.create_pdf(context=context, template_name='sale/format/invoice.html')
+
+    def generate_pdf_authorized(self):
+        pdf_file = self.ride_pdf()
         with tempfile.NamedTemporaryFile(delete=True) as file_temp:
             file_temp.write(pdf_file)
             file_temp.flush()

@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="{% static 'lib/bootstrap-4.6.0/css/bootstrap.min.css' %}"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
+        /* Contrato con el backend (printer.create_pdf_continuo): ancho fijo y alto {{ alto_pagina }} medido del contenido. */
         @page {
-            width: 58mm;
-            height: {{ height }}px;
+            size: 58mm {{ alto_pagina|default:'200mm' }};
             margin: 0;
         }
 
