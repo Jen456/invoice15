@@ -1269,3 +1269,23 @@ Aprobación visual/comercial de la propietaria; D9 para el complemento; contrato
 - **Correcciones:** se sustituyen rutas antiguas de requirements, activación incorrecta del entorno, creación de migraciones durante instalación y acceso predeterminado. No se reproducen credenciales. Los comandos usan Python 3.12 y ambos archivos fijados de requirements. No se promete que pytest con SQLite valide RLS/concurrencia ni que el formulario comercial guarde contactos.
 - **Verificación:** enlaces relativos e isotipo existentes, concordancia de dependencias con requirements/base.in y dev.in, pytest.ini/settings_test, scripts de despliegue y documentos vigentes. `git diff --check` correcto. Sin pruebas de aplicación ni capturas nuevas: solo documentación, sin cambios visuales de app.
 - **Entrega:** frontend/etapa3, plataforma a8b893c ya integrada. No se cambia main, que sigue siendo la rama predeterminada histórica. Claude debe considerar por separado la integración de este README a la portada principal. Sin despliegues ni modificaciones del backend.
+
+
+## 28/10/2026 — referencia técnica y manual de uso para clientes (Codex)
+
+### Archivos y alcance
+
+- README.md: referencia técnica completa y guía de lectura. Arquitectura Mermaid; módulos/rutas; contexto multiempresa, roles y RLS; variables por nombre y propósito; preparación local; almacenamiento/cifrado; firma XAdES-BES Python; numeración y SRI; PayPhone; contrato/límites de importación; timers, mantenimiento, despliegue, respaldo, reversión y diagnóstico. Sin copiar archivos de entorno ni valores secretos. Los comandos de operación son documentación y no se ejecutaron.
+- `manuales/manual.html`, `manual.css`: manual de clientes con colibrí, paleta, tipografía legible, diagramas simples y ejemplos ficticios. 16 páginas: portada, índice, acceso, planes, asistente, catálogo, facturas, estados/impresión, otros comprobantes, guías, importación, multiempresa, trabajo diario, ayuda y lista final. Proformas/contabilidad próximas; sin precio del complemento ni contactos inventados.
+- `manuales/generar_pdf.py`: render local de HTML con WeasyPrint, sin inicializar Django ni acceder a base, SRI, PayPhone o correo. Reutiliza el isotipo pequeño existente. `Manual-de-uso-FacturaPorAqui.pdf`: 71448 bytes, A4, texto seleccionable, marcadores y enlaces.
+- `manuales/README.md` y `verificacion.json`: regeneración, alcance y comprobaciones. Cuatro capturas WebP (<150 KB cada una) en capturas/manual-clientes-pagina-{01,06,08,12}.webp. HANDOFF con entrega, tareas completadas y notas para Claude.
+
+### Verificación real
+
+Lectura de settings, URLs, middleware/contexto/roles, modelos de compañía, cifrado, archivos protegidos, asistente, templates de documentos, reglas y servicios de pagos, parser/límites de importación, servicios/timers y scripts de operación. Aclarados límites: importación tipo 01; sin contabilización real; contraseña de firma cifrada, no promesa de cifrado del correo; autorización distinta de correo; PDF histórico almacenado; entorno del servicio distinto del ambiente fiscal.
+
+Generado con el entorno Python/WeasyPrint existente. pypdf/PDFium verifican **16 páginas A4**, encabezado de cada sección en su página, **ninguna caja de carácter fuera de la página**, 14 destinos del índice y al menos 14 anotaciones en su página. Inspección de portada, numeración e importación ampliadas y mosaico de todas las páginas, sin páginas extra por desbordes. Renderizados de muestra a escala 1,3/1,4. Las ilustraciones no son capturas de app ni prueba de ejecución de sus operaciones.
+
+**31 enlaces/recursos locales del README comprobados, sin inexistentes.** `git diff --check` correcto. No se ejecutó pytest: no cambiaron templates/estáticos de la app ni backend; se verificó el PDF y sus fuentes. Sin emisiones, pagos, correos, acceso a datos reales ni despliegues.
+
+Entrega en frontend/etapa3 sobre 888ade6; plataforma a8b893c ya integrada al hacer fetch. La propietaria puede descargar el PDF para sus clientes; el repositorio privado exige acceso. main permanece sin cambios por el acuerdo de trabajar solo en frontend/etapa3.

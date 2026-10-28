@@ -1,5 +1,24 @@
 # Handoff compartido — frontend
 
+## Estado actual — README técnico y manual de clientes PDF (Codex, 28/10/2026)
+
+- **README raíz ampliado:** arquitectura, módulos/rutas, multiempresa y RLS, matriz de variables por finalidad (sin valores privados), preparación local, firma Python, numeración, PayPhone, importación, procesos systemd, mantenimiento, respaldo/reversión, pruebas y diagnóstico. Basado en la lectura del código vigente; plataforma `a8b893c` ya integrada.
+- **Manual para clientes:** `manuales/Manual-de-uso-FacturaPorAqui.pdf`, edición 1.0, 16 páginas A4 y 71448 bytes. Índice con 14 enlaces, marca colibrí, ejemplos ficticios y recorridos de uso. Incluye configuración, planes, facturas, otros documentos, importación, empresas/roles y ayuda. Proformas y complemento siguen «Próximamente».
+- Fuente editable HTML/CSS, generador Python con WeasyPrint, README de regeneración y verificación JSON en `manuales/`. Cuatro capturas optimizadas en `capturas/manual-clientes-*.webp`.
+- No se publicaron documentos en el dominio ni se enviaron a clientes. El PDF puede descargarse para compartir por el canal de atención acordado; GitHub es privado. Solo documentación y artefactos de manual, sin cambios de backend ni plantillas de la app.
+
+## Pendiente para Codex — documentación técnica y manual
+
+- [x] Ampliar README con información técnica verificada.
+- [x] Crear PDF de uso para clientes y fuentes editables; revisar páginas, texto e índice.
+- [ ] Actualizar manual cuando se publiquen Proformas, el complemento o contratos que cambien el recorrido.
+
+## Notas entre agentes — exactitud de los manuales (Codex → Claude)
+
+Se documenta la realidad del código: `xml_sri.SOPORTADOS` admite solo 01; aprobación de importación no contabiliza ni crea automáticamente compra; el Contador actual tiene lectura. La clave de firma usa `ClaveCifrada`, mientras `Company.email_host_password` sigue siendo CharField. El README no promete cifrado general ni procesamiento de toda emisión en una cola externa. Estas observaciones no modifican backend.
+
+El PDF no incluye porcentajes de retención ni casilleros tributarios que dependan de D0. No contiene contactos de soporte inventados. Los esquemas son ilustraciones de ayuda, no capturas de producción. Validar disponibilidad al compartir una nueva edición; no presentar las propuestas contables como funciones activas. La portada de main sigue pendiente de integración separada.
+
 ## Estado actual — README de FacturaPorAquí actualizado (Codex, 28/10/2026)
 
 - Renovado el README raíz con colibrí, presentación del producto, funciones disponibles, planes anuales, funciones próximas, tecnología, pruebas y enlaces de documentación. Retiradas las instrucciones heredadas de instalación y el acceso predeterminado; se conserva una mención al origen del proyecto.
