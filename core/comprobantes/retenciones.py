@@ -80,8 +80,8 @@ def retenciones_autorizadas(compra):
     return Retencion.objects.filter(purchase=compra, status__in=AUTORIZADOS)
 
 
-# El catálogo de retenciones se consulta solo con estas dos funciones: con las vigencias habrá varias filas por
-# (impuesto, código). Cuerpos provisionales (una fila por pareja; `fecha` aún no se usa): D0 programa la vigencia.
+# Fuera de este módulo (Compras, Ventas) el catálogo se consulta solo con estas dos funciones: hay una fila por
+# vigencia de cada (impuesto, código), y la que vale es la que cubre `fecha`.
 
 def codigo_retencion_vigente(impuesto, codigo, fecha, incluir_inactivos=False):
     """Fila del catálogo de la pareja (impuesto, código) vigente en `fecha`, o None.
@@ -89,15 +89,12 @@ def codigo_retencion_vigente(impuesto, codigo, fecha, incluir_inactivos=False):
     incluir_inactivos=True también devuelve los códigos que ya no se ofrecen para emitir (p. ej. los que usa un cliente
     al retenernos).
     """
-    # D0 programa la vigencia
-    return CodigoRetencion.objects.filter(impuesto=impuesto, codigo=codigo,
-                                          **({} if incluir_inactivos else {'activo': True})).first()
+    return CodigoRetencion.vigente(impuesto, codigo, fecha, incluir_inactivos=incluir_inactivos)
 
 
 def codigos_retencion_vigentes(fecha, incluir_inactivos=False):
     """Una fila por pareja (impuesto, código) vigente en `fecha`, con el orden del catálogo."""
-    # D0 programa la vigencia
-    return CodigoRetencion.objects.filter(**({} if incluir_inactivos else {'activo': True}))
+    return CodigoRetencion.objects.vigentes(fecha, incluir_inactivos=incluir_inactivos)
 
 
 def _decimal(valor, campo):

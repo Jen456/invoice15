@@ -26,15 +26,17 @@ def redondear(valor):
 
 class CodigoRetencionQuerySet(models.QuerySet):
 
-    def vigentes(self, fecha):
+    def vigentes(self, fecha, incluir_inactivos=False):
         """Filas disponibles el día `fecha`: activas y con `fecha` dentro de su vigencia (desde nulo = inicio no
         documentado; hasta nulo = abierta). Como las vigencias de un código no se solapan, cada código sale una vez.
+        incluir_inactivos=True añade las filas retiradas (activo=False) que cubren esa fecha.
 
         Que no se solapen lo garantiza clean() (panel y nueva_vigencia() pasan por full_clean) y las migraciones, no la
         base de datos: un save() o update() directo que solape dos filas haría salir el código dos veces aquí (y vigente()
         tomaría la de inicio más reciente)."""
-        return self.filter(Q(vigente_desde__isnull=True) | Q(vigente_desde__lte=fecha),
-                           Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=fecha), activo=True)
+        filas = self if incluir_inactivos else self.filter(activo=True)
+        return filas.filter(Q(vigente_desde__isnull=True) | Q(vigente_desde__lte=fecha),
+                            Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=fecha))
 
 
 class CodigoRetencion(models.Model):
@@ -83,9 +85,9 @@ class CodigoRetencion(models.Model):
         return f'{self.codigo} · {self.concepto} ({self.porcentaje}%)'
 
     @classmethod
-    def vigente(cls, impuesto, codigo, fecha):
+    def vigente(cls, impuesto, codigo, fecha, incluir_inactivos=False):
         """Fila del código vigente el día `fecha`, o None."""
-        return (cls.objects.vigentes(fecha).filter(impuesto=impuesto, codigo=codigo)
+        return (cls.objects.vigentes(fecha, incluir_inactivos).filter(impuesto=impuesto, codigo=codigo)
                 .order_by(F('vigente_desde').desc(nulls_last=True)).first())
 
     @property

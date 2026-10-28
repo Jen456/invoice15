@@ -265,7 +265,8 @@ class TestRetenciones:
 
             def retencion(sobre, estado):
                 with transaction.atomic():
-                    ret = sv.crear(empresa, dueno, sobre, datos, [(codigo.pk, None, None)])
+                    ret = sv.crear(empresa, dueno, sobre, datos, [(codigo.pk, None, None)],
+                                   huella_revisada=sv.SIN_REVISION)
                 Retencion.objects.filter(pk=ret.pk).update(status=estado)
                 return ret
 
@@ -288,8 +289,24 @@ class TestRetenciones:
         assert sv.codigo_retencion_vigente('1', '312', self.HOY) is None
         assert sv.codigo_retencion_vigente('1', '312', self.HOY, incluir_inactivos=True).pk == fila.pk
 
+    def test_vigencias_del_310(self):
+        corte_antes, corte_despues = date(2026, 7, 31), date(2026, 8, 1)
+        antes = sv.codigo_retencion_vigente('1', '310', corte_antes)
+        despues = sv.codigo_retencion_vigente('1', '310', corte_despues)
+        assert (antes.vigente_hasta, antes.porcentaje_editable) == (corte_antes, False)
+        assert (despues.vigente_desde, despues.porcentaje_editable) == (corte_despues, True)
+        for fecha, fila in ((corte_antes, antes), (corte_despues, despues)):
+            assert [c.pk for c in sv.codigos_retencion_vigentes(fecha) if c.codigo == '310'] == [fila.pk]
+        CodigoRetencion.objects.filter(pk=antes.pk).update(activo=False)
+        assert sv.codigo_retencion_vigente('1', '310', corte_antes) is None
+        assert sv.codigo_retencion_vigente('1', '310', corte_antes, incluir_inactivos=True).pk == antes.pk
+        assert sv.codigo_retencion_vigente('1', '310', corte_despues, incluir_inactivos=True).pk == despues.pk
+        assert antes.pk not in [c.pk for c in sv.codigos_retencion_vigentes(corte_despues, incluir_inactivos=True)]
+
     def test_codigos_retencion_vigentes(self):
-        catalogo = list(CodigoRetencion.objects.all())
+        catalogo = [c for c in CodigoRetencion.objects.all()
+                    if (c.vigente_desde is None or c.vigente_desde <= self.HOY)
+                    and (c.vigente_hasta is None or c.vigente_hasta >= self.HOY)]
         CodigoRetencion.objects.filter(pk=catalogo[0].pk).update(activo=False)
         activos = list(sv.codigos_retencion_vigentes(self.HOY))
         todos = list(sv.codigos_retencion_vigentes(self.HOY, incluir_inactivos=True))
