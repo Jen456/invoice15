@@ -19,6 +19,7 @@
     {% endif %}
     <form method="post" class="fp-retencion-form" novalidate>{% csrf_token %}
         {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+        {% if aviso %}<div class="alert alert-warning" role="alert">{{ aviso }}</div>{% endif %}
         <section class="card fp-retencion-panel mb-3"><div class="card-body">
             <span class="fp-eyebrow">Paso 1 · Documento sustento</span><h2 class="h5">Factura del proveedor (documento sustento)</h2><p class="text-muted">Copia los datos de la factura que recibiste. Revisa el número y la autorización antes de continuar.</p>
             <div class="row">
@@ -50,9 +51,10 @@
                 <span class="fp-eyebrow">Paso 3 · Confirmación</span><h2 class="h5">Revisa antes de emitir</h2><p>El cálculo todavía no ha emitido un documento. Comprueba los datos antes de enviarlo al SRI.</p>
                 <p>{% if resumen.doc.cod_doc_sustento == '03' %}Liquidación de compra{% else %}Factura{% endif %} {{ resumen.doc.num_doc_sustento|slice:":3" }}-{{ resumen.doc.num_doc_sustento|slice:"3:6" }}-{{ resumen.doc.num_doc_sustento|slice:"6:" }} · sin impuestos ${{ resumen.total_sin_impuestos|floatformat:2 }} · IVA ${{ resumen.doc.valor_iva|floatformat:2 }} · total ${{ resumen.importe_total|floatformat:2 }}</p>
                 <div class="table-responsive fp-retencion-resumen"><table class="table table-sm"><thead><tr><th>Impuesto</th><th>Código</th><th>Concepto</th><th class="text-right">Base</th><th class="text-right">%</th><th class="text-right">Retenido</th></tr></thead><tbody>
-                    {% for d in resumen.detalle %}<tr><td>{% if d.impuesto == '1' %}Renta{% else %}IVA{% endif %}</td><td>{{ d.codigo }}</td><td>{{ d.concepto }}</td><td class="text-right">{{ d.base_imponible|floatformat:2 }}</td><td class="text-right">{{ d.porcentaje|floatformat:2 }}</td><td class="text-right">{{ d.valor_retenido|floatformat:2 }}</td></tr>{% endfor %}
+                    {% for d in resumen.detalle %}<tr><td>{% if d.impuesto == '1' %}Renta{% else %}IVA{% endif %}</td><td>{{ d.codigo }}</td><td>{{ d.concepto }}{% if d.codigo_obj.ayuda %}<small class="d-block text-muted">{{ d.codigo_obj.ayuda }}</small>{% endif %}</td><td class="text-right">{{ d.base_imponible|floatformat:2 }}</td><td class="text-right">{{ d.porcentaje|floatformat:2 }}</td><td class="text-right">{{ d.valor_retenido|floatformat:2 }}</td></tr>{% endfor %}
                     <tr><td colspan="5" class="text-right"><strong>Total retenido</strong></td><td class="text-right"><strong>${{ resumen.total|floatformat:2 }}</strong></td></tr>
                 </tbody></table></div>
+                <input type="hidden" name="huella" value="{{ resumen.huella }}">{# lo revisado: si al emitir el cálculo es otro, se vuelve a revisar #}
                 <button type="submit" name="action" value="emitir" class="btn fpa-btn-pagar">Emitir retención al SRI</button>
                 <button type="submit" name="action" value="calcular" class="btn btn-outline-secondary">Volver a calcular</button>
             </div></section>

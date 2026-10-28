@@ -3,10 +3,13 @@
 - Datos del sujeto retenido tomados del proveedor de la compra (copiados al emitir).
 - Documento sustento: la factura del proveedor (01) o la liquidación de compra que emitió la empresa (03); número de 15 dígitos (001-001-000000123), autorización de 10, 37 o 49 dígitos,
   fecha no futura, bases e IVA de la factura del proveedor.
-- Retenciones con el catálogo vigente (CodigoRetencion): renta sobre la base sin impuestos e IVA sobre el
-  valor del IVA; el porcentaje sale del catálogo salvo los códigos de porcentaje variable; valor = base × % (HALF_UP).
+- Retenciones con la fila del catálogo (CodigoRetencion) vigente en la fecha de la retención: renta sobre la base sin
+  impuestos e IVA sobre el valor del IVA; el porcentaje sale del catálogo salvo los códigos de porcentaje variable;
+  valor = base × % (HALF_UP).
+- Emitir solo si el cálculo es el que se revisó: la huella de lo revisado (código, %, fila del catálogo) debe coincidir.
 - Una compra tiene a lo sumo una retención vigente (las devueltas o no autorizadas no cuentan).
 """
+import hashlib
 import re
 from decimal import Decimal, InvalidOperation
 
@@ -21,6 +24,15 @@ TIPO_RETENCION = '07'
 
 class ErrorRetencion(Exception):
     """Mensaje para el usuario."""
+
+
+class RevisionDesactualizada(ErrorRetencion):
+    """El cálculo al emitir no es el revisado (cambió la vigencia o se editó el catálogo): lleva el cálculo nuevo."""
+
+    def __init__(self, doc, detalle, total):
+        super().__init__('El cálculo ya no es el que revisaste (cambió la vigencia o el catálogo de retenciones). '
+                         'Revisa el nuevo cálculo y vuelve a emitir.')
+        self.doc, self.detalle, self.total = doc, detalle, total
 
 
 def numero_documento(texto):
@@ -61,11 +73,13 @@ def _decimal(valor, campo):
     return redondear(numero)
 
 
-def calcular(datos, lineas):
+def calcular(datos, lineas, fecha=None):
     """Valida y calcula sin guardar. datos: campos del documento sustento; lineas: [(id de código, base o None, % o None)].
 
-    Devuelve (documento normalizado, [detalle calculado], total retenido).
+    Cada código se toma de la fila del catálogo vigente en `fecha` (por defecto hoy), aunque el id recibido sea el de
+    otra vigencia del mismo código. Devuelve (documento normalizado, [detalle calculado], total retenido).
     """
+    fecha = fecha or timezone.localdate()
     doc = {
         'num_doc_sustento': numero_documento(datos.get('num_doc_sustento')),
         'aut_doc_sustento': autorizacion(datos.get('aut_doc_sustento')),
@@ -95,12 +109,15 @@ def calcular(datos, lineas):
         raise ErrorRetencion('Agrega al menos una retención (renta o IVA).')
     if len(lineas) > MAX_LINEAS:
         raise ErrorRetencion(f'Una retención admite hasta {MAX_LINEAS} líneas.')
-    codigos = {str(c.pk): c for c in CodigoRetencion.objects.filter(pk__in=[linea[0] for linea in lineas], activo=True)}
+    elegidos = {str(c.pk): c for c in CodigoRetencion.objects.filter(pk__in=[linea[0] for linea in lineas])}
     detalle, usados = [], set()
     for codigo_id, base, porcentaje in lineas:
-        codigo = codigos.get(str(codigo_id))
-        if codigo is None:
+        elegido = elegidos.get(str(codigo_id))
+        if elegido is None:
             raise ErrorRetencion('Uno de los códigos de retención no existe o ya no está disponible.')
+        codigo = CodigoRetencion.vigente(elegido.impuesto, elegido.codigo, fecha)
+        if codigo is None:
+            raise ErrorRetencion(f'El código {elegido.codigo} no está vigente el {fecha:%d/%m/%Y}.')
         if (codigo.impuesto, codigo.codigo) in usados:
             raise ErrorRetencion(f'El código {codigo.codigo} está repetido.')
         usados.add((codigo.impuesto, codigo.codigo))
@@ -124,22 +141,37 @@ def calcular(datos, lineas):
     return doc, detalle, total
 
 
-def crear(company, usuario, compra, datos, lineas):
-    """Retención guardada (aún sin firmar) para `compra`. Llamar dentro de una transacción; la vista firma después."""
+def huella(detalle):
+    """Resumen de lo revisado (impuesto, código, % y fila del catálogo de cada línea) que viaja con «Emitir»."""
+    texto = '|'.join(f"{d['impuesto']}:{d['codigo']}:{redondear(d['porcentaje'])}:{d['codigo_obj'].pk}" for d in detalle)
+    return hashlib.sha256(texto.encode()).hexdigest()[:32]
+
+
+def crear(company, usuario, compra, datos, lineas, huella_revisada=None):
+    """Retención guardada (aún sin firmar) para `compra`. Llamar dentro de una transacción; la vista firma después.
+
+    Con `huella_revisada` (la de «Revisar»), si el cálculo de ahora es otro lanza RevisionDesactualizada y no guarda.
+    """
     from core.configuracion.servicios import receipt_para_emitir
     from core.pos.models import Purchase
     compra = Purchase.objects.select_for_update().select_related('provider').get(pk=compra.pk)   # una retención a la vez
     vigente = retencion_vigente(compra)
     if vigente is not None:
         raise ErrorRetencion(f'Esta compra ya tiene la retención {vigente.voucher_number_full} ({vigente.get_status_display()}).')
-    doc, detalle, total = calcular(datos, lineas)
+    # Fecha de la retención, fijada una vez: elige la vigencia del catálogo (hoy, como siempre: el catálogo se lee el día
+    # de la emisión). La regla legal es el momento del pago o crédito en cuenta (Res. NAC-DGERCGC26-00000009, art. 8);
+    # cómo obtener esa fecha es la duda D0-d (Fase B): por eso calcular() ya la recibe como parámetro.
+    fecha = timezone.localdate()
+    doc, detalle, total = calcular(datos, lineas, fecha)
+    if huella_revisada is not None and huella_revisada != huella(detalle):
+        raise RevisionDesactualizada(doc, detalle, total)
     proveedor = compra.provider
     receipt = receipt_para_emitir(company, TIPO_RETENCION, electronica=True)
     numero = receipt.reservar_numero()
     ret = Retencion(
         company=company, receipt=receipt, voucher_number=numero,
         voucher_number_full=f'{receipt.establishment_code}-{receipt.issuing_point_code}-{numero}',
-        employee=usuario, environment_type=company.environment_type, date_joined=timezone.localdate(),
+        employee=usuario, environment_type=company.environment_type, date_joined=fecha,
         purchase=compra, provider=proveedor, tipo_identificacion=tipo_identificacion(proveedor.ruc),
         identificacion=re.sub(r'\s', '', proveedor.ruc), razon_social=proveedor.name.strip(),
         tipo_sujeto='02' if len(proveedor.ruc.strip()) == 13 and proveedor.ruc.strip()[2] in '69' else '01',
@@ -149,5 +181,5 @@ def crear(company, usuario, compra, datos, lineas):
     for d in detalle:
         RetencionDetalle.objects.create(retencion=ret, impuesto=d['impuesto'], codigo=d['codigo'], concepto=d['concepto'][:300],
                                         base_imponible=d['base_imponible'], porcentaje=d['porcentaje'],
-                                        valor_retenido=d['valor_retenido'])
+                                        valor_retenido=d['valor_retenido'], codigo_catalogo=d['codigo_obj'])
     return ret

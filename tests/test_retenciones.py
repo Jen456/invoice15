@@ -1,5 +1,6 @@
 """Comprobante de retención (07, XML 2.0.0) desde Compras: cálculo y validaciones en el servidor, XML válido contra
 el XSD oficial del SRI, numeración en «Otros comprobantes», emisión en dos fases, cupo, permisos y correo."""
+import re
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -40,9 +41,9 @@ def p12():
 
 @pytest.fixture
 def codigos(db):
-    """Códigos del catálogo que carga la migración 0004."""
+    """Códigos del catálogo que carga la migración 0004 (la fila vigente hoy)."""
     def codigo(impuesto, numero):
-        return CodigoRetencion.objects.get(impuesto=impuesto, codigo=numero, activo=True)
+        return CodigoRetencion.vigente(impuesto, numero, timezone.localdate())
     return {'bienes': codigo('1', '312'), 'honorarios': codigo('1', '303'), 'variable': codigo('1', '346'),
             'iva30': codigo('2', '1'), 'iva100': codigo('2', '3')}
 
@@ -107,15 +108,27 @@ def formulario(codigos_lineas, **cambios):
     return post
 
 
+def huella(html):
+    """Huella de lo revisado que lleva el botón «Emitir» ('' si la página no lo muestra)."""
+    encontrada = re.search(r'name="huella" value="([0-9a-f]*)"', html)
+    return encontrada.group(1) if encontrada else ''
+
+
+def emitir(web, url, post, **kwargs):
+    """Como en el navegador: «Revisar» y luego «Emitir» con la huella de lo revisado."""
+    revision = web.post(url, {**post, 'action': 'calcular'}).content.decode()
+    return web.post(url, {**post, 'action': 'emitir', 'huella': huella(revision)}, **kwargs)
+
+
 class TestCatalogo:
 
     def test_porcentajes_vigentes_desde_marzo_2026(self, db):
-        vigentes = {c.codigo: c.porcentaje for c in CodigoRetencion.objects.filter(impuesto='1', activo=True)}
+        vigentes = {c.codigo: c.porcentaje for c in CodigoRetencion.objects.vigentes(timezone.localdate()).filter(impuesto='1')}
         assert vigentes['312'] == Decimal('2.00') and vigentes['3440'] == Decimal('3.00') and vigentes['303A'] == Decimal('5.00')
         assert vigentes['343B'] == Decimal('2.00') and vigentes['312A'] == Decimal('1.00') and vigentes['332'] == Decimal('0.00')
         assert '345' not in vigentes and '344' not in vigentes and not any(c.startswith('5') for c in vigentes)
         assert not CodigoRetencion.objects.get(impuesto='1', codigo='327').activo   # dividendos: falta el nodo <dividendos>
-        iva = dict(CodigoRetencion.objects.filter(impuesto='2', activo=True).values_list('codigo', 'porcentaje'))
+        iva = dict(CodigoRetencion.objects.vigentes(timezone.localdate()).filter(impuesto='2').values_list('codigo', 'porcentaje'))
         assert iva == {'9': Decimal('10.00'), '10': Decimal('20.00'), '1': Decimal('30.00'), '2': Decimal('70.00'),
                        '3': Decimal('100.00'), '8': Decimal('0.00')}
 
@@ -155,7 +168,7 @@ class TestCalculo:
 class TestNumeracion:
 
     def test_sin_numeracion_explica_donde_configurarla(self, web, compra, codigos, sri):
-        respuesta = web.post(f'{LISTA}nueva/{compra.pk}/', {**formulario([(codigos['bienes'], '', '')]), 'action': 'emitir'})
+        respuesta = emitir(web, f'{LISTA}nueva/{compra.pk}/', formulario([(codigos['bienes'], '', '')]))
         assert 'Otros comprobantes' in respuesta.content.decode() and not leer(compra.company, lambda: Retencion.objects.exists())
 
     def test_formulario_trae_la_fecha_de_la_compra_en_iso(self, web, compra, codigos):
@@ -186,7 +199,8 @@ class TestEmision:
         revision = web.post(f'{LISTA}nueva/{compra.pk}/', {**formulario(lineas), 'action': 'calcular'}).content.decode()
         assert 'Revisa antes de emitir' in revision and '$6,50' in revision and not leer(empresa, lambda: Retencion.objects.exists())
         sri.respuestas_autorizacion = ['AUTORIZADO']
-        respuesta = web.post(f'{LISTA}nueva/{compra.pk}/', {**formulario(lineas), 'action': 'emitir'}, follow=True)
+        respuesta = web.post(f'{LISTA}nueva/{compra.pk}/', {**formulario(lineas), 'action': 'emitir', 'huella': huella(revision)},
+                             follow=True)
         ret = leer(empresa, lambda: Retencion.objects.get())
         assert ret.voucher_number_full == '001-002-000000041' and ret.status == 'authorized_and_sent_by_email'
         assert ret.total_retenido == Decimal('6.50') and 'autorizado por el SRI' in respuesta.content.decode()
@@ -215,16 +229,23 @@ class TestEmision:
         assert documento.findtext('infoTributaria/contribuyenteRimpe') == 'CONTRIBUYENTE RÉGIMEN RIMPE'
         assert documento.findtext('infoCompRetencion/contribuyenteEspecial') == '12345'
 
+    def test_emitir_sin_revisar_vuelve_a_revisar(self, web, empresa, compra, codigos, numeracion, sri):
+        post = {**formulario([(codigos['bienes'], '', '')]), 'action': 'emitir'}
+        for falsa in ({}, {'huella': '0' * 32}):   # sin la huella de «Revisar» o con otra
+            html = web.post(f'{LISTA}nueva/{compra.pk}/', {**post, **falsa}).content.decode()
+            assert 'ya no es el que revisaste' in html and 'Revisa antes de emitir' in html and f'value="{huella(html)}"' in html
+        assert not leer(empresa, lambda: Retencion.objects.exists()) and not sri.recepciones
+
     def test_una_retencion_por_compra(self, web, empresa, compra, codigos, numeracion, sri):
         lineas = [(codigos['bienes'], '', '')]
-        web.post(f'{LISTA}nueva/{compra.pk}/', {**formulario(lineas), 'action': 'emitir'})   # queda en proceso
-        respuesta = web.post(f'{LISTA}nueva/{compra.pk}/', {**formulario(lineas), 'action': 'emitir'})
+        emitir(web, f'{LISTA}nueva/{compra.pk}/', formulario(lineas))   # queda en proceso
+        respuesta = emitir(web, f'{LISTA}nueva/{compra.pk}/', formulario(lineas))
         html = respuesta.content.decode()
         assert 'ya tiene la retención' in html and '001-002-000000041' in html
         assert leer(empresa, lambda: Retencion.objects.count()) == 1
 
     def test_en_proceso_no_se_borra_y_la_tarea_la_autoriza(self, web, empresa, compra, codigos, numeracion, sri):
-        web.post(f'{LISTA}nueva/{compra.pk}/', {**formulario([(codigos['bienes'], '', '')]), 'action': 'emitir'})
+        emitir(web, f'{LISTA}nueva/{compra.pk}/', formulario([(codigos['bienes'], '', '')]))
         ret = leer(empresa, lambda: Retencion.objects.get())
         assert ret.status == 'in_process'
         web.post(LISTA, {'action': 'delete', 'id': ret.pk})

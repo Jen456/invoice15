@@ -1,8 +1,22 @@
 /* Solo presentación del formset Django; cálculo y validación permanecen en servidor. */
 (function () {
     'use strict';
-    const button = document.getElementById('fp-retencion-agregar');
     const container = document.getElementById('fp-retencion-lineas');
+    // Ayuda del código elegido (data-ayuda de la opción, desde el catálogo); sin JavaScript se ve al revisar.
+    function ayuda(select) {
+        const nota = select.parentElement.querySelector('.fp-retencion-ayuda');
+        if (!nota) return;
+        const opcion = select.options[select.selectedIndex];
+        nota.textContent = (opcion && opcion.dataset.ayuda) || '';
+        nota.hidden = !nota.textContent;
+    }
+    if (container) {
+        container.querySelectorAll('select[name$="-codigo"]').forEach(ayuda);
+        container.addEventListener('change', function (evento) {
+            if (evento.target.matches('select[name$="-codigo"]')) ayuda(evento.target);
+        });
+    }
+    const button = document.getElementById('fp-retencion-agregar');
     const template = document.getElementById('fp-retencion-linea-vacia');
     const total = document.querySelector('[name="lineas-TOTAL_FORMS"]');
     const maximum = document.querySelector('[name="lineas-MAX_NUM_FORMS"]');

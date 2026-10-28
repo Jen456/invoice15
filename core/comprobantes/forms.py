@@ -1,6 +1,8 @@
 from decimal import Decimal
 
 from django import forms
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from core.comprobantes.models import CodigoRetencion, LiquidacionCompra
 from core.pos.choices import PAYMENT_METHOD
@@ -23,11 +25,34 @@ DOCUMENTOS_SUSTENTO = (('01', 'Factura'), ('03', 'Liquidación de compra (emitid
 TARIFAS_IVA = (('15.00', '15 %'), ('5.00', '5 %'), ('0.00', '0 % (sin IVA)'))
 
 
+class SelectConAyuda(forms.Select):
+    """Cada opción lleva la ayuda de su código (data-ayuda); static/js/retenciones.js la muestra bajo la lista."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        opcion = super().create_option(name, value, label, selected, index, subindex, attrs)
+        ayuda = getattr(getattr(value, 'instance', None), 'ayuda', '')
+        if ayuda:
+            opcion['attrs']['data-ayuda'] = ayuda
+        return opcion
+
+
 class CodigoChoiceField(forms.ModelChoiceField):
+    """Lista las filas vigentes del catálogo, pero acepta el id de cualquier vigencia de un código: calcular() usa la fila
+    vigente al calcular (una página abierta antes de un cambio de vigencia no queda inservible)."""
+    widget = SelectConAyuda
+
     def label_from_instance(self, obj):
         impuesto = 'Renta' if obj.impuesto == '1' else 'IVA'
         porcentaje = f'{obj.porcentaje.normalize():f}'.replace('.', ',')
         return f'{impuesto} · {obj.codigo} · {obj.concepto[:90]} ({porcentaje} %)'
+
+    def to_python(self, value):
+        if value in self.empty_values:
+            return None
+        try:
+            return CodigoRetencion.objects.get(pk=value)
+        except (ValueError, TypeError, CodigoRetencion.DoesNotExist):
+            raise ValidationError(self.error_messages['invalid_choice'], code='invalid_choice')
 
 
 class DocumentoSustentoForm(forms.Form):
@@ -48,12 +73,17 @@ class DocumentoSustentoForm(forms.Form):
 
 
 class LineaRetencionForm(forms.Form):
-    codigo = CodigoChoiceField(queryset=CodigoRetencion.objects.filter(activo=True), required=False, label='Retención',
+    codigo = CodigoChoiceField(queryset=CodigoRetencion.objects.none(), required=False, label='Retención',
                                empty_label='— Sin retención en esta línea —')
     base = forms.DecimalField(label='Base imponible', required=False, min_value=0, decimal_places=2, max_digits=12,
                               help_text='Vacío: renta sobre la base sin impuestos; IVA sobre el valor del IVA.')
     porcentaje = forms.DecimalField(label='% (solo códigos de porcentaje variable)', required=False, min_value=0,
                                     max_value=100, decimal_places=2, max_digits=5)
+
+    def __init__(self, *args, fecha=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Códigos vigentes en la fecha de la retención (hoy): una opción por código.
+        self.fields['codigo'].queryset = CodigoRetencion.objects.vigentes(fecha or timezone.localdate())
 
 
 LineasRetencionFormSet = forms.formset_factory(LineaRetencionForm, extra=3, max_num=10)
