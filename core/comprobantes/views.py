@@ -107,7 +107,7 @@ class GuiaListView(ComprobanteListView):
 
 
 class RetencionCrearView(GroupPermissionMixin, TemplateView):
-    """Retención sobre una compra: revisar (cálculo sin guardar) y luego emitir."""
+    """Retención sobre una compra: revisar (cálculo sin guardar) y luego emitir lo mismo que se revisó (huella)."""
     template_name = 'comprobantes/retencion/create.html'
     permission_required = 'add_retencion'
 
@@ -127,7 +127,8 @@ class RetencionCrearView(GroupPermissionMixin, TemplateView):
                    'fecha_doc_sustento': liq.emission_date, 'base_0': sum((b for t, b, _ in grupos if t == 0), 0),
                    'base_iva': sum((b for _, b in gravadas), 0), 'valor_iva': liq.total_iva,
                    'tarifa_iva': f'{max((t for t, _ in gravadas), default=15):.2f}'}
-        sugeridos = [CodigoRetencion.objects.filter(impuesto=i, codigo=c, activo=True).first() for i, c in (('1', '311'), ('2', '3'))]
+        hoy = timezone.localdate()
+        sugeridos = [CodigoRetencion.vigente(i, c, hoy) for i, c in (('1', '311'), ('2', '3'))]
         return inicial, [{'codigo': c.pk} for c in sugeridos if c and (c.impuesto == '1' or liq.total_iva > 0)], liq
 
     def get_context_data(self, **kwargs):
@@ -138,16 +139,28 @@ class RetencionCrearView(GroupPermissionMixin, TemplateView):
             'title': 'Emitir comprobante de retención', 'compra': compra,
             'vigente': sv.retencion_vigente(compra), 'liquidacion': liquidacion,
             'form': kwargs.get('form') or DocumentoSustentoForm(initial=inicial),
-            'lineas': kwargs.get('lineas') or LineasRetencionFormSet(prefix='lineas', initial=sugeridas),
-            'resumen': kwargs.get('resumen'),
+            'lineas': kwargs.get('lineas') or LineasRetencionFormSet(prefix='lineas', initial=sugeridas,
+                                                                     form_kwargs={'fecha': timezone.localdate()}),
+            'resumen': kwargs.get('resumen'), 'aviso': kwargs.get('aviso'),
             'es_agente': self.request.company.retention_agent == RETENTION_AGENT[0][0],
         })
         return context
 
+    def revision(self, form, lineas, doc, detalle, total, aviso=None):
+        """Paso «Revisar»: el cálculo, su huella para «Emitir» y cada línea apuntando a la fila del catálogo usada."""
+        datos = lineas.data.copy()
+        for f, d in zip([f for f in lineas.forms if f.cleaned_data.get('codigo')], detalle):
+            datos[f.add_prefix('codigo')] = str(d['codigo_obj'].pk)
+        lineas = LineasRetencionFormSet(datos, prefix='lineas', form_kwargs={'fecha': timezone.localdate()})
+        return self.render_to_response(self.get_context_data(form=form, lineas=lineas, aviso=aviso, resumen={
+            'doc': doc, 'detalle': detalle, 'total': total, 'huella': sv.huella(doc, detalle),
+            'total_sin_impuestos': doc['base_0'] + doc['base_iva'],
+            'importe_total': doc['base_0'] + doc['base_iva'] + doc['valor_iva']}))
+
     def post(self, request, *args, **kwargs):
         compra = self.get_compra()
         form = DocumentoSustentoForm(request.POST)
-        lineas = LineasRetencionFormSet(request.POST, prefix='lineas')
+        lineas = LineasRetencionFormSet(request.POST, prefix='lineas', form_kwargs={'fecha': timezone.localdate()})
         if not (form.is_valid() and lineas.is_valid()):
             return self.render_to_response(self.get_context_data(form=form, lineas=lineas))
         datos = form.cleaned_data
@@ -155,14 +168,13 @@ class RetencionCrearView(GroupPermissionMixin, TemplateView):
                  for f in lineas.forms if f.cleaned_data.get('codigo')]
         try:
             if request.POST.get('action') != 'emitir':
-                doc, detalle, total = sv.calcular(datos, filas)
-                return self.render_to_response(self.get_context_data(form=form, lineas=lineas, resumen={
-                    'doc': doc, 'detalle': detalle, 'total': total,
-                    'total_sin_impuestos': doc['base_0'] + doc['base_iva'],
-                    'importe_total': doc['base_0'] + doc['base_iva'] + doc['valor_iva']}))
+                return self.revision(form, lineas, *sv.calcular(datos, filas, timezone.localdate()))
             with transaction.atomic():
-                ret = sv.crear(request.company, request.user, compra, datos, filas)
+                # Sin la huella de «Revisar» (o con otra) no se emite: se vuelve a revisar con el cálculo de ahora.
+                ret = sv.crear(request.company, request.user, compra, datos, filas, huella_revisada=request.POST.get('huella', ''))
                 emision.preparar(ret)   # si la firma o el plan fallan, se deshace: nada salió al SRI
+        except sv.RevisionDesactualizada as e:
+            return self.revision(form, lineas, e.doc, e.detalle, e.total, aviso=str(e))
         except Exception as e:
             form.add_error(None, str(e))
             return self.render_to_response(self.get_context_data(form=form, lineas=lineas))

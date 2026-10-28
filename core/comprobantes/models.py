@@ -4,10 +4,13 @@ nota de débito (05) y guía de remisión (06).
 Todos comparten la emisión en dos fases de core/pos/emision.py (fecha y clave fijadas una vez, XML firmado
 guardado antes de enviarlo, consulta por clave) y descuentan 1 del cupo del plan cuando el SRI los autoriza.
 """
+from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
+from django.db.models import F, Q
 from django.utils import timezone
 
 from core.pos.choices import ENVIRONMENT_TYPE, INVOICE_STATUS
@@ -21,8 +24,25 @@ def redondear(valor):
     return Decimal(valor).quantize(CENTAVO, rounding=ROUND_HALF_UP)
 
 
+class CodigoRetencionQuerySet(models.QuerySet):
+
+    def vigentes(self, fecha):
+        """Filas disponibles el día `fecha`: activas y con `fecha` dentro de su vigencia (desde nulo = inicio no
+        documentado; hasta nulo = abierta). Como las vigencias de un código no se solapan, cada código sale una vez.
+
+        Que no se solapen lo garantiza clean() (panel y nueva_vigencia() pasan por full_clean) y las migraciones, no la
+        base de datos: un save() o update() directo que solape dos filas haría salir el código dos veces aquí (y vigente()
+        tomaría la de inicio más reciente)."""
+        return self.filter(Q(vigente_desde__isnull=True) | Q(vigente_desde__lte=fecha),
+                           Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=fecha), activo=True)
+
+
 class CodigoRetencion(models.Model):
-    """Catálogo de la plataforma (no es de una empresa): códigos y porcentajes vigentes del SRI."""
+    """Catálogo de la plataforma (no es de una empresa): códigos y porcentajes del SRI, una fila por vigencia.
+
+    Un cambio de porcentaje o de concepto no edita la fila: cierra la vigente (vigente_hasta) y abre otra (acción
+    «Nueva vigencia» del panel). Lo emitido no depende del catálogo: cada detalle guarda su propia copia.
+    """
     IMPUESTOS = (('1', 'Renta'), ('2', 'IVA'))
 
     impuesto = models.CharField(max_length=1, choices=IMPUESTOS, verbose_name='Impuesto')
@@ -35,15 +55,90 @@ class CodigoRetencion(models.Model):
     activo = models.BooleanField(default=True, verbose_name='Disponible')
     fuente = models.CharField(max_length=300, blank=True, verbose_name='Fuente (resolución o tabla del SRI)')
     orden = models.PositiveSmallIntegerField(default=0, verbose_name='Orden')
+    vigente_desde = models.DateField(null=True, blank=True, verbose_name='Vigente desde',
+                                     help_text='Vacío: inicio no documentado en esta revisión del catálogo (no se inventa una fecha).')
+    vigente_hasta = models.DateField(null=True, blank=True, verbose_name='Vigente hasta',
+                                     help_text='Vacío: vigencia abierta.')
+    ayuda = models.CharField(max_length=500, blank=True, verbose_name='Ayuda',
+                             help_text='Texto que ve el emisor al elegir el código.')
+
+    objects = CodigoRetencionQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'Código de retención'
         verbose_name_plural = 'Códigos de retención'
         ordering = ('impuesto', '-comun', 'orden', 'codigo')
-        constraints = [models.UniqueConstraint(fields=['impuesto', 'codigo'], name='codigo_retencion_unico')]
+        constraints = [
+            models.UniqueConstraint(fields=['impuesto', 'codigo', 'vigente_desde'], name='codigo_retencion_vigencia_unica'),
+            # NULL no choca con NULL en un índice único: una sola fila abierta y una sola sin inicio por código.
+            models.UniqueConstraint(fields=['impuesto', 'codigo'], condition=Q(vigente_hasta__isnull=True),
+                                    name='codigo_retencion_una_abierta'),
+            models.UniqueConstraint(fields=['impuesto', 'codigo'], condition=Q(vigente_desde__isnull=True),
+                                    name='codigo_retencion_un_inicio_nulo'),
+            models.CheckConstraint(condition=Q(vigente_desde__isnull=True) | Q(vigente_hasta__isnull=True)
+                                   | Q(vigente_hasta__gte=F('vigente_desde')), name='codigo_retencion_hasta_no_antes_de_desde'),
+        ]
 
     def __str__(self):
         return f'{self.codigo} · {self.concepto} ({self.porcentaje}%)'
+
+    @classmethod
+    def vigente(cls, impuesto, codigo, fecha):
+        """Fila del código vigente el día `fecha`, o None."""
+        return (cls.objects.vigentes(fecha).filter(impuesto=impuesto, codigo=codigo)
+                .order_by(F('vigente_desde').desc(nulls_last=True)).first())
+
+    @property
+    def vigencia_empezada(self):
+        """Ya pudo usarse al emitir: su porcentaje, su concepto, sus fechas y su fuente no se editan (se abre otra vigencia)."""
+        return self.vigente_desde is None or self.vigente_desde <= timezone.localdate()
+
+    def clean(self):
+        if self.vigente_desde and self.vigente_hasta and self.vigente_hasta < self.vigente_desde:
+            raise ValidationError({'vigente_hasta': 'La vigencia no puede terminar antes de empezar.'})
+        otras = CodigoRetencion.objects.filter(impuesto=self.impuesto, codigo=self.codigo).exclude(pk=self.pk)
+        if self.vigente_hasta is not None:
+            otras = otras.filter(Q(vigente_desde__isnull=True) | Q(vigente_desde__lte=self.vigente_hasta))
+        if self.vigente_desde is not None:
+            otras = otras.filter(Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=self.vigente_desde))
+        solapada = otras.first()
+        if solapada is not None:
+            raise ValidationError(f'La vigencia se solapa con la del código {self.codigo} '
+                                  f'({_fecha(solapada.vigente_desde, "sin inicio")} – {_fecha(solapada.vigente_hasta, "abierta")}).')
+
+    def nueva_vigencia(self, desde, porcentaje, porcentaje_editable, fuente, ayuda=''):
+        """Cierra esta fila (la abierta del código) el día anterior a `desde` y crea la siguiente, con el mismo concepto,
+        orden y uso común. `desde` es posterior a hoy. Devuelve la fila nueva; ValidationError si las fechas no encajan."""
+        with transaction.atomic():
+            actual = CodigoRetencion.objects.select_for_update().get(pk=self.pk)
+            if actual.vigente_hasta is not None:
+                raise ValidationError(f'La fila del código {self.codigo} ya está cerrada: la vigencia nueva se abre '
+                                      'desde la fila abierta.')
+            exigir_inicio_futuro(desde)
+            if actual.vigente_desde is not None and desde <= actual.vigente_desde:
+                raise ValidationError(f'La vigencia nueva debe empezar después del {actual.vigente_desde:%d/%m/%Y}.')
+            actual.vigente_hasta = desde - timedelta(days=1)
+            actual.save(update_fields=['vigente_hasta'])
+            nueva = CodigoRetencion(impuesto=actual.impuesto, codigo=actual.codigo, concepto=actual.concepto, porcentaje=porcentaje,
+                                    porcentaje_editable=porcentaje_editable, comun=actual.comun, activo=actual.activo,
+                                    fuente=fuente, orden=actual.orden, vigente_desde=desde, ayuda=ayuda)
+            nueva.full_clean()
+            nueva.save()
+        self.vigente_hasta = actual.vigente_hasta
+        return nueva
+
+
+def exigir_inicio_futuro(desde):
+    """Una vigencia nueva de un código ya existente empieza después de hoy: si empezara antes, cerraría con efecto
+    retroactivo la fila con la que ya se emitió y cambiaría al instante el cálculo de todas las empresas. Una vigencia
+    retroactiva (una resolución publicada tarde) se carga con una migración revisada, como 0015."""
+    hoy = timezone.localdate()
+    if desde is None or desde <= hoy:
+        raise ValidationError(f'La vigencia nueva debe empezar después de hoy ({hoy:%d/%m/%Y}): lo ya emitido no se reescribe.')
+
+
+def _fecha(valor, vacio):
+    return f'{valor:%d/%m/%Y}' if valor else vacio
 
 
 class ComprobanteElectronico(TenantModel):
@@ -180,6 +275,10 @@ class RetencionDetalle(TenantModel):
     base_imponible = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Base imponible')
     porcentaje = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Porcentaje')
     valor_retenido = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Valor retenido')
+    # Fila (vigencia) del catálogo con la que se calculó. Solo trazabilidad: el XML y el RIDE salen de la copia de arriba.
+    # Vacío en los detalles anteriores a las vigencias (no se rellena por inferencia).
+    codigo_catalogo = models.ForeignKey(CodigoRetencion, null=True, blank=True, on_delete=models.PROTECT, related_name='+',
+                                        verbose_name='Fila del catálogo')
 
     class Meta:
         verbose_name = 'Detalle de retención'

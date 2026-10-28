@@ -19,7 +19,7 @@ from core.suscripciones.models import SubscriptionPeriod
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_ACCOUNTANT, ROLE_OWNER, ROLE_SELLER
 from tests import helpers
-from tests.test_retenciones import empresa, leer, p12, sri  # noqa: F401 (fixtures compartidos)
+from tests.test_retenciones import emitir, empresa, leer, p12, sri  # noqa: F401 (fixtures compartidos)
 
 pytestmark = pytest.mark.django_db
 XSD = Path(__file__).parent / 'xsd' / 'liquidacion' / 'LiquidacionCompra_V1.1.0.xsd'
@@ -212,23 +212,34 @@ class TestRetencionSobreLaLiquidacion:
             return LiquidacionCompra.objects.get()
 
     def test_la_retencion_toma_la_liquidacion_y_sugiere_100_iva_y_311(self, web, empresa, compra, autorizada, sri):  # noqa: F811
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from core.comprobantes.models import CodigoRetencion
+        hoy = timezone.localdate()
+        vigentes = [CodigoRetencion.vigente(i, c, hoy) for i, c in (('1', '311'), ('2', '3'))]
+        for fila in vigentes:   # con otra vigencia futura del mismo código se sugiere una sola vez, la de hoy
+            fila.nueva_vigencia(desde=hoy + timedelta(days=60), porcentaje=fila.porcentaje, porcentaje_editable=False,
+                                fuente='Vigencia futura de prueba')
         html = web.get(f'/comprobantes/retenciones/nueva/{compra.pk}/').content.decode()
         assert 'liquidación de compra <strong>001-002-000000008</strong>' in html
         assert 'value="03" selected' in html and 'value="001-002-000000008"' in html and autorizada.access_code in html
-        assert 'selected>Renta · 311 ·' in html and 'selected>IVA · 3 ·' in html
+        assert html.count('selected>Renta · 311 ·') == 1 and html.count('selected>IVA · 3 ·') == 1
+        assert all(f'value="{fila.pk}" selected>' in html for fila in vigentes)
 
     def test_retencion_emitida_con_sustento_03_valida_contra_el_xsd(self, web, empresa, compra, autorizada, sri):  # noqa: F811
         from core.comprobantes.models import CodigoRetencion
-        with company_context(empresa):
-            r311 = CodigoRetencion.objects.get(impuesto='1', codigo='311')
-            iva3 = CodigoRetencion.objects.get(impuesto='2', codigo='3')
+        from django.utils import timezone
+        r311 = CodigoRetencion.vigente('1', '311', timezone.localdate())
+        iva3 = CodigoRetencion.vigente('2', '3', timezone.localdate())
         post = {'cod_doc_sustento': '03', 'num_doc_sustento': autorizada.voucher_number_full, 'aut_doc_sustento': autorizada.access_code,
                 'fecha_doc_sustento': autorizada.emission_date.isoformat(), 'base_0': '100.00', 'base_iva': '20.00',
                 'tarifa_iva': '15.00', 'valor_iva': '3.00', 'cod_sustento': '02', 'forma_pago': '01',
                 'lineas-TOTAL_FORMS': '2', 'lineas-INITIAL_FORMS': '0', 'lineas-MIN_NUM_FORMS': '0', 'lineas-MAX_NUM_FORMS': '10',
-                'lineas-0-codigo': r311.pk, 'lineas-1-codigo': iva3.pk, 'action': 'emitir'}
+                'lineas-0-codigo': r311.pk, 'lineas-1-codigo': iva3.pk}
         sri.respuestas_autorizacion = ['AUTORIZADO']
-        web.post(f'/comprobantes/retenciones/nueva/{compra.pk}/', post)
+        emitir(web, f'/comprobantes/retenciones/nueva/{compra.pk}/', post)
         ret = leer(empresa, lambda: Retencion.objects.get())
         assert ret.cod_doc_sustento == '03' and ret.total_retenido == Decimal('6.60')   # 120 × 3 % + 3.00 × 100 %
         ok, errores, documento = valido(ret.xml_signed, XSD_RETENCION)
@@ -244,7 +255,7 @@ class TestRetencionSobreLaLiquidacion:
         from core.comprobantes import retenciones as sv
         from core.comprobantes.models import CodigoRetencion
         with company_context(empresa):
-            r311 = CodigoRetencion.objects.get(impuesto='1', codigo='311')
+            r311 = CodigoRetencion.vigente('1', '311', timezone.localdate())
             with pytest.raises(sv.ErrorRetencion, match='sustento 09'):
                 sv.calcular({'cod_doc_sustento': '03', 'cod_sustento': '09', 'num_doc_sustento': '001-002-000000008',
                              'aut_doc_sustento': '1' * 49, 'fecha_doc_sustento': timezone.localdate() - timedelta(days=1),
