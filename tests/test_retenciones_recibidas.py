@@ -153,6 +153,25 @@ class TestValidaciones:
         mensaje = rr.MENSAJES[codigo].split('{')[0]
         assert obtenido == codigo and texto.startswith(mensaje), texto
 
+    def test_topes_suman_las_retenciones_registradas(self, empresa, dueno, venta):  # noqa: F811
+        """Revisión O2-T3 (§3.2.7): los topes cuentan las bases de las otras retenciones registradas de la factura, y se
+        liberan al anular."""
+        primera = registrar(empresa, dueno, venta, retencion_datos(lineas=[linea('1', '312', '15.00'), linea('2', '1', '2.00')]))
+        otra = {'numero': '001-001-000000124'}
+        assert codigo_de(lambda: calcular(empresa, venta, retencion_datos(lineas=[linea('1', '312', '10.00')], **otra))) == (
+            'base_renta_excede', 'Las bases de renta (25.00) superan el subtotal sin impuestos de la factura (20.00), sumando '
+                                 'otras retenciones registradas.')
+        assert codigo_de(lambda: calcular(empresa, venta, retencion_datos(lineas=[linea('2', '1', '1.50')], **otra))) == (
+            'base_iva_excede', 'Las bases de IVA (3.50) superan el IVA de la factura (3.00), sumando otras retenciones '
+                               'registradas.')
+        justo = calcular(empresa, venta, retencion_datos(lineas=[linea('1', '312', '5.00'), linea('2', '1', '1.00')], **otra))
+        assert justo['topes'] == {'renta': Decimal('20.00'), 'iva': Decimal('3.00'), 'usado_renta': Decimal('15.00'),
+                                  'usado_iva': Decimal('2.00')}
+        with company_context(empresa):
+            rr.anular(empresa, dueno, RetencionRecibida.objects.get(pk=primera.pk), 'Registrada por error en la prueba')
+        libre = calcular(empresa, venta, retencion_datos(lineas=[linea('1', '312', '20.00'), linea('2', '1', '3.00')], **otra))
+        assert (libre['topes']['usado_renta'], libre['topes']['usado_iva']) == (Decimal('0.00'), Decimal('0.00'))
+
     def test_tolerancias(self, empresa, venta):  # noqa: F811
         r = calcular(empresa, venta, retencion_datos(lineas=[linea('1', '312', '20.01', valor='0.41'), linea('2', '1', '3.01')]))
         assert r['total_renta'] == Decimal('0.41') and r['total_iva'] == Decimal('0.90')
