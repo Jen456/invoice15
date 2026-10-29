@@ -3,8 +3,11 @@ roles, plan, lista/JSON, texto seguro, menú, auditoría, bloqueos y seguridad p
 correo en memoria. La conversión en factura se prueba en test_proformas_conversion.py."""
 import json
 import re
+import shutil
+import subprocess
 from datetime import timedelta
 from decimal import Decimal
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pypdfium2 as pdfium
@@ -835,6 +838,44 @@ class TestListaYJson:
             assert '<img src=x' not in html and '\\u003Cimg src=x onerror=alert(1)\\u003E' in html   # json_script
         assert '&lt;img src=x onerror=alert(1)&gt;' in web.get(f'{LISTA}ver/{p.pk}/').content.decode()
         assert 'onerror=alert(1)' in texto_pdf(web.get(f'{LISTA}pdf/{p.pk}/').content)
+
+    @pytest.mark.skipif(shutil.which('node') is None, reason='Requiere Node.js')
+    def test_acciones_js_escapa_comillas_en_los_atributos(self):
+        """fpAcciones.botones pone facturar_bloqueado, las URL y los ids dentro de atributos: un texto con comillas no
+        debe abrir atributos nuevos. Corre el acciones.js real con Node; el `$` mínimo serializa el texto como el DOM
+        ($('<div>').text(x).html() escapa &, < y >, pero no las comillas)."""
+        ruta = Path(settings.BASE_DIR) / 'core/proformas/static/proformas/js/acciones.js'
+        guion = r'''
+const fs = require('fs'), vm = require('vm');
+globalThis.$ = function () {
+    return {t: '', text(x) { this.t = x; return this; },
+            html() { return this.t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }};
+};
+vm.runInThisContext(fs.readFileSync(process.argv[1], 'utf8'));
+const hostil = '" onfocus="alert(1)" autofocus="' + "'";
+const p = {id: '7" onclick="x', acciones: ['ver', 'aceptar'], urls: {ver: '/proformas/ver/7/" onmouseover="x'},
+           facturar_bloqueado: hostil};
+process.stdout.write(JSON.stringify({escapar: fpAcciones.escapar(hostil), botones: fpAcciones.botones(p, true)}));
+'''
+        r = subprocess.run(['node', '-e', guion, str(ruta)], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, r.stderr
+        salida = json.loads(r.stdout)
+        assert salida['escapar'] == '&quot; onfocus=&quot;alert(1)&quot; autofocus=&quot;&#39;'
+
+        class Atributos(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.nombres, self.valores = set(), []
+
+            def handle_starttag(self, tag, attrs):
+                self.nombres.update(nombre for nombre, _ in attrs)
+                self.valores.extend(valor for _, valor in attrs)
+        lector = Atributos()
+        lector.feed(salida['botones'])
+        assert lector.nombres <= {'class', 'href', 'title', 'aria-label', 'type', 'data-accion', 'data-id', 'disabled',
+                                  'aria-hidden'}, lector.nombres
+        assert '" onfocus="alert(1)" autofocus="\'' in lector.valores    # el texto llega entero al title
+        assert 'Facturar: " onfocus="alert(1)" autofocus="\'' in lector.valores
 
     def test_list_js_usa_render_text(self):
         js = (Path(settings.BASE_DIR) / 'core/proformas/static/proformas/js/list.js').read_text()

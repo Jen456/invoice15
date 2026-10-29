@@ -1,5 +1,6 @@
-/* Acciones de una proforma (lista y ficha). Los botones salen SOLO de `acciones[]` del servidor. Todo dato escrito por un
-   usuario se escapa con $('<div>').text(x).html() antes de armar HTML; los mensajes se muestran como texto. */
+/* Acciones de una proforma (lista y ficha). Los botones salen SOLO de `acciones[]` del servidor. Todo dato que entra en
+   el HTML que se arma aquí pasa por fpAcciones.escapar, que también escapa comillas porque va dentro de atributos
+   (title, aria-label, href, data-*); $('<div>').text(x).html() no las escapa. Los mensajes se muestran como texto. */
 var fpAcciones = {
     config: {url_lista: '/proformas/'},
     despues: function () { location.reload(); },
@@ -20,7 +21,8 @@ var fpAcciones = {
     },
     enlaces: {ver: 'ver', pdf: 'pdf', editar: 'editar', facturar: 'facturar', eliminar: 'eliminar'},
     escapar: function (x) {
-        return $('<div>').text(x === null || x === undefined ? '' : String(x)).html();
+        return String(x === null || x === undefined ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     },
     claseEstado: function (id) {
         return {
