@@ -304,3 +304,41 @@ class TestMarcaSigueAlProveedor:
                      'Prueba: lo autorizó la propietaria', '--csv', str(tmp_path / 'p.csv'), stdout=StringIO())
         assert ayuda.en(empresa, Provider.objects.get, pk=proveedor.pk).tipo_identificacion == '04'
         assert not recargar(empresa, compra).datos_incompletos
+
+
+# ------------------------------------------------------------------ O1-F8, O1-F10, O1-F11 y O1-F12
+
+def test_precio_o_descuento_con_mas_de_dos_decimales_se_rechaza(empresa, admin, proveedor):
+    """O1-F8: antes 0,125 × 1000 se guardaba como 0,13 × 1000 = 130,00."""
+    with company_context(empresa):
+        with pytest.raises(compras.ErrorCompra, match='Precio: admite hasta 2 decimales'):
+            compras.calcular(empresa, ayuda.datos_compra(proveedor), [ayuda.linea_gasto('Tornillos', price='0.125', cant=1000)])
+        with pytest.raises(compras.ErrorCompra, match='Descuento: admite hasta 2 decimales'):
+            compras.calcular(empresa, ayuda.datos_compra(proveedor), [ayuda.linea_gasto(price='10.00', descuento='1.005')])
+        resultado = compras.calcular(empresa, ayuda.datos_compra(proveedor), [ayuda.linea_gasto(price='0.130', cant=1000)])
+    assert resultado['lineas'][0]['subtotal'] == '130.00'
+
+
+def test_ice_sin_iva_de_la_factura_avisa(empresa, admin, proveedor):
+    """O1-F10 (provisional hasta la decisión D7): el IVA de las compras manuales con ICE se calcula sin el ICE."""
+    with company_context(empresa):
+        sin_iva = compras.calcular(empresa, ayuda.datos_compra(proveedor, total_ice='10.00'), [ayuda.linea_gasto(price='100.00')])
+        con_iva = compras.calcular(empresa, ayuda.datos_compra(proveedor, total_ice='10.00', iva_factura='16.50',
+                                                                 confirmar_iva='1'), [ayuda.linea_gasto(price='100.00')])
+    assert 'ice_sin_iva_factura' in [a['codigo'] for a in sin_iva['advertencias']]
+    assert 'ice_sin_iva_factura' not in [a['codigo'] for a in con_iva['advertencias']]
+
+
+def test_sustento_con_tarifa_que_la_retencion_no_ofrece(empresa, admin, proveedor):
+    """O1-F11: una tarifa única del 8 % no se precarga (el formulario de retención solo ofrece 15, 5 y 0)."""
+    compra = crear(empresa, admin, ayuda.datos_compra(proveedor), [ayuda.linea_gasto(price='100.00', codigo='8', tarifa='8.00')])
+    with company_context(empresa):
+        iniciales, avisos = compras.datos_sustento_retencion(recargar(empresa, compra))
+    assert [a['codigo'] for a in avisos] == ['sustento_tarifa_no_disponible']
+    assert not {'base_0', 'base_iva', 'tarifa_iva', 'valor_iva'} & set(iniciales)
+
+
+def test_admite_retencion_segun_el_tipo(empresa, admin, proveedor):
+    """O1-F12: la regla TIPOS_SIN_RETENCION tiene una función de servidor para RetencionCrearView."""
+    assert compras.admite_retencion(Purchase(tipo_comprobante='01')) and compras.admite_retencion(Purchase(tipo_comprobante=''))
+    assert not compras.admite_retencion(Purchase(tipo_comprobante='04'))

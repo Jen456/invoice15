@@ -124,7 +124,7 @@ def _texto(valor):
     return '' if valor is None else str(valor).strip()
 
 
-def _decimal(valor, etiqueta, *, obligatorio=False, minimo=CERO, defecto=None, decimales=2):
+def _decimal(valor, etiqueta, *, obligatorio=False, minimo=CERO, defecto=None, decimales=2, exacto=False):
     texto = _texto(valor)
     if texto == '':
         if obligatorio:
@@ -143,7 +143,10 @@ def _decimal(valor, etiqueta, *, obligatorio=False, minimo=CERO, defecto=None, d
         raise ErrorCompra(f'{etiqueta}: escribe un valor numérico.')
     if minimo is not None and numero < minimo:
         raise ErrorCompra(f'{etiqueta}: no puede ser negativo.' if minimo == 0 else f'{etiqueta}: debe ser mayor que {minimo}.')
-    return numero.quantize(Decimal(1).scaleb(-decimales), rounding=ROUND_HALF_UP)
+    redondeado = numero.quantize(Decimal(1).scaleb(-decimales), rounding=ROUND_HALF_UP)
+    if exacto and redondeado != numero:     # `exacto`: un importe escrito no se redondea en silencio
+        raise ErrorCompra(f'{etiqueta}: admite hasta {decimales} decimales.')
+    return redondeado
 
 
 def _fecha(valor, etiqueta):
@@ -232,8 +235,8 @@ def calcular_linea(linea, fecha_emision, tipo_comprobante=''):
         cant = 0
     if not 1 <= cant <= MAX_CANTIDAD:
         raise ErrorCompra('La cantidad debe ser un número entero entre 1 y 10.000.000.')
-    precio = _decimal(linea.get('price'), 'Precio', obligatorio=True)
-    descuento = _decimal(linea.get('descuento'), 'Descuento', defecto=CERO)
+    precio = _decimal(linea.get('price'), 'Precio', obligatorio=True, exacto=True)
+    descuento = _decimal(linea.get('descuento'), 'Descuento', defecto=CERO, exacto=True)
     codigo = _texto(linea.get('codigo_porcentaje'))
     if codigo not in cat.CODIGOS_IVA_COMPRA:
         raise ErrorCompra('Elige la tarifa de IVA de la línea.')
@@ -609,12 +612,15 @@ def _preparar(company, datos, lineas, *, origen='manual', importes=None):
         subtotal = redondear(importes.get('subtotal') if importes.get('subtotal') is not None else sum(totales[b] for b in BASES))
     else:
         totales['total_descuento'] = redondear(sum((l['descuento'] for l in calculadas), CERO))
-        totales['total_ice'] = _decimal(datos.get('total_ice'), 'ICE', defecto=CERO)
-        totales['propina'] = _decimal(datos.get('propina'), 'Propina', defecto=CERO)
+        totales['total_ice'] = _decimal(datos.get('total_ice'), 'ICE', defecto=CERO, exacto=True)
+        totales['propina'] = _decimal(datos.get('propina'), 'Propina', defecto=CERO, exacto=True)
         totales['total_irbpnr'] = CERO
-        iva_factura = _decimal(datos.get('iva_factura'), 'IVA de la factura')
+        iva_factura = _decimal(datos.get('iva_factura'), 'IVA de la factura', exacto=True)
         if modo == 'liquidacion' and iva_factura is not None and iva_factura != iva_calculado:
             raise ErrorCompra('En una liquidación de compra el IVA es el de sus líneas: deja vacío el IVA de la factura.')
+        if totales['total_ice'] > 0 and iva_factura is None:
+            advertencias.append(('ice_sin_iva_factura', 'El IVA se calcula sin incluir el ICE en la base: si la factura lo '
+                                                        'incluye, escribe el IVA de la factura.'))
         if iva_factura is not None and tipo in cat.TIPOS_SIN_IVA_DISCRIMINADO and iva_factura != 0:
             raise ErrorCompra('Una nota de venta no discrimina IVA: el IVA de la factura es 0.')
         totales['total_iva'] = iva_factura if iva_factura is not None else iva_calculado
@@ -940,8 +946,8 @@ def _plan_completar(compra, datos, deudas):
             if len(con_valor) != len(IMPORTES_EDITABLES):
                 raise ErrorCompra('Escribe todos los importes de la factura (usa 0 donde no haya valor).')
             for c in IMPORTES_EDITABLES:
-                importes[c] = _decimal(datos.get(c), ETIQUETAS[c], obligatorio=True)
-            importes['total_irbpnr'] = _decimal(datos.get('total_irbpnr'), ETIQUETAS['total_irbpnr'], defecto=CERO)
+                importes[c] = _decimal(datos.get(c), ETIQUETAS[c], obligatorio=True, exacto=True)
+            importes['total_irbpnr'] = _decimal(datos.get('total_irbpnr'), ETIQUETAS['total_irbpnr'], defecto=CERO, exacto=True)
             importes['total'] = redondear(sum(importes[b] for b in BASES) + importes['total_ice'] + importes['total_iva']
                                           + importes['total_irbpnr'] + importes['propina'])
             suma_bases = redondear(sum(importes[b] for b in BASES))
@@ -1137,7 +1143,12 @@ def datos_sustento_retencion(compra):
             tarifas.add(None)            # línea sin tarifa (compra anterior con importes completados)
     sin_otras = not (compra.base_no_objeto or compra.base_exenta)
     gravadas = (compra.base_gravada or CERO) + (compra.base_5 or CERO)
-    if sin_otras and None not in tarifas and len(tarifas) == 1:
+    from core.comprobantes.forms import TARIFAS_IVA
+    if sin_otras and None not in tarifas and len(tarifas) == 1 and f'{next(iter(tarifas)):.2f}' not in dict(TARIFAS_IVA):
+        advertencias.append({'codigo': 'sustento_tarifa_no_disponible',
+                             'texto': f'La factura tiene IVA del {next(iter(tarifas)):.2f} %, que el comprobante de retención '
+                                      'actual no ofrece: las bases no se precargan. Revisa el documento sustento.'})
+    elif sin_otras and None not in tarifas and len(tarifas) == 1:
         iniciales.update({'base_0': compra.base_0 or CERO, 'base_iva': gravadas, 'tarifa_iva': f'{tarifas.pop():.2f}',
                           'valor_iva': compra.total_iva or CERO})
     elif sin_otras and not tarifas and not gravadas and compra.purchasedetail_set.exists():
@@ -1229,6 +1240,11 @@ def comprobante_registrado(proveedor_id, tipo, estab, pto_emi, secuencial, exclu
         return None
     return _comprobante_registrado(proveedor_id, _texto(tipo), _texto(estab), _texto(pto_emi), secuencial.zfill(9),
                                    excluir=excluir)
+
+
+def admite_retencion(compra):
+    """False para los tipos sobre los que no se emite comprobante de retención (TIPOS_SIN_RETENCION: notas de crédito)."""
+    return compra.tipo_comprobante not in cat.TIPOS_SIN_RETENCION
 
 
 def documento_importado_pendiente(proveedor, tipo, estab, pto_emi, secuencial):
