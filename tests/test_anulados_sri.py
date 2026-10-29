@@ -575,6 +575,20 @@ class TestPantalla:
             'soporte.']
         assert recargar(doc).anulado_sri_fecha is None and not AuditLog.objects.filter(action='comprobante_anulado_sri').exists()
 
+    def test_cruce_de_bloqueos_no_se_atribuye_a_un_receptor(self, client, empresa, dueno, crear, monkeypatch):  # noqa: F811
+        """Si PostgreSQL aborta la transacción (interbloqueo), la pantalla no dice que falló «un ajuste relacionado»."""
+        from django.db import OperationalError
+        doc = crear('nota-debito')
+
+        def cruce(*args, **kwargs):
+            raise OperationalError('deadlock detected')
+        monkeypatch.setattr(anulados, 'marcar', cruce)
+        entrar(client, dueno, empresa)
+        respuesta = client.post(url_marcar('nota-debito', doc), datos_marcar(doc))
+        assert respuesta.status_code == 200 and respuesta.context['form'].non_field_errors() == [
+            'Otra operación usaba este comprobante al mismo tiempo: no se guardó nada. Inténtalo de nuevo.']
+        assert recargar(doc).anulado_sri_fecha is None
+
     @pytest.mark.parametrize('rol', ['Contador', 'Consulta', 'Vendedor'])
     def test_roles_sin_permiso(self, client, empresa, crear, rol):  # noqa: F811
         from tests import helpers

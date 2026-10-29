@@ -231,3 +231,57 @@ def test_g_el_mismo_07_importado_a_la_vez(datos, monkeypatch):
     with company_context(empresa):
         assert RetencionRecibida.objects.count() == 2 and PaymentsCtaCollect.objects.filter(tipo='retencion').count() == 2
     assert [ll[0] for ll in llamadas] == ['marcar', 'marcar']      # O1 lo hace idempotente
+
+
+@pytest.mark.parametrize('slug', ['nota-debito', 'factura'])
+def test_h_marcar_mientras_se_aplica_la_nota_de_debito(datos, monkeypatch, slug):
+    """Revisión O2-T2: aplicar_nota_debito toma la venta antes que la ND, como marcar (§3.8). Antes tomaba la ND y, al
+    insertar la CxC, la clave foránea pedía FOR KEY SHARE sobre la venta que marcar ya tenía: interbloqueo en PG.
+
+    aplicar se detiene con sus bloqueos tomados hasta que marcar queda esperando uno; así el cruce ocurre siempre."""
+    empresa, usuario, factura = datos
+    venta = factura(credito=True)
+    nota = nota_debito(empresa, usuario, venta)
+    original, tomada = cxc.cxc_de_factura, threading.Event()
+
+    def con_pausa(*args, **kwargs):
+        if threading.current_thread().name == 'aplicar':
+            tomada.set()
+            limite = time.monotonic() + 20
+            while esperando_bloqueo() < 1 and time.monotonic() < limite:
+                time.sleep(0.05)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(cxc, 'cxc_de_factura', con_pausa)
+    resultados, errores = {}, []
+
+    def correr(funcion):
+        nombre = threading.current_thread().name
+        try:
+            with company_context(empresa):
+                resultados[nombre] = ('ok', funcion())
+        except ERRORES as e:
+            resultados[nombre] = ('error', e.codigo)
+        except Exception as e:  # noqa: BLE001 - se informa en la aserción
+            errores.append(repr(e))
+        finally:
+            connections.close_all()
+
+    def marcar():
+        assert tomada.wait(20)
+        return anulados.marcar(empresa, usuario, slug, nota if slug == 'nota-debito' else venta, HOY,
+                               'Anulada en SRI en línea, prueba de concurrencia')
+    hilos = [threading.Thread(target=correr, args=(lambda: cxc.aplicar_nota_debito(nota.pk),), name='aplicar'),
+             threading.Thread(target=correr, args=(marcar,), name='marcar')]
+    for h in hilos:
+        h.start()
+    for h in hilos:
+        h.join(60)
+    assert not errores and not any(h.is_alive() for h in hilos), errores
+    assert resultados['aplicar'] == ('ok', 'aplicada')
+    with company_context(empresa):
+        nota = NotaDebito.objects.get(pk=nota.pk)
+        if slug == 'nota-debito':   # marcar esperó a que aplicar terminara y anuló la CxC que este creó
+            assert resultados['marcar'][0] == 'ok' and nota.cxc_ajuste == 'revertida'
+            assert PaymentsCtaCollect.objects.get(ctas_collect=nota.cuenta_por_cobrar, tipo='anulacion').valor == Decimal('5.00')
+        else:                       # la factura ve la ND ya autorizada y aplicada
+            assert resultados['marcar'] == ('error', 'nd_vigente') and Sale.objects.get(pk=venta.pk).anulado_sri_fecha is None

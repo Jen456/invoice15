@@ -7,7 +7,7 @@ comprobante de otra empresa → 404. La ruta termina en /update/: con el plan ve
 import logging
 
 from django.contrib import messages
-from django.db import transaction
+from django.db import OperationalError, transaction
 from django.http import HttpResponseRedirect
 from django.utils import timezone
 from django.views.generic import TemplateView
@@ -89,6 +89,11 @@ class MarcarAnuladoView(GroupPermissionMixin, TemplateView):
                                 request=request)
         except anulados.ErrorAnulacion as e:
             form.add_error(None, str(e))
+            return self.render_to_response(self.get_context_data(doc=self.get_doc(), form=form, fecha=datos['fecha']))
+        except OperationalError:   # PostgreSQL abortó la transacción (interbloqueo o espera de bloqueo): no se guardó nada
+            logger.exception('Cruce con otra operación al marcar como anulado en el SRI %s %s', slug, doc.pk)
+            form.add_error(None, 'Otra operación usaba este comprobante al mismo tiempo: no se guardó nada. Inténtalo '
+                                 'de nuevo.')
             return self.render_to_response(self.get_context_data(doc=self.get_doc(), form=form, fecha=datos['fecha']))
         except Exception as e:   # un receptor de anulado_en_sri falló: la transacción se deshizo y no se guardó nada
             logger.exception('No se pudo marcar como anulado en el SRI %s %s', slug, doc.pk)

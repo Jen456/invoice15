@@ -264,9 +264,16 @@ def aplicar_nota_credito(nota_id, desde='pendiente'):
 
 def aplicar_nota_debito(nota_id, desde='pendiente'):
     """Crea la CxC propia de la nota de débito autorizada (también sobre una factura de contado). Idempotente.
-    `desde` como en aplicar_nota_credito."""
+    `desde` como en aplicar_nota_credito.
+
+    Bloquea primero la factura modificada y después la ND, como marcar('nota-debito') y marcar('factura') (§3.8): al
+    insertar la CxC, su clave foránea sale_id toma FOR KEY SHARE sobre la venta, y con la ND tomada antes que la venta
+    había un interbloqueo en PostgreSQL con marcar (Sale → ND)."""
+    from core.pos.models import Sale
     CtasCollect, _, _, NotaDebito = _modelos()
     with transaction.atomic():
+        sale_id = NotaDebito.objects.filter(pk=nota_id).values_list('sale_id', flat=True).get()
+        Sale.objects.select_for_update(of=('self',)).filter(pk=sale_id).values_list('pk', flat=True).get()
         nota = NotaDebito.objects.select_for_update(of=('self',)).get(pk=nota_id)
         if nota.cxc_ajuste != desde or nota.status not in AUTORIZADOS or nota.anulado_sri_fecha is not None:
             return nota.cxc_ajuste
