@@ -704,6 +704,26 @@ class TestOpcionesDelCatalogo:
         assert forms_recibidas.LineaRecibidaForm(fecha=despues).fields['codigo'].choices[1:] == [
             ('1:310', 'Renta · 310 · Transporte privado de pasajeros (2 %)')]
 
+    def test_el_formset_consulta_el_catalogo_una_vez_y_no_pasa_de_10_lineas(self, monkeypatch):
+        """Revisión O2-T4: antes cada línea consultaba el catálogo y un POST con TOTAL_FORMS=5000 armaba 1010 líneas."""
+        from core.comprobantes.forms_recibidas import LineasRecibidasFormSet
+        llamadas, original = [], catalogo.codigos_retencion_vigentes
+
+        def espia(fecha, incluir_inactivos=False):
+            llamadas.append((fecha, incluir_inactivos))
+            return original(fecha, incluir_inactivos=incluir_inactivos)
+        monkeypatch.setattr(catalogo, 'codigos_retencion_vigentes', espia)
+        vacio = LineasRecibidasFormSet(prefix='lineas', form_kwargs={'fecha': HOY})
+        assert len(vacio.forms) == 3 and llamadas == [(HOY, True)]
+        assert vacio.forms[2].fields['codigo'].choices == vacio.forms[0].fields['codigo'].choices
+        datos = {'lineas-TOTAL_FORMS': '5000', 'lineas-INITIAL_FORMS': '0', 'lineas-MIN_NUM_FORMS': '0',
+                 'lineas-MAX_NUM_FORMS': '10'}
+        llamadas.clear()
+        grande = LineasRecibidasFormSet(datos, prefix='lineas', form_kwargs={'fecha': HOY})
+        assert len(grande.forms) == 10 and not grande.is_valid() and llamadas == [(HOY, True)]
+        diez = LineasRecibidasFormSet({**datos, 'lineas-TOTAL_FORMS': '10'}, prefix='lineas', form_kwargs={'fecha': HOY})
+        assert len(diez.forms) == 10 and diez.is_valid()
+
     def test_la_pantalla_arma_las_opciones_con_la_fecha_escrita(self, client, empresa, dueno, venta, monkeypatch):  # noqa: F811
         fechas, original = [], catalogo.codigos_retencion_vigentes
 

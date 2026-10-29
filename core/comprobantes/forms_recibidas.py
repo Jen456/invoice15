@@ -71,9 +71,9 @@ class LineaRecibidaForm(forms.Form):
     valor_retenido = forms.DecimalField(label='Valor retenido', required=False, max_digits=12, decimal_places=2,
                                         min_value=0, help_text='Vacío: base × porcentaje.')
 
-    def __init__(self, *args, fecha=None, **kwargs):
+    def __init__(self, *args, fecha=None, opciones=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['codigo'].choices = opciones_codigo(fecha or timezone.localdate())
+        self.fields['codigo'].choices = opciones if opciones is not None else opciones_codigo(fecha or timezone.localdate())
 
     def clean(self):
         cleaned = super().clean()
@@ -92,7 +92,18 @@ class LineaRecibidaForm(forms.Form):
                 self.cleaned_data.get('valor_retenido'))
 
 
-LineasRecibidasFormSet = forms.formset_factory(LineaRecibidaForm, extra=3, max_num=10, validate_max=True)
+class BaseLineasRecibidas(forms.BaseFormSet):
+    """Arma las opciones del catálogo una sola vez (con la `fecha` de form_kwargs) para todas las líneas."""
+
+    def __init__(self, *args, form_kwargs=None, **kwargs):
+        form_kwargs = dict(form_kwargs or {})
+        form_kwargs['opciones'] = opciones_codigo(form_kwargs.pop('fecha', None) or timezone.localdate())
+        super().__init__(*args, form_kwargs=form_kwargs, **kwargs)
+
+
+# absolute_max = max_num: un POST con TOTAL_FORMS alto no arma más de 10 formularios (Django admite hasta 1000 + max_num).
+LineasRecibidasFormSet = forms.formset_factory(LineaRecibidaForm, formset=BaseLineasRecibidas, extra=3, max_num=10,
+                                               absolute_max=10, validate_max=True)
 
 
 class AnuladoSRIForm(forms.Form):
