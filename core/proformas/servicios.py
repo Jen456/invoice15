@@ -20,7 +20,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from types import SimpleNamespace
 
 from django.core.mail import EmailMessage
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Case, Max, Prefetch, Q, Value, When
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -40,6 +40,7 @@ MAX_PRECIO = Decimal('999999.99')
 MAX_IMPORTE = Decimal('9999999.99')   # cabe en DecimalField(9,2) de la venta
 MAX_DESTINATARIOS = 5
 LIMITE_ENVIOS_POR_HORA = 60       # por empresa (cuenta AuditLog 'proforma_enviada' de la última hora)
+BLOQUEO_ENVIOS = 0x50524F46       # 'PROF': clase del bloqueo consultivo de PostgreSQL que serializa los envíos por empresa
 MAX_MENSAJE = 1000
 MAX_MOTIVO = 300
 MAX_CONDICIONES = 2000
@@ -78,6 +79,8 @@ MENSAJES = {
     'duplicada': 'Se creó la proforma {numero}, copia de {origen}.',
     'estado_cambiado': 'La proforma {numero} quedó {estado}.',
     'enviada': 'Proforma {numero} enviada a {destinatarios}.',
+    'enviada_cambio': ('Proforma {numero} enviada a {destinatarios}, pero mientras salía el correo quedó {estado}: el envío '
+                       'se registró y su estado no cambió.'),
     'sin_correo': 'Escribe al menos un correo válido para enviar la proforma.',
     'correo_invalido': 'Este correo no es válido: {correo}.',
     'demasiados_correos': 'Puedes enviar la proforma a un máximo de 5 correos.',
@@ -675,11 +678,38 @@ def _nombre_empresa(empresa):
     return empresa.tradename or empresa.business_name
 
 
+def _envios_de_la_ultima_hora(empresa):
+    from core.tenancy.models import AuditLog
+    return AuditLog.objects.filter(company=empresa, action='proforma_enviada',
+                                   created_at__gte=timezone.now() - timedelta(hours=1)).count()
+
+
+def _serializar_envios(empresa):
+    """Dentro de transaction.atomic(). En PostgreSQL, un bloqueo consultivo por empresa (se suelta al terminar la
+    transacción) hace atómicos el conteo del límite por hora, el envío y su registro: un segundo envío simultáneo espera
+    y cuenta el primero. Solo espera a otro envío de la misma empresa (no toca la numeración ni las proformas). En
+    SQLite no hace nada."""
+    if connection.vendor == 'postgresql':
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT pg_advisory_xact_lock(%s, %s)', [BLOQUEO_ENVIOS, int(empresa.pk) % 2147483648])
+
+
+def _error_de_correo(p, e):
+    logger.warning('No se pudo enviar la proforma %s: %s', p.numero_completo, e.__class__.__name__)
+    return ErrorProforma(MENSAJES['correo_fallo'].format(numero=p.numero_completo,
+                                                         detalle=f'{e.__class__.__name__}: {str(e)[:200]}'),
+                         estado_http=502)
+
+
 def enviar_por_correo(proforma_id, usuario, destinatarios='', mensaje='', request=None):
     """Envía el PDF por correo (SMTP de la empresa o de la plataforma). borrador → enviada; enviada y aceptada no cambian
-    de estado. Si el envío falla no cambia nada. No es un comprobante: no toca VoucherErrors."""
+    de estado. Si el envío falla no cambia nada. No es un comprobante: no toca VoucherErrors.
+
+    El límite por hora se vuelve a contar, el correo sale y el envío se registra con el bloqueo de envíos de la empresa
+    tomado (_serializar_envios): dos envíos simultáneos no pasan juntos el último cupo. La proforma no se bloquea mientras
+    sale el correo; si entretanto otra persona la anuló, rechazó o facturó, el envío se registra igual (el correo salió)
+    sin tocar su estado y `p.aviso_envio` lo explica (None si no hubo cambio)."""
     from core.pos.utilities.sri import SRI
-    from core.tenancy.models import AuditLog
     p = Proforma.objects.select_related('company', 'vendedor').filter(pk=_id(proforma_id)).first()
     if p is None:
         raise ErrorProforma(MENSAJES['no_existe'], estado_http=404, url=URL_LISTA)
@@ -700,11 +730,9 @@ def enviar_por_correo(proforma_id, usuario, destinatarios='', mensaje='', reques
         raise ErrorProforma(MENSAJES['sin_correo'])
     if len(lista) > MAX_DESTINATARIOS:
         raise ErrorProforma(MENSAJES['demasiados_correos'])
-    hace_una_hora = timezone.now() - timedelta(hours=1)
-    if AuditLog.objects.filter(company=p.company, action='proforma_enviada', created_at__gte=hace_una_hora).count() \
-            >= LIMITE_ENVIOS_POR_HORA:
-        raise ErrorProforma(MENSAJES['limite_envios'], estado_http=409)
     empresa = p.company
+    if _envios_de_la_ultima_hora(empresa) >= LIMITE_ENVIOS_POR_HORA:   # rechazo rápido, sin generar el PDF
+        raise ErrorProforma(MENSAJES['limite_envios'], estado_http=409)
     try:
         pdf = generar_pdf(p)
         conexion, remitente, responder = SRI()._correo_saliente(empresa)
@@ -714,21 +742,30 @@ def enviar_por_correo(proforma_id, usuario, destinatarios='', mensaje='', reques
         correo = EmailMessage(subject=' '.join(f'Proforma {p.numero_completo} - {_nombre_empresa(empresa)}'.split()),
                               body=cuerpo, from_email=remitente, to=lista, reply_to=responder, connection=conexion)
         correo.attach(f'{p.numero_completo}.pdf', pdf, 'application/pdf')
-        correo.send()
     except Exception as e:  # noqa: BLE001 - el mensaje explica qué revisar; nada cambió
-        logger.warning('No se pudo enviar la proforma %s: %s', p.numero_completo, e.__class__.__name__)
-        raise ErrorProforma(MENSAJES['correo_fallo'].format(numero=p.numero_completo,
-                                                            detalle=f'{e.__class__.__name__}: {str(e)[:200]}'),
-                            estado_http=502)
+        raise _error_de_correo(p, e)
+    enviada_a = unir_correos(lista, 500)
     with transaction.atomic():
+        _serializar_envios(empresa)
+        if _envios_de_la_ultima_hora(empresa) >= LIMITE_ENVIOS_POR_HORA:   # el conteo que vale, con el bloqueo tomado
+            raise ErrorProforma(MENSAJES['limite_envios'], estado_http=409)
+        try:
+            correo.send()
+        except Exception as e:  # noqa: BLE001 - el mensaje explica qué revisar; nada cambió
+            raise _error_de_correo(p, e)
         p = bloquear(p.pk)
+        aviso = None
         if p.estado == 'borrador':
             p.estado = 'enviada'
+        elif p.estado not in ('enviada', 'aceptada'):   # cambió mientras salía el correo: se registra sin tocar el estado
+            aviso = MENSAJES['enviada_cambio'].format(numero=p.numero_completo, destinatarios=enviada_a,
+                                                      estado=_estado_guardado(p))
         p.enviada_en = timezone.now()
-        p.enviada_a = unir_correos(lista, 500)
+        p.enviada_a = enviada_a
         p.envios += 1
         p.save(update_fields=['estado', 'enviada_en', 'enviada_a', 'envios', 'actualizada_en'])
         _auditar(request, usuario, 'proforma_enviada', p, destinatarios=len(lista), envio=int(p.envios))
+    p.aviso_envio = aviso
     return p
 
 

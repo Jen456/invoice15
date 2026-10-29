@@ -106,8 +106,10 @@ class ProformaListView(GroupPermissionMixin, TemplateView):
             sv._exigir(ctx['permisos'], 'enviar_correo')
             p = sv.enviar_por_correo(datos.get('id'), request.user, datos.get('destinatarios', ''), datos.get('mensaje', ''),
                                      request)
-            return JsonResponse({'proforma': fila_de(p.pk, ctx),
-                                 'mensaje': sv.MENSAJES['enviada'].format(numero=p.numero_completo, destinatarios=p.enviada_a)})
+            # aviso: la proforma cambió de estado mientras salía el correo (se registró el envío sin tocar ese estado).
+            return JsonResponse({'proforma': fila_de(p.pk, ctx), 'aviso': p.aviso_envio is not None,
+                                 'mensaje': p.aviso_envio or sv.MENSAJES['enviada'].format(numero=p.numero_completo,
+                                                                                           destinatarios=p.enviada_a)})
         return sin_opcion()
 
 

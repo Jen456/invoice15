@@ -555,6 +555,34 @@ class TestCorreo:
         assert (p2.estado, p2.envios, p2.enviada_en) == ('borrador', 0, None)
         assert not AuditLog.objects.filter(action='proforma_enviada').exists()
 
+    @pytest.mark.parametrize('cambio, estado', [('anular', 'anulada'), ('rechazar', 'rechazada')])
+    def test_correo_mientras_otra_persona_cambia_el_estado(self, web, empresa, dueno, monkeypatch, cambio, estado):
+        """La proforma se anula (o se rechaza) entre la validación y el envío: el correo salió, así que el envío se
+        registra, pero el estado no cambia y la respuesta lo avisa en lugar de decir solo «enviada»."""
+        p = crear_proforma(empresa, dueno, estado='enviada')
+        generar = servicios.generar_pdf
+
+        def generar_y_cambiar(proforma):
+            pdf = generar(proforma)
+            servicios.cambiar_estado(proforma.pk, cambio, dueno, motivo='Lo cambió otra persona')
+            return pdf
+        monkeypatch.setattr(servicios, 'generar_pdf', generar_y_cambiar)
+        r = accion(web, 'enviar_correo', p)
+        assert r.status_code == 200, r.content
+        datos = r.json()
+        assert datos['aviso'] is True and datos['mensaje'] == servicios.MENSAJES['enviada_cambio'].format(
+            numero=p.numero_completo, destinatarios='compras@example.test', estado=estado)
+        assert datos['proforma']['estado']['id'] == estado
+        actual = refrescar(empresa, p)
+        assert (actual.estado, actual.envios, actual.enviada_a) == (estado, 1, 'compras@example.test')
+        assert len(mail.outbox) == 1
+        assert [a.detail['envio'] for a in AuditLog.objects.filter(action='proforma_enviada')] == [1]
+
+    def test_correo_sin_cambio_de_estado_no_avisa(self, web, empresa, dueno):
+        p = crear_proforma(empresa, dueno)
+        datos = accion(web, 'enviar_correo', p).json()
+        assert datos['aviso'] is False and datos['mensaje'] == f'Proforma {p.numero_completo} enviada a compras@example.test.'
+
     def test_limite_de_envios_por_hora(self, web, empresa, empresa_b, dueno):
         p = crear_proforma(empresa, dueno)
         for _ in range(59):
