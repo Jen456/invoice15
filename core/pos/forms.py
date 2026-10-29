@@ -866,3 +866,73 @@ class CompletarCompraForm(_CabeceraCompra):
             valor = getattr(compra, campo)
             valores[campo] = '' if valor is None else f'{valor:.2f}'
         return valores
+
+
+# ---------------------------------------------------------------- Compra desde un XML importado (O1: espec §3.6 y §6.G)
+
+MODOS_LINEA_IMPORTADA = (('gasto', 'Gasto (sin producto)'), ('producto', 'Producto del inventario'))
+
+
+class CompraDesdeDocumentoForm(forms.Form):
+    """Cabecera de la compra que se crea desde un documento importado (§6.G). Lo que trae el XML (numeración,
+    autorización, fecha e importes) no se edita; el sustento empieza vacío (la sugerencia es solo texto, DC12) y la
+    forma de pago solo se precarga si el XML trae pagos. Celular, correo y parte relacionada crean el proveedor cuando
+    el documento no lo tiene."""
+    cod_sustento = _selector('Sustento tributario', SUSTENTOS, 'Elige el sustento tributario')
+    date_joined = forms.DateField(label='Fecha de registro', required=False, widget=_fecha_compra('date_joined'))
+    payment_type = forms.ChoiceField(label='Tipo de pago', choices=PAYMENT_TYPE, widget=forms.Select(attrs={'class': 'form-control'}))
+    end_credit = forms.DateField(label='Fecha de plazo del crédito', required=False, widget=_fecha_compra('end_credit'))
+    forma_pago = _selector('Forma de pago (ATS)', FORMAS_PAGO, 'Sin forma de pago (completar después)')
+    parte_relacionada = forms.ChoiceField(label='Parte relacionada', required=False, choices=OPCIONES_SI_NO,
+                                          widget=forms.Select(attrs={'class': 'form-control'}))
+    agrupar_por_tarifa = forms.BooleanField(label='Registrar una línea de gasto por tarifa de IVA (sin productos)', required=False)
+    type_expense = forms.ChoiceField(label='Tipo de gasto de las líneas agrupadas', required=False, choices=(),
+                                     widget=forms.Select(attrs={'class': 'form-control'}))
+    confirmar_sin_verificar = forms.BooleanField(label='Crear la compra aunque el documento no esté verificado en el SRI',
+                                                 required=False)
+    confirmar_plazo_ats = forms.BooleanField(label='Confirmo registrar la factura aunque tiene más de un año (fuera del ATS)',
+                                             required=False)
+    mobile = forms.CharField(label='Celular del proveedor', required=False, max_length=10,
+                             widget=forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'off'}))
+    email = forms.EmailField(label='Correo del proveedor', required=False, max_length=50,
+                             widget=forms.EmailInput(attrs={'class': 'form-control', 'autocomplete': 'off'}))
+
+    def __init__(self, *args, tipos_gasto=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['type_expense'].choices = [('', 'Sin tipo de gasto')] + [(str(t.pk), t.name) for t in tipos_gasto]
+
+    def datos(self):
+        """Datos para importacion.compras.crear_compra_desde_documento (las fechas como texto ISO)."""
+        datos = {}
+        for campo, valor in self.cleaned_data.items():
+            if campo in ('mobile', 'email'):
+                continue
+            datos[campo] = valor.isoformat() if hasattr(valor, 'isoformat') else valor
+        datos['proveedor_nuevo'] = {'mobile': self.cleaned_data.get('mobile') or '', 'email': self.cleaned_data.get('email') or '',
+                                    'parte_relacionada': self.cleaned_data.get('parte_relacionada') or ''}
+        return datos
+
+
+class LineaCompraForm(forms.Form):
+    """Elección del usuario para una línea del XML: gasto o producto (con «Recordar» la equivalencia del proveedor)."""
+    indice = forms.IntegerField(min_value=0, widget=forms.HiddenInput)
+    modo = forms.ChoiceField(label='Registrar como', choices=MODOS_LINEA_IMPORTADA, initial='gasto',
+                             widget=forms.Select(attrs={'class': 'form-control form-control-sm'}))
+    product = forms.ChoiceField(label='Producto', required=False, choices=(),
+                                widget=forms.Select(attrs={'class': 'form-control form-control-sm'}))
+    type_expense = forms.ChoiceField(label='Tipo de gasto', required=False, choices=(),
+                                     widget=forms.Select(attrs={'class': 'form-control form-control-sm'}))
+    recordar = forms.BooleanField(label='Recordar este producto para el código del proveedor', required=False)
+
+    def __init__(self, *args, productos=(), tipos_gasto=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['product'].choices = [('', 'Elige el producto')] + [(str(p.pk), f'{p.code} · {p.name}') for p in productos]
+        self.fields['type_expense'].choices = [('', 'Sin tipo de gasto')] + [(str(t.pk), t.name) for t in tipos_gasto]
+
+    def eleccion(self):
+        datos = self.cleaned_data
+        return {'indice': datos['indice'], 'modo': datos.get('modo') or 'gasto', 'product': datos.get('product') or None,
+                'type_expense': datos.get('type_expense') or None, 'recordar': bool(datos.get('recordar'))}
+
+
+LineasCompraFormSet = forms.formset_factory(LineaCompraForm, extra=0)

@@ -172,7 +172,9 @@ var form_compra = {
                 }
                 aviso.text(data.mensaje + ' ');
                 if (data.documento_importado) {
-                    aviso.append($('<a>').attr('href', data.documento_importado.url).text('Ver el XML importado'));
+                    aviso.append($('<a>').attr('href', data.documento_importado.url_compra).text('Crear la compra desde el XML'))
+                        .append(' · ')
+                        .append($('<a>').attr('href', data.documento_importado.url).text('Ver el XML importado'));
                 }
                 aviso.toggleClass('alert-danger', !data.valid).toggleClass('alert-warning', data.valid).removeClass('d-none');
             });

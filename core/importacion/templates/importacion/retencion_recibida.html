@@ -1,0 +1,38 @@
+{% extends 'importacion/base.html' %}
+{% block breadcrumb_li %}<li class="breadcrumb-item"><a href="{{ url_documento }}"><i class="fas fa-file-invoice"></i> {{ documento.numero }}</a></li><li class="breadcrumb-item active" aria-current="page">Registrar retención recibida</li>{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-importacion fp-importacion-retencion" data-documento="{{ documento.id }}">
+    <header class="fp-welcome"><span class="fp-eyebrow">Comprobante de retención recibido</span><h1>{{ title }}</h1>
+        <p>{{ documento.emisor.razon_social }} ({{ documento.emisor.ruc }}) · Retención {{ documento.numero }}</p></header>
+    {% include 'importacion/_mensajes.html' %}
+    <p class="fp-import-note">Se registra una retención recibida por cada factura sustento y se abona su cuenta por cobrar.</p>
+    <p class="fp-import-note">Para deshacerlo, anula la retención en Retenciones recibidas: el documento vuelve a quedar pendiente.</p>
+    {% if error_lectura %}<div class="alert alert-warning" role="status">{{ error_lectura }}</div>{% endif %}
+    {% for b in bloqueos %}<div class="alert {% if b.codigo == 'ya_registrada' %}alert-success{% else %}alert-warning{% endif %}" role="status" data-bloqueo="{{ b.codigo }}">{% if b.codigo == 'ya_registrada' %}Registrada en Retenciones recibidas. <a href="{{ url_retenciones_recibidas }}">Ver las retenciones recibidas</a>{% else %}{{ b.texto }}{% endif %}</div>{% endfor %}
+    {% if leida %}<section class="card fp-retencion-panel mb-3"><div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Agente de retención</dt><dd class="col-sm-8">{{ leida.agente_razon_social }} ({{ leida.agente_ruc }})</dd>
+            <dt class="col-sm-4">Número</dt><dd class="col-sm-8">{{ leida.numero }}</dd>
+            <dt class="col-sm-4">Fecha de emisión</dt><dd class="col-sm-8">{{ leida.fecha_emision|default:"—" }}</dd>
+            <dt class="col-sm-4">Período fiscal</dt><dd class="col-sm-8">{{ leida.periodo_fiscal }}</dd>
+            <dt class="col-sm-4">Versión</dt><dd class="col-sm-8">{{ leida.version }}</dd>
+            <dt class="col-sm-4">Ambiente</dt><dd class="col-sm-8">{% if leida.ambiente == 2 %}Producción{% else %}Pruebas{% endif %}</dd>
+            <dt class="col-sm-4">Verificación</dt><dd class="col-sm-8">{% if leida.verificado_sri %}Verificada en el SRI{% else %}{{ documento.estados.verificacion.nombre }}{% endif %}</dd>
+            <dt class="col-sm-4">Total retenido</dt><dd class="col-sm-8"><strong>{{ leida.total_retenido }}</strong></dd>
+        </dl>
+    </div></section>
+    {% for s in leida.sustentos %}<section class="card fp-retencion-panel mb-3"><div class="card-body">
+        <h2 class="h5">Factura sustento {{ s.numero_con_guiones }}</h2>
+        <p class="small text-muted">Fecha: {{ s.fecha_emision_doc_sustento|default:"—" }}{% if s.num_aut_doc_sustento %} · Autorización: <span class="text-break">{{ s.num_aut_doc_sustento }}</span>{% endif %}{% if s.cod_sustento %} · Sustento {{ s.cod_sustento }}{% endif %}</p>
+        <div class="table-responsive"><table class="table table-sm fp-import-detail-table"><thead><tr><th>Impuesto</th><th>Código</th><th class="text-right">Base</th><th class="text-right">%</th><th class="text-right">Retenido</th></tr></thead><tbody>
+        {% for r in s.retenciones %}<tr><td data-label="Impuesto">{% if r.impuesto == '1' %}Renta{% elif r.impuesto == '2' %}IVA{% elif r.impuesto == '6' %}ISD{% else %}{{ r.impuesto }}{% endif %}</td><td data-label="Código">{{ r.codigo_retencion }}</td><td data-label="Base" class="text-right">{{ r.base_imponible }}</td><td data-label="%" class="text-right">{{ r.porcentaje }}</td><td data-label="Retenido" class="text-right">{{ r.valor_retenido }}</td></tr>{% endfor %}
+        </tbody></table></div>
+    </div></section>{% endfor %}{% endif %}
+    {% if puede_registrar and puede_revisar %}<form method="post" class="card fp-retencion-panel mb-3"><div class="card-body">{% csrf_token %}
+        {% if exige_confirmar_sin_verificar %}<div class="form-check">{{ form.confirmar_sin_verificar }} <label class="form-check-label" for="{{ form.confirmar_sin_verificar.id_for_label }}">{{ form.confirmar_sin_verificar.label }}</label><small class="form-text text-muted">Esta excepción no permite registrar documentos no autorizados, no encontrados o con discrepancias.</small></div>{% endif %}
+        <p class="mb-2">Si una factura sustento no es tuya o la retención trae ISD, no se registra ninguna.</p>
+        <button type="submit" name="action" value="registrar" class="btn fpa-btn-pagar">Registrar retención recibida</button>
+        <a href="{{ url_documento }}" class="btn btn-outline-secondary">Volver al documento</a>
+    </div></form>{% else %}<a href="{{ url_documento }}" class="btn btn-outline-secondary">Volver al documento</a>{% endif %}
+</div>
+{% endblock %}

@@ -10,15 +10,20 @@ from django.db.models import Count, Q
 from django.http import FileResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import TemplateView, View
 
-from core.importacion import limites, servicios as sv
+from core.importacion import compras as desde_xml, limites, recibidos, servicios as sv
+from core.importacion.forms import RetencionRecibidaDesdeDocumentoForm
 from core.importacion.models import ArchivoImportado, DocumentoImportado, EntradaLote, LoteImportacion, ReglaImportacion
 from core.importacion.xml_sri import _serializable
 from core.security.mixins import GroupPermissionMixin
 from core.security.session import get_group
 
 VER, IMPORTAR, REVISAR = 'view_documentoimportado', 'add_documentoimportado', 'change_documentoimportado'
+CREAR_COMPRA = (REVISAR, 'add_purchase')
+REGISTRAR_RETENCION = (REVISAR, 'add_retencionrecibida')      # permiso de Ventas (O2): «Retenciones recibidas»
+TIPOS_IMPORTADOS = ('01', '04', '05', '07')
 BANDEJAS = {
     'pendientes': Q(estado_revision='pendiente', estado_procesamiento='procesado') & ~Q(clasificacion='ajeno'),
     'recibidos': Q(clasificacion='recibido'),
@@ -82,7 +87,8 @@ def documento_dict(d, detalle=False):
         'compra_id': d.compra_id, 'venta_id': d.venta_id, 'advertencias': d.advertencias, 'creado': d.creado,
     }
     if detalle:
-        comprobante = (d.datos or {}).get('comprobante') or {}
+        comprobante = desde_xml.comprobante_completo(d) if d.estado_procesamiento == 'procesado' else {}
+        acciones = acciones_posibles(d)
         item.update({
             'impuestos': [{'codigo': i.codigo, 'codigo_porcentaje': i.codigo_porcentaje, 'impuesto': i.impuesto, 'categoria': i.categoria,
                            'tarifa': i.tarifa, 'base_imponible': i.base_imponible, 'valor': i.valor,
@@ -97,24 +103,48 @@ def documento_dict(d, detalle=False):
             'propuesta_contable': d.propuesta_contable, 'nota_revision': d.nota_revision,
             'eventos': [{'tipo': e.tipo, 'mensaje': e.mensaje, 'creado': e.creado,
                          'usuario': e.usuario.username if e.usuario_id else None} for e in d.eventos.select_related('usuario')],
-            'acciones': acciones_posibles(d),
+            'acciones': acciones,
+            'detalles': comprobante.get('detalles') or [], 'doc_modificado': comprobante.get('doc_modificado'),
+            'motivos': comprobante.get('motivos') or [], 'retencion': comprobante.get('retencion'),
+            'aviso_contable': sv.AVISO_RETENCION if d.cod_doc == '07' else '',
+            'motivo_sin_reabrir': sv.motivo_sin_reabrir(d) if d.estado_revision != 'pendiente' else '',
+            'urls': {'compra': reverse('importacion_compra', args=[d.pk]) if 'crear_compra' in acciones else None,
+                     'retencion_recibida': (reverse('importacion_retencion_recibida', args=[d.pk])
+                                            if d.cod_doc == '07' and d.clasificacion == 'recibido'
+                                            and d.estado_procesamiento == 'procesado' else None),
+                     'retenciones_recibidas': recibidos.URL_RETENCIONES_RECIBIDAS if d.cod_doc == '07' else None},
         })
     return _serializable(item)
 
 
 def acciones_posibles(d):
+    """Acciones que hoy admite el servidor (espec-etapa2-compras §3.8): recibidos 01/04/05 pendientes → aprobar, vincular
+    o crear la compra; 07 recibido → aprobar y registrar la retención recibida (sin compra); emitidos 04/05/07 → solo
+    aprobar. Un documento cuya compra salió de él, o un 07 ya registrado, no se reabre aquí."""
     if d.estado_procesamiento != 'procesado':
         return ['verificar', 'descartar']
     acciones = ['verificar']
+    if d.cod_doc == '07' and d.clasificacion == 'recibido':
+        if d.estado_revision == 'pendiente':
+            acciones += ['aprobar', 'registrar_retencion', 'descartar']
+        elif d.estado_revision == 'aprobado':
+            acciones += ['registrar_retencion', 'reabrir']
+        elif d.estado_revision == 'descartado':
+            acciones.append('reabrir')
+        return acciones
     if d.estado_revision == 'pendiente':
-        if d.clasificacion in ('emitido', 'recibido'):
-            acciones += ['aprobar', 'vincular_compra' if d.clasificacion == 'recibido' else 'vincular_venta']
+        if d.clasificacion == 'recibido':
+            acciones += ['aprobar', 'vincular_compra']
+            if d.cod_doc in desde_xml.CODIGOS_DE_COMPRA and not d.compra_id:
+                acciones.append('crear_compra')
+        elif d.clasificacion == 'emitido':
+            acciones += ['aprobar', 'vincular_venta'] if d.cod_doc == '01' else ['aprobar']
         if d.clasificacion in ('revision_manual', 'pendiente'):
             acciones.append('clasificar')
         if d.clasificacion == 'recibido' and not d.proveedor_id:
             acciones.append('crear_proveedor')
         acciones.append('descartar')
-    else:
+    elif not sv.motivo_sin_reabrir(d):
         acciones.append('reabrir')
     return acciones
 
@@ -216,6 +246,11 @@ class DocumentosApi(ApiMixin, View):
         if bandeja not in BANDEJAS:
             return error('Bandeja no válida.')
         consulta = DocumentoImportado.objects.select_related('proveedor', 'cliente__user').filter(BANDEJAS[bandeja])
+        cod_doc = (request.GET.get('cod_doc') or '').strip()
+        if cod_doc:
+            if cod_doc not in TIPOS_IMPORTADOS:
+                return error('Tipo de comprobante no válido.')
+            consulta = consulta.filter(cod_doc=cod_doc)
         texto = (request.GET.get('q') or '').strip()
         if texto:
             consulta = consulta.filter(Q(numero__icontains=texto) | Q(emisor_razon_social__icontains=texto) | Q(emisor_ruc=texto) |
@@ -434,3 +469,155 @@ class Reglas(Pagina):
             except ValueError as e:
                 messages.error(request, str(e))
         return HttpResponseRedirect(reverse('importacion_reglas'))
+
+
+# ------------------------------------------------------------------ crear la compra desde el XML (§3.6, §6.G)
+
+def opciones_compra():
+    from core.pos.catalogos_sri import FORMAS_PAGO, SUSTENTOS
+    from core.pos.models import TypeExpense
+    return {'sustentos': [list(s) for s in SUSTENTOS], 'formas_pago': [list(f) for f in FORMAS_PAGO],
+            'tipos_gasto': [{'id': t.pk, 'nombre': t.name, 'cod_sustento': t.cod_sustento} for t in TypeExpense.objects.order_by('name')]}
+
+
+def compra_creada_dict(compra):
+    return {'id': compra.pk, 'numero': compra.numero_comprobante, 'url': reverse('purchase_list')}
+
+
+class CompraDesdeDocumentoApi(ApiMixin, View):
+    """GET: propuesta para crear la compra (sin guardar). POST (JSON): crea la compra con las elecciones del usuario."""
+    permission_required = CREAR_COMPRA
+
+    def get(self, request, pk):
+        documento = get_object_or_404(DocumentoImportado, pk=pk)
+        propuesta = desde_xml.propuesta_compra(documento)
+        return JsonResponse({'documento': documento_dict(documento, detalle=True), 'puede_crear': not propuesta['bloqueos'],
+                             'propuesta': propuesta, 'opciones': opciones_compra()})
+
+    def post(self, request, pk):
+        documento = get_object_or_404(DocumentoImportado, pk=pk)
+        datos = datos_peticion(request)
+        if not isinstance(datos, dict):
+            return error('Los datos no tienen un formato válido.')
+        try:
+            compra = desde_xml.crear_compra_desde_documento(documento, request.user, datos)
+        except sv.ErrorImportacion as e:
+            return error(str(e), codigo=e.codigo) if e.codigo else error(str(e))
+        return JsonResponse({'compra': compra_creada_dict(compra), 'documento': documento_dict(compra.documento, detalle=True)},
+                            status=201)
+
+
+class CompraDesdeDocumento(Pagina):
+    """Página de servidor (§6.G): cabecera, una elección por línea del XML (formset «lineas») y el botón «crear»."""
+    template_name = 'importacion/compra.html'
+    permission_required = CREAR_COMPRA
+    titulo = 'Crear compra desde el XML'
+
+    def formularios(self, documento, propuesta, datos=None):
+        from core.pos.forms import CompraDesdeDocumentoForm, LineasCompraFormSet
+        from core.pos.models import Product, TypeExpense
+        tipos_gasto = list(TypeExpense.objects.order_by('name'))
+        productos = list(Product.objects.order_by('name')) if not propuesta['agrupar_obligatorio'] else []
+        iniciales = {'date_joined': timezone.localdate(), 'payment_type': propuesta['payment_type_sugerido'],
+                     'end_credit': propuesta['end_credit_sugerido'] or '', 'forma_pago': propuesta['forma_pago_del_xml'] or '',
+                     'parte_relacionada': ('' if propuesta['parte_relacionada'] is None
+                                           else 'si' if propuesta['parte_relacionada'] else 'no'),
+                     'agrupar_por_tarifa': propuesta['agrupar_obligatorio']}
+        form = CompraDesdeDocumentoForm(datos, initial=iniciales, tipos_gasto=tipos_gasto)
+        lineas_iniciales = [] if propuesta['agrupar_obligatorio'] else [
+            {'indice': l['indice'], 'modo': l['modo_sugerido'],
+             'product': str(l['producto_sugerido']['id']) if l['producto_sugerido'] and l['origen_sugerencia'] == 'equivalencia' else ''}
+            for l in propuesta['lineas']]
+        lineas = LineasCompraFormSet(datos, prefix='lineas', initial=lineas_iniciales,
+                                     form_kwargs={'productos': productos, 'tipos_gasto': tipos_gasto})
+        return form, lineas
+
+    def contexto(self, documento, propuesta, form, lineas):
+        filas = list(zip(propuesta['lineas'], lineas.forms)) if not propuesta['agrupar_obligatorio'] else []
+        return self.get_context_data(documento=documento_dict(documento, detalle=True), propuesta=propuesta, form=form,
+                                     lineas=lineas, filas=filas, puede_crear=not propuesta['bloqueos'],
+                                     url_documento=reverse('importacion_documento', args=[documento.pk]))
+
+    def get(self, request, pk):
+        documento = get_object_or_404(DocumentoImportado, pk=pk)
+        propuesta = desde_xml.propuesta_compra(documento)
+        return self.render_to_response(self.contexto(documento, propuesta, *self.formularios(documento, propuesta)))
+
+    def post(self, request, pk):
+        documento = get_object_or_404(DocumentoImportado, pk=pk)
+        propuesta = desde_xml.propuesta_compra(documento)
+        form, lineas = self.formularios(documento, propuesta, request.POST)
+        if request.POST.get('action') == 'crear' and form.is_valid() and (propuesta['agrupar_obligatorio'] or lineas.is_valid()):
+            datos = form.datos()
+            if not propuesta['agrupar_obligatorio']:
+                datos['lineas'] = [f.eleccion() for f in lineas.forms]
+            if documento.proveedor_id or desde_xml.proveedor_del_documento(documento):
+                datos.pop('proveedor_nuevo')
+            try:
+                compra = desde_xml.crear_compra_desde_documento(documento, request.user, datos)
+            except sv.ErrorImportacion as e:
+                form.add_error(None, str(e))
+            else:
+                messages.success(request, f'Compra #{compra.pk} creada desde el XML')
+                return HttpResponseRedirect(reverse('purchase_list'))
+        elif request.POST.get('action') != 'crear':
+            form.add_error(None, 'Acción no válida.')
+        return self.render_to_response(self.contexto(documento, propuesta, form, lineas))
+
+
+# ------------------------------------------------------------------ registrar la retención recibida desde un 07 (§6.J)
+
+def leida_dict(leida):
+    return _serializable({
+        'numero': leida.numero, 'fecha_emision': leida.fecha_emision, 'periodo_fiscal': leida.periodo_fiscal,
+        'agente_ruc': leida.agente_ruc, 'agente_razon_social': leida.agente_razon_social, 'version': leida.version,
+        'ambiente': leida.ambiente, 'total_retenido': f'{leida.total_retenido:.2f}', 'verificado_sri': leida.verificado_sri,
+        'sustentos': [{'numero_con_guiones': s.numero_con_guiones, 'cod_doc_sustento': s.cod_doc_sustento,
+                       'fecha_emision_doc_sustento': s.fecha_emision_doc_sustento, 'num_aut_doc_sustento': s.num_aut_doc_sustento,
+                       'cod_sustento': s.cod_sustento,
+                       'retenciones': [{'impuesto': r.impuesto, 'codigo_retencion': r.codigo_retencion,
+                                        'base_imponible': f'{r.base_imponible:.2f}', 'porcentaje': f'{r.porcentaje:.2f}',
+                                        'valor_retenido': f'{r.valor_retenido:.2f}'} for r in s.retenciones]}
+                      for s in leida.sustentos]})
+
+
+class RetencionRecibidaDesdeDocumento(Pagina):
+    """Página de servidor (§6.J): resumen del 07 leído y «registrar» con el servicio de Ventas (todo o nada)."""
+    template_name = 'importacion/retencion_recibida.html'
+    permission_required = REGISTRAR_RETENCION
+    titulo = 'Registrar retención recibida'
+
+    def contexto(self, documento, form):
+        leida, error_lectura = None, ''
+        try:
+            leida = leida_dict(recibidos.retencion_recibida_de(documento))
+        except sv.ErrorImportacion as e:
+            error_lectura = str(e)
+        bloqueos = recibidos.bloqueos_retencion(documento)
+        return self.get_context_data(
+            documento=documento_dict(documento, detalle=True), leida=leida, error_lectura=error_lectura, bloqueos=bloqueos,
+            exige_confirmar_sin_verificar=recibidos.exige_confirmar_sin_verificar(documento), form=form,
+            puede_registrar=leida is not None and not bloqueos,
+            url_documento=reverse('importacion_documento', args=[documento.pk]),
+            url_retenciones_recibidas=recibidos.URL_RETENCIONES_RECIBIDAS)
+
+    def get(self, request, pk):
+        documento = get_object_or_404(DocumentoImportado, pk=pk)
+        return self.render_to_response(self.contexto(documento, RetencionRecibidaDesdeDocumentoForm()))
+
+    def post(self, request, pk):
+        documento = get_object_or_404(DocumentoImportado, pk=pk)
+        form = RetencionRecibidaDesdeDocumentoForm(request.POST)
+        if request.POST.get('action') != 'registrar' or not form.is_valid():
+            messages.error(request, 'Acción no válida.')
+            return self.render_to_response(self.contexto(documento, form))
+        try:
+            registradas = recibidos.registrar_en_retenciones_recibidas(
+                request.company, request.user, documento, confirmar_sin_verificar=form.cleaned_data['confirmar_sin_verificar'])
+        except sv.ErrorImportacion as e:
+            messages.error(request, str(e))
+            documento.refresh_from_db()
+            return self.render_to_response(self.contexto(documento, form))
+        cantidad = len(registradas or [])
+        messages.success(request, f'Retención recibida registrada ({cantidad} documentos sustento)')
+        return HttpResponseRedirect(reverse('importacion_documento', args=[documento.pk]))

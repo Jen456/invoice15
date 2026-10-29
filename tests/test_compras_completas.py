@@ -575,8 +575,9 @@ class TestPantallaNuevaCompra:
                 ambiente=2, estab='001', pto_emi='002', secuencial='000000056', numero='001-002-000000056', emisor_ruc=RUC,
                 clasificacion='recibido')
         _, data = post_json(client, self.URL, {**consulta, 'secuencial': '56'})
-        assert data['valid'] is True and data['documento_importado'] == {'id': documento.pk,
-                                                                         'url': f'/importacion/documentos/{documento.pk}/'}
+        assert data['valid'] is True and data['documento_importado'] == {
+            'id': documento.pk, 'url': f'/importacion/documentos/{documento.pk}/',
+            'url_compra': f'/importacion/documentos/{documento.pk}/compra/'}
         _, data = post_json(client, self.URL, {**consulta, 'secuencial': '57'})
         assert data == {'valid': True, 'compra_id': None, 'mensaje': '', 'documento_importado': None}
 

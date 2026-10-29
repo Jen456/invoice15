@@ -222,7 +222,8 @@ class PurchaseCreateView(GroupPermissionMixin, TemplateView):
         if documento is not None:
             resultado.update({'mensaje': 'Este comprobante ya está en Importación: puedes crear la compra desde su XML.',
                               'documento_importado': {'id': documento.pk,
-                                                      'url': reverse('importacion_documento', args=[documento.pk])}})
+                                                      'url': reverse('importacion_documento', args=[documento.pk]),
+                                                      'url_compra': reverse('importacion_compra', args=[documento.pk])}})
         return resultado
 
     def get_context_data(self, **kwargs):
