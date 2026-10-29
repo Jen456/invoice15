@@ -1,0 +1,57 @@
+{% extends 'skin.html' %}
+{% load widget_tweaks %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item"><a href="{% url 'comprobantes_retenciones_recibidas' %}"><i class="fas fa-hand-holding-usd"></i> Retenciones recibidas</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ retencion.numero }}</li>
+{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-retencion-recibida-ficha">
+    <header class="fp-welcome"><span class="fp-eyebrow">Retención recibida</span><h1>Retención {{ retencion.numero }}</h1>
+        <p><span class="badge {% if retencion.estado == 'registrada' %}badge-success{% else %}badge-secondary{% endif %}">{{ retencion.get_estado_display }}</span>
+            · {{ retencion.get_origen_display }} · {{ retencion.get_verificacion_display }}</p></header>
+    {% for message in messages %}
+        <div class="alert {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'info' %}alert-info{% elif message.level_tag == 'warning' %}alert-warning{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
+    {% endfor %}
+    {% if error_permiso %}<div class="alert alert-danger" role="alert">{{ error_permiso }}</div>{% endif %}
+    <section class="card mb-3"><div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Agente de retención</dt><dd class="col-sm-8">{{ retencion.emisor_razon_social }} · {{ retencion.emisor_identificacion }}</dd>
+            <dt class="col-sm-4">Fecha de emisión</dt><dd class="col-sm-8">{{ retencion.fecha_emision|date:"d/m/Y" }} (período {{ retencion.periodo_fiscal }})</dd>
+            <dt class="col-sm-4">Autorización</dt><dd class="col-sm-8 text-break">{{ retencion.autorizacion }}</dd>
+            <dt class="col-sm-4">Factura (documento sustento)</dt><dd class="col-sm-8">{{ retencion.venta.voucher_number_full }} del {{ retencion.fecha_doc_sustento|date:"d/m/Y" }}</dd>
+            <dt class="col-sm-4">Cuenta por cobrar</dt><dd class="col-sm-8">{{ retencion.get_cxc_estado_display|default:"—" }}{% if retencion.abono %} · abono de ${{ retencion.abono.valor|floatformat:2 }} del {{ retencion.abono.date_joined|date:"d/m/Y" }}{% if retencion.abono.anulado_en %} (revertido){% endif %}{% endif %}</dd>
+            {% if url_documento %}<dt class="col-sm-4">Documento importado</dt><dd class="col-sm-8"><a href="{{ url_documento }}">Ver el comprobante importado</a></dd>{% endif %}
+            {% if retencion.notas %}<dt class="col-sm-4">Notas</dt><dd class="col-sm-8">{{ retencion.notas }}</dd>{% endif %}
+            <dt class="col-sm-4">Registrada por</dt><dd class="col-sm-8">{{ retencion.registrado_por.names }} el {{ retencion.registrado_en|date:"d/m/Y H:i" }}</dd>
+            {% if retencion.estado == 'anulada' %}
+                <dt class="col-sm-4">Anulada</dt><dd class="col-sm-8">El {{ retencion.anulado_sri_fecha|date:"d/m/Y" }}{% if retencion.anulado_sri_por %} por {{ retencion.anulado_sri_por.names }}{% endif %}: {{ retencion.anulado_sri_motivo }}</dd>
+            {% endif %}
+        </dl>
+    </div></section>
+    {% for a in retencion.advertencias %}<div class="alert alert-light border" role="status">{{ a.texto }}</div>{% endfor %}
+    <div class="table-responsive fp-retencion-resumen"><table class="table table-sm bg-white"><thead><tr><th>Impuesto</th><th>Código</th><th>Concepto</th><th class="text-right">Base</th><th class="text-right">%</th><th class="text-right">Retenido</th></tr></thead><tbody>
+        {% for d in retencion.detalles.all %}<tr><td>{{ d.get_impuesto_display }}</td><td>{{ d.codigo }}</td><td>{{ d.concepto }}</td><td class="text-right">{{ d.base_imponible|floatformat:2 }}</td><td class="text-right">{{ d.porcentaje|floatformat:2 }}</td><td class="text-right">{{ d.valor_retenido|floatformat:2 }}</td></tr>{% endfor %}
+        <tr><td colspan="5" class="text-right">Renta</td><td class="text-right">${{ retencion.total_renta|floatformat:2 }}</td></tr>
+        <tr><td colspan="5" class="text-right">IVA</td><td class="text-right">${{ retencion.total_iva|floatformat:2 }}</td></tr>
+        <tr><td colspan="5" class="text-right"><strong>Total retenido</strong></td><td class="text-right"><strong>${{ retencion.total_retenido|floatformat:2 }}</strong></td></tr>
+    </tbody></table></div>
+    {% if puede_anular %}
+        <section class="card mb-3 border-danger"><div class="card-body">
+            <h2 class="h5">Anular el registro</h2>
+            <p class="text-muted">Úsalo si el cliente anuló la retención en el SRI o si se registró por error. Se revierte su abono en la cuenta por cobrar; después puedes registrarla de nuevo.</p>
+            <form method="post" novalidate>{% csrf_token %}
+                {% for error in form_anular.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+                {% for field in form_anular %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                        {% if field.errors %}{% render_field field class="form-control is-invalid" %}{% else %}{% render_field field class="form-control" %}{% endif %}
+                        {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" name="action" value="anular" class="btn btn-outline-danger">Anular el registro</button>
+            </form>
+        </div></section>
+    {% endif %}
+    <a href="{% url 'comprobantes_retenciones_recibidas' %}" class="btn btn-link">Volver al listado</a>
+</div>
+{% endblock %}

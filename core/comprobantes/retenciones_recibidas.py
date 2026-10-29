@@ -284,6 +284,18 @@ def _usado(venta):
     return redondear(usado.get('1', 0)), redondear(usado.get('2', 0))
 
 
+def validar_factura(venta):
+    """Lanza ErrorRetencionRecibida si la factura no admite retenciones (la pantalla lo muestra como impedimento)."""
+    _validar_factura(venta)
+
+
+def topes(venta):
+    """Topes de las bases (subtotal sin impuestos y valor del IVA de la factura) y lo ya usado por retenciones registradas."""
+    usado_renta, usado_iva = _usado(venta)
+    return {'renta': redondear(Decimal(venta.subtotal_12) + Decimal(venta.subtotal_0)), 'iva': redondear(venta.total_iva),
+            'usado_renta': usado_renta, 'usado_iva': usado_iva}
+
+
 # ------------------------------------------------------------------ cálculo y registro
 
 def calcular(venta, datos, origen='manual'):
@@ -311,9 +323,9 @@ def calcular(venta, datos, origen='manual'):
                                        y=_pct(linea['porcentaje'])))
     base_renta = redondear(sum((l['base_imponible'] for l in lineas if l['impuesto'] == '1'), Decimal('0')))
     base_iva = redondear(sum((l['base_imponible'] for l in lineas if l['impuesto'] == '2'), Decimal('0')))
-    usado_renta, usado_iva = _usado(venta)
-    tope_renta = redondear(Decimal(venta.subtotal_12) + Decimal(venta.subtotal_0))
-    tope_iva = redondear(venta.total_iva)
+    limites = topes(venta)
+    usado_renta, usado_iva, tope_renta, tope_iva = (limites['usado_renta'], limites['usado_iva'], limites['renta'],
+                                                    limites['iva'])
     if base_renta and usado_renta + base_renta > tope_renta + TOLERANCIA:
         raise _error('base_renta_excede', base=_texto(usado_renta + base_renta), tope=_texto(tope_renta))
     if base_iva and usado_iva + base_iva > tope_iva + TOLERANCIA:

@@ -1,15 +1,17 @@
 """Retenciones recibidas de clientes (Etapa 2, O2), servicio core/comprobantes/retenciones_recibidas.py: registro manual
 con abono a la cuenta por cobrar, cada validación con su código, advertencias, catálogo por pareja y fecha, clave de
 acceso, duplicados (también la IntegrityError en un savepoint), anulación, puente del 07 importado (todo o nada,
-idempotente, con los dobles de recibidos de O1), totales para los formularios y seguridad por filas en PostgreSQL.
-Las pantallas, permisos y planes se prueban con sus vistas en el paso siguiente."""
-from datetime import timedelta
+idempotente, con los dobles de recibidos de O1), totales para los formularios y seguridad por filas en PostgreSQL; y sus
+pantallas: flujo revisar → registrar → anular, opciones del catálogo por pareja y fecha, permisos por rol, 404 de otra
+empresa, planes (gratuito, vencido y cupo agotado) y consultas constantes del listado."""
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
 from django.core import mail
 from django.db import DatabaseError, connection, transaction
 from django.db.models import ProtectedError
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from core.comprobantes import retenciones as catalogo
@@ -21,7 +23,7 @@ from core.pos.clientes import consumidor_final
 from core.pos.models import CtasCollect, PaymentsCtaCollect, Receipt, Sale
 from core.suscripciones.models import SubscriptionPeriod
 from core.tenancy.context import company_context
-from core.tenancy.models import AuditLog
+from core.tenancy.models import ROLE_ACCOUNTANT, ROLE_ADMIN, ROLE_OWNER, ROLE_READONLY, ROLE_SELLER, AuditLog
 from tests import helpers
 from tests.ayudas_ventas import (RUC_AGENTE, clave_acceso_ficticia, cxc_de, documento_07, factura_autorizada, linea,
                                  recibidos_falsos, retencion_datos, retencion_leida, sustento)
@@ -490,3 +492,256 @@ class TestSeguridadPorFilas:
                            "('comprobantes_retencionrecibida', 'comprobantes_retencionrecibidadetalle') ORDER BY relname")
             assert cursor.fetchall() == [('comprobantes_retencionrecibida', True, True),
                                          ('comprobantes_retencionrecibidadetalle', True, True)]
+
+
+# ---------------------------------------------------------------- pantallas (paso 2): vistas, formulario, permisos y planes
+
+LISTA = '/comprobantes/retenciones-recibidas/'
+BUSCAR = '/comprobantes/retenciones-recibidas/add/'
+
+
+def nueva(venta):
+    return f'/comprobantes/retenciones-recibidas/add/{venta.pk}/'
+
+
+def ficha(ret):
+    return f'/comprobantes/retenciones-recibidas/{ret.pk}/'
+
+
+def entrar(client, usuario, empresa):  # noqa: F811
+    helpers.iniciar_sesion(client, usuario, empresa=empresa)
+    return client
+
+
+def formulario(numero='001-001-000000123', fecha=None, lineas=(('1:312', '20.00'), ('2:1', '3.00')), action='calcular', **extra):
+    """POST del formulario de registro manual (3 filas extra en el formset, como en la pantalla sin JavaScript)."""
+    datos = {'action': action, 'numero': numero, 'autorizacion': '1234567890', 'fecha_emision': (fecha or HOY).isoformat(),
+             'notas': '', 'lineas-TOTAL_FORMS': '3', 'lineas-INITIAL_FORMS': '0', 'lineas-MIN_NUM_FORMS': '0',
+             'lineas-MAX_NUM_FORMS': '10'}
+    for i in range(3):
+        codigo, base = lineas[i] if i < len(lineas) else ('', '')
+        datos.update({f'lineas-{i}-codigo': codigo, f'lineas-{i}-base_imponible': base, f'lineas-{i}-porcentaje': '',
+                      f'lineas-{i}-valor_retenido': ''})
+    datos.update(extra)
+    return datos
+
+
+class TestPantallas:
+
+    def test_flujo_completo_sin_sri_ni_correo(self, client, empresa, dueno, venta, sri):  # noqa: F811
+        entrar(client, dueno, empresa)
+        assert client.get(LISTA).status_code == 200
+        buscar = client.get(BUSCAR)
+        assert buscar.status_code == 200 and [v.pk for v in buscar.context['ventas']] == [venta.pk]
+        assert buscar.context['ventas'][0].saldo == Decimal('23.00')
+        assert [v.pk for v in client.get(BUSCAR, {'q': venta.voucher_number_full.replace('-', '')}).context['ventas']] == [venta.pk]
+        pagina = client.get(nueva(venta))
+        assert pagina.status_code == 200 and pagina.context['impedimento'] is None
+        assert len(pagina.context['lineas'].forms) == 3 and pagina.context['pide_emisor_ruc'] is False
+        assert 'emisor_ruc' not in pagina.context['form'].fields
+        assert pagina.context['topes'] == {'renta': Decimal('20.00'), 'iva': Decimal('3.00'), 'usado_renta': Decimal('0.00'),
+                                           'usado_iva': Decimal('0.00')}
+        revisada = client.post(nueva(venta), formulario())
+        assert revisada.status_code == 200 and revisada.context['resumen']['total_retenido'] == Decimal('1.30')
+        assert revisada.context['resumen']['abono_previsto'] == Decimal('1.30')
+        assert not leer(empresa, lambda: RetencionRecibida.objects.exists())             # revisar no guarda
+        registrada = client.post(nueva(venta), formulario(action='registrar'))
+        ret = leer(empresa, lambda: RetencionRecibida.objects.get())
+        assert registrada.status_code == 302 and registrada['Location'] == ficha(ret)
+        pagina = client.get(ficha(ret))
+        assert pagina.status_code == 200 and pagina.context['puede_anular'] is True
+        assert 'Retención 001-001-000000123 registrada: se abonaron $1.30 a la cuenta por cobrar.' in pagina.content.decode()
+        repetida = client.post(nueva(venta), formulario(action='registrar'))
+        nombre = leer(empresa, lambda: Sale.objects.select_related('client__user').get(pk=venta.pk).client.user.names)
+        assert repetida.status_code == 200 and repetida.context['form'].non_field_errors() == [
+            f'Ya registraste la retención 001-001-000000123 de {nombre} sobre esta factura.']
+        corto = client.post(ficha(ret), {'action': 'anular', 'motivo': 'corto'})
+        assert corto.status_code == 200 and 'Escribe el motivo (al menos 10 caracteres).' in corto.content.decode()
+        anulada = client.post(ficha(ret), {'action': 'anular', 'motivo': 'El cliente la anuló en el SRI'}, follow=True)
+        assert anulada.status_code == 200
+        assert 'Retención 001-001-000000123 anulada: se revirtió su abono de $1.30 en la cuenta por cobrar.' in anulada.content.decode()
+        assert leer(empresa, lambda: RetencionRecibida.objects.get().estado) == 'anulada'
+        assert cuenta(empresa, venta).saldo == Decimal('23.00')
+        assert (sri.recepciones, sri.consultas, mail.outbox) == ([], [], [])
+
+    def test_errores_en_el_formulario_y_venta_de_contado(self, client, empresa, dueno, comprador, producto, venta):  # noqa: F811
+        entrar(client, dueno, empresa)
+        sin_lineas = client.post(nueva(venta), formulario(lineas=()))
+        assert sin_lineas.context['form'].non_field_errors() == ['Agrega al menos una retención (renta o IVA).']
+        sin_codigo = client.post(nueva(venta), formulario(lineas=(('', '5.00'),)))
+        assert sin_codigo.context['lineas'].forms[0].errors['codigo'] == ['Elige el código de la retención de esta línea.']
+        contado = factura_autorizada(empresa, comprador, dueno, producto, fecha=HOY - timedelta(days=1))
+        respuesta = client.post(nueva(contado), formulario(action='registrar'), follow=True)
+        assert ('Retención 001-001-000000123 registrada. La venta fue de contado: la retención no abona ninguna cuenta por '
+                'cobrar.') in respuesta.content.decode()
+
+    def test_impedimento_y_cliente_con_cedula(self, client, empresa, dueno, producto):  # noqa: F811
+        with company_context(empresa):
+            cf = consumidor_final(empresa)
+        final = factura_autorizada(empresa, cf, dueno, producto, fecha=HOY - timedelta(days=1))
+        cliente = helpers.crear_cliente('cedula.pantalla', empresa, '0912345675', '0990000005')
+        con_cedula = factura_autorizada(empresa, cliente, dueno, producto, credito=True, fecha=HOY - timedelta(days=1))
+        entrar(client, dueno, empresa)
+        pagina = client.get(nueva(final))
+        assert pagina.context['impedimento'] == 'Una factura a consumidor final no admite retención: el comprador no está identificado.'
+        assert 'value="calcular"' not in pagina.content.decode() and 'value="registrar"' not in pagina.content.decode()
+        assert final.pk not in [v.pk for v in client.get(BUSCAR, {'q': final.voucher_number_full}).context['ventas']]
+        pagina = client.get(nueva(con_cedula))
+        assert pagina.context['pide_emisor_ruc'] is True and 'emisor_ruc' in pagina.context['form'].fields
+        respuesta = client.post(nueva(con_cedula), formulario(action='registrar', emisor_ruc='0912345675001'))
+        assert respuesta.status_code == 302
+        assert leer(empresa, lambda: RetencionRecibida.objects.get(venta=con_cedula).emisor_identificacion) == '0912345675001'
+
+    def test_listado_filtra_y_suma_las_registradas(self, client, empresa, dueno, comprador, producto, venta):  # noqa: F811
+        registrar(empresa, dueno, venta)
+        otra = factura_autorizada(empresa, comprador, dueno, producto, credito=True, fecha=HOY - timedelta(days=1))
+        segunda = registrar(empresa, dueno, otra, retencion_datos(numero='001-001-000000124'))
+        with company_context(empresa):
+            rr.anular(empresa, dueno, segunda, 'Registrada por error')
+        entrar(client, dueno, empresa)
+        pagina = client.get(LISTA)
+        assert [r.numero for r in pagina.context['retenciones']] == ['001-001-000000123']
+        assert pagina.context['totales'] == {'renta': Decimal('0.40'), 'iva': Decimal('0.90'), 'total': Decimal('1.30')}
+        assert pagina.context['puede_registrar'] is True
+        todas = client.get(LISTA, {'estado': 'todas'}).context['retenciones']
+        assert sorted(r.numero for r in todas) == ['001-001-000000123', '001-001-000000124']
+        assert [r.numero for r in client.get(LISTA, {'estado': 'anulada'}).context['retenciones']] == ['001-001-000000124']
+        assert [r.numero for r in client.get(LISTA, {'estado': 'todas', 'q': '001001000000124'}).context['retenciones']] == [
+            '001-001-000000124']
+        manana = (HOY + timedelta(days=1)).isoformat()
+        assert list(client.get(LISTA, {'desde': manana, 'hasta': manana}).context['retenciones']) == []
+
+    def test_consultas_constantes_del_listado(self, client, empresa, dueno, venta):  # noqa: F811
+        def crear(desde, hasta):
+            for n in range(desde, hasta):
+                registrar(empresa, dueno, venta, retencion_datos(numero=f'001-001-{n:09d}', lineas=[linea('1', '312', '1.00')]))
+
+        def contar():
+            with CaptureQueriesContext(connection) as capturadas:
+                assert client.get(LISTA).status_code == 200
+            return len(capturadas)
+        entrar(client, dueno, empresa)
+        crear(1, 3)
+        con_2 = contar()
+        crear(3, 13)
+        assert leer(empresa, lambda: RetencionRecibida.objects.count()) == 12
+        assert contar() == con_2
+
+
+class TestOpcionesDelCatalogo:
+
+    def test_una_opcion_por_pareja_con_la_vigencia_de_la_fecha(self, monkeypatch):
+        """Doble de codigos_retencion_vigentes con dos vigencias del 310 (como tras D0): una sola opción, la de la fecha."""
+        from types import SimpleNamespace
+
+        from core.comprobantes import forms_recibidas
+        antes, despues = date(2026, 1, 1), date(2026, 6, 1)
+        filas = {
+            'vieja': SimpleNamespace(impuesto='1', codigo='310', concepto='Transporte privado de pasajeros',
+                                     porcentaje=Decimal('1.00'), activo=True),
+            'nueva': SimpleNamespace(impuesto='1', codigo='310', concepto='Transporte privado de pasajeros',
+                                     porcentaje=Decimal('2.00'), activo=True),
+            'iva': SimpleNamespace(impuesto='2', codigo='1', concepto='IVA 30 %', porcentaje=Decimal('30.00'), activo=False),
+        }
+        llamadas = []
+
+        def doble(fecha, incluir_inactivos=False):
+            llamadas.append((fecha, incluir_inactivos))
+            return [filas['vieja'] if fecha < despues else filas['nueva'], filas['iva']]
+        monkeypatch.setattr(catalogo, 'codigos_retencion_vigentes', doble)
+        assert forms_recibidas.LineaRecibidaForm(fecha=antes).fields['codigo'].choices == [
+            ('', '— Sin retención en esta línea —'), ('1:310', 'Renta · 310 · Transporte privado de pasajeros (1 %)'),
+            ('2:1', 'IVA · 1 · 30 % (no disponible para emitir)')]
+        opciones = forms_recibidas.LineaRecibidaForm(fecha=despues).fields['codigo'].choices
+        assert [o for o in opciones if o[0] == '1:310'] == [('1:310', 'Renta · 310 · Transporte privado de pasajeros (2 %)')]
+        assert llamadas == [(antes, True), (despues, True)]
+        # Aunque la función devolviera las dos filas de la pareja, el formulario no repite la opción.
+        monkeypatch.setattr(catalogo, 'codigos_retencion_vigentes', lambda fecha, incluir_inactivos=False: [
+            filas['nueva'], filas['vieja']])
+        assert forms_recibidas.LineaRecibidaForm(fecha=despues).fields['codigo'].choices[1:] == [
+            ('1:310', 'Renta · 310 · Transporte privado de pasajeros (2 %)')]
+
+    def test_la_pantalla_arma_las_opciones_con_la_fecha_escrita(self, client, empresa, dueno, venta, monkeypatch):  # noqa: F811
+        fechas, original = [], catalogo.codigos_retencion_vigentes
+
+        def espia(fecha, incluir_inactivos=False):
+            fechas.append((fecha, incluir_inactivos))
+            return original(fecha, incluir_inactivos=incluir_inactivos)
+        monkeypatch.setattr(catalogo, 'codigos_retencion_vigentes', espia)
+        entrar(client, dueno, empresa)
+        client.get(nueva(venta))
+        assert set(fechas) == {(HOY, True)}
+        fechas.clear()
+        client.post(nueva(venta), formulario(fecha=HOY - timedelta(days=1)))
+        assert set(fechas) == {(HOY - timedelta(days=1), True)}
+        opciones = dict(client.get(nueva(venta)).context['lineas'].forms[0].fields['codigo'].choices)
+        assert opciones['1:340'].endswith('(no disponible para emitir)')            # el cliente puede usar códigos inactivos
+
+
+class TestPermisosYPlanes:
+
+    @pytest.mark.parametrize('rol', [ROLE_OWNER, ROLE_ADMIN])
+    def test_propietario_y_administrador_registran(self, client, empresa, dueno, venta, rol):  # noqa: F811
+        usuario = dueno if rol == ROLE_OWNER else helpers.crear_usuario('admin.retenciones', empresa, rol)
+        entrar(client, usuario, empresa)
+        assert client.get(BUSCAR).status_code == 200 and client.get(nueva(venta)).status_code == 200
+        assert client.post(nueva(venta), formulario(action='registrar')).status_code == 302
+
+    @pytest.mark.parametrize('rol', [ROLE_ACCOUNTANT, ROLE_READONLY])
+    def test_contador_y_consulta_solo_ven(self, client, empresa, dueno, venta, rol):  # noqa: F811
+        ret = registrar(empresa, dueno, venta)
+        lector = helpers.crear_usuario(f'lector.rr.{rol.lower()}', empresa, rol)
+        entrar(client, lector, empresa)
+        pagina = client.get(LISTA)
+        assert pagina.status_code == 200 and pagina.context['puede_registrar'] is False
+        assert client.get(ficha(ret)).context['puede_anular'] is False
+        assert client.get(BUSCAR).status_code == 302 and client.get(nueva(venta)).status_code == 302
+        assert client.post(nueva(venta), formulario(action='registrar', numero='001-001-000000555')).status_code == 403
+        negado = client.post(ficha(ret), {'action': 'anular', 'motivo': 'Intento sin permiso de anular'})
+        assert negado.status_code == 403 and 'Tu perfil no puede realizar esta acción.' in negado.content.decode()
+        assert leer(empresa, lambda: RetencionRecibida.objects.get().estado) == 'registrada'
+        assert leer(empresa, lambda: RetencionRecibida.objects.count()) == 1
+
+    def test_vendedor_no_entra(self, client, empresa, venta):  # noqa: F811
+        vendedor = helpers.crear_usuario('vendedor.retenciones', empresa, ROLE_SELLER)
+        entrar(client, vendedor, empresa)
+        assert client.get(LISTA).status_code == 302 and client.get(BUSCAR).status_code == 302
+
+    def test_otra_empresa_responde_404(self, client, empresa, dueno, venta):  # noqa: F811
+        empresa_b = helpers.crear_empresa('EMPRESA B PANTALLA', environment_type=2)
+        dueno_b = helpers.crear_usuario('dueno.b.pantalla', empresa_b)
+        cliente_b = helpers.crear_cliente('cliente.b.pantalla', empresa_b, RUC_AGENTE, '0990000006')
+        venta_b = factura_autorizada(empresa_b, cliente_b, dueno_b, helpers.crear_producto(empresa_b, 'B-2'), credito=True,
+                                     fecha=HOY - timedelta(days=1))
+        ret_b = registrar(empresa_b, dueno_b, venta_b)
+        entrar(client, dueno, empresa)
+        assert client.get(nueva(venta_b)).status_code == 404 and client.get(ficha(ret_b)).status_code == 404
+        assert client.post(nueva(venta_b), formulario(action='registrar')).status_code == 404
+        assert client.post(ficha(ret_b), {'action': 'anular', 'motivo': 'De otra empresa, no se toca'}).status_code == 404
+        assert list(client.get(LISTA).context['retenciones']) == []
+        assert leer(empresa_b, lambda: RetencionRecibida.objects.get().estado) == 'registrada'
+
+    def test_plan_gratuito_bloqueado(self, client):
+        gratuita = helpers.crear_empresa('GRATUITA RETENCIONES', plan=None)
+        entrar(client, helpers.crear_usuario('dueno.gratuita.rr', gratuita), gratuita)
+        assert client.get(LISTA)['Location'] == '/suscripcion/' and client.get(BUSCAR).status_code == 302
+
+    def test_plan_vencido_solo_consulta(self, client, empresa, dueno, venta):  # noqa: F811
+        ret = registrar(empresa, dueno, venta)
+        SubscriptionPeriod.objects.filter(company=empresa).update(ends_at=timezone.now() - timedelta(days=1))
+        entrar(client, dueno, empresa)
+        assert client.get(LISTA).status_code == 200 and client.get(ficha(ret)).status_code == 200
+        assert client.get(BUSCAR).status_code == 302 and client.get(nueva(venta)).status_code == 302
+        for datos in (formulario(), formulario(action='registrar', numero='001-001-000000777')):
+            assert client.post(nueva(venta), datos).status_code == 403
+        assert client.post(ficha(ret), {'action': 'anular', 'motivo': 'Intento con el plan vencido'}).status_code == 403
+        assert leer(empresa, lambda: (RetencionRecibida.objects.count(), RetencionRecibida.objects.get().estado)) == (1, 'registrada')
+
+    def test_cupo_agotado_registra_sin_consumir_cupo(self, client, empresa, dueno, venta, sri):  # noqa: F811
+        from core.suscripciones.servicios import estado_empresa
+        SubscriptionPeriod.objects.filter(company=empresa).update(document_limit=5, documents_used=5)
+        assert estado_empresa(empresa).codigo == 'cupo_agotado'
+        entrar(client, dueno, empresa)
+        assert client.post(nueva(venta), formulario(action='registrar')).status_code == 302
+        periodo = SubscriptionPeriod.objects.get(company=empresa, status='activa')
+        assert (periodo.documents_used, periodo.documents_reserved) == (5, 0) and sri.recepciones == []
