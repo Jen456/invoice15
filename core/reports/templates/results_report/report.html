@@ -21,8 +21,15 @@
                 </div>
             </div>
         </div>
+        <div class="col-lg-4 col-md-12">
+            <div class="form-group">
+                <label for="{{ form.alcance.id_for_label }}">{{ form.alcance.label }}:</label>
+                {{ form.alcance }}
+            </div>
+        </div>
     </div>
     <div class="row">
         <div class="col-lg-12" id="container"></div>
     </div>
+    <p class="small text-muted">Ventas: facturas del alcance elegido menos sus notas de crédito, por fecha de emisión. Compras y gastos por fecha de registro.</p>
 {% endblock %}

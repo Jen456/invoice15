@@ -1,4 +1,9 @@
 var input_date_range;
+// Etapa 2 (O2): escape del texto que se inserta en HTML armado a mano.
+function fpaTexto(x) {
+    return $('<div>').text(x === null || x === undefined ? '' : String(x)).html();
+}
+
 var current_date;
 var tblReport;
 var columns = [];
@@ -17,6 +22,7 @@ var report = {
             'action': 'search_report',
             'start_date': input_date_range.data('daterangepicker').startDate.format('YYYY-MM-DD'),
             'end_date': input_date_range.data('daterangepicker').endDate.format('YYYY-MM-DD'),
+            'alcance': $('select[name="alcance"]').val() || 'declarables',
         };
         if (all) {
             parameters['start_date'] = '';
@@ -102,32 +108,41 @@ var report = {
                 }
             ],
             columns: [
+                {data: "documento.numero"},
                 {data: "sale.client.user.names"},
                 {data: "sale.client.dni"},
-                {data: "sale.date_joined"},
-                {data: "sale.end_credit"},
+                {data: "fecha_emision_efectiva"},
+                {data: "end_date"},
                 {data: "debt"},
-                {data: "saldo"},
-                {data: "state"},
+                {data: "saldo_texto"},
+                {data: "estado.name"},
             ],
             columnDefs: [
                 {
-                    targets: [-1],
-                    orderable: false,
-                    class: 'text-center',
+                    targets: [0],
                     render: function (data, type, row) {
-                        if (data) {
-                            return 'Adeuda';
-                        }
-                        return 'No adeuda';
+                        var numero = fpaTexto(data);
+                        return row.documento.tipo === 'nota_debito' ? 'ND ' + numero : numero;
                     }
                 },
                 {
-                    targets: [-2, -3],
+                    targets: [1, 2, 3, 4, -1],
+                    render: $.fn.dataTable.render.text()
+                },
+                {
+                    targets: [-3],
                     orderable: false,
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return '$' + data;
+                        return '$' + data.toFixed(2);
+                    }
+                },
+                {
+                    targets: [-2],
+                    orderable: false,
+                    class: 'text-center',
+                    render: function (data, type, row) {
+                        return '$' + fpaTexto(data);
                     }
                 }
             ],
@@ -168,5 +183,10 @@ $(function () {
 
     $('.btnSearchAll').on('click', function () {
         report.list(true);
+    });
+
+    // Etapa 2 (O2): qué comprobantes se muestran (por defecto, autorizados en producción).
+    $('select[name="alcance"]').on('change', function () {
+        report.list(false);
     });
 });

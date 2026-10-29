@@ -135,3 +135,72 @@ def test_anulados_sri_de_los_seis_tipos(empresa, factura, dueno, sri):  # noqa: 
          'fecha_emision': date(2026, 9, 2), 'fecha_anulacion': date(2026, 9, 3)},
         {'modelo': 'creditnote', 'id': nota.pk, 'cod_doc': '04', 'numero': nota.voucher_number_full,
          'autorizacion': nota.access_code, 'fecha_emision': nota.emission_date, 'fecha_anulacion': date(2026, 9, 4)}]
+
+
+# ---------------------------------------------------------------- vistas de los reportes (paso 2)
+
+def entrar(client, usuario, empresa):  # noqa: F811
+    from tests import helpers
+    helpers.iniciar_sesion(client, usuario, empresa=empresa)
+    return client
+
+
+def reporte(client, ruta, **datos):
+    return client.post(ruta, {'action': 'search_report', 'start_date': '', 'end_date': '', **datos}).json()
+
+
+def resultados(client, **datos):
+    return {fila['name']: fila['y'] for fila in reporte(client, '/reports/results/', **datos)}
+
+
+class TestVistaResultados:
+
+    def test_ventas_restan_las_notas_del_mismo_alcance(self, client, empresa, dueno, factura, sri):  # noqa: F811
+        venta = factura(credito=True)
+        nota = nota_credito_autorizada(venta, sri=sri, lineas=[(leer(empresa, lambda: venta.saledetail_set.get().pk), 1)])
+        entrar(client, dueno, empresa)
+        antes = resultados(client, alcance='todos')
+        assert resultados(client) == {'Compras': antes['Compras'], 'Ventas': 11.5, 'Gastos': antes['Gastos']}   # 23 − 11,50
+        cubierta = factura()
+        nota_credito_autorizada(cubierta, sri=sri)
+        assert resultados(client)['Ventas'] == 11.5                           # la cubierta por completo suma 0
+        with company_context(empresa):
+            CreditNote.objects.filter(pk=nota.pk).update(anulado_sri_fecha=nota.emission_date)
+        assert resultados(client)['Ventas'] == 23.0                           # la NC anulada en el SRI ya no resta
+        assert resultados(client, alcance='todos') == {'Compras': antes['Compras'], 'Ventas': 46.0, 'Gastos': antes['Gastos']}
+        assert reporte(client, '/reports/results/', alcance='otro') == {'error': 'Elige qué comprobantes mostrar.'}
+
+    def test_rango_por_fecha_de_emision(self, client, empresa, dueno, factura):  # noqa: F811
+        factura(fecha=date(2026, 10, 2), emitida=date(2026, 9, 29))           # registrada en octubre, emitida en septiembre
+        entrar(client, dueno, empresa)
+        assert resultados(client, start_date='2026-09-01', end_date='2026-09-30')['Ventas'] == 23.0
+        assert resultados(client, start_date='2026-09-01', end_date='2026-09-30', alcance='todos')['Ventas'] == 0.0
+
+
+class TestVistasDeVentasYCuentas:
+
+    def test_reporte_de_ventas(self, client, empresa, dueno, factura):  # noqa: F811
+        declarable = factura(fecha=date(2026, 9, 10), emitida=None, autorizada=date(2026, 9, 11))
+        pruebas = factura(ambiente=1)
+        entrar(client, dueno, empresa)
+        filas = reporte(client, '/reports/sale/')
+        assert [f['id'] for f in filas] == [declarable.pk]
+        assert (filas[0]['fecha_emision_efectiva'], filas[0]['fecha_emision_origen']) == ('2026-09-11', 'autorizacion')
+        assert {f['id'] for f in reporte(client, '/reports/sale/', alcance='todos')} == {declarable.pk, pruebas.pk}
+        assert [f['id'] for f in reporte(client, '/reports/sale/', alcance='pruebas')] == [pruebas.pk]
+        assert reporte(client, '/reports/sale/', alcance='x') == {'error': 'Elige qué comprobantes mostrar.'}
+        assert client.get('/reports/sale/').context['form']['alcance'].value() == 'declarables'
+
+    def test_reporte_de_cuentas_por_cobrar(self, client, empresa, dueno, factura, sri):  # noqa: F811
+        venta = factura(credito=True)
+        nota = nota_debito_autorizada(venta, '5.00', dueno, sri=sri)
+        factura(credito=True, ambiente=1)
+        entrar(client, dueno, empresa)
+        filas = {f['id']: f for f in reporte(client, '/reports/ctas/collect/')}
+        assert set(filas) == {cxc_de(venta).pk, nota.cuenta_por_cobrar_id}
+        de_nota = filas[nota.cuenta_por_cobrar_id]
+        assert de_nota['documento'] == {'tipo': 'nota_debito', 'id': nota.pk, 'numero': nota.voucher_number_full}
+        assert de_nota['estado'] == {'id': 'pendiente', 'name': 'Pendiente'}
+        assert de_nota['fecha_emision_efectiva'] == nota.emission_date.isoformat()
+        assert len(reporte(client, '/reports/ctas/collect/', alcance='todos')) == 3
+        assert all('fecha_emision_efectiva' in f for f in reporte(client, '/reports/ctas/collect/', alcance='todos'))
