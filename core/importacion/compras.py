@@ -597,14 +597,19 @@ def crear_compra_desde_documento(documento, usuario, datos):
         pagos = comprobante.get('pagos')
         plazo = _plazo_dias(pagos)
         payment_type = _texto(datos.get('payment_type')) or ('credito' if plazo > 0 else 'efectivo')
-        end_credit = _texto(datos.get('end_credit')) or ((hoy + timedelta(days=plazo)).isoformat() if plazo > 0 else '')
+        date_joined = _texto(datos.get('date_joined')) or hoy.isoformat()
+        try:   # el plazo del XML se cuenta desde la fecha de registro (§3.6); una fecha no válida la rechaza crear_compra
+            registro = date.fromisoformat(date_joined[:10])
+        except ValueError:
+            registro = hoy
+        end_credit = _texto(datos.get('end_credit')) or ((registro + timedelta(days=plazo)).isoformat() if plazo > 0 else '')
         forma_pago = datos.get('forma_pago') if 'forma_pago' in datos else forma_pago_del_xml(documento, comprobante)
         cabecera = {
             'provider': proveedor.pk, 'modo_comprobante': 'si', 'tipo_comprobante': documento.cod_doc,
             'cod_sustento': _texto(datos.get('cod_sustento')), 'estab': documento.estab, 'pto_emi': documento.pto_emi,
             'secuencial': documento.secuencial, 'autorizacion': documento.clave_acceso,
             'fecha_emision': documento.fecha_emision.isoformat() if documento.fecha_emision else '',
-            'date_joined': _texto(datos.get('date_joined')) or hoy.isoformat(),
+            'date_joined': date_joined,
             'parte_relacionada': '' if parte is None else ('si' if parte else 'no'), 'payment_type': payment_type,
             'end_credit': end_credit, 'forma_pago': _texto(forma_pago), 'pago_loc_ext': '01',
             'confirmar_plazo_ats': datos.get('confirmar_plazo_ats'),

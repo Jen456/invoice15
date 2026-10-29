@@ -422,3 +422,13 @@ class TestCompraDesdeXml:
                                                              'tipo_comprobante': '01', 'estab': '001', 'pto_emi': '002',
                                                              'secuencial': '271'}).content)
         assert data['valid'] is True and data['posible_duplicado'] == [antigua.pk] and 'mismo número' in data['mensaje']
+
+    def test_plazo_del_xml_desde_la_fecha_de_registro(self, receptora):
+        from core.importacion import compras as desde_xml
+        empresa, dueno, _ = receptora
+        documento = self.documento(empresa, dueno, plazo=30)
+        registro = hoy() - timedelta(days=10)
+        with company_context(empresa):
+            compra = desde_xml.crear_compra_desde_documento(documento, dueno, {'cod_sustento': '06', 'parte_relacionada': 'no',
+                                                                               'date_joined': registro.isoformat()})
+        assert (compra.payment_type, compra.date_joined, compra.end_credit) == ('credito', registro, registro + timedelta(days=30))
