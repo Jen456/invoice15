@@ -1,0 +1,156 @@
+{% extends 'form.html' %}
+{% load static %}
+{% block assets_form %}
+    <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
+    <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}">
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
+    <script src="{% static 'proformas/js/form.js' %}"></script>
+{% endblock %}
+
+{% block form_fields %}
+    {% if aviso_estado %}<div class="alert alert-warning" role="status">{{ aviso_estado }}</div>{% endif %}
+    <div id="fp-errores" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
+    <p class="text-muted small">Proforma sin validez tributaria. Número: {% if proforma %}{{ proforma.numero }}{% else %}se asigna al guardar{% endif %}.</p>
+
+    <fieldset class="mb-2">
+        <legend class="h6">Cliente</legend>
+        <div class="form-group">
+            <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="fp-tipo-registrado" name="fp_tipo_cliente" value="registrado" class="custom-control-input" checked>
+                <label class="custom-control-label" for="fp-tipo-registrado">Cliente registrado</label>
+            </div>
+            <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="fp-tipo-prospecto" name="fp_tipo_cliente" value="prospecto" class="custom-control-input">
+                <label class="custom-control-label" for="fp-tipo-prospecto">Prospecto (sin registrar)</label>
+            </div>
+        </div>
+        <div class="form-group fp-registrado">
+            <label for="fp-cliente">Cliente</label>
+            <select id="fp-cliente" name="cliente" class="form-control" style="width: 100%"></select>
+            <div class="invalid-feedback" data-campo="cliente"></div>
+        </div>
+        <div class="row fp-prospecto d-none">
+            <div class="form-group col-lg-6">
+                <label for="fp-cliente-nombre">Nombre o razón social *</label>
+                <input type="text" id="fp-cliente-nombre" name="cliente_nombre" class="form-control" maxlength="300">
+                <div class="invalid-feedback" data-campo="cliente_nombre"></div>
+            </div>
+            <div class="form-group col-lg-6">
+                <label for="fp-cliente-identificacion">Identificación</label>
+                <input type="text" id="fp-cliente-identificacion" name="cliente_identificacion" class="form-control" maxlength="20">
+                <div class="invalid-feedback" data-campo="cliente_identificacion"></div>
+            </div>
+            <div class="form-group col-lg-6">
+                <label for="fp-cliente-correo">Correos (separados por comas)</label>
+                <input type="text" id="fp-cliente-correo" name="cliente_correo" class="form-control" maxlength="500">
+                <div class="invalid-feedback" data-campo="cliente_correo"></div>
+            </div>
+            <div class="form-group col-lg-6">
+                <label for="fp-cliente-telefono">Teléfono</label>
+                <input type="tel" id="fp-cliente-telefono" name="cliente_telefono" class="form-control" maxlength="20">
+                <div class="invalid-feedback" data-campo="cliente_telefono"></div>
+            </div>
+            <div class="form-group col-12">
+                <label for="fp-cliente-direccion">Dirección</label>
+                <input type="text" id="fp-cliente-direccion" name="cliente_direccion" class="form-control" maxlength="500">
+                <div class="invalid-feedback" data-campo="cliente_direccion"></div>
+            </div>
+        </div>
+    </fieldset>
+
+    <div class="row">
+        <div class="form-group col-sm-6 col-lg-3">
+            <label for="fp-fecha">Fecha *</label>
+            <input type="date" id="fp-fecha" name="fecha" class="form-control" required>
+            <div class="invalid-feedback" data-campo="fecha"></div>
+        </div>
+        <div class="form-group col-sm-6 col-lg-3">
+            <label for="fp-valida-hasta">Válida hasta *</label>
+            <input type="date" id="fp-valida-hasta" name="valida_hasta" class="form-control" required>
+            <div class="invalid-feedback" data-campo="valida_hasta"></div>
+        </div>
+        <div class="form-group col-lg-6">
+            <label for="fp-forma-pago">Forma de pago sugerida</label>
+            <select id="fp-forma-pago" name="forma_pago_sugerida" class="form-control">
+                <option value="">Sin indicar</option>
+                {% for codigo, nombre in formas_pago %}<option value="{{ codigo }}">{{ nombre }}</option>{% endfor %}
+            </select>
+            <div class="invalid-feedback" data-campo="forma_pago_sugerida"></div>
+        </div>
+    </div>
+
+    <div class="card p-3">
+        <div class="form-group">
+            <label for="fp-buscar-producto">Agregar producto (nombre o código; Enter busca por código de barras)</label>
+            <div class="input-group">
+                <input type="text" id="fp-buscar-producto" class="form-control" autocomplete="off" maxlength="100">
+                <div class="input-group-append">
+                    <button type="button" class="btn btn-primary" id="fp-abrir-busqueda"><i class="fas fa-search" aria-hidden="true"></i> Buscar productos</button>
+                </div>
+            </div>
+            <small class="form-text text-muted">Incluye productos sin stock: en la proforma el stock solo se informa. El precio se puede negociar; el descuento es un porcentaje entero, igual que en la factura.</small>
+        </div>
+        <div class="invalid-feedback d-block" data-campo="lineas"></div>
+        <table class="table table-bordered table-sm fp-mobile-lines" id="tblLineas">
+            <caption class="sr-only">Líneas de la proforma</caption>
+            <thead>
+            <tr>
+                <th scope="col">Código</th>
+                <th scope="col">Producto</th>
+                <th scope="col">Descripción en la proforma</th>
+                <th scope="col">Cantidad</th>
+                <th scope="col">Precio unitario USD</th>
+                <th scope="col">Descuento %</th>
+                <th scope="col">Total USD</th>
+                <th scope="col"><span class="sr-only">Quitar</span></th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div class="row d-flex flex-row-reverse">
+            <div class="col-lg-5">
+                <table class="table table-sm" id="fp-totales">
+                    <caption class="small">Valores de referencia: el servidor recalcula al guardar.</caption>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="fp-condiciones">Condiciones</label>
+        <textarea id="fp-condiciones" name="condiciones" class="form-control" rows="4" maxlength="2000"></textarea>
+        <div class="invalid-feedback" data-campo="condiciones"></div>
+    </div>
+{% endblock %}
+
+{% block buttons %}
+    <button type="submit" class="btn btn-primary btn-flat"><i class="fas fa-save" aria-hidden="true"></i> Guardar borrador</button>
+    <a href="{% if proforma %}{{ proforma.urls.ver }}{% else %}{{ list_url }}{% endif %}" class="btn btn-danger btn-flat"><i class="fas fa-times" aria-hidden="true"></i> Cancelar</a>
+{% endblock %}
+
+{% block content_form_before %}
+    <div id="fp-modal-productos" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="fp-modal-productos-titulo" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fp-modal-productos-titulo"><i class="fas fa-search" aria-hidden="true"></i> Buscar productos</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <label for="fp-modal-termino" class="sr-only">Nombre o código</label>
+                    <input type="search" id="fp-modal-termino" class="form-control mb-2" placeholder="Nombre o código" maxlength="100">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered" id="fp-modal-resultados">
+                            <thead><tr><th scope="col">Código</th><th scope="col">Nombre</th><th scope="col">Precio</th><th scope="col">Stock</th><th scope="col">IVA</th><th scope="col"><span class="sr-only">Agregar</span></th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ config|json_script:"fp-proforma-config" }}
+    {% if proforma %}{{ proforma|json_script:"fp-proforma" }}{% endif %}
+{% endblock %}

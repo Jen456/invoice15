@@ -277,6 +277,42 @@ var sale = {
                 $(this).wrap('<div class="dataTables_scroll"><div/>');
             }
         });
+    },
+    cargarProforma: function (datos) {
+        // Factura de una proforma (core/proformas): comprobante 01, líneas con el precio y el descuento cotizados (sin
+        // addProduct, que fusiona y suma cantidades), información adicional que se puede quitar, forma de pago y cliente
+        // o prospecto. Todo se puede revisar antes de emitir; el servidor recalcula y manda.
+        select_receipt.val('01').trigger('change');
+        select_receipt.find('option').not('[value="01"]').prop('disabled', true);
+        datos.lineas.forEach(function (linea) {
+            sale.detail.products.push(linea);
+        });
+        sale.detail.additional_info = datos.info_adicional.slice();
+        sale.listAdditionalInfo();
+        if (datos.forma_pago) {
+            $('select[name="payment_method"]').val(datos.forma_pago).trigger('change');
+        }
+        if (datos.cliente) {
+            select_client.select2('trigger', 'select', {data: datos.cliente});
+        } else if (datos.prospecto) {
+            var prospecto = datos.prospecto, formulario = $('#frmClient');
+            var correos = (prospecto.correo || '').split(',').map(function (c) { return c.trim(); }).filter(Boolean);
+            var identificacion = (prospecto.identificacion || '').trim();
+            var telefono = (prospecto.telefono || '').replace(/\D/g, '');
+            formulario.find('input[name="names"]').val(prospecto.nombre);
+            formulario.find('input[name="email"]').val(correos.length ? correos[0] : '');
+            formulario.find('input[name="extra_emails"]').val(correos.slice(1).join(', '));
+            formulario.find('input[name="dni"]').val(identificacion);
+            formulario.find('input[name="mobile"]').val(telefono.length <= 10 ? telefono : '');
+            formulario.find('[name="address"]').val(prospecto.direccion);
+            if (/^\d{10}$/.test(identificacion)) {
+                formulario.find('select[name="identification_type"]').val('05').trigger('change');
+            } else if (/^\d{13}$/.test(identificacion)) {
+                formulario.find('select[name="identification_type"]').val('04').trigger('change');
+            }
+            input_birthdate.datetimepicker('date', new Date());
+            $('#myModalClient').modal('show');
+        }
     }
 };
 
@@ -992,4 +1028,9 @@ $(function () {
     $('i[data-field="cash"]').hide();
     $('i[data-field="input_search_product"]').hide();
     $('i[data-field="time_limit"]').hide();
+
+    var nodoProforma = document.getElementById('fp-proforma-precarga');
+    if (nodoProforma) {
+        sale.cargarProforma(JSON.parse(nodoProforma.textContent));
+    }
 });

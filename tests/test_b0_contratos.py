@@ -180,7 +180,8 @@ class TestMenu:
     def test_cada_modulo_nuevo_declara_su_app_sin_entradas_nuevas(self):
         assert [m[:2] for m in menu.MODULOS_NUEVOS] == [
             ('importacion', '/importacion/recibidos/'), ('importacion', '/importacion/nueva/'), ('importacion', '/importacion/lotes/'),
-            ('importacion', '/importacion/pendientes/'), ('importacion', '/importacion/reglas/')]
+            ('importacion', '/importacion/pendientes/'), ('importacion', '/importacion/reglas/'),
+            ('proformas', '/proformas/')]   # Proformas (Etapa 1) declara su módulo
 
     def test_importacion_queda_igual_y_se_recrea_igual(self):
         antes = estado_menu()
@@ -195,11 +196,11 @@ class TestMenu:
     def test_no_crea_modulos_de_apps_sin_permisos(self, monkeypatch):
         antes = estado_menu()
         monkeypatch.setattr(menu, 'MODULOS_NUEVOS', menu.MODULOS_NUEVOS + (
-            ('proformas', '/proformas/', 'fas fa-file-contract', 'App aún sin migrar', ('view_proforma', 'add_proforma')),
+            ('app_sin_migrar', '/app-sin-migrar/', 'fas fa-file-contract', 'App aún sin migrar', ('view_proforma', 'add_proforma')),
             ('pos', '/pos/inexistente/', 'fas fa-ban', 'Permisos que no existen', ('view_inexistente',)),
         ))
         organizar_y_sincronizar()
-        assert not Module.objects.filter(url__in=['/proformas/', '/pos/inexistente/']).exists()
+        assert not Module.objects.filter(url__in=['/app-sin-migrar/', '/pos/inexistente/']).exists()
         assert estado_menu() == antes
 
     def test_migraciones_de_importacion_siguen_funcionando(self):
@@ -225,7 +226,7 @@ class TestRoles:
         antes = estado_menu()
         roles.sync_roles(Group, Module, GroupModule)
         assert estado_menu() == antes
-        assert not Module.objects.filter(url__in=['/proformas/', '/comprobantes/retenciones-recibidas/']).exists()
+        assert not Module.objects.filter(url='/comprobantes/retenciones-recibidas/').exists()   # /proformas/ ya existe (Etapa 1)
 
     def test_con_el_modulo_vendedor_escribe_y_contador_solo_lee(self):
         # Módulo simulado (la app de Proformas aún no existe): el reparto por rol ya queda listo.

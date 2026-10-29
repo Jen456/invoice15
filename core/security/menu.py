@@ -19,6 +19,9 @@ ESTRUCTURA = (
         ('/comprobantes/liquidaciones/', 'Liquidaciones de compra', 6),
         ('/pos/voucher/errors/', 'Errores de comprobantes', 7),
     )),
+    ('Cotizaciones', 'fas fa-file-alt', 15, (
+        ('/proformas/', 'Proformas', 1),
+    )),
     ('Clientes y promociones', 'fas fa-user-friends', 20, (
         ('/pos/client/', 'Clientes', 1),
         ('/pos/promotions/', 'Promociones', 2),
@@ -69,6 +72,8 @@ MODULOS_NUEVOS = (
      ('view_documentoimportado', 'change_documentoimportado')),
     ('importacion', '/importacion/reglas/', 'fas fa-sliders-h', 'Reglas de importación y contabilización',
      ('view_reglaimportacion', 'change_reglaimportacion')),
+    ('proformas', '/proformas/', 'fas fa-file-contract', 'Cotizaciones sin validez tributaria que se convierten en factura',
+     ('view_proforma', 'add_proforma', 'change_proforma', 'delete_proforma')),
 )
 
 

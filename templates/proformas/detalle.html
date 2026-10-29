@@ -1,0 +1,98 @@
+{% extends 'skin.html' %}
+{% load static %}
+{% block assets_body %}
+    <script src="{% static 'proformas/js/acciones.js' %}"></script>
+    <script src="{% static 'proformas/js/detalle.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+    {% with v=proforma.venta %}
+    <div class="card {{ dashboard.card }}">
+        <div class="card-header fp-list-header">
+            <h3 class="card-title"><i class="fas fa-file-contract" aria-hidden="true"></i> {{ title }}</h3>
+            <span class="badge fp-estado-proforma" data-estado="{{ proforma.estado.id }}">{{ proforma.estado.nombre }}</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">Documento sin validez tributaria: es una cotización, no una factura.</p>
+            {% if v %}
+                <div class="alert {% if v.sin_validez_tributaria %}alert-warning{% else %}alert-info{% endif %}" role="status">
+                    <p class="mb-1"><b>Factura vinculada:</b> {{ v.numero }} · {{ v.estado.nombre }} · USD {{ v.total }}
+                        {% if v.sin_validez_tributaria %}<span class="badge badge-warning">PRUEBAS · sin validez tributaria</span>{% endif %}</p>
+                    {% if v.aviso_ambiente %}<p class="mb-1">{{ v.aviso_ambiente }}</p>{% endif %}
+                    {% if v.aviso %}<p class="mb-1">{{ v.aviso }}</p>{% endif %}
+                    <p class="mb-0"><a href="{{ v.url_lista }}">Facturas emitidas</a>{% if v.url_ride %} · <a href="{{ v.url_ride }}" target="_blank" rel="noopener">RIDE de la factura</a>{% endif %}</p>
+                </div>
+            {% endif %}
+            <div class="row">
+                <div class="col-lg-6">
+                    <h4 class="h6 text-uppercase text-muted">Cliente{% if proforma.cliente.es_prospecto %} (prospecto){% endif %}</h4>
+                    <dl class="row mb-3">
+                        <dt class="col-sm-4">Nombre</dt><dd class="col-sm-8">{{ p.cliente_nombre }}</dd>
+                        <dt class="col-sm-4">Identificación</dt><dd class="col-sm-8">{{ p.cliente_identificacion|default:"—" }}</dd>
+                        <dt class="col-sm-4">Correo</dt><dd class="col-sm-8">{{ p.cliente_correo|default:"—" }}</dd>
+                        <dt class="col-sm-4">Teléfono</dt><dd class="col-sm-8">{{ p.cliente_telefono|default:"—" }}</dd>
+                        <dt class="col-sm-4">Dirección</dt><dd class="col-sm-8">{{ p.cliente_direccion|default:"—" }}</dd>
+                    </dl>
+                </div>
+                <div class="col-lg-6">
+                    <h4 class="h6 text-uppercase text-muted">Proforma</h4>
+                    <dl class="row mb-3">
+                        <dt class="col-sm-5">Fecha</dt><dd class="col-sm-7">{{ p.fecha|date:"d/m/Y" }}</dd>
+                        <dt class="col-sm-5">Válida hasta</dt><dd class="col-sm-7">{{ p.valida_hasta|date:"d/m/Y" }}{% if proforma.dias_para_vencer is not None %} ({{ proforma.dias_para_vencer }} días){% endif %}</dd>
+                        <dt class="col-sm-5">Vendedor</dt><dd class="col-sm-7">{{ proforma.vendedor.nombre|default:"—" }}</dd>
+                        <dt class="col-sm-5">Forma de pago sugerida</dt><dd class="col-sm-7">{{ proforma.forma_pago_sugerida.nombre|default:"—" }}</dd>
+                        <dt class="col-sm-5">Correos enviados</dt><dd class="col-sm-7">{{ p.envios }}{% if p.enviada_a %} · {{ p.enviada_a }}{% endif %}</dd>
+                        {% if proforma.origen %}<dt class="col-sm-5">Duplicada de</dt><dd class="col-sm-7"><a href="{% url 'proforma_detail' proforma.origen.id %}">{{ proforma.origen.numero }}</a></dd>{% endif %}
+                        {% if p.motivo %}<dt class="col-sm-5">Motivo</dt><dd class="col-sm-7">{{ p.motivo }}</dd>{% endif %}
+                    </dl>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm" id="fp-lineas">
+                    <caption class="sr-only">Líneas de la proforma</caption>
+                    <thead><tr><th scope="col">Código</th><th scope="col">Descripción</th><th scope="col">IVA</th><th scope="col" class="text-right">Cant.</th><th scope="col" class="text-right">P. unitario</th><th scope="col" class="text-right">Descuento</th><th scope="col" class="text-right">Total</th></tr></thead>
+                    <tbody>
+                    {% for l in lineas %}
+                        <tr>
+                            <td>{{ l.codigo }}</td>
+                            <td>{{ l.descripcion }}{% if not l.product_id %} <span class="badge badge-secondary">producto eliminado</span>{% endif %}</td>
+                            <td>{{ l.nombre_tarifa }}</td>
+                            <td class="text-right">{{ l.cant }}</td>
+                            <td class="text-right">{{ l.price|floatformat:2 }}</td>
+                            <td class="text-right">{{ l.total_dscto|floatformat:2 }}</td>
+                            <td class="text-right">{{ l.total|floatformat:2 }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="row">
+                <div class="col-lg-7">
+                    {% if p.condiciones %}
+                        <h4 class="h6 text-uppercase text-muted">Condiciones</h4>
+                        <p style="white-space: pre-line">{{ p.condiciones }}</p>
+                    {% endif %}
+                </div>
+                <div class="col-lg-5">
+                    <table class="table table-sm">
+                        <caption class="sr-only">Totales por tarifa</caption>
+                        <tbody>
+                        {% for t in impuestos %}<tr><th scope="row">Subtotal {{ t.nombre }}</th><td class="text-right">{{ t.base|floatformat:2 }}</td></tr>{% endfor %}
+                        <tr><th scope="row">Descuentos</th><td class="text-right">{{ p.total_descuento|floatformat:2 }}</td></tr>
+                        {% for t in impuestos %}{% if t.tarifa %}<tr><th scope="row">IVA {{ t.nombre }}</th><td class="text-right">{{ t.valor|floatformat:2 }}</td></tr>{% endif %}{% endfor %}
+                        <tr><th scope="row">TOTAL USD</th><td class="text-right"><b>{{ p.total|floatformat:2 }}</b></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div id="fp-botones" aria-live="polite"></div>
+            <a href="{{ list_url }}" class="btn btn-secondary btn-flat mt-2"><i class="fas fa-arrow-left" aria-hidden="true"></i> Volver a la lista</a>
+        </div>
+    </div>
+    {% endwith %}
+    {% include 'proformas/_modales.html' %}
+    {{ proforma|json_script:"fp-proforma" }}
+    {{ config|json_script:"fp-proforma-config" }}
+{% endblock %}

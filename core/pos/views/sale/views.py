@@ -2,6 +2,7 @@ import json
 import logging
 from decimal import Decimal
 
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Group
 from django.db import transaction
@@ -97,6 +98,21 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
             form.fields['receipt'].choices = [(c, n) for c, n in form.fields['receipt'].choices if c != VOUCHER_TYPE[2][0]]
         return form
 
+    def get(self, request, *args, **kwargs):
+        # Facturar una proforma (?proforma=<id>): la pantalla se abre precargada y no guarda nada (core/proformas).
+        self.precarga = None
+        if 'proforma' in request.GET:
+            from core.proformas import servicios as proformas
+            if 'change_proforma' not in proformas.permisos_de(request):
+                messages.error(request, proformas.MENSAJES['facturar_sin_permiso'])
+                return HttpResponseRedirect(proformas.URL_LISTA)
+            try:
+                self.precarga = proformas.precarga_para_venta(request.GET['proforma'])
+            except proformas.ErrorProforma as e:
+                messages.error(request, e.mensaje)
+                return HttpResponseRedirect(e.url or proformas.URL_LISTA)
+        return super().get(request, *args, **kwargs)
+
     def get_first_final_consumer(self):
         return consumidor_final(self.request.company).toJSON()
 
@@ -116,7 +132,14 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
             if action == 'add':
                 if request.POST['receipt'] == VOUCHER_TYPE[2][0] and request.company.environment_type == emision.PRODUCCION:
                     raise ValueError('El ticket de venta no está disponible en Producción: emite una factura.')
+                proforma_id, proforma = (request.POST.get('proforma_id') or '').strip(), None
                 with transaction.atomic():
+                    if proforma_id:
+                        # Factura de una proforma: se bloquea ANTES de reservar el número (orden fijo proforma → secuencia).
+                        from core.proformas import servicios as proformas
+                        if 'change_proforma' not in proformas.permisos_de(request):
+                            raise ValueError(proformas.MENSAJES['facturar_sin_permiso'])
+                        proforma = proformas.bloquear_para_facturar(proforma_id, request.POST['receipt'])
                     sale = Sale()
                     sale.date_joined = timezone.localdate()   # la fecha de emisión es la de hoy; no se elige
                     sale.company = request.company
@@ -180,6 +203,9 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     if sale.create_electronic_invoice:
                         # Firma y guarda el XML con su fecha y clave. Si falla, la venta se deshace: nada salió al SRI.
                         emision.preparar(sale)
+                    if proforma is not None:
+                        # UPDATE condicional: si otra conversión ganó, ErrorProforma deshace toda esta venta.
+                        proformas.marcar_facturada(proforma, sale, request.user, request)
                 if sale.create_electronic_invoice:
                     # Ya confirmada la venta: un fallo desde aquí nunca la borra ni libera su número.
                     data = sale.generate_electronic_invoice()
@@ -263,6 +289,12 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
         context['action'] = 'add'
         context['frmUser'] = ClientUserForm()
         context['final_consumer'] = json.dumps(self.get_first_final_consumer())
+        precarga = getattr(self, 'precarga', None)
+        if precarga:
+            context['title'] = f"Facturar la proforma {precarga['proforma']['numero']}"
+            context['proforma_precarga'] = precarga
+            context['proforma_facturar'] = precarga['proforma']
+            context['proforma_avisos'] = precarga['avisos']
         return context
 
 

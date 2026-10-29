@@ -1,0 +1,57 @@
+{% extends 'list.html' %}
+{% load static %}
+{% block assets_list %}
+    <script src="{% static 'proformas/js/acciones.js' %}"></script>
+    <script src="{% static 'proformas/js/list.js' %}"></script>
+{% endblock %}
+
+{% block content_list_before %}
+    {% if solo_consulta and mensaje_plan %}<div class="alert alert-warning" role="status">{{ mensaje_plan }}</div>{% endif %}
+    <p class="text-muted small">Las proformas son cotizaciones sin validez tributaria: no gastan numeración, cupo ni stock y no se envían al SRI.</p>
+    <form id="fp-filtros" class="form-row align-items-end mb-3" autocomplete="off" role="search" aria-label="Filtros de proformas">
+        <div class="form-group col-sm-6 col-lg-2">
+            <label for="fp-estado">Estado</label>
+            <select id="fp-estado" name="estado" class="form-control">
+                <option value="">Todos</option>
+                {% for id, nombre in estados %}<option value="{{ id }}">{{ nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="form-group col-sm-6 col-lg-2">
+            <label for="fp-desde">Desde</label>
+            <input type="date" id="fp-desde" name="desde" class="form-control">
+        </div>
+        <div class="form-group col-sm-6 col-lg-2">
+            <label for="fp-hasta">Hasta</label>
+            <input type="date" id="fp-hasta" name="hasta" class="form-control">
+        </div>
+        <div class="form-group col-sm-6 col-lg-3">
+            <label for="fp-q">Número, cliente o identificación</label>
+            <input type="search" id="fp-q" name="q" class="form-control" maxlength="100">
+        </div>
+        <div class="form-group col-lg-3">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search" aria-hidden="true"></i> Buscar</button>
+            <button type="button" class="btn btn-outline-secondary" id="fp-ver-todas">Ver todas</button>
+        </div>
+    </form>
+{% endblock %}
+
+{% block columns %}
+    <th scope="col">Número</th>
+    <th scope="col">Cliente</th>
+    <th scope="col">Identificación</th>
+    <th scope="col">Vendedor</th>
+    <th scope="col">Fecha</th>
+    <th scope="col">Válida hasta</th>
+    <th scope="col">Total USD</th>
+    <th scope="col">Estado</th>
+    <th scope="col">Factura</th>
+    <th scope="col">Acciones</th>
+{% endblock %}
+
+{% block box_footer_after %}
+    {% include 'proformas/_modales.html' %}
+{% endblock %}
+
+{% block javascript_list %}
+    {{ config|json_script:"fp-proforma-config" }}
+{% endblock %}
