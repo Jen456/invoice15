@@ -1,9 +1,9 @@
 """Compras y cuentas por pagar simultáneas en PostgreSQL (hilos con conexiones propias): un solo registro por comprobante,
-stock exacto con F(), pagos que no superan el saldo y borrado o ajuste de la cuenta por pagar que no se cruzan con un pago.
+stock exacto con F(), pagos que no superan el saldo, borrado o ajuste de la cuenta por pagar que no se cruzan con un pago y
+una sola compra (con el stock movido una vez) cuando varias peticiones la crean desde el mismo documento importado.
 
 Usa transacciones reales (transaction=True), que al terminar vacían la base: por eso se llama test_zzz_* (corre después de
-test_zz_mejora_*, que usa los planes de las migraciones) y crea todos sus datos. Los casos de «crear la compra desde el
-mismo documento importado» llegan con la pantalla de importación."""
+test_zz_mejora_*, que usa los planes de las migraciones) y crea todos sus datos."""
 import threading
 from datetime import timedelta
 from decimal import Decimal
@@ -13,11 +13,13 @@ import pytest
 from django.db import connection, connections
 from django.utils import timezone
 
+from core.importacion import compras as desde_xml, servicios as importacion
+from core.importacion.models import DocumentoImportado
 from core.pos import compras, cuentas_por_pagar as cxp
 from core.pos.models import DebtsPay, PaymentsDebtsPay, Product, Purchase
 from core.suscripciones.models import Plan
 from core.tenancy.context import company_context
-from tests import ayuda_compras as ayuda, helpers
+from tests import ayuda_compras as ayuda, fabricas_recibidos as recibidos, helpers
 
 pytestmark = [
     pytest.mark.skipif(connection.vendor != 'postgresql', reason='Bloqueos reales solo en PostgreSQL'),
@@ -179,3 +181,35 @@ def test_ajustar_la_cuenta_y_pagar_a_la_vez(ronda):
         actual = DebtsPay.objects.get(pk=deuda.pk)
         pagado = actual.pagado()
     assert actual.debt >= pagado and actual.saldo == actual.debt - pagado
+
+
+def test_cuatro_peticiones_crean_la_compra_desde_el_mismo_documento(settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    Plan.objects.get_or_create(code='prueba-compras', defaults={'name': 'Plan de prueba', 'price_cents': 1000})
+    empresa = helpers.crear_empresa('COMPRAS DESDE XML CONC', plan='prueba-compras', ruc=recibidos.RUC_RECEPTOR)
+    usuario = helpers.crear_usuario(f'dueno.xml.conc.{next(_n)}')
+    ayuda.crear_proveedor(empresa, tipo='04', ruc=recibidos.RUC_EMISOR)
+    producto = ayuda.crear_producto(empresa, stock=0)
+    xml = recibidos.autorizacion(recibidos.factura(lineas=(recibidos.linea('P0', 'Caja', cantidad='3', precio='10.00'),),
+                                                   plazo=30))
+    with company_context(empresa):
+        importacion.reglas_de(empresa)
+        documento = importacion.crear_lote(empresa, usuario, [('f.xml', xml.encode())]).documentos.get()
+    datos = {'cod_sustento': '06', 'parte_relacionada': 'no', 'confirmar_sin_verificar': True,
+             'lineas': [{'indice': 0, 'modo': 'producto', 'product': producto.pk}]}
+    resultados = []
+
+    def crear(_):
+        with company_context(empresa):
+            try:
+                desde_xml.crear_compra_desde_documento(documento, usuario, datos)
+                resultados.append('ok')
+            except importacion.ErrorImportacion as e:
+                resultados.append(str(e))
+
+    assert en_hilos(4, crear) == []
+    assert resultados.count('ok') == 1 and sum(r.startswith('Ya se creó la compra #') for r in resultados) == 3, resultados
+    with company_context(empresa):
+        compra = Purchase.objects.get()
+        assert DebtsPay.objects.get().purchase_id == compra.pk and Product.objects.get(pk=producto.pk).stock == 3
+        assert DocumentoImportado.objects.get(pk=documento.pk).compra_id == compra.pk
