@@ -454,6 +454,27 @@ class TestEmitir:
         assert actual.cliente_id == comprador.pk and actual.estado == 'facturada'
         assert actual.cliente_nombre == 'PROSPECTO FICTICIO S.A.' and actual.cliente_identificacion == '0990000001001'
 
+    def test_prospecto_facturado_a_consumidor_final_sigue_como_prospecto(self, web, empresa, dueno, productos, sri):  # noqa: F811
+        """Facturar a consumidor final no liga el prospecto a ese cliente: duplicar para volver a cotizar (decisiones 5
+        y 11) conserva los datos del prospecto y no sale a nombre de «CONSUMIDOR FINAL»."""
+        lineas = [{'product': productos['0'].pk, 'cant': 1, 'price': '8.00', 'dscto': 0, 'descripcion': ''}]   # USD 8
+        p = crear_proforma(empresa, dueno, datos_ejemplo(productos, lineas=lineas), estado='aceptada')
+        with company_context(empresa):
+            final = consumidor_final(empresa)
+        sri.respuestas_autorizacion = ['AUTORIZADO']
+        r = emitir(web, p, final)
+        assert r.get('resp') is True, r
+        venta = leer(empresa, lambda: Sale.objects.get())
+        assert venta.client_id == final.pk
+        actual = refrescar(empresa, p)
+        assert (actual.estado, actual.venta_id, actual.cliente_id) == ('facturada', venta.pk, None)
+        prospecto = {'id': None, 'nombre': 'PROSPECTO FICTICIO S.A.', 'identificacion': '0990000001001',
+                     'correo': 'compras@example.test', 'telefono': '04 200-0000', 'direccion': 'Av. Ficticia 1',
+                     'es_prospecto': True}
+        assert fila_json(web, p)['cliente'] == prospecto
+        copia = web.post(LISTA, {'action': 'duplicar', 'id': p.pk}).json()['proforma']
+        assert copia['cliente'] == prospecto and copia['estado']['id'] == 'borrador'
+
     def test_proforma_de_otra_empresa_en_el_post(self, web, empresa, empresa_b, comprador, productos, sri):  # noqa: F811
         ajena = crear_proforma(empresa_b, helpers.crear_usuario('dueno.b', empresa_b, ROLE_OWNER), estado='aceptada')
         assert emitir(web, ajena, comprador, manual(productos)) == {'error': M['no_existe']}

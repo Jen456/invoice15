@@ -845,10 +845,13 @@ def marcar_facturada(proforma, venta, usuario, request=None):
     """Vincula la venta y deja la proforma «facturada» con un UPDATE condicional (sin venta y en un estado facturable),
     que no depende del bloqueo (SQLite no bloquea filas) ni de que el objeto en memoria esté al día. Si no actualiza
     exactamente 1 fila lanza ErrorProforma: dentro de la transacción de la venta, eso la deshace entera."""
+    from core.pos.notas_credito import es_consumidor_final
     ahora, hoy = timezone.now(), _hoy()
     cambios = dict(venta=venta, estado='facturada', facturada_en=ahora, facturada_por=usuario, actualizada_en=ahora)
-    if proforma.cliente_id is None:
-        cambios['cliente_id'] = venta.client_id   # el prospecto queda ligado al cliente; las copias no cambian
+    if proforma.cliente_id is None and not es_consumidor_final(venta.client):
+        # El prospecto queda ligado al cliente de la factura (las copias cliente_* no cambian). Facturado a consumidor
+        # final sigue como prospecto: un duplicado para volver a cotizar conserva sus datos (misma regla que la venta).
+        cambios['cliente_id'] = venta.client_id
     filas = (Proforma.objects.filter(pk=proforma.pk, venta__isnull=True)
              .filter(Q(estado='aceptada') | Q(estado='enviada', valida_hasta__gte=hoy))
              .update(**cambios))
