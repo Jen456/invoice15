@@ -359,8 +359,9 @@ class TestPantallaCompletar:
         respuesta = client.get(self.url(compra))
         form = respuesta.context['form']
         assert 'base_gravada' not in form.fields and 'ajustar_cxp' not in form.fields
-        assert respuesta.context['bloqueados'] == list(compras.CAMPOS_NUMERACION)
-        assert form.fields['secuencial'].disabled and not form.fields['cod_sustento'].disabled
+        assert respuesta.context['bloqueados'] == ['tipo_comprobante', *compras.CAMPOS_NUMERACION]
+        assert form.fields['secuencial'].disabled and form.fields['tipo_comprobante'].disabled
+        assert not form.fields['cod_sustento'].disabled
         assert 'vienen del XML autorizado' in respuesta.content.decode()
         datos = {**cabecera(secuencial='999', cod_sustento='06'), 'action': 'completar'}
         respuesta = client.post(self.url(compra), datos)

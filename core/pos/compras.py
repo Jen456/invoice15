@@ -252,6 +252,9 @@ def calcular_linea(linea, fecha_emision, tipo_comprobante=''):
         if codigo == '5' and fecha_emision < cat.INICIO_IVA_15:
             advertencias.append(('tarifa_5_anterior', 'La tarifa del 5 % se aplica desde el 01/04/2024: revisa la tarifa de '
                                                       'este comprobante, que es anterior.'))
+    elif codigo == '2':
+        advertencias.append(('tarifa_12_sin_fecha', 'La tarifa del 12 % solo rige para comprobantes anteriores al 01/04/2024: '
+                                                    'se revisará al completar la fecha de emisión.'))
     if tipo_comprobante in cat.TIPOS_SIN_IVA_DISCRIMINADO and codigo not in cat.CODIGOS_IVA_NOTA_VENTA:
         raise ErrorCompra('Una nota de venta no discrimina IVA: registra sus valores con tarifa 0 %.')
     subtotal = redondear(precio * cant)
@@ -831,14 +834,15 @@ def bloqueos_de(compra):
     no cambia (ignorar=False: cambiarla es un error) y los datos vacíos sí se pueden llenar."""
     from core.comprobantes import liquidaciones, retenciones
     if compra.origen == 'importacion':
-        return list(CAMPOS_NUMERACION), 'La numeración, la autorización y la fecha de emisión vienen del XML autorizado.', True
+        return (['tipo_comprobante', *CAMPOS_NUMERACION],
+                'El tipo de comprobante, la numeración, la autorización y la fecha de emisión vienen del XML autorizado.', True)
     retencion = retenciones.retencion_vigente(compra)
     if retencion is not None:
-        llenos = [c for c in CAMPOS_NUMERACION if getattr(compra, c)]
+        llenos = [c for c in ('tipo_comprobante', *CAMPOS_NUMERACION) if getattr(compra, c)]
         return llenos, f'La retención {retencion.voucher_number_full} usa este número: anúlala antes de cambiarlo.', False
     liquidacion = liquidaciones.liquidacion_vigente(compra)
-    if liquidacion is not None:
-        llenos = [c for c in CAMPOS_NUMERACION if getattr(compra, c)]
+    if liquidacion is not None:   # el tipo lo da la liquidación (03 al autorizarse), aunque todavía esté vacío
+        llenos = ['tipo_comprobante'] + [c for c in CAMPOS_NUMERACION if getattr(compra, c)]
         return llenos, f'La liquidación {liquidacion.voucher_number_full} usa este número: anúlala antes de cambiarlo.', False
     return [], '', False
 
@@ -851,6 +855,38 @@ class _PlanCompletar:
     confirmaciones: list
     pendientes: list
     ajustar: object = None       # DebtsPay a ajustar al total con IVA
+
+
+def _reglas_del_tipo(compra, n, importes, deudas):
+    """Reglas de crear_compra que dependen de las líneas y del pago, aplicadas al tipo y a la fecha de emisión que resultan
+    de completar_datos (que no cambia líneas, stock ni cuenta por pagar). Devuelve advertencias."""
+    tipo, fecha = n['tipo_comprobante'], n['fecha_emision']
+    detalles = list(compra.purchasedetail_set.order_by('pk').values_list('product_id', 'codigo_porcentaje', 'total_dscto'))
+    if tipo in cat.TIPOS_CON_DOC_MODIFICADO and any(producto for producto, _, _ in detalles):
+        raise ErrorCompra('Las notas de crédito y débito del proveedor se registran con líneas de gasto (sin producto): esta '
+                          'compra tiene productos y movió el stock. Elimínala y regístrala de nuevo como nota.')
+    if tipo == '04' and (compra.payment_type == 'credito' or deudas):
+        raise ErrorCompra('Una nota de crédito del proveedor no tiene cuenta por pagar propia y esta compra se registró a '
+                          'crédito: elimínala y regístrala de nuevo como nota de crédito.')
+    if tipo in cat.TIPOS_SIN_IVA_DISCRIMINADO and (any(c and c not in cat.CODIGOS_IVA_NOTA_VENTA for _, c, _ in detalles)
+                                                   or (importes.get('total_iva') or CERO) != 0):
+        raise ErrorCompra('Una nota de venta no discrimina IVA y esta compra tiene IVA: elimínala y regístrala de nuevo con '
+                          'tarifa 0 %.')
+    if tipo == '03' and compra.version_datos == 2:
+        _validar_lineas_liquidacion([(c, d) for _, c, d in detalles], importes)
+    advertencias = []
+    codigos = {c for _, c, _ in detalles if c}
+    if fecha is not None:
+        if '4' in codigos and fecha < cat.INICIO_IVA_15:
+            raise ErrorCompra('Las líneas de esta compra tienen IVA del 15 %, que rige desde el 01/04/2024: la fecha de emisión '
+                              'es anterior. Revisa la fecha.')
+        if '2' in codigos and fecha >= cat.INICIO_IVA_15:
+            raise ErrorCompra('Las líneas de esta compra tienen IVA del 12 %, que no rige para comprobantes desde el 01/04/2024: '
+                              'revisa la fecha de emisión.')
+        if '5' in codigos and fecha < cat.INICIO_IVA_15:
+            advertencias.append(('tarifa_5_anterior', 'La tarifa del 5 % se aplica desde el 01/04/2024: revisa la tarifa de '
+                                                      'este comprobante, que es anterior.'))
+    return advertencias
 
 
 def _plan_completar(compra, datos, deudas):
@@ -897,6 +933,7 @@ def _plan_completar(compra, datos, deudas):
             if abs(importes['total_iva'] - esperado) > TOLERANCIA_IVA:
                 confirmaciones.append('confirmar_iva')
         nuevos.update(importes)
+    advertencias.extend(a for a in _reglas_del_tipo(compra, n, importes, deudas) if a not in advertencias)
     nuevos['fuera_plazo_ats'] = 'confirmar_plazo_ats' in confirmaciones
     if importes['total'] is not None and importes['total'] > cat.UMBRAL_BANCARIZACION and nuevos['forma_pago'] == '01':
         advertencias.append(('bancarizacion', 'Un pago de más de USD 1.000 sin el sistema financiero no da crédito tributario '

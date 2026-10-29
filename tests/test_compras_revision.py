@@ -153,3 +153,90 @@ class TestLiquidacionQueCompleta:
         with company_context(empresa):
             lineas = liquidaciones.lineas_de_compra(recargar(empresa, compra))
         assert '8.00 %' in lineas[0]['aviso'] and lineas[1]['aviso'] == ''
+
+
+# ------------------------------------------------------------------ O1-F1 / O1-T1 y O1-F2: completar datos y líneas guardadas
+
+class TestCompletarRespetaLineasYPago:
+
+    def test_factura_a_credito_con_producto_no_pasa_a_nota_de_credito(self, empresa, admin, proveedor):
+        producto = ayuda.crear_producto(empresa, stock=0)
+        factura = crear(empresa, admin, a_credito(proveedor), [ayuda.linea_producto(producto, cant=2, price='50.00')])
+        otra = crear(empresa, admin, a_credito(proveedor), [ayuda.linea_gasto(price='100.00')])
+        error = error_al_completar(empresa, admin, factura, nota_sobre(otra, forma_pago=''))
+        assert 'líneas de gasto' in str(error)
+        assert recargar(empresa, factura).tipo_comprobante == '01'
+        assert ayuda.en(empresa, Product.objects.get, pk=producto.pk).stock == 2
+        assert saldos(empresa, otra) == [(Decimal('115.00'), Decimal('115.00'))]
+
+    def test_factura_a_credito_sin_producto_no_pasa_a_nota_de_credito(self, empresa, admin, proveedor):
+        factura = crear(empresa, admin, a_credito(proveedor), [ayuda.linea_gasto(price='30.00')])
+        otra = crear(empresa, admin, a_credito(proveedor), [ayuda.linea_gasto(price='100.00')])
+        assert 'cuenta por pagar propia' in str(error_al_completar(empresa, admin, factura, nota_sobre(otra, forma_pago='')))
+        assert saldos(empresa, otra) == [(Decimal('115.00'), Decimal('115.00'))]
+
+    def test_factura_con_producto_no_pasa_a_nota_de_debito(self, empresa, admin, proveedor):
+        producto = ayuda.crear_producto(empresa, stock=0)
+        factura = crear(empresa, admin, ayuda.datos_compra(proveedor), [ayuda.linea_producto(producto)])
+        otra = crear(empresa, admin, ayuda.datos_compra(proveedor), [ayuda.linea_gasto()])
+        assert 'líneas de gasto' in str(error_al_completar(empresa, admin, factura, nota_sobre(otra, tipo_comprobante='05')))
+
+    def test_factura_con_iva_no_pasa_a_nota_de_venta(self, empresa, admin, proveedor):
+        factura = crear(empresa, admin, ayuda.datos_compra(proveedor), [ayuda.linea_gasto(price='100.00')])
+        error = error_al_completar(empresa, admin, factura, {'tipo_comprobante': '02', 'cod_sustento': '02'})
+        assert 'no discrimina IVA' in str(error)
+        assert recargar(empresa, factura).tipo_comprobante == '01'
+        # con líneas al 0 % sí se corrige el tipo
+        sin_iva = crear(empresa, admin, ayuda.datos_compra(proveedor), [ayuda.linea_gasto(price='100.00', codigo='0')])
+        completar(empresa, admin, sin_iva, {'tipo_comprobante': '02', 'cod_sustento': '02'})
+        assert recargar(empresa, sin_iva).tipo_comprobante == '02'
+
+    def test_compra_anterior_con_iva_no_pasa_a_nota_de_venta(self, empresa, admin, proveedor):
+        antigua = ayuda.compra_antigua(empresa, proveedor, '100.00')
+        importes = {'base_0': '0', 'base_gravada': '100.00', 'base_5': '0', 'base_no_objeto': '0', 'base_exenta': '0',
+                    'total_descuento': '0', 'total_iva': '15.00', 'total_ice': '0', 'propina': '0'}
+        assert 'no discrimina IVA' in str(error_al_completar(empresa, admin, antigua, {'tipo_comprobante': '02', **importes}))
+
+    def test_tipo_de_la_compra_importada_no_cambia(self, empresa, admin, proveedor):
+        compra = crear(empresa, admin, ayuda.datos_compra(proveedor, cod_sustento='02'), [ayuda.linea_gasto(price='10.00', codigo='0')],
+                       origen='importacion')
+        assert 'tipo_comprobante' in ayuda.en(empresa, compras.bloqueos_de, recargar(empresa, compra))[0]
+        completar(empresa, admin, compra, {'tipo_comprobante': '02'})
+        assert recargar(empresa, compra).tipo_comprobante == '01'
+
+    def test_tipo_con_retencion_vigente_no_cambia(self, empresa, admin, proveedor):
+        factura = crear(empresa, admin, ayuda.datos_compra(proveedor), [ayuda.linea_gasto(price='10.00', codigo='0')])
+        with company_context(empresa):
+            Retencion.objects.create(
+                company=empresa, receipt=receipt(empresa, '07'), voucher_number='000000001', voucher_number_full='001-001-000000001',
+                employee=admin, environment_type=2, purchase=factura, provider=proveedor, tipo_identificacion='04',
+                identificacion=RUC, razon_social='X', num_doc_sustento='001002000000101', fecha_doc_sustento=hoy(),
+                aut_doc_sustento='1234567890', status='authorized')
+        error = error_al_completar(empresa, admin, factura, {'tipo_comprobante': '02', 'cod_sustento': '02'})
+        assert error.codigo == 'bloqueado' and recargar(empresa, factura).tipo_comprobante == '01'
+
+    def test_tipo_con_liquidacion_vigente_no_cambia(self, empresa, admin, proveedor):
+        despues = crear(empresa, admin, {'provider': proveedor.pk, 'modo_comprobante': 'despues', 'date_joined': hoy().isoformat(),
+                                         'payment_type': 'efectivo'}, [ayuda.linea_gasto(price='50.00', codigo='0')])
+        liquidacion_autorizada(empresa, admin, despues, total_sin_impuestos=Decimal('50.00'), importe_total=Decimal('50.00'))
+        error = error_al_completar(empresa, admin, despues, {'tipo_comprobante': '01', 'cod_sustento': '06'})
+        assert error.codigo == 'bloqueado' and recargar(empresa, despues).tipo_comprobante == ''
+
+    def test_fecha_anterior_al_15_con_lineas_al_15_se_rechaza(self, empresa, admin, proveedor):
+        compra = crear(empresa, admin, ayuda.datos_compra(proveedor), [ayuda.linea_gasto(price='100.00')])
+        error = error_al_completar(empresa, admin, compra, {'fecha_emision': '2024-03-15', 'confirmar_plazo_ats': '1'})
+        assert '15 %' in str(error) and recargar(empresa, compra).fecha_emision != date(2024, 3, 15)
+
+    def test_despues_con_12_avisa_y_no_se_completa_con_fecha_de_2026(self, empresa, admin, proveedor):
+        datos = {'provider': proveedor.pk, 'modo_comprobante': 'despues', 'date_joined': hoy().isoformat(), 'payment_type': 'efectivo'}
+        compra = crear(empresa, admin, datos, [ayuda.linea_gasto(price='100.00', codigo='2')])
+        assert 'tarifa_12_sin_fecha' in [c for c, _ in compra.advertencias]
+        cabecera = {k: v for k, v in ayuda.datos_compra(proveedor).items()
+                    if k not in ('provider', 'modo_comprobante', 'date_joined', 'payment_type', 'end_credit')}
+        assert '12 %' in str(error_al_completar(empresa, admin, compra, cabecera))
+        assert recargar(empresa, compra).datos_incompletos
+
+    def test_despues_con_descuento_pasa_a_03_solo_sin_el(self, empresa, admin, productora):
+        datos = {'provider': productora.pk, 'modo_comprobante': 'despues', 'date_joined': hoy().isoformat(), 'payment_type': 'efectivo'}
+        compra = crear(empresa, admin, datos, [ayuda.linea_gasto(price='100.00', descuento='10.00', codigo='0')])
+        assert 'no admite descuentos' in str(error_al_completar(empresa, admin, compra, {'tipo_comprobante': '03'}))
