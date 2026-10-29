@@ -342,3 +342,33 @@ def test_admite_retencion_segun_el_tipo(empresa, admin, proveedor):
     """O1-F12: la regla TIPOS_SIN_RETENCION tiene una función de servidor para RetencionCrearView."""
     assert compras.admite_retencion(Purchase(tipo_comprobante='01')) and compras.admite_retencion(Purchase(tipo_comprobante=''))
     assert not compras.admite_retencion(Purchase(tipo_comprobante='04'))
+
+
+# ------------------------------------------------------------------ O1-T5: id de otra empresa = 404
+
+def test_eliminar_compra_o_cuenta_de_otra_empresa_responde_404(client, empresa, admin, empresa_b):
+    dueno_b = helpers.crear_usuario('propietario.b.revision', empresa_b, ROLE_OWNER)
+    ajena = crear(empresa_b, dueno_b, a_credito(ayuda.crear_proveedor(empresa_b, tipo='04')), [ayuda.linea_gasto()])
+    deuda = ayuda.en(empresa_b, DebtsPay.objects.get, purchase=ajena)
+    helpers.iniciar_sesion(client, admin, empresa=empresa)
+    respuesta = client.post(f'/pos/purchase/delete/{ajena.pk}/')
+    assert (respuesta.status_code, json.loads(respuesta.content)) == (404, {'error': 'La compra no existe.'})
+    respuesta = client.post(f'/pos/debts/pay/delete/{deuda.pk}/')
+    assert (respuesta.status_code, json.loads(respuesta.content)) == (404, {'error': 'La cuenta por pagar no existe.'})
+    assert ayuda.en(empresa_b, Purchase.objects.filter(pk=ajena.pk).exists)
+    assert ayuda.en(empresa_b, DebtsPay.objects.filter(pk=deuda.pk).exists)
+
+
+# ------------------------------------------------------------------ O1-T6: el informe CSV no ejecuta fórmulas
+
+def test_informe_csv_neutraliza_formulas(tmp_path):
+    ruta = tmp_path / 'informe.csv'
+    informe = _ensayo.Informe(str(ruta), ['nombre', 'diferencia'])
+    for nombre in ('=HYPERLINK("http://ejemplo.invalid","x")', '+SUMA(1)', '@A1', '-2+3', 'PROVEEDOR S.A.'):
+        informe.agregar({'nombre': nombre, 'diferencia': '-0.01'})
+    informe.cerrar()
+    filas = list(csv.DictReader(ruta.open(encoding='utf-8')))
+    assert [f['nombre'] for f in filas] == ["'=HYPERLINK(\"http://ejemplo.invalid\",\"x\")", "'+SUMA(1)", "'@A1", "'-2+3",
+                                            'PROVEEDOR S.A.']
+    assert {f['diferencia'] for f in filas} == {'-0.01'}
+    assert informe.filas[0]['nombre'].startswith('=')        # en pantalla se muestra tal cual

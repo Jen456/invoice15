@@ -4,7 +4,7 @@ auditados. Las reglas están en core.pos.cuentas_por_pagar."""
 import json
 
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, FormView
 
@@ -134,7 +134,11 @@ class DebtsPayDeleteView(GroupPermissionMixin, DeleteView):
     def post(self, request, *args, **kwargs):
         data = {}
         try:
-            cuentas_por_pagar.eliminar_deuda(request, self.get_object().pk)
+            deuda = self.get_object()
+        except Http404:                      # id de otra empresa o inexistente (§6: un id ajeno = 404)
+            return respuesta({'error': 'La cuenta por pagar no existe.'}, status=404)
+        try:
+            cuentas_por_pagar.eliminar_deuda(request, deuda.pk)
         except cuentas_por_pagar.SinPermiso as e:
             return respuesta({'error': str(e)}, status=403)
         except Exception as e:

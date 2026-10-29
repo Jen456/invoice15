@@ -7,7 +7,7 @@ import json
 
 from django.contrib import messages
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -310,7 +310,11 @@ class PurchaseDeleteView(GroupPermissionMixin, DeleteView):
     def post(self, request, *args, **kwargs):
         data = {}
         try:
-            compras.eliminar_compra(self.get_object(), request.user, request=request)
+            compra = self.get_object()
+        except Http404:                      # id de otra empresa o inexistente (§6: un id ajeno = 404)
+            return respuesta({'error': 'La compra no existe.'}, status=404)
+        try:
+            compras.eliminar_compra(compra, request.user, request=request)
         except Exception as e:
             data['error'] = str(e)
         return respuesta(data)

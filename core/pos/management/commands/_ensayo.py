@@ -5,10 +5,21 @@ Ensayo por defecto: sin --aplicar no se escribe nada en la base. --aplicar exige
 auditoría de cada cambio. No se ejecutan contra datos reales en esta fase.
 """
 import csv
+import re
 
 from django.core.management.base import CommandError
 
 MINIMO_DECISION = 10
+INICIO_DE_FORMULA = ('=', '+', '-', '@', '\t', '\r')
+NUMERO = re.compile(r'-?\d+(\.\d+)?')
+
+
+def celda(valor):
+    """Texto seguro para una hoja de cálculo: una celda que empieza como fórmula (=, +, -, @, tabulador o retorno) lleva
+    un apóstrofo delante; los números con signo se dejan tal cual. Las razones sociales pueden venir del XML de un tercero."""
+    if isinstance(valor, str) and valor.startswith(INICIO_DE_FORMULA) and not NUMERO.fullmatch(valor):
+        return "'" + valor
+    return valor
 
 
 def agregar_opciones(parser):
@@ -58,7 +69,7 @@ class Informe:
         fila = {c: fila.get(c, '') for c in self.columnas}
         self.filas.append(fila)
         if self._escritor:
-            self._escritor.writerow(fila)
+            self._escritor.writerow({c: celda(v) for c, v in fila.items()})
             self._archivo.flush()
 
     def cerrar(self):
