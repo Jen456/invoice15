@@ -330,13 +330,14 @@ def texto_excedente(tipo, numero, valor, hecho=True):
     return f'{verbo} {valor} de la {nombre} {numero}, que antes superaba el saldo de la cuenta por cobrar.'
 
 
-def prever_nota_credito(nota):
-    """(cxc_ajuste, cxc, valor a abonar, excedente) que dejaría la nota de crédito, sin escribir nada."""
+def prever_nota_credito(nota, disponible=None):
+    """(cxc_ajuste, cxc, valor a abonar, excedente) que dejaría la nota de crédito, sin escribir nada. `disponible`
+    reemplaza el saldo actual (el ensayo de regularizar_cxc_historico descuenta las NC anteriores de la misma CxC)."""
     cuenta = cxc_de_factura(nota.sale_id)
     total = redondear(nota.total)
     if cuenta is None:
         return 'sin_cxc', None, Decimal('0.00'), total
-    actual = saldo(cuenta)
+    actual = saldo(cuenta) if disponible is None else redondear(disponible)
     if tiene_anulacion(cuenta) or actual <= 0:
         return 'sin_saldo', cuenta, Decimal('0.00'), total
     valor = min(total, actual)

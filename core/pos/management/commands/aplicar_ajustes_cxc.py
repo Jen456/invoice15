@@ -3,7 +3,8 @@ comprobante_autorizado falló o la petición murió tras autorizar). Nunca toca 
 regularizar_cxc_historico con decisión de la propietaria).
 
   manage.py aplicar_ajustes_cxc [--empresa RUC]
-      ENSAYO (por defecto): lista cada documento pendiente y el efecto previsto; no cambia nada.
+      ENSAYO (por defecto): lista cada documento pendiente y el efecto previsto; no cambia nada. Varias NC de la misma CxC
+      se prevén en el orden en que se aplicarán, descontando lo que abonan las anteriores.
   manage.py aplicar_ajustes_cxc [--empresa RUC] --aplicar
       Aplica la regla que ya debió aplicarse al autorizar (idempotente): por eso no pide --decision. El abono o la cuenta
       por cobrar creados son el registro; no se audita por documento.
@@ -32,9 +33,14 @@ class Command(BaseCommand):
         for company in empresas:
             with company_context(company):
                 pendientes = cxc.pendientes(company)
+                disponibles = {}   # ensayo: cxc_id → saldo tras las NC anteriores de la misma cuenta
                 for nota in pendientes['notas_credito']:
                     resumen['pendientes'] += 1
-                    efecto, _, valor, excedente = cxc.prever_nota_credito(nota)
+                    cuenta = None if aplicar else cxc.cxc_de_factura(nota.sale_id)
+                    antes = disponibles.setdefault(cuenta.pk, cxc.saldo(cuenta)) if cuenta is not None else None
+                    efecto, _, valor, excedente = cxc.prever_nota_credito(nota, antes)
+                    if cuenta is not None:
+                        disponibles[cuenta.pk] = cxc.redondear(antes - valor)
                     texto = f'{company.ruc} NC {nota.voucher_number_full}: {efecto} (abono {valor:.2f}, excedente {excedente:.2f})'
                     if aplicar:
                         texto += f' → {cxc.aplicar_nota_credito(nota.pk)}'

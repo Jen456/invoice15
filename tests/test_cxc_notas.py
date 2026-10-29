@@ -231,3 +231,100 @@ class TestRegularizarHistorico:
         with company_context(empresa):
             nota = NotaDebito.objects.get(pk=nota.pk)
             assert nota.cxc_ajuste == 'aplicada' and nota.cuenta_por_cobrar.debt == Decimal('5.00')
+
+    @staticmethod
+    def historicas(empresa, venta, cuantas):
+        """NC históricas de 1 unidad (11,50) sobre la venta: autorizadas, 'no_aplica' y sin abono."""
+        from core.pos import notas_credito
+        notas = []
+        with company_context(empresa):
+            for _ in range(cuantas):
+                with transaction.atomic():
+                    nota = notas_credito.crear(empresa, venta.pk, una(venta), 'Devolución histórica de prueba')
+                CreditNote.objects.filter(pk=nota.pk).update(status='authorized', cxc_ajuste='no_aplica', emission_date=HOY)
+                notas.append(CreditNote.objects.get(pk=nota.pk))
+        return notas
+
+    def test_varias_nc_de_la_misma_cxc_el_ensayo_coincide_con_lo_aplicado(self, empresa, dueno, credito, tmp_path):  # noqa: F811
+        """Saldo 13,00 y dos NC históricas de 11,50: la segunda solo abona 1,50 (revisión O2-F2)."""
+        with company_context(empresa):
+            cxc.registrar_cobro(empresa, dueno, cxc_de(credito).pk, HOY, '10.00', 'efectivo', descripcion='abono')
+        primera, segunda = self.historicas(empresa, credito, 2)
+        informe = tmp_path / 'informe.csv'
+        call_command('regularizar_cxc_historico', '--empresa', empresa.ruc, '--tipo', 'nc', '--informe', str(informe))
+        with open(informe, encoding='utf-8') as archivo:
+            filas = list(csv.DictReader(archivo))
+        assert [(f['numero'], f['saldo_actual'], f['saldo_antes_de_aplicar'], f['efecto'], f['valor_a_abonar'], f['excedente'])
+                for f in filas] == [(primera.voucher_number_full, '13.00', '13.00', 'aplicada', '11.50', '0.00'),
+                                    (segunda.voucher_number_full, '13.00', '1.50', 'parcial', '1.50', '10.00')]
+        call_command('regularizar_cxc_historico', '--empresa', empresa.ruc, '--tipo', 'nc', '--aplicar', '--decision',
+                     'Decisión ficticia de prueba')
+        with company_context(empresa):
+            reales = [(n.cxc_ajuste, n.abono_cxc.valor) for n in CreditNote.objects.select_related('abono_cxc')
+                      .filter(pk__in=[primera.pk, segunda.pk]).order_by('pk')]
+        assert reales == [('aplicada', Decimal('11.50')), ('parcial', Decimal('1.50'))]
+        registro = AuditLog.objects.get(action='regularizacion_datos_origen')
+        assert [(d['numero'], d['efecto'], d['valor']) for d in registro.detail['documentos']] == [
+            (primera.voucher_number_full, 'aplicada', '11.50'), (segunda.voucher_number_full, 'parcial', '1.50')]
+        assert cxc_de(credito).saldo == Decimal('0.00')
+
+    def test_la_fila_para_revisar_no_descuenta_salvo_que_se_incluya(self, empresa, dueno, credito, capsys):  # noqa: F811
+        primera, segunda = self.historicas(empresa, credito, 2)
+        with company_context(empresa):
+            cxc.registrar_cobro(empresa, dueno, cxc_de(credito).pk, HOY, '2.00', 'efectivo',
+                                descripcion=f'Cruce con NC {primera.voucher_number_full}')
+        call_command('regularizar_cxc_historico', '--empresa', empresa.ruc, '--tipo', 'nc')
+        salida = capsys.readouterr().out
+        assert f'NC {primera.voucher_number_full} ({HOY.isoformat()}) factura {credito.voucher_number_full}: aplicada 11.50 · ' \
+               'REVISAR' in salida
+        assert f'NC {segunda.voucher_number_full} ({HOY.isoformat()}) factura {credito.voucher_number_full}: aplicada 11.50\n' \
+            in salida                                                        # la primera no se aplicará: saldo entero
+        call_command('regularizar_cxc_historico', '--empresa', empresa.ruc, '--tipo', 'nc', '--incluir-revisar')
+        assert f'NC {segunda.voucher_number_full} ({HOY.isoformat()}) factura {credito.voucher_number_full}: parcial 9.50\n' \
+            in capsys.readouterr().out
+        call_command('regularizar_cxc_historico', '--empresa', empresa.ruc, '--tipo', 'nc', '--aplicar', '--decision', 'Prueba')
+        assert 'aplicados 1' in capsys.readouterr().out
+        with company_context(empresa):
+            assert [n.cxc_ajuste for n in CreditNote.objects.filter(pk__in=[primera.pk, segunda.pk]).order_by('pk')] == [
+                'no_aplica', 'aplicada']
+
+    def test_nd_historica_sobre_factura_de_contado_queda_para_revisar(self, empresa, dueno, contado, sri, tmp_path,
+                                                                      capsys):  # noqa: F811
+        """La ND pudo cobrarse en su momento: el informe lo dice y --aplicar no la toca sin --incluir-revisar (O2-F4)."""
+        nota = nota_debito_autorizada(contado, '5.00', dueno, sri=sri, autorizar=False)
+        leer(empresa, lambda: NotaDebito.objects.filter(pk=nota.pk).update(cxc_ajuste='no_aplica', status='authorized'))
+        informe = tmp_path / 'nd.csv'
+        call_command('regularizar_cxc_historico', '--empresa', empresa.ruc, '--tipo', 'nd', '--informe', str(informe))
+        with open(informe, encoding='utf-8') as archivo:
+            [fila] = list(csv.DictReader(archivo))
+        assert (fila['cxc_id'], fila['revisar'], fila['motivo']) == (
+            '', 'sí', 'la factura fue de contado: la nota de débito pudo cobrarse en su momento')
+        call_command('regularizar_cxc_historico', '--empresa', empresa.ruc, '--tipo', 'nd', '--aplicar', '--decision', 'Prueba')
+        assert 'para revisar 1, aplicados 0' in capsys.readouterr().out
+        assert leer(empresa, lambda: (NotaDebito.objects.get(pk=nota.pk).cxc_ajuste, CtasCollect.objects.count())) == (
+            'no_aplica', 0)
+        call_command('regularizar_cxc_historico', '--empresa', empresa.ruc, '--tipo', 'nd', '--aplicar', '--decision', 'Prueba',
+                     '--incluir-revisar')
+        with company_context(empresa):
+            nota = NotaDebito.objects.get(pk=nota.pk)
+            assert nota.cxc_ajuste == 'aplicada' and nota.cuenta_por_cobrar.debt == Decimal('5.00')
+        registro = AuditLog.objects.filter(action='regularizacion_datos_origen').latest('id')
+        assert registro.detail['documentos'] == [{'tipo': 'nd', 'id': nota.pk, 'numero': nota.voucher_number_full,
+                                                  'efecto': 'aplicada', 'valor': '5.00'}]
+
+
+class TestAplicarAjustesEnsayo:
+
+    def test_dos_nc_pendientes_de_la_misma_cxc(self, empresa, dueno, credito, capsys):  # noqa: F811
+        """El ensayo descuenta la primera NC antes de prever la segunda, como hará --aplicar."""
+        primera, segunda = TestRegularizarHistorico.historicas(empresa, credito, 2)
+        leer(empresa, lambda: CreditNote.objects.filter(pk__in=[primera.pk, segunda.pk]).update(cxc_ajuste='pendiente'))
+        with company_context(empresa):
+            cxc.registrar_cobro(empresa, dueno, cxc_de(credito).pk, HOY, '10.00', 'efectivo')
+        call_command('aplicar_ajustes_cxc', '--empresa', empresa.ruc)
+        salida = capsys.readouterr().out
+        assert f'NC {primera.voucher_number_full}: aplicada (abono 11.50, excedente 0.00)' in salida
+        assert f'NC {segunda.voucher_number_full}: parcial (abono 1.50, excedente 10.00)' in salida
+        call_command('aplicar_ajustes_cxc', '--empresa', empresa.ruc, '--aplicar')
+        salida = capsys.readouterr().out
+        assert f'NC {segunda.voucher_number_full}: parcial (abono 1.50, excedente 10.00) → parcial' in salida
