@@ -379,6 +379,21 @@ class TestNotaCredito:
         resultado = marcar(empresa, dueno, 'nota-credito', nota, ajustar_stock=True)
         assert resultado['avisos'] == [f'El inventario de {producto.name} quedará en -1.'] and stock(empresa, producto) == -1
 
+    def test_sin_saldo_anulada_no_deja_saldo_a_favor(self, empresa, dueno, comprador, producto, sri):  # noqa: F811
+        """Revisión O2-F3: una NC 'sin_saldo' anulada en el SRI ya no informa excedente (el listado no pinta «Saldo a
+        favor del cliente» junto a «Anulada en el SRI»)."""
+        venta = factura_autorizada(empresa, comprador, dueno, producto, credito=True, fecha=EMITIDA)
+        with company_context(empresa):
+            cxc.registrar_cobro(empresa, dueno, cxc_de(venta).pk, HOY, '23.00', 'efectivo')
+            detalle = SaleDetail.objects.get(sale=venta).pk
+        nota = nota_credito_autorizada(venta, [(detalle, 1)], sri=sri)
+        assert nota.cxc_ajuste == 'sin_saldo' and leer(empresa, lambda: recargar(nota).toJSON()['excedente_cxc']) == '11.50'
+        marcar(empresa, dueno, 'nota-credito', nota)
+        with company_context(empresa):
+            datos = CreditNote.objects.get(pk=nota.pk).toJSON()
+        assert datos['anulado_sri'] == {'fecha': HOY.isoformat()} and datos['cxc_ajuste']['id'] == 'sin_saldo'
+        assert datos['excedente_cxc'] == '0.00'
+
 
 class TestNotaDebito:
 

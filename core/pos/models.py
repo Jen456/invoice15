@@ -1384,8 +1384,9 @@ class CreditNote(TenantModel):
         return self.anulado_sri_fecha is not None
 
     def excedente_cxc(self):
-        """Parte del total que no se abonó a la cuenta por cobrar (distinta de 0 en 'parcial' y 'sin_saldo')."""
-        if self.cxc_ajuste not in ('parcial', 'sin_saldo'):
+        """Parte del total que no se abonó a la cuenta por cobrar (distinta de 0 en 'parcial' y 'sin_saldo'). Una nota
+        anulada en el SRI no deja saldo a favor del cliente."""
+        if self.cxc_ajuste not in ('parcial', 'sin_saldo') or self.anulado_sri_fecha is not None:
             return Decimal('0.00')
         abonado = self.abono_cxc.valor if self.abono_cxc_id else Decimal('0')
         return (Decimal(self.total) - Decimal(abonado)).quantize(CENTAVO, rounding=ROUND_HALF_UP)
