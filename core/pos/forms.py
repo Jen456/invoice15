@@ -58,10 +58,14 @@ class ProviderForm(forms.ModelForm):
         return datos
 
     def save(self, commit=True):
+        from django.db import transaction
+        from core.pos import compras
         data = {}
         try:
             if self.is_valid():
-                instace = super().save()
+                with transaction.atomic():   # los datos del proveedor cuentan en la marca de sus compras (DC2)
+                    instace = super().save()
+                    compras.actualizar_marcas_de_proveedor(instace, getattr(self, 'usuario', None))
                 data = instace.toJSON()
                 data['advertencias'] = self.advertencias
             else:

@@ -818,6 +818,25 @@ def actualizar_marca(compra, *, guardar=True):
     return incompleta
 
 
+def actualizar_marcas_de_proveedor(proveedor, usuario=None):
+    """Recalcula la marca de las compras del proveedor (sus datos del ATS cuentan en faltantes) al editarlo o al llenarlo
+    con la orden. Llamar dentro de la transacción que guarda el proveedor: bloquea sus compras (Purchase) y escribe solo
+    las que cambian. Devuelve cuántas cambiaron."""
+    from core.pos.models import Purchase
+    cambiadas = 0
+    for compra in Purchase.objects.select_for_update(of=('self',)).filter(provider_id=proveedor.pk).order_by('pk'):
+        compra.provider = proveedor
+        antes = compra.datos_incompletos
+        incompleta = actualizar_marca(compra, guardar=False)
+        if incompleta == antes:
+            continue
+        cambiadas += 1
+        Purchase.all_companies.filter(pk=compra.pk, company_id=compra.company_id).update(datos_incompletos=incompleta)
+        if not incompleta and compra.completada_en is None:
+            _marcar_completada(compra, usuario)
+    return cambiadas
+
+
 def _marcar_completada(compra, usuario):
     from core.pos.models import Purchase
     compra.completada_en = timezone.now()

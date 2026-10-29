@@ -23,6 +23,7 @@ class Command(BaseCommand):
         _ensayo.agregar_opciones(parser)
 
     def handle(self, *args, **opciones):
+        from core.pos import compras
         from core.pos.models import Provider
         from core.pos.proveedores import sugerencia
         from core.tenancy.context import company_context
@@ -59,6 +60,7 @@ class Command(BaseCommand):
                                     tipo_sujeto=proveedor.tipo_sujeto or propuesta['tipo_sujeto'])
                                 if filas:
                                     ids.append(proveedor.pk)
+                                    compras.actualizar_marcas_de_proveedor(Provider.objects.get(pk=proveedor.pk))
                             if ids:
                                 audit(None, 'provider_type_fill', empresa, proveedores=ids, cantidad=len(ids),
                                       decision=opciones['decision'].strip(), informe=str(opciones['csv']))

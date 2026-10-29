@@ -262,3 +262,45 @@ class TestCompletarNotaRecalculaCuentas:
         completar(empresa, admin, nota, {'tipo_comprobante': '01', 'forma_pago': '20'})
         assert recargar(empresa, nota).compra_modificada_id is None
         assert saldos(empresa, f1) == [(Decimal('100.00'),) * 2]
+
+
+# ------------------------------------------------------------------ O1-F4: la marca sigue a los datos del proveedor
+
+class TestMarcaSigueAlProveedor:
+
+    def datos(self, proveedor, **cambios):
+        datos = {'action': 'edit', 'name': proveedor.name, 'tipo_identificacion': proveedor.tipo_identificacion,
+                 'ruc': proveedor.ruc, 'tipo_sujeto': proveedor.tipo_sujeto, 'parte_relacionada': 'no',
+                 'mobile': proveedor.mobile, 'email': proveedor.email, 'address': proveedor.address}
+        datos.update(cambios)
+        return datos
+
+    def test_editar_el_proveedor_recalcula_sus_compras(self, client, empresa, admin, proveedor):
+        compra = crear(empresa, admin, ayuda.datos_compra(proveedor), [ayuda.linea_gasto(price='100.00')])
+        completada = recargar(empresa, compra).completada_en
+        assert completada is not None and not recargar(empresa, compra).datos_incompletos
+        helpers.iniciar_sesion(client, admin, empresa=empresa)
+        url = f'/pos/provider/update/{proveedor.pk}/'
+        data = json.loads(client.post(url, self.datos(proveedor, tipo_identificacion='05', ruc=ayuda.cedula(4321),
+                                                      tipo_sujeto='01')).content)
+        assert 'error' not in data, data
+        compra = recargar(empresa, compra)
+        assert compra.datos_incompletos and 'tipo_id_no_admitido' in codigos(empresa, compra)
+        with company_context(empresa):
+            assert compras.totales_listado(Purchase.objects.all())['completas']['cantidad'] == 0
+        data = json.loads(client.post(url, self.datos(ayuda.en(empresa, Provider.objects.get, pk=proveedor.pk),
+                                                      tipo_identificacion='04', ruc=RUC, tipo_sujeto='02')).content)
+        assert 'error' not in data, data
+        compra = recargar(empresa, compra)
+        assert not compra.datos_incompletos and compra.completada_en == completada
+
+    def test_orden_que_llena_el_proveedor_recalcula_sus_compras(self, empresa, admin, proveedor, tmp_path):
+        compra = crear(empresa, admin, ayuda.datos_compra(proveedor), [ayuda.linea_gasto(price='100.00')])
+        with company_context(empresa):      # proveedor como antes de la Etapa 2
+            Provider.objects.filter(pk=proveedor.pk).update(tipo_identificacion='', tipo_sujeto='')
+            compras.actualizar_marca(recargar(empresa, compra))
+        assert recargar(empresa, compra).datos_incompletos
+        call_command('proveedores_incompletos', '--empresa', str(empresa.pk), '--aplicar', '--decision',
+                     'Prueba: lo autorizó la propietaria', '--csv', str(tmp_path / 'p.csv'), stdout=StringIO())
+        assert ayuda.en(empresa, Provider.objects.get, pk=proveedor.pk).tipo_identificacion == '04'
+        assert not recargar(empresa, compra).datos_incompletos
