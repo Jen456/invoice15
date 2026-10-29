@@ -992,17 +992,25 @@ def revisar_datos(compra, datos):
 def completar_datos(compra, usuario, datos, *, request=None, origen='formulario', decision='', informe=''):
     """Completa (o corrige) la cabecera ATS y, en compras anteriores, los importes de la factura. Nunca cambia líneas, stock,
     subtotal, proveedor ni fecha de registro; la cuenta por pagar solo con `ajustar_cxp`. Auditado (purchase_complete)."""
+    from core.pos import cuentas_por_pagar
     from core.pos.models import DebtsPay, Purchase
+    datos = datos or {}
     if origen == 'orden' and not _texto(decision):
         raise ErrorCompra('Completar compras con una orden exige la decisión escrita (--decision).')
     with transaction.atomic():
         compra = Purchase.objects.select_for_update(of=('self',)).get(pk=compra.pk)
+        if set(cat.TIPOS_CON_DOC_MODIFICADO) & {compra.tipo_comprobante, _texto(datos.get('tipo_comprobante'))}:
+            # Purchase → DebtsPay: las compras que la nota modifica (la de antes y la nueva) se bloquean antes que las cuentas.
+            otras = {compra.compra_modificada_id, _id(datos.get('compra_modificada'))} - {None, compra.pk}
+            list(Purchase.objects.select_for_update(of=('self',)).filter(pk__in=sorted(otras)).order_by('pk')
+                 .values_list('pk', flat=True))
         deudas = list(DebtsPay.objects.select_for_update(of=('self',)).filter(purchase=compra).order_by('pk'))
         plan = _plan_completar(compra, datos, deudas)
         if plan.pendientes:
             codigo = plan.pendientes[0]
             raise ErrorCompra(_texto_confirmacion_completar(codigo, compra, plan), codigo=codigo)
         era_incompleta = compra.datos_incompletos
+        tipo_antes, modificada_antes = compra.tipo_comprobante, compra.compra_modificada_id
         for campo, valor in plan.nuevos.items():
             setattr(compra, 'compra_modificada_id' if campo == 'compra_modificada' else campo, valor)
         campos = list(plan.nuevos)
@@ -1023,6 +1031,12 @@ def completar_datos(compra, usuario, datos, *, request=None, origen='formulario'
             deuda.recalcular()
             _auditar(request, 'purchase_debt_adjust', compra.company, usuario, compra=compra.pk, deuda_antes=deuda_antes,
                      deuda_despues=Decimal(compra.total), saldo_antes=saldo_antes, saldo_despues=Decimal(deuda.saldo))
+        if {'tipo_comprobante', 'compra_modificada', 'total'} & set(plan.cambios):
+            # la nota de crédito abona la cuenta de la compra que modifica: se recalculan la de antes y la nueva
+            afectadas = {m for t, m in ((tipo_antes, modificada_antes), (compra.tipo_comprobante, compra.compra_modificada_id))
+                         if t == '04' and m}
+            for modificada_id in sorted(afectadas):
+                cuentas_por_pagar.recalcular_de_compra(modificada_id, compra.company_id)
         if not actualizar_marca(compra) and (era_incompleta or compra.completada_en is None):
             _marcar_completada(compra, usuario)
         if plan.cambios:

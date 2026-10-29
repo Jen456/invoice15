@@ -240,3 +240,25 @@ class TestCompletarRespetaLineasYPago:
         datos = {'provider': productora.pk, 'modo_comprobante': 'despues', 'date_joined': hoy().isoformat(), 'payment_type': 'efectivo'}
         compra = crear(empresa, admin, datos, [ayuda.linea_gasto(price='100.00', descuento='10.00', codigo='0')])
         assert 'no admite descuentos' in str(error_al_completar(empresa, admin, compra, {'tipo_comprobante': '03'}))
+
+
+# ------------------------------------------------------------------ O1-F3 / O1-T2: saldos de las compras que modifica la nota
+
+class TestCompletarNotaRecalculaCuentas:
+
+    def test_cambiar_la_compra_modificada_recalcula_las_dos(self, empresa, admin, proveedor):
+        f1 = crear(empresa, admin, a_credito(proveedor), [ayuda.linea_gasto(price='100.00', codigo='0')])
+        f2 = crear(empresa, admin, a_credito(proveedor), [ayuda.linea_gasto(price='100.00', codigo='0')])
+        nota = crear(empresa, admin, ayuda.datos_compra(proveedor, **nota_sobre(f1)), [ayuda.linea_gasto('Devolución', price='20.00',
+                                                                                                         codigo='0')])
+        assert saldos(empresa, f1, f2) == [(Decimal('80.00'),) * 2, (Decimal('100.00'),) * 2]
+        completar(empresa, admin, nota, {'num_doc_modificado': f'{f2.estab}{f2.pto_emi}{f2.secuencial}', 'compra_modificada': f2.pk})
+        assert saldos(empresa, f1, f2) == [(Decimal('100.00'),) * 2, (Decimal('80.00'),) * 2]
+
+    def test_nota_corregida_a_factura_devuelve_el_saldo(self, empresa, admin, proveedor):
+        f1 = crear(empresa, admin, a_credito(proveedor), [ayuda.linea_gasto(price='100.00', codigo='0')])
+        nota = crear(empresa, admin, ayuda.datos_compra(proveedor, **nota_sobre(f1)), [ayuda.linea_gasto('Devolución', price='20.00',
+                                                                                                         codigo='0')])
+        completar(empresa, admin, nota, {'tipo_comprobante': '01', 'forma_pago': '20'})
+        assert recargar(empresa, nota).compra_modificada_id is None
+        assert saldos(empresa, f1) == [(Decimal('100.00'),) * 2]
