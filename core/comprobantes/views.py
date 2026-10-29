@@ -56,6 +56,8 @@ class ComprobanteListView(GroupPermissionMixin, TemplateView):
                         self.contexto: self.model.objects.select_related(*self.relacionados).order_by('-id')[:200],
                         'puede_emitir': tiene_permiso(self.request, self.permiso('add')),
                         'puede_eliminar': tiene_permiso(self.request, self.permiso('delete'))})
+        # Etapa 2 (O2): enlace «Marcar como anulada en el SRI» (core/comprobantes/vistas_anulados.py).
+        context['puede_anular'] = tiene_permiso(self.request, f'change_anulado_sri_{self.model._meta.model_name}')
         return context
 
     def post(self, request, *args, **kwargs):

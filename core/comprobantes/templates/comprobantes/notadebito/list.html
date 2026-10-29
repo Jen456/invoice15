@@ -20,10 +20,11 @@
                     <td data-label="Cliente">{{ l.razon_social }}<br><small class="text-muted">{{ l.identificacion }}</small></td>
                     <td data-label="Factura">{{ l.num_doc_modificado }}</td>
                     <td data-label="Total" class="text-right">${{ l.valor_total|floatformat:2 }}</td>
-                    <td data-label="Estado"><span class="badge {% if l.status == 'authorized' or l.status == 'authorized_and_sent_by_email' %}badge-success{% elif l.status == 'in_process' %}badge-info{% elif l.status == 'without_authorizing' %}badge-warning{% else %}badge-danger{% endif %}">{{ l.get_status_display }}</span></td>
+                    <td data-label="Estado">{% if l.anulado_sri_fecha %}<span class="badge badge-secondary fp-anulado-sri">Anulada en el SRI ({{ l.anulado_sri_fecha|date:"d/m/Y" }})</span>{% else %}<span class="badge {% if l.status == 'authorized' or l.status == 'authorized_and_sent_by_email' %}badge-success{% elif l.status == 'in_process' %}badge-info{% elif l.status == 'without_authorizing' %}badge-warning{% else %}badge-danger{% endif %}">{{ l.get_status_display }}</span>{% endif %}</td>
                     <td data-label="Acciones" class="fp-retencion-acciones">
                         {% if l.pdf_authorized %}<a href="{{ l.get_pdf_authorized }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">PDF</a>{% endif %}
                         {% if l.xml_authorized %}<a href="{{ l.get_xml_authorized }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">XML</a>{% endif %}
+                        {% if puede_anular and not l.anulado_sri_fecha %}{% if l.status == 'authorized' or l.status == 'authorized_and_sent_by_email' %}<a href="{% url 'comprobantes_marcar_anulado' 'nota-debito' l.pk %}" class="btn btn-sm btn-outline-danger">Marcar como anulada en el SRI</a>{% endif %}{% endif %}
                         {% if puede_emitir and l.status == 'without_authorizing' or puede_emitir and l.status == 'returned' or puede_emitir and l.status == 'not_authorized' or puede_emitir and l.status == 'in_process' %}
                             <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="generate_invoice"><input type="hidden" name="id" value="{{ l.pk }}">
                                 <button type="submit" class="btn btn-sm fpa-btn-pagar">{% if l.status == 'in_process' %}Consultar en el SRI{% else %}Enviar al SRI{% endif %}</button></form>

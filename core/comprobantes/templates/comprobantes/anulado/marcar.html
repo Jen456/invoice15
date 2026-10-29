@@ -1,0 +1,56 @@
+{% extends 'skin.html' %}
+{% load widget_tweaks %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item"><a href="{{ url_lista }}"><i class="fas fa-file-invoice"></i> Comprobantes</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Marcar como anulada en el SRI</li>
+{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-anulado-sri">
+    <header class="fp-welcome"><span class="fp-eyebrow">Anulado en el SRI</span><h1>{{ nombre|capfirst }} {{ numero }}</h1>
+        <p>{{ receptor }} · emitida el {{ fecha_emision|date:"d/m/Y" }}{% if total is not None %} · total ${{ total|floatformat:2 }}{% endif %}{% if autorizacion %}<br><small class="text-muted text-break">Autorización {{ autorizacion }}</small>{% endif %}</p></header>
+    <div class="alert alert-info fp-anulado-texto-fijo" role="note">Esto solo registra en FacturaPorAquí una anulación que ya hiciste en SRI en línea. No se envía nada al SRI y no se devuelve el cupo del plan. El SRI acepta anulaciones hasta el día 7 del mes siguiente a la emisión y no permite anular facturas a consumidor final.</div>
+    {% if anulado %}
+        <div class="alert alert-secondary" role="status">Este comprobante ya está marcado como anulado en el SRI desde el {{ anulado.fecha|date:"d/m/Y" }}{% if anulado.por %} (marcado por {{ anulado.por }} el {{ anulado.registrado_en|date:"d/m/Y H:i" }}){% endif %}. Motivo: {{ anulado.motivo }}</div>
+        <a href="{{ url_lista }}" class="btn btn-link">Volver al listado</a>
+    {% else %}
+        {% for i in impedimentos %}<div class="alert alert-danger" role="alert">{{ i }}</div>{% endfor %}
+        {% for a in avisos %}<div class="alert alert-warning" role="status">{{ a }}</div>{% endfor %}
+        {% if efectos %}
+            <section class="card mb-3"><div class="card-body"><h2 class="h6">Al marcarla</h2>
+                <ul class="mb-0">{% for e in efectos %}<li>{{ e }}</li>{% endfor %}</ul>
+            </div></section>
+        {% endif %}
+        <form method="post" class="fp-anulado-form" novalidate>{% csrf_token %}
+            {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+            <div class="row">
+                <div class="form-group col-12 col-md-4">
+                    <label for="{{ form.fecha.id_for_label }}" class="font-weight-bold">{{ form.fecha.label }}</label>
+                    {% if form.fecha.errors %}{% render_field form.fecha class="form-control is-invalid" %}{% else %}{% render_field form.fecha class="form-control" %}{% endif %}
+                    <small class="form-text text-muted">Plazo del SRI: hasta el {{ limite_plazo|date:"d/m/Y" }}.</small>
+                    {% for error in form.fecha.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="form-group col-12 col-md-8">
+                    <label for="{{ form.motivo.id_for_label }}" class="font-weight-bold">{{ form.motivo.label }}</label>
+                    {% if form.motivo.errors %}{% render_field form.motivo class="form-control is-invalid" %}{% else %}{% render_field form.motivo class="form-control" %}{% endif %}
+                    {% for error in form.motivo.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+            {% if form.ajustar_stock %}
+                <div class="form-group form-check">{% render_field form.ajustar_stock class="form-check-input" %}<label class="form-check-label" for="{{ form.ajustar_stock.id_for_label }}">{{ form.ajustar_stock.label }}</label></div>
+            {% endif %}
+            <div class="form-group">
+                <label for="{{ form.confirmar_numero.id_for_label }}" class="font-weight-bold">{{ form.confirmar_numero.label }} ({{ numero }})</label>
+                {% if form.confirmar_numero.errors %}{% render_field form.confirmar_numero class="form-control is-invalid" autocomplete="off" %}{% else %}{% render_field form.confirmar_numero class="form-control" autocomplete="off" %}{% endif %}
+                {% for error in form.confirmar_numero.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="form-group form-check">{% render_field form.confirmo_sri class="form-check-input" %}<label class="form-check-label" for="{{ form.confirmo_sri.id_for_label }}">{{ form.confirmo_sri.label }}</label>
+                {% for error in form.confirmo_sri.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}</div>
+            <div class="form-group form-check">{% render_field form.confirmo_plazo class="form-check-input" %}<label class="form-check-label" for="{{ form.confirmo_plazo.id_for_label }}">{{ form.confirmo_plazo.label }}</label>
+                <small class="form-text text-muted">Solo hace falta si la fecha de anulación pasa del {{ limite_plazo|date:"d/m/Y" }}.</small>
+                {% for error in form.confirmo_plazo.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}</div>
+            <button type="submit" name="action" value="marcar" class="btn btn-danger"{% if impedimentos %} disabled{% endif %}>Marcar como anulada en el SRI</button>
+            <a href="{{ url_lista }}" class="btn btn-link">Cancelar</a>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}

@@ -43,6 +43,9 @@ var credit_note = {
                     class: 'text-center',
                     render: function (data, type, row) {
                         var name = row.status.name;
+                        if (row.anulado_sri) {   // Etapa 2 (O2): marcado como anulado en el SRI
+                            return '<span class="badge badge-secondary badge-pill">Anulada en el SRI</span>';
+                        }
                         switch (row.status.id) {
                             case "without_authorizing":
                                 return '<span class="badge badge-warning badge-pill">' + name + '</span>';

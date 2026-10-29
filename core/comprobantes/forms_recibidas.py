@@ -1,7 +1,7 @@
-"""Formularios de las pantallas de la Etapa 2 (O2): retenciones recibidas de clientes.
+"""Formularios de las pantallas de la Etapa 2 (O2): retenciones recibidas de clientes y marca «Anulado en el SRI».
 
-Funcionan sin JavaScript. Las reglas de negocio están en los servicios (core/comprobantes/retenciones_recibidas.py);
-aquí solo se valida la forma de los datos y las confirmaciones de la pantalla.
+Funcionan sin JavaScript. Las reglas de negocio están en los servicios (core/comprobantes/retenciones_recibidas.py y
+core/pos/anulados.py); aquí solo se valida la forma de los datos y las confirmaciones de la pantalla.
 """
 from datetime import date
 from decimal import Decimal
@@ -93,6 +93,41 @@ class LineaRecibidaForm(forms.Form):
 
 
 LineasRecibidasFormSet = forms.formset_factory(LineaRecibidaForm, extra=3, max_num=10, validate_max=True)
+
+
+class AnuladoSRIForm(forms.Form):
+    fecha = forms.DateField(label='Fecha de la anulación en el SRI', widget=FECHA)
+    motivo = forms.CharField(label='Motivo', min_length=10, max_length=300, widget=forms.Textarea(attrs={'rows': 3}),
+                             error_messages={'required': 'Escribe el motivo de la anulación (al menos 10 caracteres).',
+                                             'min_length': 'Escribe el motivo de la anulación (al menos 10 caracteres).'})
+    ajustar_stock = forms.BooleanField(label='Ajustar el inventario', required=False, initial=True)
+    confirmar_numero = forms.CharField(label='Escribe el número del comprobante para confirmar', max_length=20)
+    confirmo_sri = forms.BooleanField(
+        label='Ya anulé este comprobante en SRI en línea y, si correspondía, el receptor aceptó la anulación',
+        required=True, error_messages={'required': 'Confirma que ya lo anulaste en SRI en línea.'})
+    confirmo_plazo = forms.BooleanField(required=False)
+
+    def __init__(self, *args, numero, muestra_stock, limite_plazo, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.numero, self.limite_plazo = numero, limite_plazo
+        if not muestra_stock:
+            del self.fields['ajustar_stock']
+        self.fields['confirmo_plazo'].label = (f'La anulación es posterior al {limite_plazo:%d/%m/%Y}: confirmo que el SRI '
+                                               'la aceptó')
+
+    def clean_confirmar_numero(self):
+        valor = (self.cleaned_data.get('confirmar_numero') or '').strip()
+        if valor != self.numero:
+            raise forms.ValidationError(f'Escribe el número {self.numero} para confirmar.')
+        return valor
+
+    def clean(self):
+        cleaned = super().clean()
+        fecha = cleaned.get('fecha')
+        if fecha is not None and fecha > self.limite_plazo and not cleaned.get('confirmo_plazo'):
+            self.add_error('confirmo_plazo', f'La fecha pasa del plazo del SRI ({self.limite_plazo:%d/%m/%Y}): confirma que '
+                                             'el SRI aceptó la anulación.')
+        return cleaned
 
 
 class AnularRetencionRecibidaForm(forms.Form):

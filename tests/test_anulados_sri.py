@@ -1,7 +1,7 @@
 """Marca «Anulado en el SRI» de los seis comprobantes emitidos (Etapa 2, O2), servicio core/pos/anulados.py: requisitos
 comunes, plazo del día 7 (confirmación obligatoria), señal anulado_en_sri dentro de la transacción, auditoría serializable
-y los efectos e impedimentos de cada tipo. Sin SRI, sin correo y sin cupo. Las pantallas (permisos, plan, confirmación
-del número) se prueban con su vista en el paso siguiente."""
+y los efectos e impedimentos de cada tipo. Sin SRI, sin correo y sin cupo. Y la pantalla común: texto fijo, confirmación
+del número y de SRI en línea, plazo, receptor que falla, permisos por rol, 404, plan vencido y los listados."""
 import json
 from datetime import date, timedelta
 from decimal import Decimal
@@ -72,7 +72,7 @@ def stock(empresa, producto):
 
 def nueva_compra(empresa, ruc='0990000001001', numero='501'):
     with company_context(empresa):
-        proveedor = Provider.objects.create(name=f'PROVEEDOR FICTICIO {numero}', ruc=ruc, mobile='0990000009',
+        proveedor = Provider.objects.create(name=f'PROVEEDOR FICTICIO {numero}', ruc=ruc, mobile=f'099{int(numero):07d}',
                                             email=f'proveedor{numero}@example.com', address='Av. Quito 100')
         compra = Purchase.objects.create(number=numero, provider=proveedor, subtotal=Decimal('0'))
         categoria = Category.objects.get_or_create(name='Compras de prueba')[0]
@@ -446,3 +446,196 @@ def test_revisar_muestra_impedimentos_sin_escribir(empresa, dueno, comprador, pr
     assert revision['impedimentos'][:2] == ['Solo se marca como anulado un comprobante autorizado por el SRI.',
                                             'La fecha de anulación no puede ser futura.']
     assert not leer(empresa, lambda: PaymentsCtaCollect.objects.exists())
+
+
+# ---------------------------------------------------------------- pantalla (paso 2): vista, formulario, permisos y planes
+
+LISTAS = {'factura': '/pos/sale/admin/', 'nota-credito': '/pos/credit/note/admin/', 'retencion': '/comprobantes/retenciones/',
+          'liquidacion': '/comprobantes/liquidaciones/', 'nota-debito': '/comprobantes/notas-debito/',
+          'guia': '/comprobantes/guias/'}
+TEXTO_FIJO = ('Esto solo registra en FacturaPorAquí una anulación que ya hiciste en SRI en línea. No se envía nada al SRI y '
+              'no se devuelve el cupo del plan. El SRI acepta anulaciones hasta el día 7 del mes siguiente a la emisión y no '
+              'permite anular facturas a consumidor final.')
+
+
+def url_marcar(slug, doc):
+    return f'/comprobantes/anulados/{slug}/{doc.pk}/update/'
+
+
+def entrar(client, usuario, empresa):  # noqa: F811
+    from tests import helpers
+    helpers.iniciar_sesion(client, usuario, empresa=empresa)
+    return client
+
+
+def datos_marcar(doc, fecha=None, **cambios):
+    datos = {'action': 'marcar', 'fecha': (fecha or HOY).isoformat(), 'motivo': MOTIVO, 'confirmar_numero': doc.voucher_number_full,
+             'confirmo_sri': 'on'}
+    datos.update(cambios)
+    return {k: v for k, v in datos.items() if v is not None}
+
+
+class TestPantalla:
+
+    def test_get_muestra_revision_y_texto_fijo(self, client, empresa, dueno, crear):  # noqa: F811
+        venta = crear('factura')
+        entrar(client, dueno, empresa)
+        pagina = client.get(url_marcar('factura', venta))
+        assert pagina.status_code == 200 and TEXTO_FIJO in pagina.content.decode()
+        contexto = pagina.context
+        assert (contexto['modelo'], contexto['nombre'], contexto['numero']) == ('factura', 'factura', venta.voucher_number_full)
+        assert contexto['impedimentos'] == [] and contexto['muestra_stock'] is True and contexto['anulado'] is None
+        assert contexto['limite_plazo'] == anulados.limite_plazo_sri(EMITIDA) and contexto['url_lista'] == '/pos/sale/admin/'
+        assert contexto['total'] == Decimal('23.00') and contexto['fecha_emision'] == EMITIDA
+        assert any('abono de anulación de $23,00' in e for e in contexto['efectos'])
+        assert 'ajustar_stock' in contexto['form'].fields and contexto['form']['ajustar_stock'].value() is True
+
+    @pytest.mark.parametrize('slug', SLUGS)
+    def test_marca_por_la_pantalla_sin_sri_ni_correo(self, client, empresa, dueno, crear, slug, senales, sri):  # noqa: F811
+        doc = crear(slug)
+        recepciones, consultas, usados = len(sri.recepciones), len(sri.consultas), SubscriptionPeriod.objects.get(
+            company=empresa, status='activa').documents_used
+        mail.outbox.clear()
+        entrar(client, dueno, empresa)
+        respuesta = client.post(url_marcar(slug, doc), datos_marcar(doc), follow=True)
+        assert respuesta.redirect_chain == [(LISTAS[slug], 302)]
+        assert 'quedó marcada como anulada en el SRI. No se envió nada al SRI.' in respuesta.content.decode()
+        doc = recargar(doc)
+        assert doc.anulado_sri_fecha == HOY and doc.anulado_sri_por == dueno and doc.anulado_sri_motivo == MOTIVO
+        assert senales == [(type(doc), doc.pk, dueno, HOY, HOY)]
+        assert AuditLog.objects.get(action='comprobante_anulado_sri').detail['modelo'] == slug
+        assert (len(sri.recepciones), len(sri.consultas), mail.outbox) == (recepciones, consultas, [])
+        assert SubscriptionPeriod.objects.get(company=empresa, status='activa').documents_used == usados
+        siguiente = client.get(LISTAS[slug] if slug not in ('factura', 'nota-credito') else url_marcar(slug, doc))
+        texto = siguiente.content.decode()
+        if slug in ('factura', 'nota-credito'):
+            assert siguiente.context['anulado']['fecha'] == HOY and 'value="marcar"' not in texto     # solo lectura
+        else:
+            assert f'Anulada en el SRI ({HOY:%d/%m/%Y})' in texto and url_marcar(slug, doc) not in texto
+
+    @pytest.mark.parametrize('slug', SLUGS)
+    def test_confirmaciones_del_formulario(self, client, empresa, dueno, crear, slug):  # noqa: F811
+        doc = crear(slug)
+        entrar(client, dueno, empresa)
+        for cambios, campo, mensaje in (
+                ({'confirmar_numero': '001-002-000000999'}, 'confirmar_numero', f'Escribe el número {doc.voucher_number_full} para confirmar.'),
+                ({'confirmo_sri': None}, 'confirmo_sri', 'Confirma que ya lo anulaste en SRI en línea.'),
+                ({'motivo': 'corto'}, 'motivo', 'Escribe el motivo de la anulación (al menos 10 caracteres).')):
+            respuesta = client.post(url_marcar(slug, doc), datos_marcar(doc, **cambios))
+            assert respuesta.status_code == 200 and respuesta.context['form'].errors[campo] == [mensaje], campo
+        assert recargar(doc).anulado_sri_fecha is None
+
+    def test_fechas_y_errores_del_servicio(self, client, empresa, dueno, crear):  # noqa: F811
+        venta = crear('factura')
+        entrar(client, dueno, empresa)
+        futura = client.post(url_marcar('factura', venta), datos_marcar(venta, fecha=HOY + timedelta(days=1)))
+        assert futura.context['form'].non_field_errors() == ['La fecha de anulación no puede ser futura.']
+        anterior = client.post(url_marcar('factura', venta), datos_marcar(venta, fecha=EMITIDA - timedelta(days=1)))
+        assert anterior.context['form'].non_field_errors() == [
+            f'La fecha de anulación no puede ser anterior a la emisión ({EMITIDA:%d/%m/%Y}).']
+        assert recargar(venta).anulado_sri_fecha is None
+
+    def test_plazo_del_dia_7_por_la_pantalla(self, client, empresa, dueno, comprador, producto):  # noqa: F811
+        venta = factura_autorizada(empresa, comprador, dueno, producto, fecha=date(2026, 9, 15))
+        entrar(client, dueno, empresa)
+        sin_casilla = client.post(url_marcar('factura', venta), datos_marcar(venta, fecha=date(2026, 10, 8)))
+        assert sin_casilla.status_code == 200 and sin_casilla.context['pide_confirmar_plazo'] is True
+        assert sin_casilla.context['form'].errors['confirmo_plazo'] == [
+            'La fecha pasa del plazo del SRI (07/10/2026): confirma que el SRI aceptó la anulación.']
+        assert recargar(venta).anulado_sri_fecha is None
+        con_casilla = client.post(url_marcar('factura', venta), datos_marcar(venta, fecha=date(2026, 10, 8), confirmo_plazo='on'))
+        assert con_casilla.status_code == 302 and recargar(venta).anulado_sri_fecha == date(2026, 10, 8)
+        assert AuditLog.objects.get(action='comprobante_anulado_sri').detail['confirmo_plazo'] is True
+
+    def test_dentro_del_plazo_no_pide_casilla(self, client, empresa, dueno, comprador, producto):  # noqa: F811
+        venta = factura_autorizada(empresa, comprador, dueno, producto, fecha=date(2026, 9, 15))
+        entrar(client, dueno, empresa)
+        assert client.post(url_marcar('factura', venta), datos_marcar(venta, fecha=date(2026, 10, 7))).status_code == 302
+
+    def test_impedimento_deshabilita_y_receptor_que_falla_muestra_el_error(self, client, empresa, dueno, comprador, producto,
+                                                                          crear):  # noqa: F811
+        with company_context(empresa):
+            cf = consumidor_final(empresa)
+        final = factura_autorizada(empresa, cf, dueno, producto, fecha=EMITIDA)
+        entrar(client, dueno, empresa)
+        pagina = client.get(url_marcar('factura', final))
+        assert pagina.context['impedimentos'] == [anulados.MENSAJES['consumidor_final']]
+        assert 'value="marcar" class="btn btn-danger" disabled' in pagina.content.decode()
+        doc = crear('retencion')
+
+        def falla(sender, **kwargs):
+            raise RuntimeError('cuenta por pagar desalineada')
+        anulado_en_sri.connect(falla, weak=False, dispatch_uid='prueba_o2_falla_vista')
+        try:
+            respuesta = client.post(url_marcar('retencion', doc), datos_marcar(doc))
+        finally:
+            anulado_en_sri.disconnect(dispatch_uid='prueba_o2_falla_vista')
+        assert respuesta.status_code == 200 and respuesta.context['form'].non_field_errors() == [
+            'No se pudo marcar: falló un ajuste relacionado (RuntimeError). No se guardó nada; inténtalo de nuevo o avisa a '
+            'soporte.']
+        assert recargar(doc).anulado_sri_fecha is None and not AuditLog.objects.filter(action='comprobante_anulado_sri').exists()
+
+    @pytest.mark.parametrize('rol', ['Contador', 'Consulta', 'Vendedor'])
+    def test_roles_sin_permiso(self, client, empresa, crear, rol):  # noqa: F811
+        from tests import helpers
+        documentos = {slug: crear(slug) for slug in SLUGS}
+        usuario = helpers.crear_usuario(f'sin.permiso.{rol.lower()}', empresa, rol)
+        entrar(client, usuario, empresa)
+        for slug, doc in documentos.items():
+            assert client.get(url_marcar(slug, doc)).status_code == 302, slug
+            assert client.post(url_marcar(slug, doc), datos_marcar(doc)).status_code == 403, slug
+            assert recargar(doc).anulado_sri_fecha is None, slug
+
+    def test_otra_empresa_y_slug_invalido_404(self, client, empresa, dueno, crear):  # noqa: F811
+        from tests import helpers
+        venta = crear('factura')
+        empresa_b = helpers.crear_empresa('EMPRESA B ANULADOS', environment_type=2)
+        dueno_b = helpers.crear_usuario('dueno.b.anulados', empresa_b)
+        entrar(client, dueno_b, empresa_b)
+        assert client.get(url_marcar('factura', venta)).status_code == 404
+        assert client.post(url_marcar('factura', venta), datos_marcar(venta)).status_code == 404
+        assert client.get(f'/comprobantes/anulados/boleta/{venta.pk}/update/').status_code == 404
+        assert recargar(venta).anulado_sri_fecha is None
+
+    def test_plan_vencido_bloquea(self, client, empresa, dueno, crear):  # noqa: F811
+        venta = crear('factura')
+        SubscriptionPeriod.objects.filter(company=empresa).update(ends_at=timezone.now() - timedelta(days=1))
+        entrar(client, dueno, empresa)
+        assert client.get(url_marcar('factura', venta)).status_code == 302
+        assert client.post(url_marcar('factura', venta), datos_marcar(venta)).status_code == 403
+        assert recargar(venta).anulado_sri_fecha is None
+
+
+class TestListados:
+
+    @pytest.mark.parametrize('slug', ('retencion', 'liquidacion', 'nota-debito', 'guia'))
+    def test_enlace_e_insignia(self, client, empresa, dueno, crear, slug):  # noqa: F811
+        doc = crear(slug)
+        entrar(client, dueno, empresa)
+        pagina = client.get(LISTAS[slug])
+        assert pagina.context['puede_anular'] is True and url_marcar(slug, doc) in pagina.content.decode()
+        marcar(empresa, dueno, slug, doc)
+        texto = client.get(LISTAS[slug]).content.decode()
+        assert f'Anulada en el SRI ({HOY:%d/%m/%Y})' in texto and url_marcar(slug, doc) not in texto
+
+    def test_contador_no_ve_el_enlace(self, client, empresa, crear):  # noqa: F811
+        from tests import helpers
+        doc = crear('retencion')
+        contador = helpers.crear_usuario('contador.listado', empresa, 'Contador')
+        entrar(client, contador, empresa)
+        pagina = client.get(LISTAS['retencion'])
+        assert pagina.context['puede_anular'] is False and url_marcar('retencion', doc) not in pagina.content.decode()
+
+    def test_listados_de_ventas_entregan_la_marca_y_los_permisos(self, client, empresa, dueno, crear):  # noqa: F811
+        venta = crear('factura')
+        nota = crear('nota-credito')
+        marcar(empresa, dueno, 'factura', venta)
+        entrar(client, dueno, empresa)
+        pagina = client.get('/pos/sale/admin/')
+        assert '<script id="fpa-permisos" type="application/json">' in pagina.content.decode()
+        assert '"change_anulado_sri_sale": true' in pagina.content.decode()
+        filas = {f['id']: f for f in client.post('/pos/sale/admin/', {'action': 'search', 'start_date': '', 'end_date': ''}).json()}
+        assert filas[venta.pk]['anulado_sri'] == {'fecha': HOY.isoformat()} and filas[nota.sale_id]['anulado_sri'] is None
+        assert '"change_anulado_sri_creditnote": true' in client.get('/pos/credit/note/admin/').content.decode()
+        notas = client.post('/pos/credit/note/admin/', {'action': 'search', 'start_date': '', 'end_date': ''}).json()
+        assert notas[0]['cxc_ajuste']['id'] == 'aplicada' and notas[0]['anulado_sri'] is None and 'excedente_cxc' in notas[0]
