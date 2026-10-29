@@ -380,16 +380,25 @@ class SaleForm(forms.ModelForm):
 
 
 class PaymentsCtaCollectForm(forms.ModelForm):
+    # Etapa 2 (O2): campos explícitos (con '__all__' se mostrarían los internos: tipo, registrado_*, anulado_*) y medio
+    # de pago obligatorio sin valor inicial. El cobro lo valida y guarda core/pos/cxc.registrar_cobro.
     def __init__(self, *args, **kwargs):
+        from core.pos.choices import MEDIOS_DE_PAGO
         super().__init__(*args, **kwargs)
         self.fields['valor'].widget.attrs['autofocus'] = True
-        self.fields['ctas_collect'].queryset = PaymentsCtaCollect.objects.none()
+        self.fields['ctas_collect'].queryset = CtasCollect.objects.none()
+        self.fields['medio_pago'].required = True
+        self.fields['medio_pago'].choices = [('', 'Elige el medio de pago')] + list(MEDIOS_DE_PAGO)
+        self.fields['referencia'].help_text = 'Obligatoria si el medio es un cheque.'
 
     class Meta:
         model = PaymentsCtaCollect
-        fields = '__all__'
+        fields = ('ctas_collect', 'date_joined', 'valor', 'medio_pago', 'referencia', 'description')
         widgets = {
             'ctas_collect': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
+            'medio_pago': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
+            'referencia': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'off',
+                                                 'placeholder': 'N.º de transferencia, cheque o comprobante'}),
             'date_joined': forms.DateInput(format='%Y-%m-%d', attrs={
                 'class': 'form-control datetimepicker-input',
                 'id': 'date_joined',

@@ -44,6 +44,23 @@ document.addEventListener('DOMContentLoaded', function (e) {
                         }
                     }
                 },
+                medio_pago: {
+                    validators: {
+                        notEmpty: {
+                            message: 'Elige el medio de pago.'
+                        }
+                    }
+                },
+                referencia: {
+                    validators: {
+                        callback: {
+                            message: 'Escribe el número del cheque en «Referencia».',
+                            callback: function (input) {
+                                return $('select[name="medio_pago"]').val() !== 'cheque' || input.value.trim() !== '';
+                            }
+                        }
+                    }
+                },
                 description: {
                     validators: {}
                 },
@@ -118,14 +135,22 @@ $(function () {
                 };
             },
         },
-        placeholder: 'Ingrese un nombre o número de cedula del cliente',
+        // Etapa 2 (O2): el texto (número, cliente) se inserta como texto, nunca como HTML.
+        templateResult: function (data) {
+            return $('<span>').text(data.text || '');
+        },
+        templateSelection: function (data) {
+            return $('<span>').text(data.text || '');
+        },
+        placeholder: 'Ingrese el número de la factura, el nombre o la cédula del cliente',
         minimumInputLength: 1,
     })
         .on('select2:select', function (e) {
             fv.revalidateField('ctas_collect');
             var data = e.params.data;
-            $('.deuda').html('Deuda: $' + data.saldo.toFixed(2));
-            $('input[name="valor"]').trigger("touchspin.updatesettings", {max: data.saldo});
+            // Tope con el saldo en texto decimal (saldo_texto); el servidor vuelve a comprobarlo.
+            $('.deuda').text('Saldo: $' + data.saldo_texto);
+            $('input[name="valor"]').trigger("touchspin.updatesettings", {max: parseFloat(data.saldo_texto)});
         })
         .on('select2:clear', function (e) {
             fv.revalidateField('|');
@@ -158,6 +183,11 @@ $(function () {
 
     input_date_joined.on('change.datetimepicker', function () {
         fv.revalidateField('date_joined');
+    });
+
+    $('select[name="medio_pago"]').on('change', function () {
+        fv.revalidateField('medio_pago');
+        fv.revalidateField('referencia');
     });
 
     $('.deuda').html('');

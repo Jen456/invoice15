@@ -1,6 +1,7 @@
 """Cuentas por cobrar (Etapa 2, O2), servicio core/pos/cxc.py: cobros con medio de pago y referencia, saldo con abonos
 vigentes en Decimal, eliminación de cobros con permiso y auditoría, eliminación de la CxC, claves nuevas de toJSON y
-listados con número constante de consultas. Las pantallas (403, plan) se prueban con sus vistas en el paso siguiente."""
+listados con número constante de consultas; y sus pantallas: 403 al eliminar sin permiso, registro de cobros por la
+vista, JSON sin interpretar, consultas constantes por la vista y planes vencido y gratuito."""
 import json
 from datetime import timedelta
 from decimal import Decimal
@@ -260,3 +261,142 @@ class TestConsultasConstantes:
 def test_rol_propietario_tiene_permiso_de_eliminar(empresa, dueno):  # noqa: F811
     assert dueno.memberships.get(company=empresa).group.name == ROLE_OWNER
     assert cxc.puede_eliminar_cobros(peticion(dueno, empresa))
+
+
+# ---------------------------------------------------------------- pantallas (paso 2): vistas, permisos y planes
+
+LISTA, NUEVO = '/pos/ctas/collect/', '/pos/ctas/collect/add/'
+
+
+def entrar(client, usuario, empresa):  # noqa: F811
+    helpers.iniciar_sesion(client, usuario, empresa=empresa)
+    return client
+
+
+class TestVistas:
+
+    @pytest.mark.parametrize('rol', [ROLE_READONLY, ROLE_ACCOUNTANT])
+    def test_delete_pay_responde_403_a_consulta_y_contador(self, client, empresa, dueno, cuenta, rol):  # noqa: F811
+        abono = cobrar(empresa, dueno, cuenta)
+        lector = helpers.crear_usuario(f'web.{rol.lower()}', empresa, rol)
+        entrar(client, lector, empresa)
+        respuesta = client.post(LISTA, {'action': 'delete_pay', 'id': abono.pk})
+        assert respuesta.status_code == 403 and respuesta.json() == {'error': 'Tu perfil no puede eliminar cobros.'}
+        assert client.post(LISTA, {'action': 'search', 'start_date': '', 'end_date': ''}).status_code == 200
+        assert leer(empresa, lambda: PaymentsCtaCollect.objects.filter(pk=abono.pk).exists())
+        assert not AuditLog.objects.filter(action='cxc_cobro_eliminado').exists()
+
+    def test_propietario_elimina_y_no_puede_borrar_automaticos(self, client, empresa, dueno, cuenta):  # noqa: F811
+        abono = cobrar(empresa, dueno, cuenta)
+        with company_context(empresa):
+            automatico = cxc.crear_abono(cuenta, 'retencion', Decimal('1.00'), HOY, 'Retención')
+        entrar(client, dueno, empresa)
+        assert client.post(LISTA, {'action': 'delete_pay', 'id': abono.pk}).json() == {}
+        assert AuditLog.objects.filter(action='cxc_cobro_eliminado', user=dueno).count() == 1
+        respuesta = client.post(LISTA, {'action': 'delete_pay', 'id': automatico.pk})
+        assert respuesta.status_code == 200 and respuesta.json()['error'].startswith('Este abono lo generó una nota de crédito')
+        assert leer(empresa, lambda: PaymentsCtaCollect.objects.filter(pk=automatico.pk).exists())
+
+    def test_registrar_cobro_por_la_pantalla(self, client, empresa, dueno, cuenta):  # noqa: F811
+        entrar(client, dueno, empresa)
+        pagina = client.get(NUEVO)
+        assert pagina.status_code == 200
+        form = pagina.context['form']
+        assert list(form.fields) == ['ctas_collect', 'date_joined', 'valor', 'medio_pago', 'referencia', 'description']
+        assert form['medio_pago'].value() in ('', None) and form.fields['medio_pago'].required
+        datos = {'action': 'add', 'ctas_collect': cuenta.pk, 'date_joined': HOY.isoformat(), 'valor': '5.25',
+                 'medio_pago': '', 'referencia': '', 'description': 'Abono en ventanilla'}
+        assert client.post(NUEVO, datos).json() == {'error': 'Elige el medio de pago.'}
+        assert client.post(NUEVO, {**datos, 'medio_pago': 'cheque'}).json() == {
+            'error': 'Escribe el número del cheque en «Referencia».'}
+        assert client.post(NUEVO, {**datos, 'valor': '30'}).json() == {
+            'error': 'El valor (30.00) supera el saldo de la cuenta por cobrar (23.00).'}
+        assert client.post(NUEVO, {**datos, 'ctas_collect': ''}).json() == {'error': 'Elige la cuenta por cobrar.'}
+        assert client.post(NUEVO, {**datos, 'medio_pago': 'deposito', 'referencia': 'DEP-77'}).json() == {}
+        with company_context(empresa):
+            abono = PaymentsCtaCollect.objects.get()
+            assert (abono.tipo, abono.medio_pago, abono.referencia, abono.valor, abono.registrado_por) == (
+                'cobro', 'deposito', 'DEP-77', Decimal('5.25'), dueno)
+            assert CtasCollect.objects.get(pk=cuenta.pk).saldo == Decimal('17.75')
+
+    def test_search_ctas_collect_excluye_anuladas_y_saldadas(self, client, empresa, dueno, comprador, producto, cuenta,
+                                                            venta):  # noqa: F811
+        otra = cxc_de(factura_autorizada(empresa, comprador, dueno, producto, credito=True))
+        saldada = cxc_de(factura_autorizada(empresa, comprador, dueno, producto, credito=True))
+        with company_context(empresa):
+            cxc.crear_abono(otra, 'anulacion', Decimal('23.00'), HOY, 'Anulación')
+        cobrar(empresa, dueno, saldada, '23.00', medio='efectivo', referencia='')
+        entrar(client, dueno, empresa)
+        filas = client.post(NUEVO, {'action': 'search_ctas_collect', 'term': comprador.dni[:6]}).json()
+        assert [f['id'] for f in filas] == [cuenta.pk]
+        assert filas[0]['text'].startswith(venta.voucher_number_full) and filas[0]['saldo_texto'] == '23.00'
+        por_numero = client.post(NUEVO, {'action': 'search_ctas_collect', 'term': venta.voucher_number_full}).json()
+        assert [f['id'] for f in por_numero] == [cuenta.pk]
+
+    def test_eliminar_cxc_con_cobros_por_la_pantalla(self, client, empresa, dueno, cuenta):  # noqa: F811
+        cobrar(empresa, dueno, cuenta)
+        entrar(client, dueno, empresa)
+        respuesta = client.post(f'{LISTA}delete/{cuenta.pk}/')
+        assert respuesta.json() == {'error': 'Esta cuenta por cobrar tiene cobros registrados: elimínalos antes de eliminarla.'}
+        assert leer(empresa, lambda: CtasCollect.objects.filter(pk=cuenta.pk).exists())
+
+    def test_json_sin_interpretar(self, client, empresa, dueno, comprador, producto):  # noqa: F811
+        malicioso = '<img src=x onerror=alert(1)>'
+        User.objects.filter(pk=comprador.user_id).update(names=malicioso)
+        cuenta = cxc_de(factura_autorizada(empresa, comprador, dueno, producto, credito=True))
+        cobrar(empresa, dueno, cuenta, '1.00', medio='otro', referencia=malicioso)
+        with company_context(empresa):
+            PaymentsCtaCollect.objects.update(description=malicioso)
+        entrar(client, dueno, empresa)
+        filas = client.post(LISTA, {'action': 'search', 'start_date': '', 'end_date': ''}).json()
+        abonos = client.post(LISTA, {'action': 'search_pays', 'id': cuenta.pk}).json()
+        assert filas[0]['sale']['client']['user']['names'] == malicioso          # tal cual: lo escapa el JS
+        assert abonos[0]['description'] == malicioso and abonos[0]['referencia'] == malicioso
+        assert abonos[0]['index'] == 1 and abonos[0]['tipo']['id'] == 'cobro' and abonos[0]['valor_texto'] == '1.00'
+
+    def test_consultas_constantes_por_la_pantalla(self, client, empresa, dueno, comprador, producto):  # noqa: F811
+        def crear(n):
+            for _ in range(n):
+                cuenta = cxc_de(factura_autorizada(empresa, comprador, dueno, producto, credito=True))
+                cobrar(empresa, dueno, cuenta, '0.10', medio='efectivo', referencia='')
+
+        def contar(datos):
+            with CaptureQueriesContext(connection) as capturadas:
+                assert client.post(LISTA, datos).status_code == 200
+            return len(capturadas)
+        entrar(client, dueno, empresa)
+        crear(2)
+        primera = leer(empresa, lambda: CtasCollect.objects.order_by('id').first())
+        busqueda = {'action': 'search', 'start_date': '', 'end_date': ''}
+        con_2, abonos_1 = contar(busqueda), contar({'action': 'search_pays', 'id': primera.pk})
+        crear(10)
+        for _ in range(11):
+            cobrar(empresa, dueno, primera, '0.10', medio='efectivo', referencia='')
+        assert contar(busqueda) == con_2
+        assert contar({'action': 'search_pays', 'id': primera.pk}) == abonos_1
+
+
+class TestPlanes:
+
+    def test_plan_vencido_solo_consulta(self, client, empresa, dueno, cuenta):  # noqa: F811
+        from core.suscripciones.models import SubscriptionPeriod
+        abono = cobrar(empresa, dueno, cuenta)
+        SubscriptionPeriod.objects.filter(company=empresa).update(ends_at=timezone.now() - timedelta(days=1))
+        entrar(client, dueno, empresa)
+        assert client.get(LISTA).status_code == 200
+        assert client.post(LISTA, {'action': 'search', 'start_date': '', 'end_date': ''}).status_code == 200
+        assert client.post(LISTA, {'action': 'search_pays', 'id': cuenta.pk}).status_code == 200
+        assert client.get(NUEVO).status_code == 302
+        datos = {'action': 'add', 'ctas_collect': cuenta.pk, 'date_joined': HOY.isoformat(), 'valor': '1.00',
+                 'medio_pago': 'efectivo', 'referencia': '', 'description': ''}
+        assert client.post(NUEVO, datos).status_code == 403
+        assert client.post(LISTA, {'action': 'delete_pay', 'id': abono.pk}).status_code == 403
+        assert leer(empresa, lambda: PaymentsCtaCollect.objects.count()) == 1
+
+    def test_plan_gratuito_bloqueado(self, client):
+        gratuita = helpers.crear_empresa('GRATUITA CXC', plan=None)
+        propietario = helpers.crear_usuario('dueno.gratuita.cxc', gratuita)
+        entrar(client, propietario, gratuita)
+        respuesta = client.get(LISTA)
+        assert respuesta.status_code == 302 and respuesta['Location'] == '/suscripcion/'
+        assert client.post(LISTA, {'action': 'search', 'start_date': '', 'end_date': ''}).status_code == 403

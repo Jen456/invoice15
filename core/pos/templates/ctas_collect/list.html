@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block columns %}
-    <th>Id</th>
+    <th>Documento</th>
     <th>Cliente</th>
     <th>Fecha de compra</th>
     <th>Fecha de plazo</th>
@@ -40,7 +40,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title font-weight-bold">
-                        <i class="fa fa-search"></i> Listado de Pagos
+                        <i class="fa fa-search"></i> Abonos de la cuenta por cobrar
                     </h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
@@ -53,11 +53,14 @@
                                 <table style="width:100%;" class="table table-bordered table-sm" id="tblPayments">
                                     <thead>
                                     <tr>
-                                        <th style="width: 10%;">Id</th>
-                                        <th style="width: 30%;">Fecha de registro</th>
-                                        <th style="width: 20%;">Valor</th>
-                                        <th style="width: 25%;">Detalles</th>
-                                        <th style="width: 15%;">Opciones</th>
+                                        <th style="width: 5%;">N.º</th>
+                                        <th style="width: 12%;">Fecha</th>
+                                        <th style="width: 15%;">Tipo</th>
+                                        <th style="width: 13%;">Medio de pago</th>
+                                        <th style="width: 15%;">Referencia</th>
+                                        <th style="width: 10%;">Valor</th>
+                                        <th style="width: 22%;">Detalles</th>
+                                        <th style="width: 8%;">Opciones</th>
                                     </tr>
                                     </thead>
                                     <tbody></tbody>
