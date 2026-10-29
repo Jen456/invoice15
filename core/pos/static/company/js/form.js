@@ -338,4 +338,13 @@ $(function () {
     $('.btnLoadCertificate').on('click', function () {
         company.loadCertificate();
     });
+
+    // Etapa 2 (O2): «Usar sugerencia» solo cambia el select en el navegador; la empresa decide si guarda.
+    $('[data-fpa-sugerencia]').on('click', function () {
+        var campo = $(this).attr('data-fpa-sugerencia');
+        if (['tipo_contribuyente', 'periodicidad_iva'].indexOf(campo) === -1) {
+            return;
+        }
+        $('select[name="' + campo + '"]').val($(this).attr('data-valor')).trigger('change');
+    });
 });

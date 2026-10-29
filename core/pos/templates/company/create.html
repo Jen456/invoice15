@@ -25,8 +25,31 @@
         <legend>Configuración tributaria</legend><p class="fp-section-description">Revisa el ambiente de emisión antes de facturar.</p>
         <div class="fp-form-grid">
         {% for field in form.visible_fields %}
-            {% if field.name in 'special_taxpayer,obligated_accounting,retention_agent,rimpe,environment_type,emission_type,iva,vat_percentage' %}{% include 'company/field.html' %}{% endif %}
+            {% if field.name in 'special_taxpayer,obligated_accounting,retention_agent,rimpe,environment_type,emission_type,iva,vat_percentage,tipo_contribuyente,periodicidad_iva' %}{% include 'company/field.html' %}{% endif %}
         {% endfor %}
+        </div>
+        {# Etapa 2 (O2): sugerencias que no se guardan solas (el botón solo cambia el select en el navegador) y vencimientos. #}
+        {% if sugerencias_tributarias.faltan %}
+            <div class="alert alert-warning fp-sugerencias-tributarias" role="status">
+                <p class="mb-1">Completa el tipo de contribuyente y la declaración del IVA: con ellos se calculan tus vencimientos.</p>
+                {% if 'tipo_contribuyente' in sugerencias_tributarias.faltan and sugerencias_tributarias.tipo.0 %}
+                    <p class="mb-1">Tipo de contribuyente · Sugerencia: {{ sugerencias_tributarias.tipo_nombre }} ({{ sugerencias_tributarias.tipo.1 }})
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-fpa-sugerencia="tipo_contribuyente" data-valor="{{ sugerencias_tributarias.tipo.0 }}">Usar sugerencia</button></p>
+                {% endif %}
+                {% if 'periodicidad_iva' in sugerencias_tributarias.faltan and sugerencias_tributarias.periodicidad.0 %}
+                    <p class="mb-0">Declaración del IVA · Sugerencia: {{ sugerencias_tributarias.periodicidad_nombre }} ({{ sugerencias_tributarias.periodicidad.1 }})
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-fpa-sugerencia="periodicidad_iva" data-valor="{{ sugerencias_tributarias.periodicidad.0 }}">Usar sugerencia</button></p>
+                {% endif %}
+            </div>
+        {% endif %}
+        <div class="fp-vencimientos">
+            <h3 class="h6">Próximos vencimientos (90 días)</h3>
+            {% if vencimientos_aviso %}<p class="text-muted">{{ vencimientos_aviso }}</p>{% endif %}
+            {% if vencimientos %}
+                <table class="table table-sm"><thead><tr><th scope="col">Formulario</th><th scope="col">Período</th><th scope="col">Fecha límite</th><th scope="col">Nota</th></tr></thead><tbody>
+                {% for v in vencimientos %}<tr><td>{{ v.obligacion }}</td><td>{{ v.periodo }}</td><td>{{ v.fecha_limite|date:"d/m/Y" }}</td><td>{% if not v.confirmado %}<span class="badge badge-warning">Por confirmar</span> {% endif %}{% if v.nota %}<small class="text-muted">{{ v.nota }}</small>{% endif %}</td></tr>{% endfor %}
+                </tbody></table>
+            {% elif not vencimientos_aviso %}<p class="text-muted">No hay vencimientos del 104 ni del 103 en los próximos 90 días.</p>{% endif %}
         </div>
     </fieldset>
     <fieldset class="fp-form-section" id="fp-emision">
@@ -57,7 +80,7 @@
     {# Preserve additional fields from newer backend versions. #}
     <div class="fp-form-grid">
     {% for field in form.visible_fields %}
-        {% if field.name not in 'ruc,business_name,tradename,main_address,mobile,phone,email,website,description,image,special_taxpayer,obligated_accounting,retention_agent,rimpe,environment_type,emission_type,iva,vat_percentage,establishment_address,establishment_code,issuing_point_code,electronic_signature,electronic_signature_key,email_host,email_port,email_host_user,email_host_password' %}
+        {% if field.name not in 'ruc,business_name,tradename,main_address,mobile,phone,email,website,description,image,special_taxpayer,obligated_accounting,retention_agent,rimpe,environment_type,emission_type,iva,vat_percentage,tipo_contribuyente,periodicidad_iva,establishment_address,establishment_code,issuing_point_code,electronic_signature,electronic_signature_key,email_host,email_port,email_host_user,email_host_password' %}
             {% include 'company/field.html' %}
         {% endif %}
     {% endfor %}

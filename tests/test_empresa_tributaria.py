@@ -1,8 +1,10 @@
 """Datos tributarios de la empresa y calendario de vencimientos (Etapa 2, O2): campos sin indicar por defecto,
 contribuyente especial, días por noveno dígito, paso al siguiente día hábil, 104 semestral y contribuyente especial sin
 confirmar, 104 con la periodicidad sugerida (sin guardarla), 103 solo para agentes o si emitió retenciones, y sugerencias.
-El formulario y la pantalla de Empresa se prueban con su vista en el paso siguiente."""
-from datetime import date
+Además, el formulario (sin los campos nuevos sigue válido, las cuatro contradicciones) y la pantalla de Empresa
+(sugerencias sin valor inicial, vencimientos, guardar sin tocar los selects y auditoría company_change)."""
+import json
+from datetime import date, timedelta
 
 import pytest
 
@@ -10,6 +12,7 @@ from core.comprobantes.models import Retencion
 from core.pos import calendario_sri as cal
 from core.pos.models import Company
 from core.tenancy.context import company_context
+from core.tenancy.models import AuditLog
 from tests import helpers
 
 pytestmark = pytest.mark.django_db
@@ -155,3 +158,141 @@ class TestSugerencias:
                                                        ('NO', 'negocio_popular', 'semestral'), ('NO', '', 'mensual')])
     def test_periodicidad(self, agente, rimpe, codigo):
         assert cal.sugerir_periodicidad_iva(Company(retention_agent=agente, rimpe=rimpe))[0] == codigo
+
+
+# ---------------------------------------------------------------- formulario y pantalla de Empresa (paso 2)
+
+URL_EMPRESA = '/pos/company/update/'
+
+
+def datos_empresa(company, **cambios):
+    """POST completo del formulario de Empresa con lo guardado (los selects nuevos vacíos, como los envía el navegador)."""
+    from django import forms
+
+    from core.pos.forms import CompanyForm
+    form = CompanyForm(instance=company)
+    datos = {}
+    for nombre, campo in form.fields.items():
+        if isinstance(campo, forms.FileField):
+            continue
+        valor = form.initial.get(nombre)
+        if isinstance(campo, forms.BooleanField):
+            if valor:
+                datos[nombre] = 'on'
+            continue
+        datos[nombre] = '' if valor is None else valor
+    datos.update(cambios)
+    return datos
+
+
+def entrar(client, usuario, company):
+    helpers.iniciar_sesion(client, usuario, empresa=company)
+    return client
+
+
+class TestFormularioEmpresa:
+
+    def test_sin_los_campos_nuevos_sigue_valido(self, empresa):
+        from core.pos.forms import CompanyForm
+        datos = datos_empresa(empresa)
+        assert datos['tipo_contribuyente'] == '' and datos['periodicidad_iva'] == ''
+        del datos['tipo_contribuyente'], datos['periodicidad_iva']
+        form = CompanyForm(datos, instance=empresa)
+        assert form.is_valid(), form.errors
+        assert (form.cleaned_data['tipo_contribuyente'], form.cleaned_data['periodicidad_iva']) == ('', '')
+        assert form.fields['tipo_contribuyente'].choices[0] == ('', 'Sin indicar')
+        assert form.fields['periodicidad_iva'].choices[0] == ('', 'Sin indicar')
+
+    @pytest.mark.parametrize('tercero, tipo, obligado, mensaje', [
+        ('9', 'sociedad', 'NO', 'Las sociedades y las personas naturales obligadas llevan contabilidad: marca «Obligado a '
+                                'llevar contabilidad: Sí».'),
+        ('1', 'pn_obligada', 'NO', 'Las sociedades y las personas naturales obligadas llevan contabilidad: marca «Obligado a '
+                                   'llevar contabilidad: Sí».'),
+        ('1', 'pn_no_obligada', 'SI', 'Una persona natural no obligada a llevar contabilidad tiene «Obligado a llevar '
+                                      'contabilidad: No».'),
+        ('1', 'sociedad', 'SI', 'El RUC {ruc} es de persona natural (tercer dígito 1): no corresponde a una sociedad.'),
+        ('9', 'pn_no_obligada', 'NO', 'El RUC {ruc} es de sociedad o entidad pública (tercer dígito 9).'),
+        ('6', 'pn_obligada', 'SI', 'El RUC {ruc} es de sociedad o entidad pública (tercer dígito 6).'),
+    ])
+    def test_contradicciones(self, empresa, tercero, tipo, obligado, mensaje):
+        from core.pos.forms import CompanyForm
+        ruc = ruc_con_noveno('1', tercero=tercero)
+        form = CompanyForm(datos_empresa(empresa, ruc=ruc, tipo_contribuyente=tipo, obligated_accounting=obligado),
+                           instance=empresa)
+        assert not form.is_valid() and form.errors['tipo_contribuyente'] == [mensaje.format(ruc=ruc)]
+
+    @pytest.mark.parametrize('tercero, tipo, obligado', [('9', 'sociedad', 'SI'), ('1', 'pn_obligada', 'SI'),
+                                                         ('1', 'pn_no_obligada', 'NO')])
+    def test_combinaciones_coherentes(self, empresa, tercero, tipo, obligado):
+        from core.pos.forms import CompanyForm
+        form = CompanyForm(datos_empresa(empresa, ruc=ruc_con_noveno('1', tercero=tercero), tipo_contribuyente=tipo,
+                                         obligated_accounting=obligado, periodicidad_iva='semestral'), instance=empresa)
+        assert form.is_valid(), form.errors
+
+
+class TestPantallaEmpresa:
+
+    def test_get_con_sugerencias_sin_valor_inicial_y_vencimientos(self, client, empresa, admin):
+        from dataclasses import asdict
+
+        from django.utils import timezone
+        Company.objects.filter(pk=empresa.pk).update(ruc=ruc_con_noveno('1'), obligated_accounting='SI', retention_agent='NO',
+                                                     rimpe='')
+        entrar(client, admin, empresa)
+        pagina = client.get(URL_EMPRESA)
+        assert pagina.status_code == 200
+        sugerencias = pagina.context['sugerencias_tributarias']
+        assert sugerencias['faltan'] == ['tipo_contribuyente', 'periodicidad_iva']
+        assert sugerencias['tipo'] == ('sociedad', 'RUC de sociedad o entidad pública') and sugerencias['tipo_nombre'] == 'Sociedad'
+        assert sugerencias['periodicidad'] == ('mensual', 'Régimen general: el IVA se declara cada mes')
+        form = pagina.context['form']
+        assert form['tipo_contribuyente'].value() in ('', None) and form['periodicidad_iva'].value() in ('', None)
+        html = pagina.content.decode()
+        assert 'Completa el tipo de contribuyente y la declaración del IVA: con ellos se calculan tus vencimientos.' in html
+        assert 'data-fpa-sugerencia="tipo_contribuyente" data-valor="sociedad"' in html
+        assert 'data-fpa-sugerencia="periodicidad_iva" data-valor="mensual"' in html
+        assert '<option value="" selected>Sin indicar</option>' in html
+        hoy = timezone.localdate()
+        esperados = [asdict(v) for v in cal.vencimientos_de_empresa(Company.objects.get(pk=empresa.pk), hoy,
+                                                                     hoy + timedelta(days=90))]
+        assert pagina.context['vencimientos'] == esperados and esperados
+        assert all(v['obligacion'] == '104' and v['confirmado'] is False for v in esperados)   # periodicidad sugerida
+        assert pagina.context['vencimientos_aviso'] == ''
+
+    def test_ruc_invalido_no_rompe_la_pagina(self, client, empresa, admin):
+        Company.objects.filter(pk=empresa.pk).update(ruc='0990000000000')
+        entrar(client, admin, empresa)
+        pagina = client.get(URL_EMPRESA)
+        assert pagina.status_code == 200 and pagina.context['vencimientos'] == []
+        assert pagina.context['vencimientos_aviso'] == 'Revisa el RUC de la empresa: con él se calculan tus fechas de vencimiento.'
+
+    def test_guardar_cambiando_solo_el_telefono_deja_los_campos_sin_indicar(self, client, empresa, admin):
+        entrar(client, admin, empresa)
+        respuesta = client.post(URL_EMPRESA, datos_empresa(empresa, phone='042999999', action='create_or_edit'))
+        assert respuesta.json() == {}
+        company = Company.objects.get(pk=empresa.pk)
+        assert company.phone == '042999999' and (company.tipo_contribuyente, company.periodicidad_iva) == ('', '')
+        assert not AuditLog.objects.filter(action='company_change').exists()
+
+    def test_el_cambio_se_audita_con_company_change(self, client, empresa, admin):
+        Company.objects.filter(pk=empresa.pk).update(ruc=ruc_con_noveno('1'), obligated_accounting='SI')
+        company = Company.objects.get(pk=empresa.pk)
+        entrar(client, admin, empresa)
+        respuesta = client.post(URL_EMPRESA, datos_empresa(company, tipo_contribuyente='sociedad', periodicidad_iva='mensual',
+                                                           action='create_or_edit'))
+        assert respuesta.json() == {}
+        registro = AuditLog.objects.get(action='company_change')
+        json.dumps(registro.detail)
+        assert registro.company_id == empresa.pk and registro.user == admin
+        assert registro.detail == {'campos': {'tipo_contribuyente': ['', 'sociedad'], 'periodicidad_iva': ['', 'mensual']}}
+        respuesta = client.post(URL_EMPRESA, datos_empresa(Company.objects.get(pk=empresa.pk), phone='042111111',
+                                                           action='create_or_edit'))
+        assert respuesta.json() == {} and AuditLog.objects.filter(action='company_change').count() == 1
+
+    def test_contradiccion_por_la_pantalla(self, client, empresa, admin):
+        Company.objects.filter(pk=empresa.pk).update(ruc=ruc_con_noveno('1'), obligated_accounting='NO')
+        entrar(client, admin, empresa)
+        respuesta = client.post(URL_EMPRESA, datos_empresa(Company.objects.get(pk=empresa.pk), tipo_contribuyente='sociedad',
+                                                           action='create_or_edit'))
+        assert 'error' in respuesta.json() and 'llevan contabilidad' in respuesta.content.decode()
+        assert Company.objects.get(pk=empresa.pk).tipo_contribuyente == ''
