@@ -337,6 +337,30 @@ class TestPuenteDel07:
         assert [r.pk for r in otra_vez] == [r.pk for r in rets]
         assert leer(empresa, lambda: PaymentsCtaCollect.objects.filter(tipo='retencion').count()) == 2
 
+    def test_dos_sustentos_de_la_misma_factura_rechazan_el_documento(self, empresa, dueno, ventas, documento,
+                                                                     monkeypatch):  # noqa: F811
+        """Revisión O2-T1: renta en un docSustento e IVA en otro, de la misma factura. Antes se guardaba solo el primero
+        (se perdían los 0,90 de IVA) y el documento quedaba incorporado."""
+        llamadas = recibidos_falsos(monkeypatch)
+        from core.importacion.recibidos import RetencionLineaLeida
+        renta = sustento(ventas[0], lineas=(RetencionLineaLeida('1', '312', Decimal('20.00'), Decimal('2.00'), Decimal('0.40')),))
+        iva = sustento(ventas[0], lineas=(RetencionLineaLeida('2', '1', Decimal('3.00'), Decimal('30.00'), Decimal('0.90')),))
+        leida = retencion_leida(documento, [renta, sustento(ventas[1]), iva])
+        texto = (f'La factura {ventas[0].voucher_number_full} aparece en varios sustentos de esta retención: regístrala a '
+                 'mano con todas sus líneas.')
+        with company_context(empresa):
+            revision = rr.revisar_importacion(empresa, documento, leida)
+        assert revision['puede_registrar'] is False
+        assert [s['error'] for s in revision['sustentos']] == [
+            {'codigo': 'sustento_repetido', 'texto': texto}, None, {'codigo': 'sustento_repetido', 'texto': texto}]
+        antes = self.conteos(empresa)
+        with company_context(empresa), pytest.raises(rr.ErrorRetencionRecibida) as error:
+            rr.registrar_desde_importacion(empresa, dueno, documento, leida)
+        numero = ventas[0].voucher_number_full
+        assert (error.value.codigo, error.value.sustento, str(error.value)) == ('sustento_repetido', numero,
+                                                                                f'Sustento {numero}: {texto}')
+        assert self.conteos(empresa) == antes and llamadas == []          # nada a medias y el documento no se incorpora
+
     def test_declarada_en_archivo(self, empresa, dueno, ventas, documento, monkeypatch):  # noqa: F811
         recibidos_falsos(monkeypatch)
         rets = self.registrar_07(empresa, dueno, documento, retencion_leida(documento, [sustento(ventas[0])], verificado_sri=False))

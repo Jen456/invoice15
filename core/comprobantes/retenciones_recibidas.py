@@ -83,6 +83,8 @@ MENSAJES = {
     'sustento_no_factura': 'El documento sustento {numero} no es una factura.',
     'sustento_no_encontrado': 'No hay una factura {numero} emitida por la empresa en el ambiente {ambiente}.',
     'sustento_ambiguo': 'Hay más de una factura con el número {numero}: regístrala a mano.',
+    'sustento_repetido': 'La factura {numero} aparece en varios sustentos de esta retención: regístrala a mano con todas sus '
+                         'líneas.',
 }
 # Clave del texto → código que se informa (el ISD tiene un texto propio a nivel de documento).
 CODIGO_DE = {'impuesto_no_soportado_documento': 'impuesto_no_soportado'}
@@ -522,9 +524,23 @@ def _datos_de_leida(leida, sustento):
         verificacion='verificada_sri' if leida.verificado_sri else 'declarada_en_archivo')
 
 
+def _ventas_repetidas(leida):
+    """pk de las facturas que aparecen en más de un sustento del 07. Un registro es por (documento, venta): sus líneas no se
+    juntan solas (se perdería una parte), así que el documento se rechaza y se registra a mano."""
+    vistas, repetidas = set(), set()
+    for s in leida.sustentos:
+        if s.cod_doc_sustento != '01':
+            continue
+        venta = _buscar_venta(s.num_doc_sustento, leida.ambiente)[0]
+        if venta is not None:
+            (repetidas if venta.pk in vistas else vistas).add(venta.pk)
+    return repetidas
+
+
 def revisar_importacion(company, documento, leida):
     """Vista previa del registro desde un 07 importado (no escribe nada). Contrato de la pantalla de O1 (espec §6.13)."""
     errores_documento = [{'codigo': e.codigo, 'texto': str(e)} for e in _errores_documento(documento, leida)]
+    repetidas = _ventas_repetidas(leida)
     sustentos = []
     for s in leida.sustentos:
         fila = {'num_doc_sustento': s.numero_con_guiones, 'venta_id': None, 'venta_numero': '', 'cliente': '',
@@ -540,6 +556,10 @@ def revisar_importacion(company, documento, leida):
             fila['error'] = {'codigo': e.codigo, 'texto': str(e)}
             continue
         fila.update(venta_id=venta.pk, venta_numero=venta.voucher_number_full, cliente=venta.client.user.names)
+        if venta.pk in repetidas:
+            e = _error('sustento_repetido', numero=venta.voucher_number_full)
+            fila['error'] = {'codigo': e.codigo, 'texto': str(e)}
+            continue
         existente = RetencionRecibida.objects.filter(documento_importado=documento, venta=venta, estado='registrada').first()
         if existente is not None:
             fila['ya_registrada_id'] = existente.pk
@@ -577,6 +597,9 @@ def registrar_desde_importacion(company, usuario, documento, leida, request=None
             venta, clave = _buscar_venta(s.num_doc_sustento, leida.ambiente)
             if venta is None:
                 e = _error_sustento(clave, s, leida.ambiente)
+                raise ErrorRetencionRecibida(f'Sustento {s.numero_con_guiones}: {e}', e.codigo, s.numero_con_guiones)
+            if any(v.pk == venta.pk for v in ventas):
+                e = _error('sustento_repetido', numero=venta.voucher_number_full)
                 raise ErrorRetencionRecibida(f'Sustento {s.numero_con_guiones}: {e}', e.codigo, s.numero_con_guiones)
             ventas.append(venta)
         list(Sale.objects.select_for_update(of=('self',)).filter(pk__in=[v.pk for v in ventas]).order_by('pk')
