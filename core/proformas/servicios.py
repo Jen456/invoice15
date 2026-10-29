@@ -520,6 +520,9 @@ def validar(datos, proforma=None):
     return cabecera, lineas
 
 
+IMPORTES = ('subtotal_gravado', 'subtotal_cero', 'total_iva', 'total_descuento', 'total')   # los que asigna calcular()
+
+
 def calcular(proforma, lineas):
     """Importes de cada línea con su tarifa y totales de la proforma, con las mismas funciones que la factura."""
     from core.pos.models import calcular_linea_iva, totales_de_lineas
@@ -572,7 +575,9 @@ def editar(proforma_id, datos, usuario):
     vuelve = p.estado == 'enviada'
     if vuelve:
         p.estado = 'borrador'
-    p.save()
+    # Solo lo que cambia la edición: nunca venta, facturada_* ni las demás fechas de estado (defensa además del bloqueo:
+    # sin él, la CHECK «facturada ⇔ con venta» rechazaría escribir «borrador» sobre una proforma ya facturada).
+    p.save(update_fields=[*cabecera, *IMPORTES, 'estado', 'actualizada_en'])
     p.detalles.all().delete()
     _guardar_lineas(p, lineas)
     return p, MENSAJES['vuelve_borrador' if vuelve else 'guardada'].format(numero=p.numero_completo)
