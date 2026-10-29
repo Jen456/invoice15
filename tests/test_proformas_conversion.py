@@ -305,6 +305,29 @@ class TestEmitir:
         assert ventas(empresa) == 0 and secuencia(empresa) == 270 and sri.recepciones == []
         sin_cambios(empresa, p, 'enviada' if estado == 'vencida' else estado)
 
+    @pytest.mark.parametrize('dias, vigente', [(0, True), (1, False)], ids=['valida_hasta_hoy', 'valida_hasta_ayer'])
+    def test_enviada_el_ultimo_dia_de_validez(self, web, empresa, dueno, comprador, productos, sri, dias, vigente):  # noqa: F811
+        """Una enviada se factura hasta el último día de su validez, de punta a punta (abrir la venta precargada y
+        emitir); al día siguiente ni se abre ni se emite."""
+        valida_hasta = timezone.localdate() - timedelta(days=dias)
+        p = crear_proforma(empresa, dueno, datos_ejemplo(productos, cliente=comprador), estado='enviada',
+                           valida_hasta=valida_hasta)
+        vencida = M['vencida'].format(numero=p.numero_completo, fecha=f'{valida_hasta:%d/%m/%Y}', accion='facturar')
+        if not vigente:
+            r = abrir(web, p.pk)
+            assert r.status_code == 302 and mensajes(r) == [vencida]
+            assert emitir(web, p, comprador, manual(productos)) == {'error': vencida}
+            assert ventas(empresa) == 0 and secuencia(empresa) == 270
+            sin_cambios(empresa, p, 'enviada')
+            return
+        sri.respuestas_autorizacion = ['AUTORIZADO']
+        r = emitir(web, p, comprador)                                     # precarga + «Emitir factura»
+        assert r.get('resp') is True, r
+        venta = venta_de(empresa, 271)
+        actual = refrescar(empresa, p)
+        assert (actual.estado, actual.venta_id) == ('facturada', venta.pk)
+        assert AuditLog.objects.filter(action='proforma_facturada').count() == 1
+
     @pytest.mark.parametrize('fallo', ['consumidor_final', 'firma'])
     def test_fallo_dentro_de_la_transaccion_deja_la_proforma_igual(self, web, empresa, comprador, aceptada, sri, fallo):  # noqa: F811
         stock_antes = stock(empresa)

@@ -305,6 +305,32 @@ class TestEstados:
         assert r.status_code == 409 and 'venció el' in r.json()['error']
         assert accion(web, 'rechazar', p).status_code == 200   # rechazar no exige vigencia
 
+    @pytest.mark.parametrize('dias, vigente', [(0, True), (1, False)], ids=['valida_hasta_hoy', 'valida_hasta_ayer'])
+    def test_ultimo_dia_de_validez(self, web, empresa, dueno, facturable, dias, vigente):
+        """La proforma vence al terminar el día de «válida hasta»: ese día sigue vigente (estado, filtros y acciones) y
+        al día siguiente pasa a vencida."""
+        valida_hasta = ayer(dias)   # ayer(0) es hoy
+        enviada = crear_proforma(empresa, dueno, estado='enviada', valida_hasta=valida_hasta)
+        borrador = crear_proforma(empresa, dueno, valida_hasta=valida_hasta)
+        for p, estado in ((enviada, 'enviada'), (borrador, 'borrador')):
+            assert p.esta_vencida() is not vigente
+            datos = fila_json(web, p)
+            assert datos['estado']['id'] == (estado if vigente else 'vencida') and datos['dias_para_vencer'] == -dias
+            assert ('enviar_correo' in datos['acciones']) is vigente and ('aceptar' in datos['acciones']) is vigente
+        assert ('facturar' in fila_json(web, enviada)['acciones']) is vigente
+        assert ('marcar_enviada' in fila_json(web, borrador)['acciones']) is vigente
+
+        def ids(estado):
+            return [f['id'] for f in web.post(LISTA, {'action': 'search', 'estado': estado}).json()]
+        assert ids('enviada') == ([enviada.pk] if vigente else []) and ids('borrador') == ([borrador.pk] if vigente else [])
+        assert ids('vencida') == ([] if vigente else [borrador.pk, enviada.pk])
+        esperado = 200 if vigente else 409
+        assert accion(web, 'marcar_enviada', borrador).status_code == esperado
+        assert accion(web, 'enviar_correo', enviada, destinatarios='a@example.test').status_code == esperado
+        assert accion(web, 'aceptar', enviada).status_code == esperado
+        assert refrescar(empresa, enviada).estado == ('aceptada' if vigente else 'enviada')
+        assert len(mail.outbox) == (1 if vigente else 0)
+
     def test_editar_enviada_vuelve_a_borrador(self, web, empresa, dueno, productos):
         p = crear_proforma(empresa, dueno, estado='enviada')
         lineas = list(reversed(lineas_ejemplo(productos)))[:3]
