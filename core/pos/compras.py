@@ -1247,6 +1247,21 @@ def admite_retencion(compra):
     return compra.tipo_comprobante not in cat.TIPOS_SIN_RETENCION
 
 
+def compras_anteriores_mismo_numero(proveedor_id, estab, pto_emi, secuencial, excluir=None):
+    """Compras del proveedor registradas antes de la Etapa 2 (sin secuencial) cuyo número coincide con el comprobante: pueden
+    ser el mismo y registrarlo otra vez duplicaría stock y cuenta por pagar."""
+    from core.pos.models import Purchase
+    secuencial = _texto(secuencial)
+    if not proveedor_id or not secuencial.isdigit() or int(secuencial) == 0:
+        return []
+    corto = secuencial.lstrip('0')
+    claves = {corto, f'{_texto(estab)}{_texto(pto_emi)}{secuencial.zfill(9)}'.lstrip('0')}
+    consulta = Purchase.objects.filter(provider_id=proveedor_id, secuencial='', number__endswith=corto).order_by('pk')
+    if excluir:
+        consulta = consulta.exclude(pk=excluir)
+    return [c for c in consulta[:50] if re.sub(r'[\s-]', '', c.number or '').lstrip('0') in claves]
+
+
 def documento_importado_pendiente(proveedor, tipo, estab, pto_emi, secuencial):
     """XML recibido de ese proveedor y con ese número que todavía no tiene compra (pendiente o aprobado), o None."""
     from core.importacion.models import DocumentoImportado

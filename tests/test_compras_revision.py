@@ -372,3 +372,53 @@ def test_informe_csv_neutraliza_formulas(tmp_path):
                                             'PROVEEDOR S.A.']
     assert {f['diferencia'] for f in filas} == {'-0.01'}
     assert informe.filas[0]['nombre'].startswith('=')        # en pantalla se muestra tal cual
+
+
+# ------------------------------------------------------------------ O1-F6 y O1-F9: compra desde el XML
+
+class TestCompraDesdeXml:
+
+    @pytest.fixture
+    def receptora(self):
+        from tests import fabricas_recibidos as r
+        empresa = helpers.crear_empresa('RECEPTORA REVISIÓN', ruc=r.RUC_RECEPTOR)
+        dueno = helpers.crear_usuario('dueno.receptora.revision', empresa, ROLE_OWNER)
+        proveedor = ayuda.crear_proveedor(empresa, tipo='04', ruc=r.RUC_EMISOR, nombre='PROVEEDOR FICTICIO S.A.')
+        return empresa, dueno, proveedor
+
+    def documento(self, empresa, dueno, **fabrica):
+        from core.importacion import servicios as sv
+        from core.importacion.models import DocumentoImportado
+        from tests import fabricas_recibidos as r
+        with company_context(empresa):
+            documento = sv.crear_lote(empresa, dueno, [('doc.xml', r.autorizacion(r.factura(**fabrica)).encode())]).documentos.get()
+            DocumentoImportado.objects.filter(pk=documento.pk).update(estado_verificacion='verificada_sri')
+            return DocumentoImportado.objects.get(pk=documento.pk)
+
+    def test_compra_anterior_con_el_mismo_numero_exige_confirmar(self, receptora):
+        from core.importacion import compras as desde_xml, servicios as sv
+        empresa, dueno, proveedor = receptora
+        documento = self.documento(empresa, dueno)
+        antigua = ayuda.compra_antigua(empresa, proveedor, documento.total_sin_impuestos, fecha=documento.fecha_emision)
+        with company_context(empresa):
+            Purchase.objects.filter(pk=antigua.pk).update(number=documento.secuencial.lstrip('0').zfill(8))
+            propuesta = desde_xml.propuesta_compra(documento)
+            assert 'posible_duplicado' in [a['codigo'] for a in propuesta['advertencias']]
+            assert 'confirmar_no_duplicada' in propuesta['confirmaciones'] and propuesta['bloqueos'] == []
+            datos = {'cod_sustento': '06', 'parte_relacionada': 'no'}
+            with pytest.raises(sv.ErrorImportacion) as e:
+                desde_xml.crear_compra_desde_documento(documento, dueno, datos)
+            assert e.value.codigo == 'confirmar_no_duplicada' and f'#{antigua.pk}' in str(e.value)
+            assert Purchase.objects.count() == 1
+            compra = desde_xml.crear_compra_desde_documento(documento, dueno, {**datos, 'confirmar_no_duplicada': True})
+            assert compra.pk != antigua.pk and Purchase.objects.count() == 2
+
+    def test_nueva_compra_avisa_la_compra_anterior_con_el_mismo_numero(self, client, empresa, admin, proveedor):
+        antigua = ayuda.compra_antigua(empresa, proveedor, '120.00')
+        with company_context(empresa):
+            Purchase.objects.filter(pk=antigua.pk).update(number='00000271')
+        helpers.iniciar_sesion(client, admin, empresa=empresa)
+        data = json.loads(client.post('/pos/purchase/add/', {'action': 'validate_comprobante', 'provider': proveedor.pk,
+                                                             'tipo_comprobante': '01', 'estab': '001', 'pto_emi': '002',
+                                                             'secuencial': '271'}).content)
+        assert data['valid'] is True and data['posible_duplicado'] == [antigua.pk] and 'mismo número' in data['mensaje']

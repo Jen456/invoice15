@@ -386,6 +386,20 @@ def _compra_modificada(documento, proveedor, comprobante):
     return datos, modificada
 
 
+def _posibles_duplicadas(documento, proveedor):
+    """Compras anteriores a la Etapa 2 (sin secuencial) del proveedor con el mismo número: pueden ser este comprobante."""
+    from core.pos import compras
+    if proveedor is None or documento.cod_doc not in CODIGOS_DE_COMPRA:
+        return []
+    return compras.compras_anteriores_mismo_numero(proveedor.pk, documento.estab, documento.pto_emi, documento.secuencial)
+
+
+def _texto_posible_duplicado(parecidas):
+    lista = ', '.join(f'#{c.pk} (número {c.number}, {c.date_joined:%d/%m/%Y})' for c in parecidas)
+    return (f'Ya hay una compra registrada antes con el mismo número: {lista}. Si es este comprobante, vincúlala desde el '
+            'documento en lugar de crear otra (duplicaría el stock y la cuenta por pagar); si es otra compra, confírmalo.')
+
+
 def propuesta_compra(documento, *, hoy=None):
     """Lo que la pantalla y la API (§6.G) muestran antes de crear la compra: cabecera del XML, sugerencias (sin
     preseleccionar), importes del XML, líneas con su sugerencia, advertencias y bloqueos."""
@@ -435,6 +449,10 @@ def propuesta_compra(documento, *, hoy=None):
     confirmaciones = []
     if documento.fecha_emision and (hoy - documento.fecha_emision).days > PLAZO_ATS_DIAS:
         confirmaciones.append('confirmar_plazo_ats')
+    parecidas = _posibles_duplicadas(documento, proveedor)
+    if parecidas:
+        aviso('posible_duplicado', _texto_posible_duplicado(parecidas))
+        confirmaciones.append('confirmar_no_duplicada')
     return {
         'tipo_comprobante': documento.cod_doc, 'numero': documento.numero, 'estab': documento.estab, 'pto_emi': documento.pto_emi,
         'secuencial': documento.secuencial, 'autorizacion': documento.clave_acceso,
@@ -567,6 +585,9 @@ def crear_compra_desde_documento(documento, usuario, datos):
         if bloqueos:
             raise _error(bloqueos[0]['texto'], bloqueos[0]['codigo'])
         sv._exigir_revisable(documento, regla, datos)
+        parecidas = _posibles_duplicadas(documento, proveedor)
+        if parecidas and _si_no(datos.get('confirmar_no_duplicada')) is not True:
+            raise _error(_texto_posible_duplicado(parecidas), 'confirmar_no_duplicada')
         if proveedor is None:
             nuevo = dict(datos.get('proveedor_nuevo') or {})
             nuevo.setdefault('parte_relacionada', datos.get('parte_relacionada'))

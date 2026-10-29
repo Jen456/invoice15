@@ -224,6 +224,13 @@ class PurchaseCreateView(GroupPermissionMixin, TemplateView):
                               'documento_importado': {'id': documento.pk,
                                                       'url': reverse('importacion_documento', args=[documento.pk]),
                                                       'url_compra': reverse('importacion_compra', args=[documento.pk])}})
+            return resultado
+        parecidas = compras.compras_anteriores_mismo_numero(proveedor.pk, estab, pto_emi, secuencial)
+        if parecidas:
+            lista = ', '.join(f'#{c.pk} (número {c.number})' for c in parecidas)
+            resultado.update({'posible_duplicado': [c.pk for c in parecidas],
+                              'mensaje': f'Ya hay una compra registrada antes con el mismo número: {lista}. Revísala antes de '
+                                         'registrar otra: duplicaría el stock y la cuenta por pagar.'})
         return resultado
 
     def get_context_data(self, **kwargs):

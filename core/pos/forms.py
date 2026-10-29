@@ -896,6 +896,8 @@ class CompraDesdeDocumentoForm(forms.Form):
                                                  required=False)
     confirmar_plazo_ats = forms.BooleanField(label='Confirmo registrar la factura aunque tiene más de un año (fuera del ATS)',
                                              required=False)
+    confirmar_no_duplicada = forms.BooleanField(label='Confirmo que es otra compra, no la registrada antes con el mismo número',
+                                                required=False)
     mobile = forms.CharField(label='Celular del proveedor', required=False, max_length=10,
                              widget=forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'off'}))
     email = forms.EmailField(label='Correo del proveedor', required=False, max_length=50,
