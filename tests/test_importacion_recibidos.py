@@ -374,3 +374,18 @@ class TestPantallaRetencionRecibida:
         otra = helpers.crear_empresa('OTRA RETENIDA')
         helpers.iniciar_sesion(client, helpers.crear_usuario('dueno.otra.ret', otra, ROLE_OWNER), empresa=otra)
         assert client.get(self.url(documento)).status_code == 404
+
+    def test_ficha_del_documento_con_los_datos_nuevos(self, web, empresa, dueno):
+        retencion = importar(empresa, dueno, r.retencion_v2())
+        html = web.get(f'/importacion/documentos/{retencion.pk}/').content.decode()
+        assert f'href="{self.url(retencion)}"' in html and 'Registrar retención recibida' in html
+        assert 'Documento sustento 001001000000123' in html and '/compra/' not in html
+        en(empresa, recibidos.marcar_incorporado, retencion, dueno, 'Retención recibida #1')
+        html = web.get(f'/importacion/documentos/{retencion.pk}/').content.decode()
+        assert 'Registrada en Retenciones recibidas' in html and 'Reabrir revisión' not in html
+        nota = importar(empresa, dueno, r.nota_credito())
+        html = web.get(f'/importacion/documentos/{nota.pk}/').content.decode()
+        assert 'Documento modificado' in html and 'Devolución de mercadería' in html and 'Líneas del XML' in html
+        assert f'href="/importacion/documentos/{nota.pk}/compra/"' in html and 'name="parte_relacionada"' in html
+        debito = importar(empresa, dueno, r.nota_debito())
+        assert 'Intereses por mora' in web.get(f'/importacion/documentos/{debito.pk}/').content.decode()
