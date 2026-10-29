@@ -413,6 +413,30 @@ class TestPantallaYPermisos:
         assert respuesta.status_code == 403 and 'Ilimitado y Multiempresa' in respuesta.json()['error']
         assert client.get('/importacion/documentos/1/compra/').status_code == 302
 
+    def test_pagina_de_nota_de_credito_agrupada(self, web, empresa, dueno, proveedor):
+        nota = importar(empresa, dueno, r.nota_credito())
+        html = web.get(f'/importacion/documentos/{nota.pk}/compra/').content.decode()
+        assert 'Se registra una línea de gasto por tarifa de IVA, con el motivo de la nota.' in html
+        assert 'Las notas de crédito y débito no mueven stock en esta etapa.' in html and 'lineas-TOTAL_FORMS' not in html
+        respuesta = web.post(f'/importacion/documentos/{nota.pk}/compra/', {
+            'action': 'crear', 'cod_sustento': '06', 'payment_type': 'efectivo', 'parte_relacionada': 'no',
+            'date_joined': HOY().isoformat(), 'agrupar_por_tarifa': 'on'})
+        assert respuesta.status_code == 302
+        assert leer(empresa, lambda: Purchase.objects.get().tipo_comprobante) == '04'
+
+    def test_crear_proveedor_desde_la_revision_con_parte_relacionada(self, empresa, dueno):
+        documento = importar(empresa, dueno, r.factura())
+        with company_context(empresa):
+            documento = sv.revisar(documento, dueno, 'crear_proveedor', {'mobile': '0990004321', 'email': 'nuevo@example.com',
+                                                                        'parte_relacionada': 'si'})
+            prov = Provider.objects.get()
+            assert documento.proveedor_id == prov.pk and prov.faltantes_ats() == []
+            assert (prov.tipo_identificacion, prov.tipo_sujeto, prov.parte_relacionada) == ('04', '02', True)
+        sin_indicar = importar(empresa, dueno, r.factura(ruc='0990000002001', razon='OTRO PROVEEDOR S.A.', secuencial='000000001'))
+        with company_context(empresa):
+            sv.revisar(sin_indicar, dueno, 'crear_proveedor', {'mobile': '0990004322', 'email': 'otro@example.com'})
+            assert Provider.objects.get(ruc='0990000002001').parte_relacionada is None      # sin indicar: incompleto (DC12)
+
     def test_otra_empresa_no_ve_el_documento(self, client, empresa, dueno, proveedor):
         documento = importar(empresa, dueno, r.factura())
         otra = helpers.crear_empresa('OTRA COMPRADORA')
