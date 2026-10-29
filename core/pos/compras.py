@@ -38,6 +38,7 @@ CAMPOS_CABECERA = ('tipo_comprobante', 'cod_sustento', 'estab', 'pto_emi', 'secu
 CAMPOS_NUMERACION = ('estab', 'pto_emi', 'secuencial', 'autorizacion', 'fecha_emision')
 CAMPOS_DOC_MODIFICADO = ('tipo_doc_modificado', 'num_doc_modificado', 'aut_doc_modificado', 'fecha_doc_modificado')
 TIPOS_DOC_MODIFICABLES = ('01', '02', '03')
+CODIGOS_IVA_LIQUIDACION = ('4', '5', '0')   # tarifas que admite la liquidación que se emite (core.comprobantes.liquidaciones)
 ORDEN_RESUMEN = ('4', '10', '3', '2', '8', '5', '0', '6', '7', '')
 ETIQUETAS = {
     'tipo_comprobante': 'Tipo de comprobante', 'cod_sustento': 'Sustento tributario', 'estab': 'Establecimiento',
@@ -65,6 +66,7 @@ TEXTOS_FALTANTES = {
     'pago_exterior_pendiente': 'Los datos del pago al exterior se completan en la Etapa 4',
     'doc_modificado': 'Faltan datos del documento modificado (tipo, número, autorización y fecha)',
     'liquidacion_pendiente': 'Falta emitir la liquidación de compra y que el SRI la autorice',
+    'liquidacion_descuadrada': 'La liquidación autorizada no coincide con los importes de la compra',
     'fuera_plazo_ats': 'Registrada más de un año después de su emisión: el ATS no la admite',
 }
 
@@ -518,6 +520,19 @@ def _lineas_importadas(lineas):
     return resultado
 
 
+def _validar_lineas_liquidacion(lineas, importes):
+    """La liquidación que se emite sobre la compra (core.comprobantes.liquidaciones.calcular) toma cantidad × precio, sin
+    descuento, con IVA del 15 %, 5 % o 0 % y sin ICE ni propina: la compra debe poder liquidarse con sus mismos importes.
+    `lineas`: [(codigo_porcentaje, descuento)]."""
+    for i, (codigo, descuento) in enumerate(lineas, start=1):
+        if codigo not in CODIGOS_IVA_LIQUIDACION:
+            raise ErrorCompra(f'Línea {i}: la liquidación de compra solo admite IVA del 15 %, del 5 % o del 0 %.')
+        if descuento:
+            raise ErrorCompra(f'Línea {i}: la liquidación de compra no admite descuentos: registra el precio ya rebajado.')
+    if importes.get('total_ice') or importes.get('propina'):
+        raise ErrorCompra('La liquidación de compra que emite el sistema no incluye ICE ni propina: déjalos en 0.')
+
+
 def _preparar(company, datos, lineas, *, origen='manual', importes=None):
     """Valida cabecera y líneas y calcula los totales, sin guardar."""
     from core.pos.models import Provider
@@ -595,6 +610,8 @@ def _preparar(company, datos, lineas, *, origen='manual', importes=None):
         totales['propina'] = _decimal(datos.get('propina'), 'Propina', defecto=CERO)
         totales['total_irbpnr'] = CERO
         iva_factura = _decimal(datos.get('iva_factura'), 'IVA de la factura')
+        if modo == 'liquidacion' and iva_factura is not None and iva_factura != iva_calculado:
+            raise ErrorCompra('En una liquidación de compra el IVA es el de sus líneas: deja vacío el IVA de la factura.')
         if iva_factura is not None and tipo in cat.TIPOS_SIN_IVA_DISCRIMINADO and iva_factura != 0:
             raise ErrorCompra('Una nota de venta no discrimina IVA: el IVA de la factura es 0.')
         totales['total_iva'] = iva_factura if iva_factura is not None else iva_calculado
@@ -605,6 +622,8 @@ def _preparar(company, datos, lineas, *, origen='manual', importes=None):
                                      + totales['propina'])
     for b in BASES:
         totales[b] = redondear(totales[b])
+    if modo == 'liquidacion':
+        _validar_lineas_liquidacion([(l['codigo_porcentaje'], l['descuento']) for l in calculadas], totales)
     if totales['total'] <= 0:
         raise ErrorCompra('La compra debe tener un total mayor que cero.')
     if subtotal > MAX_SUBTOTAL or (payment_type == 'credito' and totales['total'] > MAX_SUBTOTAL):
@@ -764,9 +783,26 @@ def faltantes(compra):
         vigente = liquidaciones.liquidacion_vigente(compra) if compra.pk else None
         if vigente is None or vigente.status not in AUTORIZADOS:
             falta('liquidacion_pendiente')
+        elif vigente.environment_type != 2:
+            falta('liquidacion_pendiente', f'La liquidación {vigente.voucher_number_full} se autorizó en el ambiente de PRUEBAS '
+                                           'del SRI: no sustenta la compra')
+        elif compra.total is not None:
+            diferencias = _descuadre_liquidacion(compra, vigente)
+            if diferencias:
+                falta('liquidacion_descuadrada', f'La liquidación {vigente.voucher_number_full} no coincide con la compra '
+                                                 f'({"; ".join(diferencias)}): anúlala y emítela con los valores de la compra')
     if compra.fuera_plazo_ats:
         falta('fuera_plazo_ats')
     return faltan
+
+
+def _descuadre_liquidacion(compra, liquidacion):
+    """Diferencias (texto) entre la compra y su liquidación autorizada, al centavo; vacío si coinciden."""
+    bases = redondear(sum((getattr(compra, b) or CERO for b in BASES), CERO))
+    pares = (('sin impuestos', bases, liquidacion.total_sin_impuestos), ('IVA', compra.total_iva or CERO, liquidacion.total_iva),
+             ('total', compra.total, liquidacion.importe_total))
+    return [f'{nombre}: {dinero(a)} en la compra y {dinero(b)} en la liquidación' for nombre, a, b in pares
+            if redondear(a) != redondear(b)]
 
 
 def actualizar_marca(compra, *, guardar=True):

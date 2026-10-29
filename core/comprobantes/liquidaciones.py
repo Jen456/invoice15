@@ -65,8 +65,15 @@ def lineas_de_compra(compra):
     for d in compra.purchasedetail_set.select_related('product').order_by('pk'):
         codigo = (d.product.code if d.product_id else d.codigo_proveedor) or ''
         descripcion = d.descripcion or (d.product.name if d.product_id else '')
-        lineas.append({'detalle': d.pk, 'codigo': codigo[:25], 'descripcion': descripcion[:300],
-                       'cantidad': Decimal(d.cant), 'precio_unitario': Decimal(d.price), 'tarifa': sugerida(d)})
+        linea = {'detalle': d.pk, 'codigo': codigo[:25], 'descripcion': descripcion[:300],
+                 'cantidad': Decimal(d.cant), 'precio_unitario': Decimal(d.price), 'tarifa': sugerida(d), 'aviso': ''}
+        if d.codigo_porcentaje and d.tarifa is not None and redondear(d.tarifa) not in TARIFAS:
+            linea['aviso'] = (f'La compra registró esta línea con IVA del {redondear(d.tarifa)} %, que la liquidación no admite: '
+                              'revisa la tarifa (la compra quedará incompleta si la liquidación no coincide).')
+        elif d.total_dscto:
+            linea['aviso'] = ('La compra registró un descuento en esta línea y la liquidación toma cantidad × precio: '
+                              'la compra quedará incompleta si la liquidación no coincide.')
+        lineas.append(linea)
     return lineas
 
 
