@@ -30,7 +30,11 @@ CAMPOS_VERIFICADOS = ('emisor_ruc', 'receptor_identificacion', 'fecha_emision', 
 
 
 class ErrorImportacion(Exception):
-    """Mensaje para el usuario."""
+    """Mensaje para el usuario. `codigo` identifica el caso (p. ej. confirmar_sin_verificar o un error de Ventas)."""
+
+    def __init__(self, mensaje, codigo=''):
+        super().__init__(mensaje)
+        self.codigo = codigo
 
 
 def evento(tipo, mensaje, documento=None, lote=None, entrada=None, usuario=None, **datos):
@@ -437,7 +441,17 @@ def candidatos_conciliacion(documento):
     from core.pos.models import Purchase, Sale
     candidatos = []
     if documento.clasificacion == 'recibido':
-        compras = Purchase.objects.select_related('provider').filter(provider__ruc=documento.emisor_ruc).order_by('-date_joined')[:50]
+        # Compras con los datos del comprobante (Etapa 2): solo el mismo comprobante (RUC, tipo, establecimiento, punto y
+        # secuencial). Las anteriores, sin secuencial, siguen con la heurística de número, subtotal y fecha.
+        exactas = (Purchase.objects.filter(provider__ruc=documento.emisor_ruc, tipo_comprobante=documento.cod_doc,
+                                           estab=documento.estab, pto_emi=documento.pto_emi, secuencial=documento.secuencial)
+                   .exclude(secuencial='').order_by('pk')[:5])
+        for compra in exactas:
+            candidatos.append({'tipo': 'compra', 'id': compra.pk, 'numero': compra.number, 'fecha': compra.date_joined.isoformat(),
+                               'subtotal': format(Decimal(compra.subtotal), '.2f'), 'razones': ['mismo comprobante'],
+                               'exacto': True})
+        compras = (Purchase.objects.select_related('provider').filter(provider__ruc=documento.emisor_ruc, secuencial='')
+                   .order_by('-date_joined')[:50])
         for compra in compras:
             razones = []
             numero = compra.number.lstrip('0')
@@ -491,7 +505,14 @@ def revisar(documento, usuario, accion, datos=None):
             _exigir_revisable(documento, regla, datos)
             documento.estado_revision = 'aprobado'
             mensaje = 'Aprobado: queda registrado como documento ' + ('recibido.' if documento.clasificacion == 'recibido' else 'emitido.')
+            if documento.cod_doc == '07':
+                mensaje += ' ' + AVISO_RETENCION
         elif accion in ('vincular_compra', 'vincular_venta'):
+            if accion == 'vincular_compra' and documento.cod_doc not in ('01', '04', '05'):
+                raise ErrorImportacion('Un comprobante de retención no se vincula con una compra: regístralo en «Registrar '
+                                       'retención recibida».')
+            if accion == 'vincular_venta' and documento.cod_doc != '01':
+                raise ErrorImportacion('Solo una factura emitida se vincula con una venta.')
             _exigir_revisable(documento, regla, datos)
             mensaje = _vincular(documento, accion, datos.get('id'))
             documento.estado_revision = 'vinculado'
@@ -502,6 +523,9 @@ def revisar(documento, usuario, accion, datos=None):
         elif accion == 'reabrir':
             if documento.estado_revision == 'pendiente':
                 raise ErrorImportacion('El documento ya está pendiente de revisión.')
+            motivo = motivo_sin_reabrir(documento)
+            if motivo:
+                raise ErrorImportacion(motivo)
             documento.estado_revision, documento.compra, documento.venta = 'pendiente', None, None
             documento.estado_contable, documento.propuesta_contable = 'sin_propuesta', None
             mensaje = 'Reabierto para revisión.'
@@ -540,6 +564,9 @@ def _vincular(documento, accion, registro_id):
             raise ErrorImportacion('La compra no existe.')
         if compra.provider.ruc != documento.emisor_ruc:
             raise ErrorImportacion('La compra es de otro proveedor (el RUC no coincide).')
+        if compra.version_datos == 2 and compra.tipo_comprobante != documento.cod_doc:
+            raise ErrorImportacion('La compra es de otro tipo de comprobante '
+                                   f'({compra.get_tipo_comprobante_display() or "sin tipo"}): no es este documento.')
         if DocumentoImportado.objects.filter(compra=compra).exclude(pk=documento.pk).exists():
             raise ErrorImportacion('Esa compra ya está vinculada con otro documento importado.')
         documento.compra, documento.proveedor = compra, compra.provider
@@ -561,19 +588,45 @@ def _crear_proveedor(documento, datos):
     from core.pos.models import Provider
     if documento.clasificacion != 'recibido':
         raise ErrorImportacion('Solo se crea el proveedor de un documento recibido.')
+    if documento.cod_doc == '07':
+        raise ErrorImportacion('El emisor de un comprobante de retención es tu cliente (agente de retención), no un proveedor.')
     if Provider.objects.filter(ruc=documento.emisor_ruc).exists():
         documento.proveedor = Provider.objects.get(ruc=documento.emisor_ruc)
         return 'El proveedor ya existía: se asignó.'
+    documento.proveedor = crear_proveedor_de_documento(documento, datos)
+    return f'Proveedor {documento.proveedor.name} creado.'
+
+
+def crear_proveedor_de_documento(documento, datos):
+    """Proveedor del emisor del documento: RUC (tipo 04: el emisor de un comprobante electrónico siempre lo tiene), tipo de
+    sujeto según el RUC y parte relacionada solo si se indica («si»/«no»; sin indicar queda NULL y el proveedor queda
+    incompleto, DC12). Celular y correo son obligatorios en Proveedores."""
+    from core.pos.models import Provider
+    from core.pos.proveedores import _parte_relacionada, sujeto_de_ruc
     movil, correo = (datos.get('mobile') or '').strip(), (datos.get('email') or '').strip()
     if not movil or not correo or '@' not in correo:
         raise ErrorImportacion('Para crear el proveedor escribe su celular y su correo (son obligatorios en Proveedores).')
     try:
         with transaction.atomic():
-            documento.proveedor = Provider.objects.create(name=(documento.emisor_razon_social or documento.emisor_ruc)[:100],
-                                                          ruc=documento.emisor_ruc, mobile=movil[:10], email=correo[:50])
+            return Provider.objects.create(name=(documento.emisor_razon_social or documento.emisor_ruc)[:100],
+                                           ruc=documento.emisor_ruc, mobile=movil[:10], email=correo[:50], tipo_identificacion='04',
+                                           tipo_sujeto=sujeto_de_ruc(documento.emisor_ruc),
+                                           parte_relacionada=_parte_relacionada(datos.get('parte_relacionada')))
     except IntegrityError:
         raise ErrorImportacion('Ya existe un proveedor con ese nombre, celular o correo.')
-    return f'Proveedor {documento.proveedor.name} creado.'
+
+
+AVISO_RETENCION = 'La retención se contabiliza con la retención recibida.'
+
+
+def motivo_sin_reabrir(documento):
+    """Texto por el que el documento no se reabre aquí (o ''): la compra se creó desde él (se elimina en Compras), o es un
+    07 registrado como retención recibida (se anula allí y el documento vuelve a pendiente)."""
+    if documento.estado_revision == 'vinculado' and documento.cod_doc == '07':
+        return 'Se incorporó como retención recibida: anula allí el registro de la retención para reabrir el documento.'
+    if documento.compra_id and documento.compra.origen == 'importacion':
+        return f'La compra #{documento.compra_id} se creó desde este documento: elimínala en Compras para reabrirlo.'
+    return ''
 
 
 # ------------------------------------------------------------------ 6. propuesta contable (no contabiliza)
@@ -590,6 +643,15 @@ def propuesta_contable(documento, regla):
             lineas.append({'cuenta': cuenta or '', 'descripcion': descripcion, 'debe': format(debe, '.2f'), 'haber': format(haber, '.2f')})
 
     otros_impuestos = documento.total_ice + documento.total_irbpnr
+    if documento.cod_doc == '07':
+        return None     # la retención se contabiliza con la retención recibida (o emitida), no aquí
+    reverso = documento.cod_doc == '04'    # nota de crédito: reverso del comprobante que modifica (debe ↔ haber)
+    if reverso:
+        directa = linea
+
+        def linea(cuenta, descripcion, debe=cero, haber=cero, etiqueta=''):
+            directa(cuenta, descripcion, debe=haber, haber=debe, etiqueta=etiqueta)
+
     if documento.clasificacion == 'recibido':
         cuenta = {'gasto': regla.cuenta_gasto, 'inventario': regla.cuenta_inventario, 'activo_fijo': regla.cuenta_activo_fijo}[regla.naturaleza_compra]
         base = documento.total_sin_impuestos + otros_impuestos + documento.propina
@@ -600,7 +662,7 @@ def propuesta_contable(documento, regla):
               etiqueta=regla.get_naturaleza_compra_display().lower())
         linea(regla.cuenta_iva_compras, 'IVA en compras (crédito tributario)', debe=iva_credito, etiqueta='IVA en compras')
         renta = iva_ret = cero
-        for ret in retenciones_relacionadas(documento):
+        for ret in ([] if reverso else retenciones_relacionadas(documento)):
             for d in ret.detalles.all():
                 if d.impuesto == '1':
                     renta += d.valor_retenido
@@ -620,6 +682,8 @@ def propuesta_contable(documento, regla):
     haber = sum((Decimal(x['haber']) for x in lineas), cero)
     if documento.clasificacion == 'emitido' and documento.venta_id:
         avisos.append('La venta ya existe en el sistema: no registres esta venta otra vez, solo concilia el asiento.')
+    if reverso:
+        avisos.append('Nota de crédito: la propuesta es el reverso del comprobante que modifica.')
     return {'estado': 'propuesta', 'contabilizado': False, 'cuadra': debe == haber, 'debe': format(debe, '.2f'),
             'haber': format(haber, '.2f'), 'lineas': lineas, 'avisos': avisos,
             'nota': 'Propuesta para revisión del contador. FacturaPorAquí aún no lleva libro mayor: no se ha contabilizado.'}

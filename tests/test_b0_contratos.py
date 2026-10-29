@@ -318,13 +318,14 @@ class TestRecibidos:
         with pytest.raises(dataclasses.FrozenInstanceError):
             leida.ambiente = 1
 
-    @pytest.mark.parametrize('funcion, argumentos', [
-        ('retencion_recibida_de', (None,)), ('marcar_incorporado', (None, None, 'Retenciones recibidas #1')),
-        ('desmarcar_incorporado', (None, None, 'Anulada')),
+    @pytest.mark.parametrize('funcion, parametros', [
+        ('retencion_recibida_de', ['documento']), ('marcar_incorporado', ['documento', 'usuario', 'descripcion']),
+        ('desmarcar_incorporado', ['documento', 'usuario', 'motivo']),
     ])
-    def test_firmas_pendientes_de_compras(self, funcion, argumentos):
-        with pytest.raises(NotImplementedError, match='O1'):
-            getattr(recibidos, funcion)(*argumentos)
+    def test_firmas_que_implementa_compras(self, funcion, parametros):
+        """Compras (O1) implementa los cuerpos (tests/test_importacion_recibidos.py); las firmas de B0 no cambian."""
+        import inspect
+        assert list(inspect.signature(getattr(recibidos, funcion)).parameters) == parametros
 
 
 # ---------------------------------------------------------------- medios de pago
