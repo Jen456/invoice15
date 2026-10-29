@@ -7,7 +7,11 @@
   escapado o como elemento hijo. Los espacios de nombres se ignoran (se comparan nombres locales).
 - Solo se acepta como autorizado lo que declara estado AUTORIZADO. Eso es lo que DICE el archivo: no prueba autenticidad.
   La verificación contra el SRI es otro paso (sri_autorizacion.py) y se registra aparte.
-- Primera entrega: facturas (01). Otros tipos se informan como «tipo no soportado» y no se interpretan como facturas.
+- Tipos admitidos: factura (01), nota de crédito (04), nota de débito (05) y comprobante de retención (07, versiones 1.0.0
+  y 2.0.0). La liquidación de compra (03) y la guía de remisión (06) se informan como «tipo no soportado» y no se
+  interpretan como otro tipo. Cada tipo tiene su analizador; la información tributaria es común (_info_tributaria).
+- Las líneas (detalles), el documento modificado, los motivos y la retención quedan en el resultado (espec-etapa2-compras
+  §1.8 y §3.5) para crear la compra o registrar la retención recibida sin volver a leer el XML.
 - Todo importe es Decimal; to_dict() los serializa como texto.
 """
 import hashlib
@@ -28,7 +32,9 @@ COMPROBANTES = {'factura': '01', 'liquidacionCompra': '03', 'notaCredito': '04',
                 'comprobanteRetencion': '07'}
 NOMBRES = {'01': 'Factura', '03': 'Liquidación de compra', '04': 'Nota de crédito', '05': 'Nota de débito',
            '06': 'Guía de remisión', '07': 'Comprobante de retención'}
-SOPORTADOS = ('01',)
+SOPORTADOS = ('01', '04', '05', '07')
+MENSAJE_NO_SOPORTADO = ('tipo no soportado todavía. Por ahora se importan facturas (01), notas de crédito (04), notas de débito '
+                        '(05) y comprobantes de retención (07).')
 TIPOS_IDENTIFICACION = {'04': 'RUC', '05': 'Cédula', '06': 'Pasaporte', '07': 'Consumidor final', '08': 'Identificación del exterior'}
 # Tabla 17 de la ficha (IVA): código de porcentaje → (categoría, tarifa conocida)
 IVA = {'0': ('iva_0', Decimal('0')), '2': ('iva_tarifa', Decimal('12')), '3': ('iva_tarifa', Decimal('14')),
@@ -102,6 +108,12 @@ class DatosComprobante:
     pagos: list = field(default_factory=list)
     lineas: int = 0
     info_adicional: dict = field(default_factory=dict)
+    # Etapa 2 (§1.8): líneas (01 y 04), documento modificado (04 y 05), motivos (05), retención (07) y valor de la NC (04)
+    detalles: list = field(default_factory=list)
+    doc_modificado: dict | None = None
+    motivos: list = field(default_factory=list)
+    retencion: dict | None = None
+    valor_modificacion: Decimal | None = None
 
 
 @dataclass
@@ -352,7 +364,7 @@ def _desenvolver(resultado, raiz):
     raise _Rechazo('estructura_desconocida', 'El XML no es un comprobante electrónico ni una autorización del SRI.')
 
 
-# ------------------------------------------------------------------ factura
+# ------------------------------------------------------------------ impuestos y receptor
 
 def _impuestos(resultado, contenedor, nombre_nodo):
     impuestos = []
@@ -408,15 +420,27 @@ def _validar_identificacion(resultado, tipo, numero):
         resultado.aviso('identificacion_formato', f'La identificación del receptor no tiene el formato de {reglas[tipo][1]}.')
 
 
-def _factura(resultado, raiz, cod_doc):
-    tributaria, info = _hijo(raiz, 'infoTributaria'), _hijo(raiz, 'infoFactura')
+# ------------------------------------------------------------------ información común (todos los tipos)
+
+NODOS_INFO = {'01': 'infoFactura', '04': 'infoNotaCredito', '05': 'infoNotaDebito', '07': 'infoCompRetencion'}
+EN_EL_COMPROBANTE = {'01': 'la factura', '04': 'la nota de crédito', '05': 'la nota de débito', '07': 'el comprobante de retención'}
+# (tipo de identificación, identificación, razón social, dirección) del receptor; en el 07 es el sujeto retenido
+RECEPTOR_COMPRADOR = ('tipoIdentificacionComprador', 'identificacionComprador', 'razonSocialComprador', 'direccionComprador')
+RECEPTOR_RETENIDO = ('tipoIdentificacionSujetoRetenido', 'identificacionSujetoRetenido', 'razonSocialSujetoRetenido', '')
+
+
+def _info_tributaria(resultado, raiz, cod_doc):
+    """(DatosComprobante con la información tributaria, el emisor y el receptor; nodo de información del tipo)."""
+    nombre_info = NODOS_INFO[cod_doc]
+    tributaria, info = _hijo(raiz, 'infoTributaria'), _hijo(raiz, nombre_info)
     if tributaria is None or info is None:
-        raise _Rechazo('estructura_invalida', 'La factura no tiene infoTributaria o infoFactura.')
+        raise _Rechazo('estructura_invalida', f'{EN_EL_COMPROBANTE[cod_doc].capitalize()} no tiene infoTributaria o {nombre_info}.')
     clave = _texto(tributaria, 'claveAcceso')
     fecha = _fecha(_texto(info, 'fechaEmision'))
     if fecha is None:
         resultado.error('fecha_invalida', 'La fecha de emisión no tiene el formato dd/mm/aaaa.')
     ambiente_txt = _texto(tributaria, 'ambiente')
+    tipo_id, identificacion, razon, direccion = RECEPTOR_RETENIDO if cod_doc == '07' else RECEPTOR_COMPRADOR
     datos = DatosComprobante(
         clave_acceso=clave, cod_doc=cod_doc, tipo_documento=NOMBRES[cod_doc], version=raiz.get('version', ''),
         ambiente=int(ambiente_txt) if ambiente_txt in ('1', '2') else 0, tipo_emision=_texto(tributaria, 'tipoEmision'),
@@ -424,20 +448,86 @@ def _factura(resultado, raiz, cod_doc):
         numero='', fecha_emision=fecha, emisor_ruc=_texto(tributaria, 'ruc'), emisor_razon_social=_texto(tributaria, 'razonSocial'),
         emisor_nombre_comercial=_texto(tributaria, 'nombreComercial'), dir_matriz=_texto(tributaria, 'dirMatriz'),
         dir_establecimiento=_texto(info, 'dirEstablecimiento'), obligado_contabilidad=_texto(info, 'obligadoContabilidad'),
-        contribuyente_especial=_texto(info, 'contribuyenteEspecial'),
-        receptor_tipo_identificacion=_texto(info, 'tipoIdentificacionComprador'),
-        receptor_identificacion=_texto(info, 'identificacionComprador'), receptor_razon_social=_texto(info, 'razonSocialComprador'),
-        receptor_direccion=_texto(info, 'direccionComprador'), moneda=_texto(info, 'moneda') or 'DOLAR')
+        contribuyente_especial=_texto(info, 'contribuyenteEspecial'), receptor_tipo_identificacion=_texto(info, tipo_id),
+        receptor_identificacion=_texto(info, identificacion), receptor_razon_social=_texto(info, razon),
+        receptor_direccion=_texto(info, direccion) if direccion else '', moneda=_texto(info, 'moneda') or 'DOLAR')
     datos.numero = f'{datos.estab}-{datos.pto_emi}-{datos.secuencial}'
     datos.receptor_tipo_nombre = TIPOS_IDENTIFICACION.get(datos.receptor_tipo_identificacion, '')
     for campo, valor in (('ambiente', ambiente_txt), ('ruc', datos.emisor_ruc), ('razonSocial', datos.emisor_razon_social),
                          ('estab', datos.estab), ('ptoEmi', datos.pto_emi), ('secuencial', datos.secuencial),
-                         ('identificacionComprador', datos.receptor_identificacion)):
+                         (identificacion, datos.receptor_identificacion)):
         if not valor:
-            resultado.error('campo_faltante', f'Falta «{campo}» en la factura.')
+            resultado.error('campo_faltante', f'Falta «{campo}» en {EN_EL_COMPROBANTE[cod_doc]}.')
     if datos.emisor_ruc and not re.fullmatch(r'\d{13}', datos.emisor_ruc):
         resultado.error('ruc_emisor', 'El RUC del emisor debe tener 13 dígitos.')
     _validar_identificacion(resultado, datos.receptor_tipo_identificacion, datos.receptor_identificacion)
+    datos.info_adicional = {c.get('nombre', '')[:100]: ' '.join((c.text or '').split())[:300]
+                            for c in _hijos(_hijo(raiz, 'infoAdicional'), 'campoAdicional')}
+    return datos, info
+
+
+def _totales_impuestos(datos):
+    datos.bases_por_tarifa = _bases(datos.impuestos)
+    datos.total_iva = sum((i.valor for i in datos.impuestos if i.codigo == '2'), Decimal('0.00'))
+    datos.total_ice = sum((i.valor for i in datos.impuestos if i.codigo == '3'), Decimal('0.00'))
+    datos.total_irbpnr = sum((i.valor for i in datos.impuestos if i.codigo == '5'), Decimal('0.00'))
+
+
+def _pagos(resultado, info):
+    return [{'forma_pago': _texto(p, 'formaPago'), 'total': _decimal(resultado, _texto(p, 'total'), 'pago', False),
+             'plazo': _texto(p, 'plazo'), 'unidad_tiempo': _texto(p, 'unidadTiempo')} for p in _hijos(_hijo(info, 'pagos'), 'pago')]
+
+
+def _detalles(resultado, raiz, codigo_principal, codigo_auxiliar):
+    """Líneas del comprobante (01: codigoPrincipal/codigoAuxiliar; 04: codigoInterno/codigoAdicional) con su IVA (el primer
+    impuesto de código 2), ICE e IRBPNR. Importes tal como vienen en el XML (DC4)."""
+    detalles = []
+    for nodo in _hijos(_hijo(raiz, 'detalles'), 'detalle'):
+        iva, ice, irbpnr = None, Decimal('0.00'), Decimal('0.00')
+        for impuesto in _hijos(_hijo(nodo, 'impuestos'), 'impuesto'):
+            codigo = _texto(impuesto, 'codigo')
+            base = _decimal(resultado, _texto(impuesto, 'baseImponible'), 'baseImponible', False)
+            valor = _decimal(resultado, _texto(impuesto, 'valor'), 'valor', False)
+            if codigo == '2' and iva is None:
+                porcentaje, tarifa_xml = _texto(impuesto, 'codigoPorcentaje'), _texto(impuesto, 'tarifa')
+                tarifa = _decimal(resultado, tarifa_xml, 'tarifa', False) if tarifa_xml else IVA.get(porcentaje, ('', None))[1]
+                iva = {'codigo_porcentaje': porcentaje, 'tarifa': tarifa, 'base_imponible': base, 'valor': valor}
+            elif codigo == '3':
+                ice += valor
+            elif codigo == '5':
+                irbpnr += valor
+        detalles.append({
+            'codigo_principal': _texto(nodo, codigo_principal), 'codigo_auxiliar': _texto(nodo, codigo_auxiliar),
+            'descripcion': _texto(nodo, 'descripcion')[:300],
+            'cantidad': _decimal(resultado, _texto(nodo, 'cantidad'), 'cantidad', False),
+            'precio_unitario': _decimal(resultado, _texto(nodo, 'precioUnitario'), 'precioUnitario', False),
+            'descuento': _decimal(resultado, _texto(nodo, 'descuento'), 'descuento', False),
+            'precio_total_sin_impuesto': _decimal(resultado, _texto(nodo, 'precioTotalSinImpuesto'), 'precioTotalSinImpuesto', False),
+            'iva': iva, 'ice': ice, 'irbpnr': irbpnr})
+    return detalles
+
+
+def _numero_con_guiones(texto):
+    digitos = re.sub(r'\D', '', texto or '')
+    return f'{digitos[:3]}-{digitos[3:6]}-{digitos[6:]}' if len(digitos) == 15 else (texto or '')
+
+
+def _doc_modificado(resultado, info, cod_doc, motivo):
+    """{cod_doc, numero 'EEE-PPP-SSSSSSSSS', fecha_emision, motivo} del comprobante que modifica la nota (04 y 05)."""
+    codigo, numero, fecha_txt = (_texto(info, c) for c in ('codDocModificado', 'numDocModificado', 'fechaEmisionDocSustento'))
+    for campo, valor in (('codDocModificado', codigo), ('numDocModificado', numero), ('fechaEmisionDocSustento', fecha_txt)):
+        if not valor:
+            resultado.error('campo_faltante', f'Falta «{campo}» en {EN_EL_COMPROBANTE[cod_doc]}.')
+    fecha = _fecha(fecha_txt) if fecha_txt else None
+    if fecha_txt and fecha is None:
+        resultado.error('fecha_invalida', 'La fecha del documento modificado no tiene el formato dd/mm/aaaa.')
+    return {'cod_doc': codigo, 'numero': _numero_con_guiones(numero), 'fecha_emision': fecha, 'motivo': (motivo or '')[:300]}
+
+
+# ------------------------------------------------------------------ factura (01)
+
+def _factura(resultado, raiz):
+    datos, info = _info_tributaria(resultado, raiz, '01')
     datos.total_sin_impuestos = _decimal(resultado, _texto(info, 'totalSinImpuestos'), 'totalSinImpuestos')
     datos.total_descuento = _decimal(resultado, _texto(info, 'totalDescuento'), 'totalDescuento', False)
     datos.propina = _decimal(resultado, _texto(info, 'propina'), 'propina', False)
@@ -445,35 +535,133 @@ def _factura(resultado, raiz, cod_doc):
     datos.impuestos = _impuestos(resultado, _hijo(info, 'totalConImpuestos'), 'totalImpuesto')
     if not datos.impuestos:
         resultado.aviso('sin_impuestos', 'La factura no detalla impuestos (totalConImpuestos vacío).')
-    datos.bases_por_tarifa = _bases(datos.impuestos)
-    datos.total_iva = sum((i.valor for i in datos.impuestos if i.codigo == '2'), Decimal('0.00'))
-    datos.total_ice = sum((i.valor for i in datos.impuestos if i.codigo == '3'), Decimal('0.00'))
-    datos.total_irbpnr = sum((i.valor for i in datos.impuestos if i.codigo == '5'), Decimal('0.00'))
-    datos.pagos = [{'forma_pago': _texto(p, 'formaPago'), 'total': _decimal(resultado, _texto(p, 'total'), 'pago', False),
-                    'plazo': _texto(p, 'plazo'), 'unidad_tiempo': _texto(p, 'unidadTiempo')} for p in _hijos(_hijo(info, 'pagos'), 'pago')]
-    detalles = _hijos(_hijo(raiz, 'detalles'), 'detalle')
-    datos.lineas = len(detalles)
-    datos.info_adicional = {c.get('nombre', '')[:100]: ' '.join((c.text or '').split())[:300]
-                            for c in _hijos(_hijo(raiz, 'infoAdicional'), 'campoAdicional')}
-    _conciliar(resultado, datos, info, detalles)
-    _coherencia_clave(resultado, datos)
+    _totales_impuestos(datos)
+    datos.pagos = _pagos(resultado, info)
+    datos.detalles = _detalles(resultado, raiz, 'codigoPrincipal', 'codigoAuxiliar')
+    datos.lineas = len(datos.detalles)
+    _conciliar(resultado, datos, info, datos.importe_total, 'El importe total')
     return datos
 
 
-def _conciliar(resultado, datos, info, detalles):
+# ------------------------------------------------------------------ nota de crédito (04, v1.1.0)
+
+def _nota_credito(resultado, raiz):
+    datos, info = _info_tributaria(resultado, raiz, '04')
+    datos.total_sin_impuestos = _decimal(resultado, _texto(info, 'totalSinImpuestos'), 'totalSinImpuestos')
+    datos.valor_modificacion = _decimal(resultado, _texto(info, 'valorModificacion'), 'valorModificacion')
+    datos.importe_total = datos.valor_modificacion
+    datos.impuestos = _impuestos(resultado, _hijo(info, 'totalConImpuestos'), 'totalImpuesto')
+    _totales_impuestos(datos)
+    datos.doc_modificado = _doc_modificado(resultado, info, '04', _texto(info, 'motivo'))
+    datos.detalles = _detalles(resultado, raiz, 'codigoInterno', 'codigoAdicional')
+    datos.lineas = len(datos.detalles)
+    datos.total_descuento = sum((d['descuento'] for d in datos.detalles), Decimal('0.00'))
+    _conciliar(resultado, datos, info, datos.valor_modificacion, 'El valor de la modificación')
+    return datos
+
+
+# ------------------------------------------------------------------ nota de débito (05, v1.0.0)
+
+def _nota_debito(resultado, raiz):
+    datos, info = _info_tributaria(resultado, raiz, '05')
+    datos.total_sin_impuestos = _decimal(resultado, _texto(info, 'totalSinImpuestos'), 'totalSinImpuestos')
+    datos.importe_total = _decimal(resultado, _texto(info, 'valorTotal'), 'valorTotal')
+    datos.impuestos = _impuestos(resultado, _hijo(info, 'impuestos'), 'impuesto')
+    _totales_impuestos(datos)
+    datos.pagos = _pagos(resultado, info)
+    datos.motivos = [{'razon': _texto(m, 'razon')[:300], 'valor': _decimal(resultado, _texto(m, 'valor'), 'valor del motivo', False)}
+                     for m in _hijos(_hijo(raiz, 'motivos'), 'motivo')]
+    datos.lineas = len(datos.motivos)
+    datos.doc_modificado = _doc_modificado(resultado, info, '05', '; '.join(m['razon'] for m in datos.motivos if m['razon']))
+    suma = sum((m['valor'] for m in datos.motivos), Decimal('0.00'))
+    if datos.motivos and abs(suma - datos.total_sin_impuestos) > TOLERANCIA:
+        resultado.aviso('motivos_descuadrados', f'Los motivos suman {suma} y el total sin impuestos es {datos.total_sin_impuestos}.')
+    _conciliar(resultado, datos, info, datos.importe_total, 'El valor total')
+    return datos
+
+
+# ------------------------------------------------------------------ comprobante de retención (07, v1.0.0 y v2.0.0)
+
+def _fecha_sustento(resultado, texto):
+    fecha = _fecha(texto) if texto else None
+    if texto and fecha is None:
+        resultado.error('fecha_invalida', 'La fecha del documento sustento no tiene el formato dd/mm/aaaa.')
+    return fecha
+
+
+def _linea_retencion(resultado, nodo):
+    return {'codigo': _texto(nodo, 'codigo'), 'codigo_retencion': _texto(nodo, 'codigoRetencion'),
+            'base_imponible': _decimal(resultado, _texto(nodo, 'baseImponible'), 'baseImponible'),
+            'porcentaje_retener': _decimal(resultado, _texto(nodo, 'porcentajeRetener'), 'porcentajeRetener'),
+            'valor_retenido': _decimal(resultado, _texto(nodo, 'valorRetenido'), 'valorRetenido')}
+
+
+def _retencion(resultado, raiz):
+    """El receptor es el sujeto retenido (así clasificar() funciona igual). v2.0.0: un sustento por docSustento; v1.0.0:
+    las líneas de impuestos se agrupan por (codDocSustento, numDocSustento, fechaEmisionDocSustento). Importes del
+    documento: sin impuestos 0, IVA 0 y total = suma de lo retenido (no se crean filas de ImpuestoImportado)."""
+    datos, info = _info_tributaria(resultado, raiz, '07')
+    periodo = _texto(info, 'periodoFiscal')
+    if not periodo:
+        resultado.error('campo_faltante', 'Falta «periodoFiscal» en el comprobante de retención.')
+    docs = _hijo(raiz, 'docsSustento')
+    sustentos = []
+    if docs is not None:
+        version = datos.version or '2.0.0'
+        for nodo in _hijos(docs, 'docSustento'):
+            sustentos.append({
+                'cod_sustento': _texto(nodo, 'codSustento'), 'cod_doc_sustento': _texto(nodo, 'codDocSustento'),
+                'num_doc_sustento': re.sub(r'[\s-]', '', _texto(nodo, 'numDocSustento')),
+                'fecha_emision_doc_sustento': _fecha_sustento(resultado, _texto(nodo, 'fechaEmisionDocSustento')),
+                'num_aut_doc_sustento': _texto(nodo, 'numAutDocSustento'),
+                'total_sin_impuestos': _decimal(resultado, _texto(nodo, 'totalSinImpuestos'), 'totalSinImpuestos', False),
+                'importe_total': _decimal(resultado, _texto(nodo, 'importeTotal'), 'importeTotal', False),
+                'retenciones': [_linea_retencion(resultado, r) for r in _hijos(_hijo(nodo, 'retenciones'), 'retencion')]})
+    else:
+        version = datos.version or '1.0.0'
+        grupos = {}
+        for nodo in _hijos(_hijo(raiz, 'impuestos'), 'impuesto'):
+            clave = (_texto(nodo, 'codDocSustento'), re.sub(r'[\s-]', '', _texto(nodo, 'numDocSustento')),
+                     _texto(nodo, 'fechaEmisionDocSustento'))
+            if clave not in grupos:
+                grupos[clave] = {'cod_sustento': '', 'cod_doc_sustento': clave[0], 'num_doc_sustento': clave[1],
+                                 'fecha_emision_doc_sustento': _fecha_sustento(resultado, clave[2]), 'num_aut_doc_sustento': '',
+                                 'total_sin_impuestos': None, 'importe_total': None, 'retenciones': []}
+            grupos[clave]['retenciones'].append(_linea_retencion(resultado, nodo))
+        sustentos = list(grupos.values())
+    lineas = [r for s in sustentos for r in s['retenciones']]
+    if not lineas:
+        resultado.error('campo_faltante', 'El comprobante de retención no detalla los impuestos retenidos.')
+    for r in lineas:
+        esperado = _redondear(r['base_imponible'] * r['porcentaje_retener'] / 100)
+        if abs(esperado - r['valor_retenido']) > TOLERANCIA:
+            resultado.aviso('retencion_descuadrada', f'Retención {r["codigo_retencion"]}: {r["valor_retenido"]} no coincide con '
+                                                     f'{r["base_imponible"]} × {r["porcentaje_retener"]} % = {esperado}.')
+    datos.retencion = {'version': version, 'periodo_fiscal': periodo, 'tipo_sujeto': _texto(info, 'tipoSujetoRetenido'),
+                       'parte_rel': _texto(info, 'parteRel'), 'docs_sustento': sustentos}
+    datos.total_sin_impuestos = datos.total_iva = Decimal('0.00')
+    datos.importe_total = sum((r['valor_retenido'] for r in lineas), Decimal('0.00'))
+    datos.lineas = len(lineas)
+    return datos
+
+
+ANALIZADORES = {'01': _factura, '04': _nota_credito, '05': _nota_debito, '07': _retencion}
+
+
+def _conciliar(resultado, datos, info, total, etiqueta):
     bases_iva = sum((i.base_imponible for i in datos.impuestos if i.codigo == '2'), Decimal('0'))
     if datos.impuestos and abs(bases_iva - datos.total_sin_impuestos) > TOLERANCIA:
         resultado.aviso('bases_descuadradas', f'Las bases de IVA suman {bases_iva} y el total sin impuestos es {datos.total_sin_impuestos}.')
     compensaciones = sum((_decimal(resultado, _texto(c, 'valor'), 'compensación', False)
                           for c in _hijos(_hijo(info, 'compensaciones'), 'compensacion')), Decimal('0'))
     esperado = datos.total_sin_impuestos + sum((i.valor for i in datos.impuestos), Decimal('0')) + datos.propina - compensaciones
-    if abs(esperado - datos.importe_total) > TOLERANCIA:
-        resultado.aviso('total_descuadrado', f'El importe total {datos.importe_total} no coincide con bases + impuestos + propina = {esperado}.')
+    if abs(esperado - total) > TOLERANCIA:
+        resultado.aviso('total_descuadrado', f'{etiqueta} {total} no coincide con bases + impuestos + propina = {esperado}.')
     pagado = sum((p['total'] for p in datos.pagos), Decimal('0'))
-    if datos.pagos and abs(pagado - datos.importe_total) > TOLERANCIA:
-        resultado.aviso('pagos_descuadrados', f'Los pagos suman {pagado} y el importe total es {datos.importe_total}.')
-    if detalles:
-        lineas = sum((_decimal(resultado, _texto(d, 'precioTotalSinImpuesto'), 'precioTotalSinImpuesto', False) for d in detalles), Decimal('0'))
+    if datos.pagos and abs(pagado - total) > TOLERANCIA:
+        resultado.aviso('pagos_descuadrados', f'Los pagos suman {pagado} y el importe total es {total}.')
+    if datos.detalles:
+        lineas = sum((d['precio_total_sin_impuesto'] for d in datos.detalles), Decimal('0'))
         if abs(lineas - datos.total_sin_impuestos) > TOLERANCIA:
             resultado.aviso('lineas_descuadradas', f'Las líneas suman {lineas} y el total sin impuestos es {datos.total_sin_impuestos}.')
 
@@ -529,10 +717,10 @@ def procesar_xml_sri(datos):
         if cod_doc not in SOPORTADOS:
             resultado.comprobante = None
             resultado.tipo_soportado = False
-            return resultado.error('tipo_no_soportado', f'{NOMBRES[cod_doc]} ({cod_doc}): tipo no soportado todavía. '
-                                                         'Por ahora solo se importan facturas (01).')
+            return resultado.error('tipo_no_soportado', f'{NOMBRES[cod_doc]} ({cod_doc}): {MENSAJE_NO_SOPORTADO}')
         resultado.tipo_soportado = True
-        resultado.comprobante = _factura(resultado, raiz, cod_doc)
+        resultado.comprobante = ANALIZADORES[cod_doc](resultado, raiz)
+        _coherencia_clave(resultado, resultado.comprobante)
     except _Rechazo as e:
         resultado.error(e.codigo, e.texto)
     if resultado.errores:

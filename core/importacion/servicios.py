@@ -22,7 +22,7 @@ from core.importacion.models import (ArchivoImportado, DocumentoImportado, Entra
                                      LoteImportacion, ReglaImportacion)
 from core.importacion.ride_pdf import procesar_ride_pdf
 from core.importacion.sri_autorizacion import consultar_autorizacion
-from core.importacion.xml_sri import NOMBRES, SOPORTADOS, procesar_xml_sri
+from core.importacion.xml_sri import MENSAJE_NO_SOPORTADO, NOMBRES, SOPORTADOS, procesar_xml_sri
 
 PENDIENTES = ('en_cola', 'procesando')
 CAMPOS_VERIFICADOS = ('emisor_ruc', 'receptor_identificacion', 'fecha_emision', 'numero', 'total_sin_impuestos', 'total_iva',
@@ -318,8 +318,7 @@ def registrar_clave(company, usuario, clave, origen, archivo_pdf=None, lote=None
     """(documento, duplicado) a partir solo de la clave (RIDE): queda pendiente del XML autorizado."""
     datos = clave_acceso.analizar(clave)
     if datos.cod_doc not in SOPORTADOS:
-        raise ErrorImportacion(f'{NOMBRES.get(datos.cod_doc, "Comprobante " + datos.cod_doc)} ({datos.cod_doc}): tipo no soportado todavía. '
-                               'Por ahora solo se importan facturas (01).')
+        raise ErrorImportacion(f'{NOMBRES.get(datos.cod_doc, "Comprobante " + datos.cod_doc)} ({datos.cod_doc}): {MENSAJE_NO_SOPORTADO}')
     with transaction.atomic():
         existente = DocumentoImportado.objects.select_for_update().filter(ambiente=datos.ambiente, clave_acceso=clave).first()
         if existente is not None:
