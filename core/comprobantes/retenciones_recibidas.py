@@ -451,25 +451,29 @@ def anular(company, usuario, retencion, motivo, request=None):
             raise _error('motivo')
         motivo = motivo[:300]
         ahora = timezone.now()
-        revertido, cxc_estado = Decimal('0.00'), ret.cxc_estado
+        revertido, cxc_estado, cuenta = Decimal('0.00'), ret.cxc_estado, None
         if ret.abono_id:
+            cxc.bloquear_excedentes(fila['venta_id'])   # las NC y retenciones que recibirán el saldo liberado
             abono_cxc = PaymentsCtaCollect.objects.filter(pk=ret.abono_id).values_list('ctas_collect_id', flat=True).get()
             CtasCollect.objects.select_for_update(of=('self',)).filter(pk=abono_cxc).values_list('pk', flat=True).get()
             abono = PaymentsCtaCollect.objects.select_for_update(of=('self',)).get(pk=ret.abono_id)
             if abono.anulado_en is None:
                 revertido = redondear(abono.valor)
                 cxc.revertir_abono(abono, ahora, f'Retención {ret.numero} anulada: {motivo}')
+                cuenta = CtasCollect.objects.get(pk=abono_cxc)
             cxc_estado = 'revertida'
         RetencionRecibida.objects.filter(pk=ret.pk).update(
             estado='anulada', anulado_sri_fecha=timezone.localdate(), anulado_sri_motivo=motivo, anulado_sri_por=usuario,
             anulado_sri_registrado_en=ahora, cxc_estado=cxc_estado)
+        aplicados = cxc.aplicar_excedentes(cuenta, usuario, ahora) if cuenta is not None else []
         desmarcado = False
         if documento is not None and not RetencionRecibida.objects.filter(documento_importado=documento,
                                                                           estado='registrada').exists():
             recibidos.desmarcar_incorporado(documento, usuario, motivo)
             desmarcado = True
+        extra = {'excedentes_aplicados': aplicados} if aplicados else {}
         _auditar(request, usuario, company, 'retencion_recibida_anulacion', id=int(ret.pk), numero=ret.numero, motivo=motivo,
-                 abono_revertido=_texto(revertido), documento_desmarcado=desmarcado)
+                 abono_revertido=_texto(revertido), documento_desmarcado=desmarcado, **extra)
         ret.refresh_from_db()
         return ret
 

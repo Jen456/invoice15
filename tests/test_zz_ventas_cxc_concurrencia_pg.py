@@ -285,3 +285,33 @@ def test_h_marcar_mientras_se_aplica_la_nota_de_debito(datos, monkeypatch, slug)
             assert PaymentsCtaCollect.objects.get(ctas_collect=nota.cuenta_por_cobrar, tipo='anulacion').valor == Decimal('5.00')
         else:                       # la factura ve la ND ya autorizada y aplicada
             assert resultados['marcar'] == ('error', 'nd_vigente') and Sale.objects.get(pk=venta.pk).anulado_sri_fecha is None
+
+
+def test_i_eliminar_un_cobro_y_anular_la_nc_con_excedentes_a_la_vez(datos):
+    """Revisión O2-F1: eliminar_cobro reparte el saldo liberado entre la NC 'parcial' y la retención 'sin_saldo'; por eso
+    toma la venta antes que la CxC, como marcar('nota-credito'). En cualquier orden la deuda queda en 23 − 1,30."""
+    empresa, usuario, factura = datos
+    venta = factura(credito=True)
+    grupo = helpers.crear_grupo('COBRANZA CONCURRENCIA', ['delete_ctas_collect'])
+    from core.tenancy.models import Membership
+    Membership.objects.create(user=usuario, company=empresa, group=grupo)
+    with company_context(empresa):
+        cuenta = cxc.cxc_de_factura(venta)
+        cobro = cxc.registrar_cobro(empresa, usuario, cuenta.pk, HOY, '20.00', 'efectivo')
+    nota = nota_credito(empresa, venta)
+    with company_context(empresa):
+        assert cxc.aplicar_nota_credito(nota.pk) == 'parcial'
+        with transaction.atomic():
+            ret = rr.registrar(empresa, usuario, venta, retencion_datos())
+    assert ret.cxc_estado == 'sin_saldo'
+    from tests.ayudas_ventas import peticion
+    motivo = 'Anulada en SRI en línea, prueba de concurrencia'
+    resultados = a_la_vez(empresa, [lambda: cxc.eliminar_cobro(peticion(usuario, empresa), cobro.pk),
+                                    lambda: anulados.marcar(empresa, usuario, 'nota-credito', nota, HOY, motivo)],
+                          tomar=(Sale, venta.pk))
+    assert [r[0] for r in resultados] == ['ok', 'ok']
+    with company_context(empresa):
+        assert CtasCollect.objects.get(pk=cuenta.pk).saldo == Decimal('21.70')
+        ret = RetencionRecibida.objects.get(pk=ret.pk)
+        assert ret.cxc_estado == 'aplicada' and ret.abono.valor == Decimal('1.30')
+        assert CreditNote.objects.get(pk=nota.pk).cxc_ajuste == 'revertida'

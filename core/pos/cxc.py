@@ -7,6 +7,9 @@ de débito al autorizarse.
 - La nota de crédito autorizada abona la CxC de su factura (hasta su saldo); la nota de débito autorizada crea su propia
   CxC, con sale = la factura modificada. Lo hacen los receptores de comprobante_autorizado (core/comprobantes/
   receptores.py); son idempotentes (la emisión vuelve a enviar la señal al reenviar o consultar).
+- Excedentes: la NC o la retención que encontró poco saldo abona solo hasta el saldo ('parcial' / 'sin_saldo'). Si el
+  saldo vuelve a subir (se elimina un cobro o se revierte otro abono), aplicar_excedentes abona lo que faltaba, en orden
+  de fecha; así la CxC cuadra en cualquier orden de las operaciones.
 - Importes en Decimal con 2 decimales y ROUND_HALF_UP; nada de float.
 - Bloqueos: select_for_update(of=('self',)) y sin select_related (en PostgreSQL, FOR UPDATE con un LEFT OUTER JOIN falla
   y con un INNER JOIN bloquea también la fila unida). Orden: Sale → CreditNote / NotaDebito / RetencionRecibida →
@@ -183,27 +186,34 @@ def puede_eliminar_cobros(request):
 
 def eliminar_cobro(request, abono_id):
     """Elimina un cobro manual vigente (permiso delete_ctas_collect del rol), auditado. Los automáticos se anulan desde
-    su documento."""
+    su documento. El saldo liberado se abona a las NC y retenciones que tenían excedente (aplicar_excedentes); por eso
+    bloquea antes la venta y esos documentos (§3.8)."""
+    from core.pos.models import Sale
     from core.tenancy.context import current_company
     from core.tenancy.models import audit
     if not puede_eliminar_cobros(request):
         raise ErrorCxC('sin_permiso_eliminar')
     CtasCollect, PaymentsCtaCollect, _, _ = _modelos()
     with transaction.atomic():
-        cxc_id = PaymentsCtaCollect.objects.filter(pk=abono_id).values_list('ctas_collect_id', flat=True).first()
-        if cxc_id is None:
+        fila = PaymentsCtaCollect.objects.filter(pk=abono_id).values('ctas_collect_id', 'ctas_collect__sale_id').first()
+        if fila is None:
             raise ErrorCxC('no_existe')
-        cxc = CtasCollect.objects.select_for_update(of=('self',)).get(pk=cxc_id)
+        Sale.objects.select_for_update(of=('self',)).filter(pk=fila['ctas_collect__sale_id']).values_list('pk', flat=True).get()
+        bloquear_excedentes(fila['ctas_collect__sale_id'])
+        cxc = CtasCollect.objects.select_for_update(of=('self',)).get(pk=fila['ctas_collect_id'])
         abono = PaymentsCtaCollect.objects.select_for_update(of=('self',)).filter(pk=abono_id).first()
         if abono is None:
             raise ErrorCxC('no_existe')
         if abono.tipo != 'cobro' or abono.anulado_en is not None:
             raise ErrorCxC('no_es_cobro')
-        audit(request, 'cxc_cobro_eliminado', company=current_company(), cxc=int(cxc.pk), valor=_texto(abono.valor),
-              fecha=abono.date_joined.isoformat(), medio_pago=abono.medio_pago, referencia=abono.referencia,
-              descripcion=abono.description or '')
+        datos = {'cxc': int(cxc.pk), 'valor': _texto(abono.valor), 'fecha': abono.date_joined.isoformat(),
+                 'medio_pago': abono.medio_pago, 'referencia': abono.referencia, 'descripcion': abono.description or ''}
         abono.delete()
         recalcular(cxc)
+        aplicados = aplicar_excedentes(cxc, getattr(request, 'user', None))
+        if aplicados:
+            datos['excedentes_aplicados'] = aplicados
+        audit(request, 'cxc_cobro_eliminado', company=current_company(), **datos)
 
 
 def eliminar_cxc(cxc_id):
@@ -227,6 +237,97 @@ def revertir_abono(abono, ahora, motivo):
                                                                                   anulado_motivo=(motivo or '')[:300])
     abono.anulado_en, abono.anulado_motivo = ahora, (motivo or '')[:300]
     recalcular(CtasCollect.objects.get(pk=abono.ctas_collect_id))
+
+
+# ------------------------------------------------------------------ excedentes de NC y retenciones
+
+EXCEDENTE = ('parcial', 'sin_saldo')
+
+
+def _con_excedente(sale_id):
+    """NC vigentes y retenciones recibidas registradas de la factura que no se abonaron enteras."""
+    from core.comprobantes.models import RetencionRecibida
+    CreditNote = _modelos()[2]
+    notas = CreditNote.objects.filter(sale_id=sale_id, cxc_ajuste__in=EXCEDENTE, status__in=AUTORIZADOS,
+                                      anulado_sri_fecha__isnull=True)
+    retenciones = RetencionRecibida.objects.filter(venta_id=sale_id, estado='registrada', cxc_estado__in=EXCEDENTE)
+    return notas, retenciones
+
+
+def bloquear_excedentes(sale_id):
+    """Bloquea esas NC y retenciones (§3.8: después de la venta y antes de la CxC) para que aplicar_excedentes las cambie
+    sin cruzarse con marcar o anular."""
+    notas, retenciones = _con_excedente(sale_id)
+    list(notas.select_for_update(of=('self',)).order_by('pk').values_list('pk', flat=True))
+    list(retenciones.select_for_update(of=('self',)).order_by('pk').values_list('pk', flat=True))
+
+
+def reparto_excedentes(cuenta, disponible=None, excluir=()):
+    """[(tipo, documento, abono vigente o None, valor que se suma, nuevo total abonado, total)] en orden de fecha, sin
+    escribir nada. `disponible` = saldo que se reparte (por defecto, el actual); `excluir` = [(tipo, pk)] que no cuentan
+    (la vista previa de marcar excluye la NC que se anula). Solo para la CxC de la factura y si no tiene una anulación."""
+    if cuenta is None or tiene_anulacion(cuenta):
+        return []
+    factura = cxc_de_factura(cuenta.sale_id)
+    if factura is None or factura.pk != cuenta.pk:   # la CxC de una nota de débito no recibe NC ni retenciones
+        return []
+    disponible = saldo(cuenta) if disponible is None else redondear(disponible)
+    notas, retenciones = _con_excedente(cuenta.sale_id)
+    documentos = sorted(
+        [((n.emission_date or n.date_joined), 0, n.pk, 'nota_credito', n, n.abono_cxc, redondear(n.total))
+         for n in notas.select_related('abono_cxc')] +
+        [(r.fecha_emision, 1, r.pk, 'retencion', r, r.abono, redondear(r.total_retenido))
+         for r in retenciones.select_related('abono')], key=lambda d: d[:3])
+    reparto = []
+    for _, _, pk, tipo, doc, abono, total in documentos:
+        if disponible <= 0:
+            break
+        if (tipo, pk) in excluir:
+            continue
+        vigente = abono if abono is not None and abono.anulado_en is None else None
+        abonado = redondear(vigente.valor) if vigente is not None else Decimal('0.00')
+        suma = min(redondear(total - abonado), disponible)
+        if suma <= 0:
+            continue
+        reparto.append((tipo, doc, vigente, suma, redondear(abonado + suma), total))
+        disponible = redondear(disponible - suma)
+    return reparto
+
+
+def aplicar_excedentes(cuenta, usuario=None, ahora=None):
+    """Abona a las NC y retenciones con excedente lo que les faltaba, cuando el saldo de la CxC subió (se eliminó un cobro
+    o se revirtió otro abono). Quien llama ya bloqueó la venta, esos documentos (bloquear_excedentes) y la CxC.
+
+    Cada documento conserva un solo abono vigente con todo lo abonado: el anterior se anula («sustituido», no se borra) y
+    el nuevo lleva el total. Devuelve [{'tipo', 'numero', 'valor'}] con lo que se abonó de más (para la auditoría)."""
+    from core.comprobantes.models import RetencionRecibida
+    CtasCollect, PaymentsCtaCollect, CreditNote, _ = _modelos()
+    ahora = ahora or timezone.now()
+    cuenta = CtasCollect.objects.get(pk=cuenta.pk)
+    aplicados = []
+    for tipo, doc, vigente, suma, nuevo, total in reparto_excedentes(cuenta):
+        if vigente is not None:
+            PaymentsCtaCollect.objects.filter(pk=vigente.pk, anulado_en__isnull=True).update(
+                anulado_en=ahora, anulado_motivo=f'Sustituido por un abono de {_texto(nuevo)}: se liberó saldo en la cuenta '
+                                                 'por cobrar.')
+        estado = 'aplicada' if nuevo >= total else 'parcial'
+        if tipo == 'nota_credito':
+            numero = doc.voucher_number_full
+            abono = crear_abono(cuenta, tipo, nuevo, doc.emission_date or timezone.localdate(), f'Nota de crédito {numero}',
+                                usuario)
+            CreditNote.objects.filter(pk=doc.pk).update(abono_cxc=abono, cxc_ajuste=estado)
+        else:
+            numero = doc.numero
+            abono = crear_abono(cuenta, tipo, nuevo, doc.fecha_emision, f'Retención {numero}', usuario, referencia=numero)
+            RetencionRecibida.objects.filter(pk=doc.pk).update(abono=abono, cxc_estado=estado)
+        aplicados.append({'tipo': tipo, 'numero': numero, 'valor': _texto(suma)})
+    return aplicados
+
+
+def texto_excedente(tipo, numero, valor, hecho=True):
+    nombre = 'nota de crédito' if tipo == 'nota_credito' else 'retención'
+    verbo = 'Se abonaron' if hecho else 'Se abonarán'
+    return f'{verbo} {valor} de la {nombre} {numero}, que antes superaba el saldo de la cuenta por cobrar.'
 
 
 def prever_nota_credito(nota):

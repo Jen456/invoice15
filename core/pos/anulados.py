@@ -7,11 +7,13 @@ envía correos. No se desmarca desde la interfaz.
 Efectos por tipo (todo en una transacción): la factura deja su cuenta por cobrar en cero con un abono de anulación (antes
 hay que anular sus notas de crédito y de débito, su retención recibida y eliminar o reubicar sus cobros) y, si se pide,
 devuelve al inventario lo que no siguió devuelto por notas de crédito; la nota de crédito revierte su abono, deshace la
-devolución si se pide y la factura vuelve a «Autorizada» si deja de estar cubierta; la nota de débito anula su cuenta por
+devolución si se pide y la factura vuelve a «Autorizada» si deja de estar cubierta (el saldo que libera se abona a las
+otras notas de crédito y retenciones con excedente: cxc.aplicar_excedentes); la nota de débito anula su cuenta por
 cobrar; la retención y la liquidación dejan de contar para su compra (O1 recibe la señal anulado_en_sri) y la guía deja
 de amparar el traslado.
 
-Bloqueos con select_for_update(of=('self',)) y sin select_related: Sale → CreditNote / NotaDebito → CtasCollect.
+Bloqueos con select_for_update(of=('self',)) y sin select_related: Sale → CreditNote / NotaDebito / RetencionRecibida →
+CtasCollect.
 """
 import calendar
 from datetime import date
@@ -249,6 +251,11 @@ def _plan(slug, doc, fecha=None):
             if abono.anulado_en is None:
                 plan['abono'] = abono
                 plan['efectos'].append(f'Se revertirá el abono de {_dinero(abono.valor)} de esta nota en la cuenta por cobrar.')
+                cuenta = abono.ctas_collect
+                for tipo, otro, _, suma, _, _ in cxc.reparto_excedentes(cuenta, cxc.saldo(cuenta) + abono.valor,
+                                                                        excluir=(('nota_credito', doc.pk),)):
+                    numero = otro.voucher_number_full if tipo == 'nota_credito' else otro.numero
+                    plan['efectos'].append(cxc.texto_excedente(tipo, numero, _dinero(suma), hecho=False))
         plan['stock'], plan['signo'] = _stock_nota(doc), -1
         for producto, cantidad in plan['stock']:
             plan['efectos'].append(f'Si ajustas el inventario, se descontarán del inventario {cantidad} unidades de {producto.name} '
@@ -315,6 +322,7 @@ def _bloquear(slug, doc):
         Sale.objects.select_for_update(of=('self',)).filter(pk=doc.sale_id).values_list('pk', flat=True).get()
         Modelo.objects.select_for_update(of=('self',)).filter(pk=doc.pk).values_list('pk', flat=True).get()
         if slug == 'nota-credito':
+            cxc.bloquear_excedentes(doc.sale_id)   # las otras NC y retenciones que recibirán el saldo liberado
             fila = Modelo.objects.filter(pk=doc.pk).values_list('abono_cxc_id', flat=True).get()
             cuenta_id = PaymentsCtaCollect.objects.filter(pk=fila).values_list('ctas_collect_id', flat=True).first() if fila else None
         else:
@@ -380,6 +388,10 @@ def marcar(company, usuario, slug, doc, fecha, motivo, ajustar_stock=False, conf
             if doc.cxc_ajuste in ('aplicada', 'parcial'):
                 Modelo.objects.filter(pk=doc.pk).update(cxc_ajuste='revertida')
                 doc.cxc_ajuste = 'revertida'
+            if plan['abono'] is not None:   # el saldo liberado va a las otras NC y retenciones con excedente
+                for aplicado in cxc.aplicar_excedentes(plan['abono'].ctas_collect, usuario, ahora):
+                    efectos.append(cxc.texto_excedente(aplicado['tipo'], aplicado['numero'],
+                                                       _dinero(Decimal(aplicado['valor']))))
             antes = type(doc.sale).objects.filter(pk=doc.sale_id).values_list('status', flat=True).get()
             actualizar_factura(doc.sale_id)
             despues = type(doc.sale).objects.filter(pk=doc.sale_id).values_list('status', flat=True).get()
