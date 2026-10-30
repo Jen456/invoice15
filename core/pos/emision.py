@@ -277,7 +277,8 @@ def _procesar(comprobante, esperas):
 def _ejecutar(comprobante, esperas):
     Modelo = type(comprobante)
     with transaction.atomic():
-        # Bloquea solo este comprobante (no la numeración ni el cupo): dos envíos a la vez no se pisan.
+        # Bloquea este comprobante (no la numeración ni el cupo): dos envíos a la vez no se pisan. Al reenviar una retención
+        # o liquidación devuelta o no autorizada, _no_se_reenvia bloquea también su compra hasta el final del envío.
         actual = Modelo.all_companies.select_for_update().get(pk=comprobante.pk)
         motivo = _no_se_reenvia(actual) if actual.status in (DEVUELTA, NO_AUTORIZADA) else ''
         if actual.status in AUTORIZADOS:
@@ -301,18 +302,34 @@ def _ejecutar(comprobante, esperas):
 
 
 def _no_se_reenvia(comprobante):
-    """X-R1: una retención devuelta o no autorizada no cuenta como vigente, así que su compra pudo pasar después a nota de
-    crédito del proveedor (04). Reenviarla la autorizaría sobre una 04: en ese caso, el motivo para no reenviarla. La
-    compra se lee bloqueada, como en retenciones.crear() y compras.completar_datos(). Nada se anula ni se cambia."""
-    if comprobante._meta.model_name != 'retencion' or not comprobante.purchase_id:
+    """Motivo para no reenviar una retención o liquidación devuelta o no autorizada (vacío si se puede reenviar).
+
+    Esas no cuentan como vigentes, así que mientras tanto su compra pudo recibir otra vigente (retenciones.crear y
+    liquidaciones.crear lo permiten) o pasar a nota de crédito del proveedor, 04 (X-R1). Reenviarla dejaría dos
+    autorizadas sobre la misma compra (la cuenta por pagar abonaría las dos) o una retención sobre una 04. La compra se
+    lee bloqueada, como en crear() y en compras.completar_datos(). Nada se anula ni se cambia.
+    """
+    modelo = comprobante._meta.model_name
+    if modelo not in ('retencion', 'liquidacioncompra') or not comprobante.purchase_id:
         return ''
+    from core.comprobantes import liquidaciones, retenciones
     from core.pos.compras import admite_retencion
     from core.pos.models import Purchase
-    compra = Purchase.all_companies.select_for_update().get(pk=comprobante.purchase_id, company_id=comprobante.company_id)
-    if admite_retencion(compra):
-        return ''
-    return (f'La compra #{compra.pk} es una nota de crédito del proveedor (04): sobre ella no se emite comprobante de '
-            f'retención, así que {_la(comprobante)} no se reenvió al SRI. No se anuló ni se cambió nada.')
+    # NO KEY: choca con el FOR UPDATE de crear() y completar_datos(), pero no frena los INSERT con FK a la compra
+    compra = Purchase.all_companies.select_for_update(no_key=True).get(pk=comprobante.purchase_id,
+                                                                       company_id=comprobante.company_id)
+    if modelo == 'retencion' and not admite_retencion(compra):
+        return (f'La compra #{compra.pk} es una nota de crédito del proveedor (04): sobre ella no se emite comprobante de '
+                f'retención, así que {_la(comprobante)} no se reenvió al SRI. No se anuló ni se cambió nada.')
+    no_cuentan = retenciones.NO_CUENTAN if modelo == 'retencion' else liquidaciones.NO_CUENTAN
+    # el filtro de retencion_vigente / liquidacion_vigente, con la empresa explícita como la compra
+    otra = (type(comprobante).all_companies.filter(company_id=comprobante.company_id, purchase_id=compra.pk,
+                                                   anulado_sri_fecha__isnull=True)
+            .exclude(status__in=no_cuentan).exclude(pk=comprobante.pk).first())
+    if otra is not None:
+        return (f'La compra #{compra.pk} ya tiene {_la(otra)} vigente ({otra.get_status_display()}), así que '
+                f'{_la(comprobante)} no se reenvió al SRI. No se anuló ni se cambió nada.')
+    return ''
 
 
 def _despues_de_autorizar(comprobante):

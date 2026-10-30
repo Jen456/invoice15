@@ -257,3 +257,30 @@ class TestRetencionVigenteYNotaDeCredito:
             assert emision.emitir(Retencion.objects.get(pk=ret.pk))['resp'] is True
             assert Retencion.objects.get(pk=ret.pk).status in ('authorized', 'authorized_and_sent_by_email')
         assert len(sri.recepciones) == 2
+
+    def test_una_retencion_devuelta_no_se_reenvia_si_la_compra_ya_tiene_otra_vigente(self, empresa, usuario, sin_tipo,  # noqa: F811
+                                                                                      codigos, numeracion, sri):  # noqa: F811
+        """Con la primera devuelta, crear() admite otra retención; reenviar la primera dejaría dos autorizadas sobre la
+        misma compra (y la cuenta por pagar abonaría las dos)."""
+        sri.respuestas_recepcion = [('DEVUELTA', [('35', 'ARCHIVO NO CUMPLE ESTRUCTURA XML')])]
+        primera = self.retener(empresa, usuario, sin_tipo, codigos)
+        with company_context(empresa):
+            with transaction.atomic():
+                emision.preparar(Retencion.objects.get(pk=primera.pk))
+            assert emision.emitir(Retencion.objects.get(pk=primera.pk))['estado'] == 'returned'
+        segunda = self.retener(empresa, usuario, sin_tipo, codigos)
+        with company_context(empresa):
+            with transaction.atomic():
+                emision.preparar(Retencion.objects.get(pk=segunda.pk))
+            sri.respuestas_autorizacion = ['AUTORIZADO']
+            assert emision.emitir(Retencion.objects.get(pk=segunda.pk))['resp'] is True
+            enviados = len(sri.recepciones)
+            sri.respuestas_autorizacion = ['AUTORIZADO']
+            resultado = emision.emitir(Retencion.objects.get(pk=primera.pk))
+            assert (resultado['resp'], resultado['estado']) == (False, 'returned')
+            assert resultado['error'].startswith(f'La compra #{sin_tipo.pk} ya tiene el comprobante de retención '
+                                                 f'{segunda.voucher_number_full} vigente (')
+            assert resultado['error'].endswith(' no se reenvió al SRI. No se anuló ni se cambió nada.')
+            assert Retencion.objects.get(pk=primera.pk).status == 'returned'
+            assert sv.retencion_vigente(sin_tipo) == segunda
+        assert len(sri.recepciones) == enviados
