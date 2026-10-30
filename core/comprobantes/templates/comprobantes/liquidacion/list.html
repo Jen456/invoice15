@@ -6,9 +6,7 @@
 <div class="fp-comprobantes fp-retenciones fp-liquidaciones">
     <header class="fp-welcome"><span class="fp-eyebrow">Comprobantes electrónicos</span><h1>Liquidaciones de compra</h1>
         <p>Las emites tú cuando el vendedor no puede darte factura (persona sin RUC o con RUC suspendido, o no residente). Se emiten desde <a href="/pos/purchase/">Compras</a>: en la compra, elige «Liquidación».</p></header>
-    {% for message in messages %}
-        <div class="alert {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'info' %}alert-info{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
-    {% endfor %}
+
     <div class="table-responsive fp-retencion-listado">
         <table class="table table-sm table-bordered bg-white fp-retencion-tabla">
             <thead><tr><th scope="col">Número</th><th scope="col">Fecha</th><th scope="col">Proveedor</th><th scope="col">Compra</th><th scope="col" class="text-right">Total</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>

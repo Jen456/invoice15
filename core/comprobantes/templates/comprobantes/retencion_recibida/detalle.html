@@ -9,9 +9,7 @@
     <header class="fp-welcome"><span class="fp-eyebrow">Retención recibida</span><h1>Retención {{ retencion.numero }}</h1>
         <p><span class="badge {% if retencion.estado == 'registrada' %}badge-success{% else %}badge-secondary{% endif %}">{{ retencion.get_estado_display }}</span>
             · {{ retencion.get_origen_display }} · {{ retencion.get_verificacion_display }}</p></header>
-    {% for message in messages %}
-        <div class="alert {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'info' %}alert-info{% elif message.level_tag == 'warning' %}alert-warning{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
-    {% endfor %}
+
     {% if error_permiso %}<div class="alert alert-danger" role="alert">{{ error_permiso }}</div>{% endif %}
     <section class="card mb-3"><div class="card-body">
         <dl class="row mb-0">

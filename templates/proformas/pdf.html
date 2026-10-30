@@ -5,7 +5,7 @@
     <title>Proforma {{ proforma.numero_completo }} · Documento sin validez tributaria</title>
     {% include 'ride/_estilos.html' %}
     <style>
-        .fp-ride .fp-proforma-aviso { font-weight: bold; margin-top: 1mm; }
+        .fp-ride .fp-proforma-aviso { font-weight: bold; margin: 2mm 0; padding: 2mm; background: #E5F1F6; color: #163B50; border-left: 2pt solid #44BADD; }
         .fp-ride .fp-proforma-estado { margin-top: 1mm; }
         .fp-ride .fp-proforma-banda { border: 1.2pt solid #CA462C; color: #CA462C; font-weight: bold; text-align: center;
                                       font-size: 13pt; padding: 1.2mm 0; margin: 0 0 3mm; }
@@ -20,7 +20,7 @@
         <colgroup><col style="width:56%"><col style="width:44%"></colgroup>
         <tbody><tr>
             <td class="fp-ride-emisor" style="padding-right:5mm">
-                {% if empresa.image %}<img class="logo" alt="Logotipo del emisor" src="{{ empresa.get_image }}">{% endif %}
+                {% if empresa.image %}<img class="logo" alt="" src="{{ empresa.get_image }}">{% endif %}
                 <p><b>{{ empresa.business_name }}</b></p>
                 {% if empresa.tradename and empresa.tradename != empresa.business_name %}<p>{{ empresa.tradename }}</p>{% endif %}
                 <p><b>RUC:</b> {{ empresa.ruc }}</p>

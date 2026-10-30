@@ -1,0 +1,1377 @@
+{
+  "vistas": [
+    {
+      "name": "proformas",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/",
+      "overflow": false
+    },
+    {
+      "name": "proforma",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/1/",
+      "overflow": false
+    },
+    {
+      "name": "prospecto",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/2/",
+      "overflow": false
+    },
+    {
+      "name": "ficha",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/ver/1/",
+      "overflow": false
+    },
+    {
+      "name": "compras",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/",
+      "overflow": false
+    },
+    {
+      "name": "compra",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/add/",
+      "overflow": false
+    },
+    {
+      "name": "completar",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/complete/1/",
+      "overflow": false
+    },
+    {
+      "name": "proveedor",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/provider/add/",
+      "overflow": false
+    },
+    {
+      "name": "gasto",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/expenses/add/",
+      "overflow": false
+    },
+    {
+      "name": "pagos",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/debts/pay/add/",
+      "overflow": false
+    },
+    {
+      "name": "cobros",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/",
+      "overflow": false
+    },
+    {
+      "name": "cobro",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/add/",
+      "overflow": false
+    },
+    {
+      "name": "recibidas",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/",
+      "overflow": false
+    },
+    {
+      "name": "buscar",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/",
+      "overflow": false
+    },
+    {
+      "name": "registrar",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/2/",
+      "overflow": false
+    },
+    {
+      "name": "retencion",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/1/",
+      "overflow": false
+    },
+    {
+      "name": "anulado",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/anulados/factura/2/update/",
+      "overflow": false
+    },
+    {
+      "name": "xml",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/1/compra/",
+      "overflow": false
+    },
+    {
+      "name": "xml07",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/2/retencion-recibida/",
+      "overflow": false
+    },
+    {
+      "name": "liquidacion",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/liquidaciones/nueva/1/",
+      "overflow": false
+    },
+    {
+      "name": "facturar",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "facturar_prospecto",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "empresa",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/company/update/",
+      "overflow": false
+    },
+    {
+      "name": "reporte",
+      "width": 360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/reports/sale/",
+      "overflow": false
+    },
+    {
+      "name": "proformas",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/",
+      "overflow": false
+    },
+    {
+      "name": "proforma",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/1/",
+      "overflow": false
+    },
+    {
+      "name": "prospecto",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/2/",
+      "overflow": false
+    },
+    {
+      "name": "ficha",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/ver/1/",
+      "overflow": false
+    },
+    {
+      "name": "compras",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/",
+      "overflow": false
+    },
+    {
+      "name": "compra",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/add/",
+      "overflow": false
+    },
+    {
+      "name": "completar",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/complete/1/",
+      "overflow": false
+    },
+    {
+      "name": "proveedor",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/provider/add/",
+      "overflow": false
+    },
+    {
+      "name": "gasto",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/expenses/add/",
+      "overflow": false
+    },
+    {
+      "name": "pagos",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/debts/pay/add/",
+      "overflow": false
+    },
+    {
+      "name": "cobros",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/",
+      "overflow": false
+    },
+    {
+      "name": "cobro",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/add/",
+      "overflow": false
+    },
+    {
+      "name": "recibidas",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/",
+      "overflow": false
+    },
+    {
+      "name": "buscar",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/",
+      "overflow": false
+    },
+    {
+      "name": "registrar",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/2/",
+      "overflow": false
+    },
+    {
+      "name": "retencion",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/1/",
+      "overflow": false
+    },
+    {
+      "name": "anulado",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/anulados/factura/2/update/",
+      "overflow": false
+    },
+    {
+      "name": "xml",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/1/compra/",
+      "overflow": false
+    },
+    {
+      "name": "xml07",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/2/retencion-recibida/",
+      "overflow": false
+    },
+    {
+      "name": "liquidacion",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/liquidaciones/nueva/1/",
+      "overflow": false
+    },
+    {
+      "name": "facturar",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "facturar_prospecto",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "empresa",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/company/update/",
+      "overflow": false
+    },
+    {
+      "name": "reporte",
+      "width": 390,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/reports/sale/",
+      "overflow": false
+    },
+    {
+      "name": "proformas",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/",
+      "overflow": false
+    },
+    {
+      "name": "proforma",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/1/",
+      "overflow": false
+    },
+    {
+      "name": "prospecto",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/2/",
+      "overflow": false
+    },
+    {
+      "name": "ficha",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/ver/1/",
+      "overflow": false
+    },
+    {
+      "name": "compras",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/",
+      "overflow": false
+    },
+    {
+      "name": "compra",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/add/",
+      "overflow": false
+    },
+    {
+      "name": "completar",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/complete/1/",
+      "overflow": false
+    },
+    {
+      "name": "proveedor",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/provider/add/",
+      "overflow": false
+    },
+    {
+      "name": "gasto",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/expenses/add/",
+      "overflow": false
+    },
+    {
+      "name": "pagos",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/debts/pay/add/",
+      "overflow": false
+    },
+    {
+      "name": "cobros",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/",
+      "overflow": false
+    },
+    {
+      "name": "cobro",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/add/",
+      "overflow": false
+    },
+    {
+      "name": "recibidas",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/",
+      "overflow": false
+    },
+    {
+      "name": "buscar",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/",
+      "overflow": false
+    },
+    {
+      "name": "registrar",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/2/",
+      "overflow": false
+    },
+    {
+      "name": "retencion",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/1/",
+      "overflow": false
+    },
+    {
+      "name": "anulado",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/anulados/factura/2/update/",
+      "overflow": false
+    },
+    {
+      "name": "xml",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/1/compra/",
+      "overflow": false
+    },
+    {
+      "name": "xml07",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/2/retencion-recibida/",
+      "overflow": false
+    },
+    {
+      "name": "liquidacion",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/liquidaciones/nueva/1/",
+      "overflow": false
+    },
+    {
+      "name": "facturar",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "facturar_prospecto",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "empresa",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/company/update/",
+      "overflow": false
+    },
+    {
+      "name": "reporte",
+      "width": 768,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/reports/sale/",
+      "overflow": false
+    },
+    {
+      "name": "proformas",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/",
+      "overflow": false
+    },
+    {
+      "name": "proforma",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/1/",
+      "overflow": false
+    },
+    {
+      "name": "prospecto",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/2/",
+      "overflow": false
+    },
+    {
+      "name": "ficha",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/ver/1/",
+      "overflow": false
+    },
+    {
+      "name": "compras",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/",
+      "overflow": false
+    },
+    {
+      "name": "compra",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/add/",
+      "overflow": false
+    },
+    {
+      "name": "completar",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/complete/1/",
+      "overflow": false
+    },
+    {
+      "name": "proveedor",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/provider/add/",
+      "overflow": false
+    },
+    {
+      "name": "gasto",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/expenses/add/",
+      "overflow": false
+    },
+    {
+      "name": "pagos",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/debts/pay/add/",
+      "overflow": false
+    },
+    {
+      "name": "cobros",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/",
+      "overflow": false
+    },
+    {
+      "name": "cobro",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/add/",
+      "overflow": false
+    },
+    {
+      "name": "recibidas",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/",
+      "overflow": false
+    },
+    {
+      "name": "buscar",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/",
+      "overflow": false
+    },
+    {
+      "name": "registrar",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/2/",
+      "overflow": false
+    },
+    {
+      "name": "retencion",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/1/",
+      "overflow": false
+    },
+    {
+      "name": "anulado",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/anulados/factura/2/update/",
+      "overflow": false
+    },
+    {
+      "name": "xml",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/1/compra/",
+      "overflow": false
+    },
+    {
+      "name": "xml07",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/2/retencion-recibida/",
+      "overflow": false
+    },
+    {
+      "name": "liquidacion",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/liquidaciones/nueva/1/",
+      "overflow": false
+    },
+    {
+      "name": "facturar",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "facturar_prospecto",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "empresa",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/company/update/",
+      "overflow": false
+    },
+    {
+      "name": "reporte",
+      "width": 1024,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/reports/sale/",
+      "overflow": false
+    },
+    {
+      "name": "proformas",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/",
+      "overflow": false
+    },
+    {
+      "name": "proforma",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/1/",
+      "overflow": false
+    },
+    {
+      "name": "prospecto",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/2/",
+      "overflow": false
+    },
+    {
+      "name": "ficha",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/ver/1/",
+      "overflow": false
+    },
+    {
+      "name": "compras",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/",
+      "overflow": false
+    },
+    {
+      "name": "compra",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/add/",
+      "overflow": false
+    },
+    {
+      "name": "completar",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/complete/1/",
+      "overflow": false
+    },
+    {
+      "name": "proveedor",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/provider/add/",
+      "overflow": false
+    },
+    {
+      "name": "gasto",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/expenses/add/",
+      "overflow": false
+    },
+    {
+      "name": "pagos",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/debts/pay/add/",
+      "overflow": false
+    },
+    {
+      "name": "cobros",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/",
+      "overflow": false
+    },
+    {
+      "name": "cobro",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/add/",
+      "overflow": false
+    },
+    {
+      "name": "recibidas",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/",
+      "overflow": false
+    },
+    {
+      "name": "buscar",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/",
+      "overflow": false
+    },
+    {
+      "name": "registrar",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/2/",
+      "overflow": false
+    },
+    {
+      "name": "retencion",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/1/",
+      "overflow": false
+    },
+    {
+      "name": "anulado",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/anulados/factura/2/update/",
+      "overflow": false
+    },
+    {
+      "name": "xml",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/1/compra/",
+      "overflow": false
+    },
+    {
+      "name": "xml07",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/2/retencion-recibida/",
+      "overflow": false
+    },
+    {
+      "name": "liquidacion",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/liquidaciones/nueva/1/",
+      "overflow": false
+    },
+    {
+      "name": "facturar",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "facturar_prospecto",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "empresa",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/company/update/",
+      "overflow": false
+    },
+    {
+      "name": "reporte",
+      "width": 1360,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/reports/sale/",
+      "overflow": false
+    },
+    {
+      "name": "proformas",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/",
+      "overflow": false
+    },
+    {
+      "name": "proforma",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/1/",
+      "overflow": false
+    },
+    {
+      "name": "prospecto",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/update/2/",
+      "overflow": false
+    },
+    {
+      "name": "ficha",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/proformas/ver/1/",
+      "overflow": false
+    },
+    {
+      "name": "compras",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/",
+      "overflow": false
+    },
+    {
+      "name": "compra",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/add/",
+      "overflow": false
+    },
+    {
+      "name": "completar",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/purchase/complete/1/",
+      "overflow": false
+    },
+    {
+      "name": "proveedor",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/provider/add/",
+      "overflow": false
+    },
+    {
+      "name": "gasto",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/expenses/add/",
+      "overflow": false
+    },
+    {
+      "name": "pagos",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/debts/pay/add/",
+      "overflow": false
+    },
+    {
+      "name": "cobros",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/",
+      "overflow": false
+    },
+    {
+      "name": "cobro",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/ctas/collect/add/",
+      "overflow": false
+    },
+    {
+      "name": "recibidas",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/",
+      "overflow": false
+    },
+    {
+      "name": "buscar",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/",
+      "overflow": false
+    },
+    {
+      "name": "registrar",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/add/2/",
+      "overflow": false
+    },
+    {
+      "name": "retencion",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/retenciones-recibidas/1/",
+      "overflow": false
+    },
+    {
+      "name": "anulado",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/anulados/factura/2/update/",
+      "overflow": false
+    },
+    {
+      "name": "xml",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/1/compra/",
+      "overflow": false
+    },
+    {
+      "name": "xml07",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/importacion/documentos/2/retencion-recibida/",
+      "overflow": false
+    },
+    {
+      "name": "liquidacion",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/comprobantes/liquidaciones/nueva/1/",
+      "overflow": false
+    },
+    {
+      "name": "facturar",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "facturar_prospecto",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/sale/admin/add/",
+      "overflow": false
+    },
+    {
+      "name": "empresa",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/pos/company/update/",
+      "overflow": false
+    },
+    {
+      "name": "reporte",
+      "width": 1440,
+      "errors": [],
+      "http": [],
+      "status": 200,
+      "url": "/reports/sale/",
+      "overflow": false
+    }
+  ],
+  "interacciones": [
+    {
+      "test": "precarga 1",
+      "lines": 5,
+      "client": "1",
+      "modal": false,
+      "name": "",
+      "notice": "Facturando la proforma PRO-000001 (total USD 75.24)\n            \n                Al guardar se emite la factura y se envía al SRI. Revisa el cliente, los productos y la forma de pago.La empresa está en PRUEBAS: la factura no tendrá validez tributaria y la proforma quedará facturada con ella. Para volver a cotizar, duplícala.\n            \n            Volver a la proforma"
+    },
+    {
+      "test": "precarga 2",
+      "lines": 5,
+      "client": "",
+      "modal": true,
+      "name": "PROSPECTO FICTICIO S.A.",
+      "notice": "Facturando la proforma PRO-000002 (total USD 75.24)\n            \n                Al guardar se emite la factura y se envía al SRI. Revisa el cliente, los productos y la forma de pago.La empresa está en PRUEBAS: la factura no tendrá validez tributaria y la proforma quedará facturada con ella. Para volver a cotizar, duplícala.La proforma es para un prospecto: registra al cliente antes de emitir.\n            \n            Volver a la proforma"
+    },
+    {
+      "test": "cantidad sin clonar lineas",
+      "lineas": 5,
+      "total": "Valores de referencia: el servidor recalcula al guardar.\nSubtotal 15 %\t36.00\nSubtotal 5 %\t24.70\nSubtotal 0 %\t8.00\nSubtotal no objeto de IVA\t5.50\nSubtotal exento de IVA\t4.75\nDescuentos\t4.25\nIVA 15 %\t5.40\nIVA 5 %\t1.24\nTOTAL USD\t85.59"
+    },
+    {
+      "test": "modal correo Escape sin enviar",
+      "ok": true
+    },
+    {
+      "test": "aviso seguro de correo, sin enviar",
+      "ok": true
+    },
+    {
+      "test": "busqueda AJAX de producto por linea",
+      "value": "1"
+    },
+    {
+      "test": "movimiento reducido",
+      "ok": true
+    }
+  ],
+  "roles": [
+    {
+      "rol": "Propietario",
+      "eliminar": true,
+      "botones": 1
+    },
+    {
+      "rol": "Contador",
+      "eliminar": false,
+      "botones": 0
+    }
+  ],
+  "teclado": {
+    "Tab": "fp-mensaje",
+    "foco": {
+      "shadow": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px",
+      "border": "rgb(23, 101, 129)"
+    },
+    "movimiento_reducido": true,
+    "correo_enviado": false
+  },
+  "compra_con_lineas": {
+    "producto_y_gasto": 2,
+    "cantidad": "3",
+    "anchos": [
+      360,
+      768,
+      1360
+    ],
+    "sin_desborde": true,
+    "guardado": false
+  },
+  "sqlite": {
+    "aprobadas": 1377,
+    "omitidas_postgresql": 44,
+    "fallos": 0,
+    "segundos": 358.67
+  }
+}

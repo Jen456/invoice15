@@ -76,8 +76,8 @@ var fpAcciones = {
             complete: function () { $.LoadingOverlay('hide'); }
         });
     },
-    avisar: function (texto, despues) {
-        alert_sweetalert({'message': texto, 'timer': 4000, 'callback': despues || function () {}});
+    avisar: function (texto, despues, aviso) {
+        Swal.fire({icon: aviso ? 'warning' : 'success', title: aviso ? 'Revisa este aviso' : 'Operación completada', text: texto, confirmButtonText: 'Continuar'}).then(despues || function () {});
     },
     ejecutar: function (accion, p) {
         fpAcciones.actual = p;
@@ -115,7 +115,7 @@ var fpAcciones = {
                         });
                         return;
                     }
-                    fpAcciones.avisar(respuesta.mensaje, fpAcciones.despues);
+                    fpAcciones.avisar(respuesta.mensaje, fpAcciones.despues, respuesta.aviso);
                 });
             },
             'cancel': function () {}
@@ -139,7 +139,7 @@ var fpAcciones = {
                 action: 'enviar_correo', id: p.id, destinatarios: $('#fp-destinatarios').val(), mensaje: $('#fp-mensaje').val()
             }, function (respuesta) {
                 $('#fp-modal-correo').modal('hide');
-                fpAcciones.avisar(respuesta.mensaje, fpAcciones.despues);
+                fpAcciones.avisar(respuesta.mensaje, fpAcciones.despues, respuesta.aviso);
             });
         });
         $('#fp-form-motivo').on('submit', function (e) {
@@ -149,7 +149,7 @@ var fpAcciones = {
                 action: $('#fp-modal-motivo').data('accion'), id: p.id, motivo: $('#fp-motivo').val()
             }, function (respuesta) {
                 $('#fp-modal-motivo').modal('hide');
-                fpAcciones.avisar(respuesta.mensaje, fpAcciones.despues);
+                fpAcciones.avisar(respuesta.mensaje, fpAcciones.despues, respuesta.aviso);
             });
         });
     }

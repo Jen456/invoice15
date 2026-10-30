@@ -1,0 +1,16 @@
+[
+  {
+    "archivo": "proforma-corta.pdf",
+    "paginas": 1,
+    "bytes": 33314,
+    "cabecera_unica": true,
+    "ultima_linea_y_total": true
+  },
+  {
+    "archivo": "proforma-larga.pdf",
+    "paginas": 6,
+    "bytes": 44035,
+    "cabecera_unica": true,
+    "ultima_linea_y_total": true
+  }
+]

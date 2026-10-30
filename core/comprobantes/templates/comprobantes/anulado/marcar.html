@@ -20,6 +20,7 @@
                 <ul class="mb-0">{% for e in efectos %}<li>{{ e }}</li>{% endfor %}</ul>
             </div></section>
         {% endif %}
+        {% if impedimentos %}<p class="fp-stage-note">Si necesitas corregir la fecha ingresada, <a href="{{ request.path }}">vuelve a abrir el formulario</a> para revisar los impedimentos actuales.</p>{% endif %}
         <form method="post" class="fp-anulado-form" novalidate>{% csrf_token %}
             {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
             <div class="row">

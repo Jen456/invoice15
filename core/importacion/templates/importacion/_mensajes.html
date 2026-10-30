@@ -1,1 +1,1 @@
-{% for message in messages %}<div class="alert {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'info' %}alert-info{% else %}alert-success{% endif %}" role="status">{{ message }}</div>{% endfor %}
+{# Los mensajes Django se muestran una sola vez en fp_mensajes.html, dentro del marco común. #}

@@ -5,7 +5,9 @@
     <script src="{% static 'proformas/js/list.js' %}"></script>
 {% endblock %}
 
+{% block create_label %}Nueva proforma{% endblock %}
 {% block content_list_before %}
+    <header class="fp-stage-intro"><span class="fp-eyebrow">Cotizaciones</span><h2>De una propuesta a tu próxima venta</h2><p>Consulta su vigencia, revisa el estado y continúa con las acciones disponibles para tu perfil.</p></header>
     {% if solo_consulta and mensaje_plan %}<div class="alert alert-warning" role="status">{{ mensaje_plan }}</div>{% endif %}
     <p class="text-muted small">Las proformas son cotizaciones sin validez tributaria: no gastan numeración, cupo ni stock y no se envían al SRI.</p>
     <form id="fp-filtros" class="form-row align-items-end mb-3" autocomplete="off" role="search" aria-label="Filtros de proformas">

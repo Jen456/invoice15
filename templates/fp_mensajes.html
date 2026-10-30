@@ -1,0 +1,4 @@
+{% for message in messages %}{% if 'plan' not in message.tags and 'configuracion' not in message.tags %}
+<div class="alert fp-message {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'warning' %}alert-warning{% elif message.level_tag == 'success' %}alert-success{% else %}alert-info{% endif %}" role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}">
+<strong>{% if message.level_tag == 'error' %}No se pudo completar{% elif message.level_tag == 'warning' %}Revisa este aviso{% elif message.level_tag == 'success' %}Operación completada{% else %}Información{% endif %}</strong><div>{{ message }}</div>
+</div>{% endif %}{% endfor %}

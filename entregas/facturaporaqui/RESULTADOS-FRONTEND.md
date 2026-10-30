@@ -1319,3 +1319,49 @@ Generado con el entorno Python/WeasyPrint existente. pypdf/PDFium verifican **16
 **31 enlaces/recursos locales del README comprobados, sin inexistentes.** `git diff --check` correcto. No se ejecutó pytest: no cambiaron templates/estáticos de la app ni backend; se verificó el PDF y sus fuentes. Sin emisiones, pagos, correos, acceso a datos reales ni despliegues.
 
 Entrega en frontend/etapa3 sobre 888ade6; plataforma a8b893c ya integrada al hacer fetch. La propietaria puede descargar el PDF para sus clientes; el repositorio privado exige acceso. main permanece sin cambios por el acuerdo de trabajar solo en frontend/etapa3.
+
+
+## 30/10/2026 UTC — diseño de Proformas, Compras y Ventas sobre `3192d5d`
+
+### Base y alcance
+
+Fusión de `github/plataforma` en `frontend/etapa3`, commit `471fcdd`. Los únicos conflictos fueron HANDOFF y RESULTADOS; se conservaron las secciones de Claude y Codex. Leídos AGENTS y los tres contratos definitivos. Solo plantillas, CSS, JS, pruebas de presentación y documentación. Ningún modelo, vista, servicio, URL, migración, firma, variable privada o proceso de emisión modificado.
+
+### Cambios
+
+- Tema compartido: controles grandes, secciones, totales, estados y modales con la paleta colibrí. Las líneas se presentan como tarjetas por debajo de 1200 px y conservan los inputs/eventos originales; tablas de consulta con región desplazable y foco. Corregidos el pie de totales de retenciones en móvil y los encabezados accesibles que desbordaban la región desplazable a 768/1024 px.
+- Proformas: «Nueva proforma», resumen introductorio, editor organizado, aviso de correo con icono/título de advertencia cuando `aviso=true`, PDF con aviso de documento sin validez tributaria y logo vacío sin texto alternativo impreso. Estados, acciones y mensajes del servidor intactos.
+- XML → compra: Select2 local usa la búsqueda del endpoint existente; conserva ids seleccionados y los nombres del formset. Errores por campo y duplicado junto a su confirmación. No cambia la propuesta, los impuestos ni las reglas del XML.
+- Liquidación: se presenta la advertencia de cada línea. Retenciones recibidas: acceso a la bandeja de 07 y pie con totales adaptable. CxC: eliminar cuenta/cobro condicionado por permiso del rol. Reportes: explicación del filtro predeterminado. Anulación: enlace para reabrir después de una fecha inválida, sin saltarse bloqueos.
+- Mensajes del marco: un único componente HTML escapado y nivel correcto. Se preservan los avisos de plan/configuración por separado; se retiraron repeticiones de los listados/ficha e Importación. El dashboard horizontal recibe el componente porque sustituye el bloque del marco.
+
+### Archivos
+
+| Grupo | Archivos modificados o añadidos |
+| --- | --- |
+| Marco y tema | `templates/{base,hzt_body,vtc_body,hzt_dashboard,list,fp_mensajes}.html`, `static/css/facturaporaqui.css`, `static/js/fase-contable.js` |
+| Proformas | `templates/proformas/{list,form,pdf}.html`, `core/proformas/static/proformas/js/acciones.js` |
+| Importación | `core/importacion/templates/importacion/{compra,_mensajes}.html`, `core/importacion/static/importacion/js/compra.js` |
+| Comprobantes | `core/comprobantes/templates/comprobantes/anulado/marcar.html`, `liquidacion/create.html`, listados de `guia`, `liquidacion`, `notadebito`, `retencion`, y `retencion_recibida/{list,detalle}.html` bajo el mismo directorio |
+| CxC y reportes | `core/pos/templates/ctas_collect/list.html`, `core/pos/static/ctas_collect/js/{list,form}.js`, `core/reports/templates/{sale_report,results_report,ctas_collect_report}/report.html` |
+| Pruebas | `tests/test_b0_contratos.py` (escape HTML, ambos layouts, niveles), `tests/test_suscripciones.py` (aviso sin diálogo global) |
+| Entrega | AGENTS, HANDOFF, este informe, `propuestas/fase-integrada/` y `capturas/fase-integrada/` |
+
+### Pruebas y evidencia
+
+- Suite completa: `XDG_CACHE_HOME=/workspace/multi-runtime/cache /workspace/.venv-platform/bin/python -m pytest -q -o addopts=` → **1377 aprobadas, 44 omitidas (exclusivas de PostgreSQL), 0 fallos, 358,67 s**. Incluye estáticos, rutas, aislamiento, contratos e impresos. Se añaden tres casos de nivel de mensaje a las 1374 pruebas SQLite de la base.
+- La primera ejecución cruzó medianoche y varios casos que fijan `HOY` al importar quedaron desfasados; se repitió después. También se adaptaron las aserciones de presentación antigua. Una prueba detectó el dashboard horizontal sin mensajes al sustituir `section_content`: se añadió allí el componente y se comprobó de nuevo. La cifra anterior corresponde a la ejecución final completa, con esa corrección.
+- `node --check` de los JS modificados y `git diff --check`: correctos.
+
+- Chromium: **144 vistas finales, 0 desbordes del documento, 0 errores JS, 0 respuestas HTTP >=400**. Recorridos y resultados completos en [`propuestas/fase-integrada/verificacion-navegador.json`](propuestas/fase-integrada/verificacion-navegador.json). Viewports: 360, 390, 768, 1024, 1360 y 1440 px.
+- Se comprobaron las precargas con cliente y prospecto (5 líneas cada una, formulario de cliente prellenado en el segundo caso); no se pulsó Generar venta. Cambio de cantidad 3 → 4: total 75,24 → 85,59, cinco filas sin clones. Búsqueda AJAX de producto desde XML y selección por teclado. Escape en modales, Tab de destinatario a mensaje, foco visible y movimiento reducido. Advertencia simulada con texto HTML hostil mostrada como texto; no se envió correo.
+- Compra nueva con producto y gasto: búsqueda real del producto, dos filas sin clonar, cantidad editada a 3 y ningún desborde a 360/768/1360 px. No se guardó la compra.
+- Propietario vs. Contador: permiso y papelera de cuenta por cobrar presentes/ausentes respectivamente; sin ejecutar eliminación.
+- PDF: proforma corta, **5 líneas / 1 página / 33314 bytes**; larga, **60 líneas / 6 páginas / 44035 bytes**. Cabecera y encabezado de detalle una sola vez; última línea y total conservados; sin clave de acceso ni número de autorización. Se reutilizan los estilos y el pie B. Muestras y validación en [`propuestas/fase-integrada/README.md`](propuestas/fase-integrada/README.md).
+- Las capturas se tomaron con empresa, usuarios, productos, comprobantes y XML de los helpers ficticios de pruebas. No se cargaron datos de clientes ni firmas reales. Los PDF se rasterizaron con PDFium a escala 1,25 para revisión; no se afirma prueba de impresora física.
+
+### Límites y pendientes
+
+Sin despliegue, pagos, correo, emisión ni regularización histórica. PostgreSQL y ensayo/reversa de migraciones sobre respaldo corresponden a Claude. Bancos y Contabilidad siguen como maquetas. No se modificó el texto comercial de disponibilidad porque esta fase no está publicada. X-R1 y los pendientes fiscales/backend del informe de Claude se conservan en HANDOFF; también queda la revisión adicional de botones por permiso de proveedores/gastos/CxP. No se afirma que los 144 recorridos visuales equivalgan a guardados o anulaciones: esas reglas se cubren por la suite de backend, no por acciones reales en navegador.
+
+Capturas finales: **84 WebP**, máximo **60562 bytes**, sin imágenes por encima de 150 KB.

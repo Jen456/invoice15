@@ -37,6 +37,7 @@
             {% for f, linea in filas %}
                 <fieldset class="row fp-retencion-linea"><legend>{% if linea %}{{ linea.descripcion }}{% else %}Línea {{ forloop.counter }}{% endif %}</legend>
                     {{ f.detalle }}
+                    {% if linea.aviso %}<div class="alert alert-warning col-12" role="status">{{ linea.aviso }}</div>{% endif %}
                     {% if linea %}<p class="col-12 text-muted mb-2">Código {{ linea.codigo|default:"—" }} · {{ linea.cantidad|floatformat:"-6" }} × ${{ linea.precio_unitario|floatformat:2 }}</p>{% endif %}
                     {% for field in f.visible_fields %}
                         <div class="form-group col-12 {% if field.name == 'descripcion' %}col-lg-8{% else %}col-md-6 col-lg-4{% endif %}">

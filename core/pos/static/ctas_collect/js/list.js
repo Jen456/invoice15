@@ -4,6 +4,10 @@ var tblPaymentsCtasCollect, tblCtasCollect;
 function fpaTexto(x) {
     return $('<div>').text(x === null || x === undefined ? '' : String(x)).html();
 }
+function fpPuedeEliminarCobro() {
+    var nodo = document.getElementById('fp-cobros-permisos');
+    return !!(nodo && JSON.parse(nodo.textContent).delete_ctas_collect);
+}
 var date_current;
 var input_date_range;
 var ctas_collect = {
@@ -81,7 +85,7 @@ var ctas_collect = {
                     class: 'text-center',
                     render: function (data, type, row) {
                         var buttons = '<a rel="payments" data-toggle="tooltip" title="Abonos" class="btn bg-blue btn-xs btn-flat"><i class="fas fa-dollar-sign"></i></a> ';
-                        buttons += '<a href="' + pathname + 'delete/' + parseInt(row.id, 10) + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
+                        if (fpPuedeEliminarCobro()) buttons += '<a href="' + pathname + 'delete/' + parseInt(row.id, 10) + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
                         return buttons;
                     }
                 },
@@ -174,7 +178,7 @@ $(function () {
                             if (row.anulado) {
                                 return '<span class="badge badge-secondary">Anulado</span>';
                             }
-                            if (row.tipo.id !== 'cobro') {
+                            if (row.tipo.id !== 'cobro' || !fpPuedeEliminarCobro()) {
                                 return '';
                             }
                             return '<a rel="delete" class="btn btn-danger btn-xs btn-flat" title="Eliminar cobro"><i class="fas fa-times"></i></a>';

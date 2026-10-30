@@ -1,4 +1,5 @@
 {% extends 'skin.html' %}
+{% load permisos %}
 {% block breadcrumb_li %}
     <li class="breadcrumb-item active" aria-current="page"><a href="{% url 'comprobantes_retenciones_recibidas' %}"><i class="fas fa-hand-holding-usd"></i> Retenciones recibidas</a></li>
 {% endblock %}
@@ -7,10 +8,10 @@
     <header class="fp-welcome"><span class="fp-eyebrow">Ventas · cuentas por cobrar</span><h1>Retenciones recibidas</h1>
         <p>Retenciones que te hicieron tus clientes sobre tus facturas. Al registrarlas se abonan a la cuenta por cobrar de la factura. No se envía nada al SRI.</p>
         {% if puede_registrar %}<p><a href="{% url 'comprobantes_retencion_recibida_buscar' %}" class="btn fpa-btn-pagar">Registrar retención recibida</a></p>{% endif %}
+        {% permisos_de 'view_documentoimportado' as fp_importar_permisos %}
+        {% if fp_importar_permisos.view_documentoimportado %}<p class="fp-stage-note">¿Tienes el XML de una retención? <a href="{% url 'importacion_recibidos' %}?cod_doc=07">Abre el comprobante 07 recibido</a> y elige «Registrar retención recibida».</p>{% endif %}
     </header>
-    {% for message in messages %}
-        <div class="alert {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'info' %}alert-info{% elif message.level_tag == 'warning' %}alert-warning{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
-    {% endfor %}
+
     <form method="get" class="form-row align-items-end mb-3 fp-retenciones-recibidas-filtros">
         <div class="form-group col-6 col-md-2"><label for="f-desde">Desde</label><input type="date" id="f-desde" name="desde" value="{{ filtros.desde }}" class="form-control"></div>
         <div class="form-group col-6 col-md-2"><label for="f-hasta">Hasta</label><input type="date" id="f-hasta" name="hasta" value="{{ filtros.hasta }}" class="form-control"></div>
@@ -45,7 +46,7 @@
                 <tr><td colspan="11" class="text-muted">No hay retenciones recibidas con estos filtros.</td></tr>
             {% endfor %}
             </tbody>
-            <tfoot><tr><th colspan="4" class="text-right">Total registradas (filtro actual)</th><th class="text-right">${{ totales.renta|floatformat:2 }}</th><th class="text-right">${{ totales.iva|floatformat:2 }}</th><th class="text-right">${{ totales.total|floatformat:2 }}</th><th colspan="4"></th></tr></tfoot>
+            <tfoot><tr><th colspan="4" class="text-right">Total registradas (filtro actual)</th><th class="text-right" data-label="Renta">${{ totales.renta|floatformat:2 }}</th><th class="text-right" data-label="IVA">${{ totales.iva|floatformat:2 }}</th><th class="text-right" data-label="Total">${{ totales.total|floatformat:2 }}</th><th colspan="4"></th></tr></tfoot>
         </table>
     </div>
 </div>

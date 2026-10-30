@@ -1,5 +1,37 @@
 # Handoff compartido — frontend
 
+## Estado actual — diseño sobre la fase contable integrada (Codex, 30/10/2026 UTC)
+
+Base de Claude `3192d5d` fusionada en `frontend/etapa3` mediante `471fcdd`, sin reescribir historial; se conservaron ambas entregas en los dos documentos compartidos. **Sin despliegue.** El remoto se volvió a consultar: `plataforma` sigue en `3192d5d`.
+
+- Proformas: introducción y botón «Nueva proforma», grupos del editor, líneas legibles en móvil/tablet, avisos de correo por nivel y PDF B. Se conservaron los estados, las acciones que entrega el servidor, el aviso fiscal y los datos de conversión.
+- Compras: secciones y controles de marca; buscador AJAX de productos por línea en la compra desde XML, errores debajo de todos sus campos y aviso de posible duplicado junto a su confirmación. «Actualizar» vuelve a la ruta actual cuando no existe `list_url`. La liquidación muestra `linea.aviso`.
+- Ventas: estilo común de retenciones recibidas, sus formularios y resúmenes; acceso desde el listado al 07 recibido en Importación; papeleras de cuentas/cobros condicionadas por `delete_ctas_collect`; explicación del alcance predeterminado en reportes. «Anulado en el SRI» ofrece volver a abrir el formulario tras errores, sin habilitar por JavaScript un botón con impedimentos del servidor.
+- Marco común: mensajes Django escapados, una sola vez y según nivel. Éxitos con «Operación completada», advertencias con «Revisa este aviso» y errores con «No se pudo completar». Mensajes de plan y configuración conservan sus componentes. Incluido el dashboard horizontal que sustituye el bloque del marco.
+- Revisión final de navegador: **144 vistas** (24 recorridos × 360/390/768/1024/1360/1440), sin desbordes del documento, errores JS ni HTTP >=400. Precarga de proforma con cliente y prospecto, edición de cantidad, búsqueda de productos, teclado, Escape, movimiento reducido y controles de eliminación según rol verificados con datos ficticios. No se emitió ni envió correo.
+- Muestras A4 de 1 y 6 páginas y evidencia en [`propuestas/fase-integrada/README.md`](propuestas/fase-integrada/README.md). Capturas en `capturas/fase-integrada/`. Suite completa SQLite: **1377 aprobadas, 44 omitidas (solo PostgreSQL), 0 fallos**, 358,67 s. Detalle en `RESULTADOS-FRONTEND.md`.
+
+## Pendiente para Codex — cierre del diseño integrado
+
+- [x] Integrar `plataforma` sin perder documentación ni contratos.
+- [x] Aplicar presentación de marca y adaptación móvil a Proformas, Compras y Ventas, con los ajustes concretos descritos arriba.
+- [x] Distinguir mensajes de éxito/error y comprobar escape en ambos layouts.
+- [x] Búsqueda de productos y errores por campo en XML; avisos de liquidación y enlace al 07 recibido.
+- [x] Capturas, muestras PDF y pruebas de navegador con empresas ficticias.
+- [ ] Revisión adicional de acciones por permiso en proveedores, gastos, tipos de gasto y el botón «Registrar pago» de CxP (apartado B.6 de Compras). No se declara resuelto: conservan su control del servidor; esta entrega cubre la papelera de CxC.
+- [ ] Teléfono e impresora físicos; no se sustituyen por las pruebas de viewport/PDF.
+- [ ] Bancos, Contabilidad y Tributario continúan como maquetas, pendientes de sus contratos.
+
+## Notas entre agentes — revisión de esta entrega (Codex → Claude)
+
+1. **Marco común:** revisar `fp_mensajes.html`, `vtc_body.html`, `hzt_body.html` y `hzt_dashboard.html`. Se quitaron los bucles de mensajes duplicados de los listados de comprobantes y de la ficha de retención; `_mensajes.html` de Importación delega en el marco. Se actualizaron las pruebas que exigían el antiguo JavaScript, conservando el control contra HTML ejecutable y el aviso de plan sin diálogo de error.
+2. **Producto desde XML:** se consume el endpoint ya existente `POST /pos/purchase/add/`, `action=search_product`, `term`, `ids=[]`, CSRF; respuesta `{id, code, name}` por producto. Se conserva `lineas-N-product`. No se cambió backend. El formulario del servidor aún construye su queryset/opciones iniciales: optimizar esa carga, si resulta pesada con catálogos grandes, sería una tarea de backend; Select2 retira del DOM las opciones no seleccionadas al iniciar.
+3. **Anulación con fecha inválida:** se optó por un enlace GET de reapertura. No se quitan impedimentos ni se habilita el POST con una regla del navegador. Un error específico junto al campo `fecha` puede mejorarse después en backend.
+4. **Pendientes de tu entrega conservados:** X-R1, descuento de liquidaciones, plan vencido en ficha de retención recibida, formato de importes y logos ausentes de los RIDE de factura/NC. Ningún cambio fiscal ni de datos en esta entrega. En particular, para la ficha `/comprobantes/retenciones-recibidas/<pk>/` el contexto existente `puede_anular` debe contemplar también la vigencia del plan (hoy solo permiso y estado), y conviene devolver un `aviso_plan` para explicar el bloqueo. No se deduce del navegador ni se cambia ese contrato aquí.
+5. Antes de publicar: resolver con la propietaria X-R1 y las decisiones de tu informe; ensayar migraciones en una copia del respaldo y ejecutar PostgreSQL. Codex no ejecutó esas operaciones. Las pruebas de datos de esta entrega son SQLite local; no validan migraciones de producción ni reversas.
+6. No se actualizaron estados comerciales de la landing/manual: el código integrado todavía no está publicado. No se inventó precio del complemento.
+
+
 ## Estado actual — fase contable integrada en `plataforma`, sin publicar (Claude, 29/10/2026)
 
 D0 Fase A (`6d2a066`), Etapa 1 (Proformas) y Etapa 2 (Compras, y Ventas y Empresa) están fusionadas en `plataforma`, en este orden: `7f0e576` Proformas → `eaa6d10` Compras → `fff9bb3` Ventas → `90da085` correcciones de la integración → `f109d4d` piezas compartidas (`fase/integracion-cruces`). Los commits posteriores (`8c8a657` y la corrección de su revisión) solo cambian documentación en `entregas/facturaporaqui/`. **No se publicó nada**: la app sigue en lo publicado el 28/10 y la base publicada no tiene ninguna de estas migraciones.

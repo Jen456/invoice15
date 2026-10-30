@@ -7,9 +7,7 @@
     <header class="fp-welcome"><span class="fp-eyebrow">Comprobantes electrónicos</span><h1>Guías de remisión</h1>
         <p>Amparan el traslado de lo vendido. Se emiten desde <a href="/pos/sale/admin/">Facturas emitidas</a>: en la factura, elige «Opciones» → «Crear guía de remisión».</p></header>
     <p class="fp-guia-nota"><i class="fas fa-box-open" aria-hidden="true"></i> Entregas totales o parciales · Las guías muestran cantidades, sin importes.</p>
-    {% for message in messages %}
-        <div class="alert {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'info' %}alert-info{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
-    {% endfor %}
+
     <div class="table-responsive fp-retencion-listado">
         <table class="table table-sm table-bordered bg-white fp-retencion-tabla">
             <thead><tr><th scope="col">Número</th><th scope="col">Fecha</th><th scope="col">Cliente</th><th scope="col">Factura</th><th scope="col">Transporte</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>

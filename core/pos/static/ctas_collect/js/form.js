@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 ctas_collect: {
                     validators: {
                         notEmpty: {
-                            message: 'Seleccione un cuenta por pagar'
+                            message: 'Elige la cuenta por cobrar.'
                         }
                     }
                 },

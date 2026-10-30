@@ -307,3 +307,87 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
  .fp-guia-tabla td { text-align: left !important; border: 0; }
  .fp-guia-tabla td::before { content: attr(data-label); display: block; font-size: .8rem; font-weight: 700; color: #526d7a; }
 }
+
+/* Fase contable integrada: presentación compartida, sin alterar campos ni reglas. */
+.fp-message { margin: 0 0 1rem; border-radius: 12px; border-left-width: 4px; overflow-wrap: anywhere; }
+.fp-message strong { display: block; margin-bottom: .3rem; }
+.fp-stage .content-wrapper { font-size: 1rem; }
+.fp-stage .content-wrapper .card-body { padding: clamp(1rem, 2vw, 1.6rem); }
+.fp-stage .content-wrapper .container-fluid { min-width: 0; }
+.fp-stage .content-wrapper .card-title { font-size: 1.25rem; line-height: 1.4; }
+.fp-stage .content-wrapper .form-group { min-width: 0; }
+.fp-stage .content-wrapper input:not([type=checkbox]):not([type=radio]):not([type=hidden]),
+.fp-stage .content-wrapper select { min-height: 44px; max-width: 100%; }
+.fp-stage .content-wrapper fieldset { min-width: 0; }
+.fp-stage .content-wrapper legend { font-size: 1.05rem; font-weight: 700; color: #163B50; }
+.fp-stage .content-wrapper .btn { min-height: 42px; white-space: normal; }
+.fp-stage .content-wrapper .badge { white-space: normal; line-height: 1.5; }
+.fp-stage .content-wrapper td, .fp-stage .content-wrapper dd { overflow-wrap: anywhere; }
+.fp-stage .content-wrapper .table-responsive { position: relative; border-radius: 12px; }
+.fp-stage .content-wrapper .table-responsive:focus-visible { outline: 3px solid #163B50; outline-offset: 2px; }
+.fp-stage .content-wrapper table th { vertical-align: middle; }
+.fp-stage .content-wrapper label { line-height: 1.45; }
+.fp-stage-intro { padding: 1.2rem; margin-bottom: 1.5rem; background: #E5F1F6; border-left: 4px solid #44BADD; border-radius: 12px; }
+.fp-stage-intro h2 { font-size: clamp(1.3rem, 2vw, 1.7rem); margin: .45rem 0; }
+.fp-stage-intro p { margin: 0; }
+.fp-stage-group { border: 1px solid #cbdfe8; border-radius: 14px; padding: 1.25rem; margin: 1rem 0 1.5rem; }
+.fp-stage-group legend { width: auto; padding: 0 .5rem; }
+.fp-stage #fp-filtros, .fp-stage .fp-retenciones-recibidas-filtros { padding: 1rem .5rem .25rem; background: #f3f9fb; border: 1px solid #cbdfe8; border-radius: 12px; }
+.fp-stage .fp-acciones { display: flex; gap: .4rem; flex-wrap: wrap; }
+.fp-stage .fp-acciones .btn { min-width: 42px; }
+.fp-stage #fp-totales { background: #f3f9fb; border: 1px solid #cbdfe8; }
+.fp-stage #fp-totales tr:last-child { background: #163B50; color: white; font-size: 1.2rem; }
+.fp-stage .fp-proforma-aviso, .fp-stage-note { border-left: 4px solid #44BADD; padding: 1rem; background: #E5F1F6; border-radius: 12px; overflow-wrap: anywhere; }
+.fp-stage .fp-stage-duplicate { background: #fff5df; border: 1px solid #b88025; border-radius: 12px; padding: 1rem 1rem 1rem 2.5rem; margin-top: 1rem; }
+.fp-stage .fp-anulado-form { border: 1px solid #cbdfe8; padding: 1.25rem; border-radius: 14px; background: white; }
+.fp-stage .fp-anulado-form .form-check { margin: 1.2rem 0; padding-left: 1.8rem; }
+.fp-stage .modal-content { border-radius: 16px; }
+.fp-stage .modal-header { background: #E5F1F6; border-radius: 16px 16px 0 0; }
+.fp-stage .modal-footer { gap: .5rem; }
+.fp-stage .modal-body { max-height: 70vh; overflow: auto; }
+.fp-stage .select2-container { max-width: 100%; }
+.fp-stage .select2-selection__rendered { overflow-wrap: anywhere; }
+@media(max-width:767.98px) {
+ .fp-stage .content-wrapper .card-body { padding: 1rem .65rem; }
+ .fp-stage .content-wrapper .container-fluid { padding-left: .2rem; padding-right: .2rem; }
+ .fp-stage .input-group { flex-wrap: wrap; }
+ .fp-stage .input-group > .form-control { min-width: 0; }
+ .fp-stage .input-group > .input-group-append .btn { font-size: .9rem; }
+ .fp-stage .modal-dialog { margin: .5rem; }
+ .fp-stage .modal-footer { flex-wrap: wrap; }
+ .fp-stage .fp-acciones .btn { flex: 1 1 auto; }
+ .fp-stage .form-row > .form-group { flex: 0 0 100%; max-width: 100%; }
+}
+@media(prefers-reduced-motion:reduce) { .fp-stage *, .fp-stage *::before, .fp-stage *::after { scroll-behavior:auto!important; animation:none!important; transition:none!important; } }
+
+@media(max-width:767.98px) {
+ .fp-stage #tblLineas.fp-stage-lines tbody > tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .25rem .5rem; }
+ .fp-stage #tblLineas.fp-stage-lines td:nth-child(2), .fp-stage #tblLineas.fp-stage-lines td:nth-child(3) { grid-column: 1 / -1; }
+ .fp-stage #tblLineas.fp-stage-lines td:first-child { grid-column: 1 / -1; }
+}
+
+@media(max-width:1199.98px) {
+ .fp-stage .fp-stage-lines { display: block; width: 100% !important; min-width: 0 !important; }
+ .fp-stage .fp-stage-lines thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+ .fp-stage .fp-stage-lines tbody, .fp-stage .fp-stage-lines tbody > tr, .fp-stage .fp-stage-lines tbody > tr > td { display: block; width: 100% !important; min-width: 0 !important; }
+ .fp-stage .fp-stage-lines tbody > tr { padding: .65rem; border: 1px solid #cbdfe8; border-radius: 12px; margin-bottom: .8rem; background: white; }
+ .fp-stage .fp-stage-lines tbody > tr > td { border: 0; text-align: left !important; padding: .45rem .25rem; }
+ .fp-stage .fp-stage-lines td[data-label]::before { content: attr(data-label); display: block; font-size: .85rem; font-weight: 700; color: #476172; margin-bottom: .3rem; }
+ .fp-stage .fp-stage-lines .form-control { width: 100%; }
+ .fp-stage .fp-stage-lines .select2-container { width: 100% !important; }
+}
+
+@media(max-width:767.98px) {
+ .fp-stage .fp-retencion-tabla tfoot { display: block; width: 100%; }
+ .fp-stage .fp-retencion-tabla tfoot tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; padding: .5rem; }
+ .fp-stage .fp-retencion-tabla tfoot th { display: block; width: auto; text-align: left !important; padding: .5rem .25rem; border: 0; }
+ .fp-stage .fp-retencion-tabla tfoot th:first-child { grid-column: 1 / -1; }
+ .fp-stage .fp-retencion-tabla tfoot th:last-child:empty { display: none; }
+ .fp-stage .fp-retencion-tabla tfoot th[data-label]::before { content: attr(data-label); display: block; font-size: .8rem; }
+}
+
+.fp-stage .fp-compra-seccion { border: 1px solid #cbdfe8; border-radius: 14px; padding: 1.2rem; background: #fff; }
+.fp-stage .fp-compra-seccion > h2 { font-size: 1.1rem; color: #163B50; margin-bottom: 1.25rem; }
+.fp-stage .fp-compra-seccion + .fp-compra-seccion { margin-top: 1.5rem; }
+.fp-stage .fp-estado-proforma { padding: .4rem .75rem; border-radius: 30px; }
+.fp-stage .select2-container--bootstrap4 .select2-results__option--highlighted[aria-selected] { background: #163B50; color: #fff; }

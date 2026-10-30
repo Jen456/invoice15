@@ -20,7 +20,7 @@ from django.db.migrations.executor import MigrationExecutor
 from django.db.models import ProtectedError
 from django.dispatch import Signal
 from django.utils import timezone
-from django.utils.html import escapejs
+from django.utils.html import escape
 
 from core.comprobantes import retenciones as sv
 from core.comprobantes.models import CodigoRetencion, Retencion
@@ -402,17 +402,31 @@ class TestBorrarVenta:
         assert self.stock(empresa, producto) == 97          # antes quedaban el stock devuelto y los detalles borrados
 
 
-# ---------------------------------------------------------------- mensajes de Django dentro de JavaScript
+# ---------------------------------------------------------------- mensajes de Django: nivel, escape y presentación única
 
-class TestMensajesEnJavaScript:
+class TestMensajesEnPantalla:
     TEXTO = 'Línea con \'comillas\' y "dobles" </script><script>alert(1)</script> & \\ barra\nsegunda línea'
 
     @pytest.mark.parametrize('layout, plantilla', [(1, 'vtc_body.html'), (2, 'hzt_body.html')])
-    def test_mensaje_escapado_para_la_cadena_de_javascript(self, web, layout, plantilla):
+    def test_mensaje_escapado_en_html_sin_ejecutar_javascript(self, web, layout, plantilla):
         Dashboard.objects.update(layout=layout)
         web.cookies['messages'] = CookieStorage(None)._encode([Message(constants.ERROR, self.TEXTO)])
         respuesta = web.get('/dashboard/')
         html = respuesta.content.decode()
         assert respuesta.status_code == 200 and plantilla in [t.name for t in respuesta.templates]
-        assert f"errors += '{escapejs(self.TEXTO)}\\n';" in html
-        assert 'alert(1)</script>' not in html and '&#x27;comillas&#x27;' not in html
+        assert html.count(str(escape(self.TEXTO))) == 1
+        assert 'alert(1)</script>' not in html
+        assert 'alert-danger' in html and 'No se pudo completar' in html
+
+    @pytest.mark.parametrize('nivel, clase, titulo', [
+        (constants.SUCCESS, 'alert-success', 'Operación completada'),
+        (constants.WARNING, 'alert-warning', 'Revisa este aviso'),
+        (constants.INFO, 'alert-info', 'Información'),
+    ])
+    def test_nivel_del_mensaje_no_se_presenta_como_error(self, web, nivel, clase, titulo):
+        texto = 'Resultado ficticio de la operación'
+        web.cookies['messages'] = CookieStorage(None)._encode([Message(nivel, texto)])
+        html = web.get('/dashboard/').content.decode()
+        assert html.count(texto) == 1
+        assert clase in html and titulo in html
+        assert 'No se pudo completar' not in html

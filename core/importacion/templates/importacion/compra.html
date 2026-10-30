@@ -1,8 +1,10 @@
-{% extends 'importacion/base.html' %}{% load static %}
+{% extends 'importacion/base.html' %}{% load static widget_tweaks %}
 {% block breadcrumb_li %}<li class="breadcrumb-item"><a href="{{ url_documento }}"><i class="fas fa-file-invoice"></i> {{ documento.numero }}</a></li><li class="breadcrumb-item active" aria-current="page">Crear compra</li>{% endblock %}
-{% block assets_body %}{{ block.super }}<script src="{% static 'importacion/js/compra.js' %}" defer></script>{% endblock %}
+{% block assets_body %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}"><link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
+<script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script><script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script><script src="{% static 'importacion/js/compra.js' %}" defer></script>{% endblock %}
 {% block content %}
-<div class="fp-comprobantes fp-importacion fp-importacion-compra" data-documento="{{ documento.id }}">
+<div class="fp-comprobantes fp-importacion fp-importacion-compra" data-documento="{{ documento.id }}" data-productos-url="{% url 'purchase_create' %}">
     <header class="fp-welcome"><span class="fp-eyebrow">Crear compra desde el XML</span><h1>{{ documento.tipo_documento }} {{ documento.numero }}</h1>
         <p>{{ documento.emisor.razon_social }} ({{ documento.emisor.ruc }}) · Emitida el {{ propuesta.fecha_emision|default:"—" }}</p></header>
     {% include 'importacion/_mensajes.html' %}
@@ -41,30 +43,30 @@
     <form method="post" class="card fp-retencion-panel mb-3 fp-responsive-form"><div class="card-body">{% csrf_token %}
         <h2 class="h5">Datos de la compra</h2>
         <div class="form-row">
-            <div class="form-group col-md-6"><label for="{{ form.cod_sustento.id_for_label }}">{{ form.cod_sustento.label }}</label>{{ form.cod_sustento }}
+            <div class="form-group col-md-6"><label for="{{ form.cod_sustento.id_for_label }}">{{ form.cod_sustento.label }}</label>{{ form.cod_sustento }}{% for e in form.cod_sustento.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}
                 {% if propuesta.cod_sustento_sugerido %}<small class="form-text text-muted">Sugerencia según tus reglas de importación: {{ propuesta.cod_sustento_sugerido }} · {{ propuesta.nombre_sustento_sugerido }}. <button type="button" class="btn btn-link btn-sm p-0 align-baseline" data-fp-sugerencia="{{ form.cod_sustento.id_for_label }}" data-valor="{{ propuesta.cod_sustento_sugerido }}">Usar sugerencia</button></small>{% endif %}
-                {% for e in form.cod_sustento.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
-            <div class="form-group col-md-6"><label for="{{ form.forma_pago.id_for_label }}">{{ form.forma_pago.label }}</label>{{ form.forma_pago }}
+                </div>
+            <div class="form-group col-md-6"><label for="{{ form.forma_pago.id_for_label }}">{{ form.forma_pago.label }}</label>{{ form.forma_pago }}{% for e in form.forma_pago.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}
                 <small class="form-text text-muted">{% if propuesta.forma_pago_del_xml %}Tomada del pago de mayor valor del XML.{% else %}El XML no trae pagos: elígela o complétala después en Compras.{% endif %}</small></div>
-            <div class="form-group col-md-4"><label for="{{ form.date_joined.id_for_label }}">{{ form.date_joined.label }}</label>{{ form.date_joined }}</div>
-            <div class="form-group col-md-4"><label for="{{ form.payment_type.id_for_label }}">{{ form.payment_type.label }}</label>{{ form.payment_type }}</div>
-            <div class="form-group col-md-4"><label for="{{ form.end_credit.id_for_label }}">{{ form.end_credit.label }}</label>{{ form.end_credit }}</div>
-            <div class="form-group col-md-4"><label for="{{ form.parte_relacionada.id_for_label }}">{{ form.parte_relacionada.label }}</label>{{ form.parte_relacionada }}</div>
+            <div class="form-group col-md-4"><label for="{{ form.date_joined.id_for_label }}">{{ form.date_joined.label }}</label>{{ form.date_joined }}{% for e in form.date_joined.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}</div>
+            <div class="form-group col-md-4"><label for="{{ form.payment_type.id_for_label }}">{{ form.payment_type.label }}</label>{{ form.payment_type }}{% for e in form.payment_type.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}</div>
+            <div class="form-group col-md-4"><label for="{{ form.end_credit.id_for_label }}">{{ form.end_credit.label }}</label>{{ form.end_credit }}{% for e in form.end_credit.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}</div>
+            <div class="form-group col-md-4"><label for="{{ form.parte_relacionada.id_for_label }}">{{ form.parte_relacionada.label }}</label>{{ form.parte_relacionada }}{% for e in form.parte_relacionada.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}</div>
         </div>
         {% if not propuesta.proveedor %}<fieldset class="border rounded p-2 mb-3"><legend class="h6 w-auto px-1">Proveedor nuevo (RUC {{ documento.emisor.ruc }})</legend>
             <div class="form-row">
-                <div class="form-group col-md-6"><label for="{{ form.mobile.id_for_label }}">{{ form.mobile.label }}</label>{{ form.mobile }}</div>
-                <div class="form-group col-md-6"><label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>{{ form.email }}{% for e in form.email.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+                <div class="form-group col-md-6"><label for="{{ form.mobile.id_for_label }}">{{ form.mobile.label }}</label>{{ form.mobile }}{% for e in form.mobile.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}</div>
+                <div class="form-group col-md-6"><label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>{{ form.email }}{% for e in form.email.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}</div>
             </div><small class="text-muted">Se crea con la razón social del XML, tipo RUC y la parte relacionada que indiques arriba.</small></fieldset>{% endif %}
 
         <h2 class="h5">Líneas</h2>
         {% if propuesta.agrupar_obligatorio %}
             <input type="hidden" name="agrupar_por_tarifa" value="on">
             <p>{% if documento.cod_doc == '04' or documento.cod_doc == '05' %}Se registra una línea de gasto por tarifa de IVA, con el motivo de la nota.{% else %}La factura tiene demasiadas líneas: se registra una línea de gasto por tarifa de IVA.{% endif %}</p>
-            <div class="form-group"><label for="{{ form.type_expense.id_for_label }}">{{ form.type_expense.label }}</label>{{ form.type_expense }}</div>
+            <div class="form-group"><label for="{{ form.type_expense.id_for_label }}">{{ form.type_expense.label }}</label>{{ form.type_expense }}{% for e in form.type_expense.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}</div>
         {% else %}
-            <div class="form-check mb-2">{{ form.agrupar_por_tarifa }} <label class="form-check-label" for="{{ form.agrupar_por_tarifa.id_for_label }}">{{ form.agrupar_por_tarifa.label }}</label></div>
-            <div class="form-group"><label for="{{ form.type_expense.id_for_label }}">{{ form.type_expense.label }}</label>{{ form.type_expense }}</div>
+            <div class="form-check mb-2">{{ form.agrupar_por_tarifa }}{% for e in form.agrupar_por_tarifa.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %} <label class="form-check-label" for="{{ form.agrupar_por_tarifa.id_for_label }}">{{ form.agrupar_por_tarifa.label }}</label></div>
+            <div class="form-group"><label for="{{ form.type_expense.id_for_label }}">{{ form.type_expense.label }}</label>{{ form.type_expense }}{% for e in form.type_expense.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}</div>
             {{ lineas.management_form }}
             <div class="table-responsive"><table class="table table-sm fp-import-detail-table fp-mobile-lines"><thead><tr><th>Código</th><th>Descripción</th><th class="text-right">Cantidad</th><th class="text-right">Sin impuestos</th><th>Tarifa</th><th class="text-right">IVA</th><th>Registrar como</th></tr></thead><tbody>
             {% for linea, f in filas %}<tr>
@@ -74,14 +76,14 @@
                 <td data-label="Sin impuestos" class="text-right">{{ linea.precio_total_sin_impuesto }}</td>
                 <td data-label="Tarifa">{{ linea.nombre_tarifa }}</td>
                 <td data-label="IVA" class="text-right">{{ linea.iva }}</td>
-                <td data-label="Registrar como">{{ f.indice }}{{ f.modo }}{{ f.product }}{{ f.type_expense }}<div class="form-check">{{ f.recordar }} <label class="form-check-label small" for="{{ f.recordar.id_for_label }}">{{ f.recordar.label }}</label></div>{% for e in f.non_field_errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</td>
+                <td data-label="Registrar como">{{ f.indice }}<label class="sr-only" for="{{ f.modo.id_for_label }}">{{ f.modo.label }}</label>{{ f.modo }}{% for e in f.modo.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}<label class="sr-only" for="{{ f.product.id_for_label }}">{{ f.product.label }}</label>{% render_field f.product class='form-control fp-producto-xml' %}{% for e in f.product.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}<label class="sr-only" for="{{ f.type_expense.id_for_label }}">{{ f.type_expense.label }}</label>{{ f.type_expense }}{% for e in f.type_expense.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %}<div class="form-check">{{ f.recordar }} <label class="form-check-label small" for="{{ f.recordar.id_for_label }}">{{ f.recordar.label }}</label></div>{% for e in f.non_field_errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</td>
             </tr>{% endfor %}
             </tbody></table></div>
         {% endif %}
 
-        {% if propuesta.exige_confirmar_sin_verificar %}<div class="form-check">{{ form.confirmar_sin_verificar }} <label class="form-check-label" for="{{ form.confirmar_sin_verificar.id_for_label }}">{{ form.confirmar_sin_verificar.label }}</label><small class="form-text text-muted">Esta excepción no permite incorporar documentos no autorizados, no encontrados o con discrepancias.</small></div>{% endif %}
-        {% if 'confirmar_plazo_ats' in propuesta.confirmaciones %}<div class="form-check">{{ form.confirmar_plazo_ats }} <label class="form-check-label" for="{{ form.confirmar_plazo_ats.id_for_label }}">{{ form.confirmar_plazo_ats.label }}</label></div>{% endif %}
-        {% if 'confirmar_no_duplicada' in propuesta.confirmaciones %}<div class="form-check">{{ form.confirmar_no_duplicada }} <label class="form-check-label" for="{{ form.confirmar_no_duplicada.id_for_label }}">{{ form.confirmar_no_duplicada.label }}</label></div>{% endif %}
+        {% if propuesta.exige_confirmar_sin_verificar %}<div class="form-check">{{ form.confirmar_sin_verificar }}{% for e in form.confirmar_sin_verificar.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %} <label class="form-check-label" for="{{ form.confirmar_sin_verificar.id_for_label }}">{{ form.confirmar_sin_verificar.label }}</label><small class="form-text text-muted">Esta excepción no permite incorporar documentos no autorizados, no encontrados o con discrepancias.</small></div>{% endif %}
+        {% if 'confirmar_plazo_ats' in propuesta.confirmaciones %}<div class="form-check">{{ form.confirmar_plazo_ats }}{% for e in form.confirmar_plazo_ats.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %} <label class="form-check-label" for="{{ form.confirmar_plazo_ats.id_for_label }}">{{ form.confirmar_plazo_ats.label }}</label></div>{% endif %}
+        {% if 'confirmar_no_duplicada' in propuesta.confirmaciones %}<div class="form-check fp-stage-duplicate">{{ form.confirmar_no_duplicada }}{% for e in form.confirmar_no_duplicada.errors %}<div class="invalid-feedback d-block" role="alert">{{ e }}</div>{% endfor %} <label class="form-check-label" for="{{ form.confirmar_no_duplicada.id_for_label }}">{{ form.confirmar_no_duplicada.label }}</label></div>{% endif %}
         <div class="mt-3"><button type="submit" name="action" value="crear" class="btn fpa-btn-pagar">Crear compra</button> <a href="{{ url_documento }}" class="btn btn-outline-secondary">Volver al documento</a></div>
     </div></form>
     {% else %}<a href="{{ url_documento }}" class="btn btn-outline-secondary">Volver al documento</a>{% endif %}
