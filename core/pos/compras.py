@@ -864,7 +864,9 @@ def bloqueos_de(compra):
     retencion = retenciones.retencion_vigente(compra)
     if retencion is not None:
         llenos = [c for c in ('tipo_comprobante', *CAMPOS_NUMERACION) if getattr(compra, c)]
-        return llenos, f'La retención {retencion.voucher_number_full} usa este número: anúlala antes de cambiarlo.', False
+        # sin datos llenos no se bloquea nada: sin motivo (el contrato lo pide vacío y no se sugiere anular la retención)
+        motivo = f'La retención {retencion.voucher_number_full} usa este número: anúlala antes de cambiarlo.' if llenos else ''
+        return llenos, motivo, False
     liquidacion = liquidaciones.liquidacion_vigente(compra)
     if liquidacion is not None:   # el tipo lo da la liquidación (03 al autorizarse), aunque todavía esté vacío
         llenos = ['tipo_comprobante'] + [c for c in CAMPOS_NUMERACION if getattr(compra, c)]

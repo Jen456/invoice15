@@ -279,6 +279,7 @@ def _ejecutar(comprobante, esperas):
     with transaction.atomic():
         # Bloquea solo este comprobante (no la numeración ni el cupo): dos envíos a la vez no se pisan.
         actual = Modelo.all_companies.select_for_update().get(pk=comprobante.pk)
+        motivo = _no_se_reenvia(actual) if actual.status in (DEVUELTA, NO_AUTORIZADA) else ''
         if actual.status in AUTORIZADOS:
             resultado = {'resp': True, 'estado': actual.status, 'mensaje': 'Ya estaba autorizada por el SRI.'}
         elif actual.status == ANULADA:
@@ -287,6 +288,8 @@ def _ejecutar(comprobante, esperas):
             resultado = {'resp': False, 'estado': SECUENCIAL_REGISTRADO,
                          'error': f'El SRI ya tiene registrado el número {actual.voucher_number_full} con otra clave de acceso. '
                                   'Escribe a soporte antes de volver a emitir.'}
+        elif motivo:
+            resultado = {'resp': False, 'estado': actual.status, 'error': motivo}
         else:
             if not actual.xml_signed or actual.status in (DEVUELTA, NO_AUTORIZADA):
                 preparar(actual)   # misma fecha y clave; el XML refleja los datos corregidos
@@ -295,6 +298,21 @@ def _ejecutar(comprobante, esperas):
     if comprobante.status == AUTORIZADA:
         _despues_de_autorizar(comprobante)
     return resultado
+
+
+def _no_se_reenvia(comprobante):
+    """X-R1: una retención devuelta o no autorizada no cuenta como vigente, así que su compra pudo pasar después a nota de
+    crédito del proveedor (04). Reenviarla la autorizaría sobre una 04: en ese caso, el motivo para no reenviarla. La
+    compra se lee bloqueada, como en retenciones.crear() y compras.completar_datos(). Nada se anula ni se cambia."""
+    if comprobante._meta.model_name != 'retencion' or not comprobante.purchase_id:
+        return ''
+    from core.pos.compras import admite_retencion
+    from core.pos.models import Purchase
+    compra = Purchase.all_companies.select_for_update().get(pk=comprobante.purchase_id, company_id=comprobante.company_id)
+    if admite_retencion(compra):
+        return ''
+    return (f'La compra #{compra.pk} es una nota de crédito del proveedor (04): sobre ella no se emite comprobante de '
+            f'retención, así que {_la(comprobante)} no se reenvió al SRI. No se anuló ni se cambió nada.')
 
 
 def _despues_de_autorizar(comprobante):

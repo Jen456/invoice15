@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from core.comprobantes import retenciones as sv
 from core.comprobantes.models import Retencion
-from core.pos import compras
+from core.pos import compras, emision
 from core.pos.models import Purchase, Receipt
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_OWNER, AuditLog
@@ -205,3 +205,55 @@ class TestRetencionVigenteYNotaDeCredito:
         assert str(error.value) == (f'La compra #{nota.pk} es una nota de crédito del proveedor (04): sobre ella no se '
                                     'emite comprobante de retención. No se emitió nada.')
         assert not leer(empresa, lambda: Retencion.objects.exists()) and secuencia_07(empresa) == antes
+
+    def test_la_pantalla_no_sugiere_anular_la_retencion(self, web, empresa, usuario, sin_tipo, modificada, codigos,  # noqa: F811
+                                                        numeracion):  # noqa: F811
+        ret = self.retener(empresa, usuario, sin_tipo, codigos)
+        url = f'/pos/purchase/complete/{sin_tipo.pk}/'
+        respuesta = web.get(url)
+        assert respuesta.status_code == 200
+        assert (respuesta.context['bloqueados'], respuesta.context['motivo_bloqueo']) == ([], '')
+        assert 'anúlala' not in respuesta.content.decode()
+        for accion in ('revisar', 'completar'):
+            respuesta = web.post(url, {**self.como_04(modificada), 'action': accion})
+            html = respuesta.content.decode()
+            assert respuesta.status_code == 200 and 'anúlala' not in html
+            assert f'Esta compra tiene la retención {ret.voucher_number_full} vigente' in html
+        assert leer(empresa, lambda: Purchase.objects.get(pk=sin_tipo.pk).tipo_comprobante) == ''
+
+    def test_una_retencion_devuelta_no_se_reenvia_si_la_compra_paso_a_04(self, empresa, usuario, sin_tipo, modificada,  # noqa: F811
+                                                                          codigos, numeracion, sri):  # noqa: F811
+        """Devuelta por el SRI, la retención deja de estar vigente y la compra puede pasar a 04; reenviarla la autorizaría
+        sobre la 04. emision.emitir no la reenvía y no cambia nada."""
+        sri.respuestas_recepcion = [('DEVUELTA', [('35', 'ARCHIVO NO CUMPLE ESTRUCTURA XML')])]
+        ret = self.retener(empresa, usuario, sin_tipo, codigos)
+        with company_context(empresa):
+            with transaction.atomic():
+                emision.preparar(Retencion.objects.get(pk=ret.pk))
+            assert emision.emitir(Retencion.objects.get(pk=ret.pk))['estado'] == 'returned'
+            assert sv.retencion_vigente(sin_tipo) is None
+            compras.completar_datos(Purchase.objects.select_related('provider').get(pk=sin_tipo.pk), usuario,
+                                    self.como_04(modificada))
+            assert Purchase.objects.get(pk=sin_tipo.pk).tipo_comprobante == '04'
+            enviados = len(sri.recepciones)
+            sri.respuestas_autorizacion = ['AUTORIZADO']
+            resultado = emision.emitir(Retencion.objects.get(pk=ret.pk))
+            assert (resultado['resp'], resultado['estado']) == (False, 'returned')
+            assert resultado['error'].startswith(f'La compra #{sin_tipo.pk} es una nota de crédito del proveedor (04): sobre '
+                                                 'ella no se emite comprobante de retención, así que ')
+            assert resultado['error'].endswith(' no se reenvió al SRI. No se anuló ni se cambió nada.')
+            assert Retencion.objects.get(pk=ret.pk).status == 'returned' and sv.retencion_vigente(sin_tipo) is None
+        assert len(sri.recepciones) == enviados
+
+    def test_una_retencion_devuelta_si_se_reenvia_si_la_compra_admite_retencion(self, empresa, usuario, sin_tipo,  # noqa: F811
+                                                                                codigos, numeracion, sri):  # noqa: F811
+        sri.respuestas_recepcion = [('DEVUELTA', [('35', 'ARCHIVO NO CUMPLE ESTRUCTURA XML')])]
+        ret = self.retener(empresa, usuario, sin_tipo, codigos)
+        with company_context(empresa):
+            with transaction.atomic():
+                emision.preparar(Retencion.objects.get(pk=ret.pk))
+            assert emision.emitir(Retencion.objects.get(pk=ret.pk))['estado'] == 'returned'
+            sri.respuestas_autorizacion = ['AUTORIZADO']
+            assert emision.emitir(Retencion.objects.get(pk=ret.pk))['resp'] is True
+            assert Retencion.objects.get(pk=ret.pk).status in ('authorized', 'authorized_and_sent_by_email')
+        assert len(sri.recepciones) == 2
