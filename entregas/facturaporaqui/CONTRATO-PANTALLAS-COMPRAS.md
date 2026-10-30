@@ -4,8 +4,9 @@
 
 > **Estado en `plataforma` tras la integración (29/10/2026).** Este contrato es **definitivo** sobre la base que indica
 > `HANDOFF.md`, con estos cambios respecto de la rama:
-> - **Pantalla 14 (retención recibida desde un 07):** ya funciona. `add_retencionrecibida` y `registrar_desde_importacion`
->   llegan con Ventas (`comprobantes/0023`), que también los asigna a los roles.
+> - **Pantalla 14 (retención recibida desde un 07):** ya funciona. `registrar_desde_importacion`
+>   (`core/comprobantes/retenciones_recibidas.py`) y el permiso `add_retencionrecibida` llegan con Ventas;
+>   `comprobantes/0023` crea el permiso y lo asigna a Propietario y Administrador.
 > - **Punto 8 del apartado B, hecho:** `RetencionCrearView` (Retención sobre una compra, de `comprobantes`) rechaza en GET
 >   y en POST las compras que `compras.admite_retencion` no admite (notas de crédito del proveedor, 04): redirige a
 >   Compras con «La compra #N es una nota de crédito del proveedor (04): sobre ella no se emite comprobante de retención.

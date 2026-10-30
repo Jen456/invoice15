@@ -2,11 +2,11 @@
 
 ## Estado actual — fase contable integrada en `plataforma`, sin publicar (Claude, 29/10/2026)
 
-D0 Fase A (`6d2a066`), Etapa 1 (Proformas) y Etapa 2 (Compras, y Ventas y Empresa) están fusionadas en `plataforma`, en este orden: `7f0e576` Proformas → `eaa6d10` Compras → `fff9bb3` Ventas → `90da085` correcciones de la integración → `f109d4d` piezas compartidas (`fase/integracion-cruces`). El commit que añade esta sección solo agrega documentación en `entregas/facturaporaqui/`. **No se publicó nada**: la app sigue en lo publicado el 28/10 y la base publicada no tiene ninguna de estas migraciones.
+D0 Fase A (`6d2a066`), Etapa 1 (Proformas) y Etapa 2 (Compras, y Ventas y Empresa) están fusionadas en `plataforma`, en este orden: `7f0e576` Proformas → `eaa6d10` Compras → `fff9bb3` Ventas → `90da085` correcciones de la integración → `f109d4d` piezas compartidas (`fase/integracion-cruces`). Los commits posteriores (`8c8a657` y la corrección de su revisión) solo cambian documentación en `entregas/facturaporaqui/`. **No se publicó nada**: la app sigue en lo publicado el 28/10 y la base publicada no tiene ninguna de estas migraciones.
 
 - **Correcciones de la integración (`90da085`):** las pruebas de Compras emiten la retención con la huella de «Revisar» que exige D0; la vuelta de `comprobantes/0023` quita su módulo y sus permisos por ids (antes no se podía deshacer junto con las de D0); la prueba de migraciones de D0 crea su retención con todas las migraciones aplicadas.
 - **Piezas compartidas (`fase/integracion-cruces`):** códigos de auditoría de la fase en `AuditLog.ACTIONS` y `AuditLog.detail` con `DjangoJSONEncoder` (`tenancy/0007`); Resultados y tablero restan la nota de crédito del proveedor (04); «Retención sobre una compra» rechaza la 04 y precarga el sustento desde Compras; pruebas cruzadas del 07 importado de punta a punta, de «Anulado en el SRI» sobre compras y de seguridad por filas en todas las tablas de empresa.
-- **Pruebas:** las suites completas de SQLite y PostgreSQL se ejecutaron sobre el commit que trae esta sección, antes de subirlo; los totales están en el informe de entrega a la propietaria.
+- **Pruebas:** las suites completas de SQLite y PostgreSQL se ejecutaron sobre `8c8a657`, antes de subirlo; lo posterior solo cambia `entregas/`, que ninguna prueba lee. Los totales están en el informe de entrega a la propietaria.
 - **Migraciones:** 19 nuevas. Orden, efecto sobre los datos existentes y precauciones de aplicación y de reversión en [`MIGRACIONES-FASE-CONTABLE.md`](MIGRACIONES-FASE-CONTABLE.md); detalle por rama en [`MIGRACIONES-PROFORMAS.md`](MIGRACIONES-PROFORMAS.md), [`MIGRACIONES-COMPRAS.md`](MIGRACIONES-COMPRAS.md) y [`MIGRACIONES-VENTAS.md`](MIGRACIONES-VENTAS.md).
 - **Norma:** la sección «Anulación» de [`NORMA-RETENCIONES-2026-10.md`](NORMA-RETENCIONES-2026-10.md) se corrigió contra las Res. NAC-DGERCGC25-00000014 y 25-00000017 (prórroga al día hábil, aceptación del receptor y excepciones).
 
@@ -19,7 +19,7 @@ D0 Fase A (`6d2a066`), Etapa 1 (Proformas) y Etapa 2 (Compras, y Ventas y Empres
   - Ventas: si el aviso del día 7 de «Anulado en el SRI» cuenta la prórroga al siguiente día hábil (hoy pide confirmación pasado el día 7; si se decide, cambia el texto del aviso);
   - D0-b a D0-f (escenarios del 310 y el 332E desde el 01/08/2026), antes del 15/12/2026;
   - D9: precio del complemento (sigue «Precio por anunciar»).
-- [ ] **Hallazgo X-R1 (backend, sin efecto hoy en datos: nada de esto está publicado):** «Completar datos» acepta cambiar a nota de crédito del proveedor (04) una compra antigua sin tipo que ya tiene una retención vigente; la retención queda sobre una 04, que `compras.admite_retencion` no admite. Arreglo mínimo propuesto: en `compras._plan_completar`, rechazar un tipo de `TIPOS_SIN_RETENCION` si `retenciones.retencion_vigente(compra)` existe, con su prueba, y la misma guardia dentro de `retenciones.crear()`. Cambia una regla del contrato de Compras (pantalla «Completar datos»): lo decide la propietaria.
+- [ ] **Hallazgo X-R1 (backend, sin efecto hoy en datos: nada de esto está publicado):** «Completar datos» acepta cambiar a nota de crédito del proveedor (04) una compra sin tipo, de contado (sin cuenta por pagar) y sin líneas con producto, que ya tiene una retención vigente: una registrada con «Completar después» y solo con líneas de gasto, o una antigua sin líneas. La retención queda sobre una 04, que `compras.admite_retencion` no admite. Arreglo mínimo propuesto: en `compras._plan_completar`, rechazar un tipo de `TIPOS_SIN_RETENCION` si `retenciones.retencion_vigente(compra)` existe, con su prueba, y la misma guardia dentro de `retenciones.crear()`. Cambia una regla del contrato de Compras (pantalla «Completar datos»): lo decide la propietaria.
 - [ ] **Backend, para una próxima entrega:** `liquidaciones.calcular` deja en cero el descuento de la línea; la ficha de una retención recibida no sabe si el plan está vencido (contrato de Ventas, apartado B, punto 5); unificar el formato de importes en los mensajes (punto 6); los RIDE A4 con `alt="Logotipo del emisor"` (ver «Pendiente — tras las correcciones del ticket»).
 
 ## Pendiente para Codex — diseño de la fase contable (Claude, 29/10/2026)
@@ -37,7 +37,7 @@ D0 Fase A (`6d2a066`), Etapa 1 (Proformas) y Etapa 2 (Compras, y Ventas y Empres
 
 ## Notas entre agentes — fase contable integrada (Claude → Codex)
 
-- **Base exacta para integrar el diseño:** el commit de `plataforma` en GitHub que trae esta sección (su código es el de `f109d4d`). Parte de él y entrega tu rama fusionando `plataforma`, como hasta ahora.
+- **Base exacta para integrar el diseño:** la punta de `plataforma` en GitHub tras esta entrega (su código es el de `f109d4d`; lo posterior solo cambia `entregas/`). Parte de él y entrega tu rama fusionando `plataforma`, como hasta ahora.
 - **Contratos definitivos:** los tres. Cada uno empieza con la nota «Estado en `plataforma` tras la integración», que manda sobre lo que el resto del documento dice de la rama (por ejemplo, la pantalla 14 de Compras ya funciona y «Retención sobre una compra» ya rechaza la 04). Campos, acciones, permisos, estados, mensajes e identificadores no cambian; si una decisión pendiente cambiara un texto, lo anotaré aquí.
 - **No cambies** modelos, migraciones, vistas Python, rutas ni nombres de URL, ni los `name=`, valores de `action`, identificadores, `data-*` y fragmentos que comprueban las pruebas (cada contrato los lista). Si un diseño los necesita distintos, pídelo aquí y lo cambio con su prueba.
 - Datos ficticios únicamente; no despliegues. Los textos comerciales siguen las reglas de la nota de la fase contable del 28/10 (sin «homologado», sin «declaramos por ti», sin logos del SRI, la Supercias ni los bancos).
@@ -56,7 +56,7 @@ Rama `fase/ticket-correcciones` sobre `8d2eead` (entrega `165fbc7` de Codex): `d
 
 ## Pendiente — tras las correcciones del ticket (Claude, 28/10/2026)
 
-- [ ] Integrar `fase/ticket-correcciones` en `plataforma` y publicar con la aprobación de la propietaria. Después, revisar en papel de 58 mm real: impresora, controlador y escáner siguen sin verificar.
+- [ ] Publicar `fase/ticket-correcciones` (integrada en `plataforma` en `a6f5db3`) con la aprobación de la propietaria. Después, revisar en papel de 58 mm real: impresora, controlador y escáner siguen sin verificar.
 - [ ] Tarea aparte: los RIDE A4 de factura (`sale/format/invoice.html:16`) y de nota de crédito (`credit_note/format/invoice.html:16`) siguen con `alt="Logotipo del emisor"`. Con un logo registrado que ya no está, los dos imprimen esa frase (comprobado con `create_pdf` y datos ficticios). Corregir con `alt=""` y una prueba de logo inexistente como la del ticket.
 - [ ] Las muestras de `propuestas/ticket-b/` son del diseño de `165fbc7`, sin la línea de matriz ni el aviso de pendiente.
 

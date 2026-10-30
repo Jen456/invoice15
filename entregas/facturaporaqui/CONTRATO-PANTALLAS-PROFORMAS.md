@@ -6,7 +6,8 @@
 > `HANDOFF.md`. Al integrar no cambió ningún campo, acción, permiso, mensaje ni identificador de Proformas. Único cambio:
 > los 8 códigos del apartado B ya son choices de `AuditLog.ACTIONS` (migración `tenancy/0007_acciones_fase_contable`)
 > y `AuditLog.detail` usa `DjangoJSONEncoder`. Lo que este documento atribuye al «integrador» y no se menciona aquí sigue
-> pendiente en `HANDOFF.md`.
+> pendiente en `HANDOFF.md`, salvo su publicación: está en «Pendiente para Codex — diseño de la fase contable» y en
+> «Notas entre agentes — fase contable integrada (Claude → Codex)», no en una sección propia.
 
 Este documento describe **lo que hace el código de la rama**, pantalla por pantalla, para que Codex haga el diseño sin romper nada y para que la propietaria vea cómo funciona. Parte de la sección 6 de su especificación interna de trabajo (no publicada) y de las decisiones del 28/10/2026, pero manda el código: cuando no coinciden, se describe el código y la diferencia queda anotada en la pantalla y en el apartado F. El integrador lo publicará en `HANDOFF.md` como «Notas entre agentes — contrato de Proformas (Claude → Codex)».
 

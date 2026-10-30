@@ -88,8 +88,8 @@ La lista completa (84 códigos para residentes) está en la migración. Reglas d
   - Plazo: hasta el día 7 del mes siguiente al de su emisión; si ese día es de descanso obligatorio o feriado nacional
     o local, hasta el siguiente día hábil (art. 3, con el día 7 que fijó la Res. 25-00000017 para lo emitido desde el
     01/08/2025).
-  - El receptor debe aceptarla en 5 días hábiles desde la solicitud; si no responde, la solicitud queda sin efecto y la
-    retención sigue válida (art. 4). Si el receptor tiene identificación o pasaporte del exterior, o consta como
+  - La anulación requiere la aceptación del receptor, que tiene 5 días hábiles desde la solicitud para aceptarla o
+    rechazarla; si no responde, la solicitud queda sin efecto y la retención sigue válida (art. 4). Si el receptor tiene identificación o pasaporte del exterior, o consta como
     fallecido en el Registro Civil, basta la solicitud del emisor (inciso de la Res. 25-00000017).
   - El plazo no aplica a las retenciones de los casos del art. 26 del Reglamento del ISD (Res. 25-00000017).
   - No se anulan las que sustentan devoluciones de impuestos (disposición general tercera). Más de 1.000 comprobantes
