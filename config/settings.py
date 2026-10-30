@@ -93,6 +93,7 @@ TEMPLATES = [
                 'core.security.context_processors.session_profile',
                 'core.suscripciones.context_processors.plan',
                 'core.configuracion.context_processors.configuracion',
+                'core.configuracion.context_processors.puntos',
             ],
         },
     },

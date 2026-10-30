@@ -14,6 +14,7 @@
     <div class="alert alert-info">La liquidación reemplaza a la factura cuando el vendedor no puede emitirla: personas naturales sin RUC o con RUC suspendido (por ejemplo, pequeños productores) y servicios de no residentes. Para que sustente crédito tributario o gasto, emite después la retención del 100 % del IVA y de la renta que corresponda.</div>
     <form method="post" class="fp-retencion-form" novalidate>{% csrf_token %}
         {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+        {% include 'configuracion/_punto_emision.html' %}
         <section class="card fp-retencion-panel mb-3"><div class="card-body">
             <span class="fp-eyebrow">Paso 1 · Proveedor y pago</span><h2 class="h5">Datos del proveedor</h2><p class="text-muted">El nombre y la identificación salen de la ficha del proveedor; si están mal, corrígelos en Proveedores.</p>
             <div class="row">

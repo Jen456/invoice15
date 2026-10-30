@@ -1,0 +1,18 @@
+{# Punto de emisión fijado al formulario (contexto de core/configuracion/puntos.contexto_formulario). El servidor lo vuelve a validar al emitir. #}
+<div class="fp-punto-emision" data-punto="{{ punto.pk|default:'' }}">
+    {% if puntos_elegibles|length > 1 %}
+        <label for="id_punto" class="font-weight-bold">Punto de emisión</label>
+        <select name="punto" id="id_punto" class="form-control fp-punto-select" aria-describedby="fp-punto-resumen">
+            {% if not punto %}<option value="" selected>Elige el punto de emisión</option>{% endif %}
+            {% for p in puntos_elegibles %}
+                <option value="{{ p.pk }}"{% if punto and p.pk == punto.pk %} selected{% endif %}>{{ p.establishment.name|default:p.establishment.address }} · {{ p.description|default:"Punto" }} · {{ p.full_code }}</option>
+            {% endfor %}
+        </select>
+    {% elif punto %}
+        <input type="hidden" name="punto" value="{{ punto.pk }}">
+    {% endif %}
+    {% if punto %}
+        <p id="fp-punto-resumen" class="fp-punto-resumen mb-1">Emites desde <strong>{{ punto.establishment.name|default:punto.establishment.address }} / {{ punto.description|default:"Punto" }} · {{ punto.full_code }} · {{ punto_ambiente }}</strong>{% if punto_proximo %} · Próximo número: <strong class="fp-punto-proximo">{{ punto_proximo }}</strong> <small class="text-muted">(se confirma al emitir)</small>{% endif %}</p>
+    {% endif %}
+    {% if punto_aviso %}<div class="alert alert-warning fp-punto-aviso" role="alert">{{ punto_aviso }}</div>{% endif %}
+</div>

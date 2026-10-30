@@ -185,11 +185,12 @@ def huella(doc, detalle):
     return hashlib.sha256(texto.encode()).hexdigest()[:32]
 
 
-def crear(company, usuario, compra, datos, lineas, *, huella_revisada):
+def crear(company, usuario, compra, datos, lineas, *, huella_revisada, punto=None):
     """Retención guardada (aún sin firmar) para `compra`. Llamar dentro de una transacción; la vista firma después.
 
     `huella_revisada` es obligatoria: la de «Revisar» (si el cálculo de ahora es otro, o viene vacía, lanza
     RevisionDesactualizada y no guarda) o SIN_REVISION para los usos internos que no pasan por «Revisar».
+    `punto`: punto de emisión ya validado para el usuario (core/configuracion/puntos.py); sin punto, el predeterminado.
     """
     from core.configuracion.servicios import receipt_para_emitir
     from core.pos.models import Purchase
@@ -209,7 +210,7 @@ def crear(company, usuario, compra, datos, lineas, *, huella_revisada):
     if huella_revisada is not SIN_REVISION and huella_revisada != huella(doc, detalle):
         raise RevisionDesactualizada(doc, detalle, total)
     proveedor = compra.provider
-    receipt = receipt_para_emitir(company, TIPO_RETENCION, electronica=True)
+    receipt = receipt_para_emitir(company, TIPO_RETENCION, electronica=True, punto=punto)
     numero = receipt.reservar_numero()
     ret = Retencion(
         company=company, receipt=receipt, voucher_number=numero,

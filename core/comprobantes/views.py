@@ -11,6 +11,7 @@ from core.comprobantes import guias as sg
 from core.comprobantes import liquidaciones as sl
 from core.comprobantes import notas_debito as snd
 from core.comprobantes import retenciones as sv
+from core.configuracion import puntos as pt
 from core.comprobantes.forms import (DocumentoSustentoForm, GuiaForm, LineasGuiaFormSet, LineasLiquidacionFormSet,
                                      LineasRetencionFormSet, LiquidacionForm, MotivosNotaDebitoFormSet, NotaDebitoForm)
 from core.comprobantes.models import CodigoRetencion, GuiaRemision, LiquidacionCompra, NotaDebito, Retencion
@@ -163,6 +164,8 @@ class RetencionCrearView(GroupPermissionMixin, TemplateView):
             'avisos_sustento': list(self.avisos_sustento),
             'es_agente': self.request.company.retention_agent == RETENTION_AGENT[0][0],
         })
+        # Punto de emisión fijado al formulario (configuracion/_punto_emision.html); el servidor lo revalida al emitir.
+        context.update(pt.contexto_formulario(self.request, sv.TIPO_RETENCION, self.request.POST.get('punto')))
         return context
 
     def revision(self, form, lineas, doc, detalle, total, aviso=None):
@@ -191,9 +194,11 @@ class RetencionCrearView(GroupPermissionMixin, TemplateView):
         try:
             if request.POST.get('action') != 'emitir':
                 return self.revision(form, lineas, *sv.calcular(datos, filas, timezone.localdate()))
+            punto = pt.punto_del_formulario(request.user, request.company, request.POST.get('punto'))   # el del formulario
             with transaction.atomic():
                 # Sin la huella de «Revisar» (o con otra) no se emite: se vuelve a revisar con el cálculo de ahora.
-                ret = sv.crear(request.company, request.user, compra, datos, filas, huella_revisada=request.POST.get('huella', ''))
+                ret = sv.crear(request.company, request.user, compra, datos, filas, huella_revisada=request.POST.get('huella', ''),
+                               punto=punto)
                 emision.preparar(ret)   # si la firma o el plan fallan, se deshace: nada salió al SRI
         except sv.RevisionDesactualizada as e:
             return self.revision(form, lineas, e.doc, e.detalle, e.total, aviso=str(e))
@@ -230,6 +235,7 @@ class LiquidacionCrearView(GroupPermissionMixin, TemplateView):
                                                                    'direccion': compra.provider.address or ''}),
             'lineas': lineas, 'filas': filas, 'resumen': kwargs.get('resumen'),
         })
+        context.update(pt.contexto_formulario(self.request, sl.TIPO_LIQUIDACION, self.request.POST.get('punto')))
         return context
 
     def post(self, request, *args, **kwargs):
@@ -245,8 +251,9 @@ class LiquidacionCrearView(GroupPermissionMixin, TemplateView):
                 doc, detalle, totales = sl.calcular(compra, form.cleaned_data, elegidas)
                 return self.render_to_response(self.get_context_data(form=form, lineas=lineas, resumen={
                     'doc': doc, 'detalle': detalle, **totales}))
+            punto = pt.punto_del_formulario(request.user, request.company, request.POST.get('punto'))   # el del formulario
             with transaction.atomic():
-                liq = sl.crear(request.company, request.user, compra, form.cleaned_data, elegidas)
+                liq = sl.crear(request.company, request.user, compra, form.cleaned_data, elegidas, punto=punto)
                 emision.preparar(liq)   # si la firma o el plan fallan, se deshace: nada salió al SRI
         except Exception as e:
             form.add_error(None, str(e))
@@ -281,6 +288,7 @@ class NotaDebitoCrearView(GroupPermissionMixin, TemplateView):
             'motivos': kwargs.get('motivos') or MotivosNotaDebitoFormSet(prefix='motivos'),
             'resumen': kwargs.get('resumen'),
         })
+        context.update(pt.contexto_formulario(self.request, snd.TIPO_NOTA_DEBITO, self.request.POST.get('punto')))
         return context
 
     def post(self, request, *args, **kwargs):
@@ -296,8 +304,9 @@ class NotaDebitoCrearView(GroupPermissionMixin, TemplateView):
                 doc, limpios, totales = snd.calcular(venta, form.cleaned_data, filas)
                 return self.render_to_response(self.get_context_data(form=form, motivos=motivos, resumen={
                     'doc': doc, 'motivos': limpios, **totales}))
+            punto = pt.punto_del_formulario(request.user, request.company, request.POST.get('punto'))   # el del formulario
             with transaction.atomic():
-                nota = snd.crear(request.company, request.user, venta, form.cleaned_data, filas)
+                nota = snd.crear(request.company, request.user, venta, form.cleaned_data, filas, punto=punto)
                 emision.preparar(nota)   # si la firma o el plan fallan, se deshace: nada salió al SRI
         except Exception as e:
             form.add_error(None, str(e))
@@ -316,7 +325,6 @@ class GuiaCrearView(GroupPermissionMixin, TemplateView):
         return get_object_or_404(Sale.objects.select_related('client__user', 'receipt'), pk=self.kwargs['venta'])
 
     def get_context_data(self, **kwargs):
-        from core.configuracion.servicios import punto_predeterminado
         context = super().get_context_data(**kwargs)
         venta = self.get_venta()
         try:
@@ -332,8 +340,11 @@ class GuiaCrearView(GroupPermissionMixin, TemplateView):
         for f in lineas.forms:
             detalle = f['detalle'].value()
             filas.append((f, por_detalle.get(int(detalle)) if str(detalle or '').isdigit() else None))
-        punto = punto_predeterminado(self.request.company)
+        # Punto de emisión fijado al formulario; la dirección de partida sugerida es la de su establecimiento.
+        contexto_punto = pt.contexto_formulario(self.request, sg.TIPO_GUIA, self.request.POST.get('punto'))
+        punto = contexto_punto['punto']
         partida = (punto.establishment.address if punto else '') or self.request.company.establishment_address or ''
+        context.update(contexto_punto)
         hoy = timezone.localdate()
         context.update({
             'title': 'Emitir guía de remisión', 'venta': venta, 'impedimento': impedimento,
@@ -356,8 +367,9 @@ class GuiaCrearView(GroupPermissionMixin, TemplateView):
                 sg.validar_factura(venta, request.company)
                 doc, detalle = sg.calcular(venta, form.cleaned_data, cantidades)
                 return self.render_to_response(self.get_context_data(form=form, lineas=lineas, resumen={'doc': doc, 'detalle': detalle}))
+            punto = pt.punto_del_formulario(request.user, request.company, request.POST.get('punto'))   # el del formulario
             with transaction.atomic():
-                guia = sg.crear(request.company, request.user, venta, form.cleaned_data, cantidades)
+                guia = sg.crear(request.company, request.user, venta, form.cleaned_data, cantidades, punto=punto)
                 emision.preparar(guia)   # si la firma o el plan fallan, se deshace: nada salió al SRI
         except Exception as e:
             form.add_error(None, str(e))

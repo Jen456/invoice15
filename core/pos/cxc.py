@@ -92,7 +92,7 @@ def listado(desde=None, hasta=None):
     vigentes = PaymentsCtaCollect.all_companies.filter(ctas_collect=OuterRef('pk'), anulado_en__isnull=True)
     suma = vigentes.order_by().values('ctas_collect').annotate(total=Sum('valor')).values('total')[:1]
     queryset = (CtasCollect.objects
-                .select_related('sale__company', 'sale__client__user', 'sale__receipt', 'sale__employee')
+                .select_related('sale__company', 'sale__client__user', 'sale__receipt__emission_point__establishment', 'sale__employee')
                 .prefetch_related('sale__client__user__groups', 'sale__employee__groups')
                 .annotate(nd_id=Subquery(nota.values('pk')[:1]), nd_numero=Subquery(nota.values('voucher_number_full')[:1]),
                           tiene_anulacion=Exists(vigentes.filter(tipo='anulacion')),

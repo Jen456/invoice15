@@ -37,6 +37,7 @@ NOMBRE_DOCUMENTO = {FACTURA: 'facturas', NOTA_CREDITO: 'notas de crédito', TICK
                     RETENCION: 'comprobantes de retención', LIQUIDACION: 'liquidaciones de compra',
                     NOTA_DEBITO: 'notas de débito', GUIA: 'guías de remisión'}
 URL_OTROS = URL + 'otros/'
+URL_PUNTOS = '/configuracion/puntos/'   # locales, puntos y numeración por punto (core/configuracion/puntos.py)
 AMBIENTES = dict(ENVIRONMENT_TYPE)
 PRODUCCION = 2
 
@@ -146,44 +147,51 @@ def estado(company):
     }
 
 
-def secuencia_configurada(company, tipo):
-    """Secuencia confirmada para emitir `tipo` en el ambiente y punto actuales, o None."""
+def secuencia_configurada(company, tipo, punto=None):
+    """Secuencia confirmada para emitir `tipo` en el ambiente actual desde `punto` (sin punto, el predeterminado), o None."""
     setup = BillingSetup.all_companies.filter(company=company).first()
     if setup is None or setup.completed_at is None:
         return None
-    r = secuencia(company, punto_predeterminado(company), company.environment_type, tipo)
+    r = secuencia(company, punto if punto is not None else punto_predeterminado(company), company.environment_type, tipo)
     return r if r is not None and r.confirmed_at else None
 
 
-def requisitos_de_emision(company, tipo, electronica):
-    """Lo que falta para emitir `tipo`: [{codigo, mensaje, paso, url}] (vacío = se puede)."""
+def requisitos_de_emision(company, tipo, electronica, punto=None):
+    """Lo que falta para emitir `tipo` desde `punto` (sin punto, el predeterminado): [{codigo, mensaje, paso, url}]
+    (vacío = se puede). La numeración de un punto que no es el predeterminado se configura en «Locales y puntos»."""
     faltan = []
     setup = BillingSetup.all_companies.filter(company=company).first()
     nombre = NOMBRE_DOCUMENTO.get(tipo, 'comprobantes')
+    ambiente = AMBIENTES.get(company.environment_type)
     if setup is None or setup.completed_at is None:
         paso = next((n for n, _ in PASOS if setup is None or not paso_completo(company, setup, n)), 5)
         faltan.append({'codigo': 'configuracion', 'paso': paso, 'url': f'{URL}paso/{paso}/',
                        'mensaje': f'Para emitir {nombre} completa la configuración de facturación (paso {paso}).'})
-    elif secuencia_configurada(company, tipo) is None and tipo in dict(OTROS_DOCUMENTOS):
+    elif secuencia_configurada(company, tipo, punto) is None and punto is not None and not punto.is_default:
+        faltan.append({'codigo': 'secuencia', 'paso': 'puntos', 'url': URL_PUNTOS,
+                       'mensaje': (f'Configura y confirma la numeración de {nombre} del punto {punto.full_code} para el '
+                                   f'ambiente {ambiente} en «Locales y puntos de emisión».')})
+    elif secuencia_configurada(company, tipo, punto) is None and tipo in dict(OTROS_DOCUMENTOS):
         faltan.append({'codigo': 'secuencia', 'paso': 'otros', 'url': URL_OTROS,
-                       'mensaje': (f'Configura la numeración de {nombre} para el ambiente {AMBIENTES.get(company.environment_type)} '
+                       'mensaje': (f'Configura la numeración de {nombre} para el ambiente {ambiente} '
                                    'en «Configuración de facturación → Otros comprobantes».')})
-    elif secuencia_configurada(company, tipo) is None:
+    elif secuencia_configurada(company, tipo, punto) is None:
         faltan.append({'codigo': 'secuencia', 'paso': 3, 'url': f'{URL}paso/3/',
-                       'mensaje': (f'Configura y confirma la numeración de {nombre} para el ambiente '
-                                   f'{AMBIENTES.get(company.environment_type)} (paso 3).')})
+                       'mensaje': f'Configura y confirma la numeración de {nombre} para el ambiente {ambiente} (paso 3).'})
     if electronica and not (company.electronic_signature and company.electronic_signature_key):
         faltan.append({'codigo': 'firma', 'paso': 4, 'url': f'{URL}paso/4/',
                        'mensaje': 'Para emitir comprobantes electrónicos sube tu firma electrónica (.p12) y su clave (paso 4).'})
     return faltan
 
 
-def receipt_para_emitir(company, tipo, electronica):
-    """Secuencia con la que se emite `tipo`; ConfiguracionPendiente explica cómo resolverlo."""
-    faltan = requisitos_de_emision(company, tipo, electronica)
+def receipt_para_emitir(company, tipo, electronica, punto=None):
+    """Secuencia con la que se emite `tipo` desde `punto` (sin punto, el predeterminado); ConfiguracionPendiente
+    explica cómo resolverlo."""
+    faltan = requisitos_de_emision(company, tipo, electronica, punto)
     if faltan:
-        raise ConfiguracionPendiente(f'{faltan[0]["mensaje"]} Ve a «Configuración de facturación»: {faltan[0]["url"]}')
-    return secuencia_configurada(company, tipo)
+        donde = 'Locales y puntos de emisión' if faltan[0]['paso'] == 'puntos' else 'Configuración de facturación'
+        raise ConfiguracionPendiente(f'{faltan[0]["mensaje"]} Ve a «{donde}»: {faltan[0]["url"]}')
+    return secuencia_configurada(company, tipo, punto)
 
 
 # ---------------------------------------------------------------- progreso

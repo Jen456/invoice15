@@ -116,3 +116,45 @@ class ConfirmacionForm(forms.Form):
     """Paso 5."""
     confirm = forms.BooleanField(label='Confirmo que estos son los números con los que debo continuar',
                                  error_messages={'required': MENSAJES['confirmar_revision']})
+
+
+def puntos_de(company, activos=True):
+    from core.pos.models import EmissionPoint
+    filtro = {'company': company}
+    if activos:
+        filtro.update(is_active=True, establishment__is_active=True)
+    return EmissionPoint.all_companies.select_related('establishment').filter(**filtro).order_by('establishment__code', 'code')
+
+
+class NumeracionPuntoForm(forms.Form):
+    """«Locales y puntos», acción numeracion: numeración de un documento en un ambiente para un punto cualquiera
+    (prefijo `n-`; sin él, los nombres chocarían con los formularios de alta de la misma página)."""
+    point = forms.ModelChoiceField(queryset=None, label='Punto de emisión', empty_label=None)
+    tipo = forms.ChoiceField(label='Documento')
+    ambiente = forms.TypedChoiceField(choices=ENVIRONMENT_TYPE, coerce=int, label='Ambiente')
+    mode = forms.ChoiceField(choices=SecuenciaForm.MODOS, label='Numeración', widget=forms.RadioSelect(attrs={'class': 'form-check-input'}))
+    last_number = forms.CharField(label='Último número utilizado', required=False, max_length=20,
+                                  help_text='Por ejemplo 002-001-000000125 (el próximo será 002-001-000000126).')
+    confirm = forms.BooleanField(label='Confirmo la numeración indicada', required=False)
+
+    def __init__(self, *args, company=None, **kwargs):
+        from core.configuracion.puntos import CONFIGURABLES, TIPOS_POR_PUNTO
+        kwargs.setdefault('prefix', 'n')
+        super().__init__(*args, **kwargs)
+        self.fields['point'].queryset = puntos_de(company)
+        self.fields['tipo'].choices = [(t, n) for t, n in TIPOS_POR_PUNTO if t in CONFIGURABLES]
+
+
+class AutorizacionForm(forms.Form):
+    """«Locales y puntos», acciones autorizar y quitar_autorizacion: usuario con rol de personal y punto."""
+    user = forms.ModelChoiceField(queryset=None, label='Usuario', empty_label=None)
+    point = forms.ModelChoiceField(queryset=None, label='Punto de emisión', empty_label=None)
+
+    def __init__(self, *args, company=None, activos=True, **kwargs):
+        from core.tenancy.models import ROLE_CLIENT, Membership
+        from core.user.models import User
+        kwargs.setdefault('prefix', 'a')
+        super().__init__(*args, **kwargs)
+        miembros = Membership.objects.active().filter(company=company).exclude(group__name=ROLE_CLIENT).values('user_id')
+        self.fields['user'].queryset = User.objects.filter(pk__in=miembros).order_by('names', 'username')
+        self.fields['point'].queryset = puntos_de(company, activos)

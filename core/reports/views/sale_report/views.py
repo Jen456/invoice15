@@ -23,7 +23,7 @@ class SaleReportView(GroupModuleMixin, FormView):
                 end_date = request.POST['end_date']
                 alcance = request.POST.get('alcance') or 'declarables'
                 queryset = consultas.ventas(alcance, start_date or None, end_date or None)
-                for i in queryset.select_related('company', 'client__user', 'receipt', 'employee'):
+                for i in queryset.select_related('company', 'client__user', 'receipt__emission_point__establishment', 'employee'):
                     item = i.toJSON()
                     fecha = getattr(i, 'fecha_efectiva', None) or i.emission_date or i.authorization_date or i.date_joined
                     item['fecha_emision_efectiva'] = fecha.strftime('%Y-%m-%d')

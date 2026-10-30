@@ -39,6 +39,7 @@
                 </a>
             </div>
         </li>
+        {% include 'configuracion/_selector_punto.html' %}
         {% include 'tenancy/company_switcher.html' %}
         <li class="nav-item">
             <a class="nav-link btnLogout" aria-label="Cerrar sesión" href="{% url 'logout' %}">

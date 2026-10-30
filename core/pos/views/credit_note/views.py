@@ -9,7 +9,8 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, FormView
 
 from core.pos.forms import CreditNoteForm, CreditNote, CreditNoteDetail, Company, Sale, Receipt, SaleDetail, VOUCHER_TYPE, INVOICE_STATUS, IDENTIFICATION_TYPE
-from core.configuracion.servicios import receipt_para_emitir, requisitos_de_emision
+from core.configuracion import puntos as pt
+from core.configuracion.servicios import requisitos_de_emision, secuencia_configurada
 from core.pos import emision
 from core.pos.notas_credito import AUTORIZADOS, acreditado_por_detalle, crear as crear_nota_credito
 from core.pos.utilities.sri import SRI
@@ -30,9 +31,11 @@ class CreditNoteListView(GroupPermissionMixin, FormView):
                 data = []
                 start_date = request.POST['start_date']
                 end_date = request.POST['end_date']
-                queryset = CreditNote.objects.filter()
+                queryset = CreditNote.objects.select_related('receipt__emission_point__establishment')
                 if len(start_date) and len(end_date):
                     queryset = queryset.filter(date_joined__range=[start_date, end_date])
+                if request.POST.get('punto'):   # filtro por punto de emisión (id de EmissionPoint)
+                    queryset = queryset.filter(receipt__emission_point_id=request.POST['punto'])
                 for i in queryset:
                     data.append(i.toJSON())
             elif action == 'search_detail_products':
@@ -73,8 +76,10 @@ class CreditNoteCreateView(GroupPermissionMixin, CreateView):
             if action == 'add':
                 # Reglas en el servidor (core/pos/notas_credito.py): cantidades, precios y tarifa salen de la factura.
                 lineas = [(i['id'], i['quantity']) for i in json.loads(request.POST['products'])]
+                # Punto de emisión fijado al formulario (`punto`), validado otra vez para este usuario; sin él, su punto activo.
+                punto = pt.punto_del_formulario(request.user, request.company, request.POST.get('punto'))
                 with transaction.atomic():
-                    credit_note = crear_nota_credito(request.company, request.POST['sale'], lineas, request.POST.get('motive'))
+                    credit_note = crear_nota_credito(request.company, request.POST['sale'], lineas, request.POST.get('motive'), punto=punto)
                     emision.preparar(credit_note)   # si la firma falla, la nota se deshace: nada salió al SRI
                 data = credit_note.generate_electronic_invoice()
             elif action == 'search_sale':
@@ -100,10 +105,14 @@ class CreditNoteCreateView(GroupPermissionMixin, CreateView):
         return HttpResponse(json.dumps(data), content_type='application/json')
 
     def get(self, request, *args, **kwargs):
-        self.voucher_number_full = CreditNote().generate_voucher_number_full()
+        # Punto de emisión fijado a este formulario (configuracion/_punto_emision.html); el servidor lo revalida al emitir.
+        self.contexto_punto = pt.contexto_formulario(request, VOUCHER_TYPE[1][0])
+        punto = self.contexto_punto['punto']
+        receipt = secuencia_configurada(request.company, VOUCHER_TYPE[1][0], punto=punto) if punto else None
+        self.voucher_number_full = receipt.next_number_full() if receipt else ''
         if not self.voucher_number_full:
-            faltan = requisitos_de_emision(request.company, VOUCHER_TYPE[1][0], electronica=False)
-            messages.error(request, faltan[0]['mensaje'] if faltan else 'Configura la numeración de notas de crédito.')
+            faltan = requisitos_de_emision(request.company, VOUCHER_TYPE[1][0], electronica=False, punto=punto)
+            messages.error(request, self.contexto_punto['punto_aviso'] or (faltan[0]['mensaje'] if faltan else 'Configura la numeración de notas de crédito.'))
             return HttpResponseRedirect(self.success_url)
         return super().get(request, *args, **kwargs)
 
@@ -112,6 +121,7 @@ class CreditNoteCreateView(GroupPermissionMixin, CreateView):
         context['title'] = f'Nuevo registro de una Nota de Credito - {self.voucher_number_full}'
         context['list_url'] = self.success_url
         context['action'] = 'add'
+        context.update(self.contexto_punto)
         return context
 
 

@@ -748,6 +748,12 @@ class Receipt(TenantModel):
         item['environment_type'] = {'id': self.environment_type, 'name': self.get_environment_type_display()}
         item['last_number_full'] = self.last_number_full()
         item['next_number_full'] = self.next_number_full()
+        # Local y punto de la secuencia (listados y filtros por local); None en secuencias anteriores al asistente.
+        item['punto'] = None
+        if self.emission_point_id:
+            est = self.emission_point.establishment
+            item['punto'] = {'id': self.emission_point_id, 'codigo_completo': f'{self.establishment_code}-{self.issuing_point_code}',
+                             'descripcion': self.emission_point.description, 'local': est.name or est.address, 'local_id': est.pk}
         item['confirmed'] = self.confirmed_at is not None
         item['confirmed_at'] = self.confirmed_at.strftime('%Y-%m-%d') if self.confirmed_at else None
         return item

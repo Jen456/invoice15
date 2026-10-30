@@ -11,6 +11,7 @@ CONOCIDOS = {}
 ESPERADOS = {
     '/empresas/cambiar/': 405,   # solo POST (cambio de empresa con CSRF)
     '/suscripcion/pagar/': 405,  # solo POST (inicia el cobro en PayPhone)
+    '/configuracion/puntos/seleccionar/': 405,   # solo POST (elige el punto de emisión del usuario)
 }
 
 

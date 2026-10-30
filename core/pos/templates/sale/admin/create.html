@@ -42,6 +42,7 @@
             <div class="form-group"><label for="{{ form.date_joined.id_for_label }}">{{ form.date_joined.label }}</label>{{ form.date_joined }}</div>
             <div class="form-group"><label for="{{ form.receipt.id_for_label }}">{{ form.receipt.label }}</label>{{ form.receipt }}</div>
             <div class="form-group"><label for="{{ form.voucher_number.id_for_label }}">{{ form.voucher_number.label }}</label>{{ form.voucher_number }}<small class="text-muted">El número definitivo se asigna al emitir.</small></div>
+            <div class="form-group fp-sale-punto">{% include "configuracion/_punto_emision.html" %}</div>
         </div>
     </fieldset>
     <fieldset class="fp-sale-section">

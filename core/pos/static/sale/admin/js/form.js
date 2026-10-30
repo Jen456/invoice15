@@ -202,7 +202,8 @@ var sale = {
             url: pathname,
             data: {
                 'action': 'search_voucher_number',
-                'receipt': select_receipt.val()
+                'receipt': select_receipt.val(),
+                'punto': $('[name="punto"]').val() || ''   // punto de emisión fijado al formulario (configuracion/_punto_emision.html)
             },
             type: 'POST',
             headers: {
@@ -877,6 +878,11 @@ $(function () {
 
     select_receipt.on('change', function () {
         $('.content-electronic-billing').find('input,select').prop('disabled', $(this).val() !== '01');
+        sale.searchVoucherNumber();
+    });
+
+    // Cambio explícito del punto de emisión dentro del formulario: se vuelve a pedir el próximo número de ese punto.
+    $('select[name="punto"]').on('change', function () {
         sale.searchVoucherNumber();
     });
 
