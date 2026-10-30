@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.models import Group
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.utils import timezone
 
@@ -74,6 +75,31 @@ class AuditLog(models.Model):
         ('billing_point_change', 'Configuración de facturación: establecimiento o punto'),
         ('billing_sequence_change', 'Configuración de facturación: numeración'),
         ('billing_setup_confirm', 'Configuración de facturación confirmada'),
+        ('ride_regenerado', 'RIDE regenerado desde el XML autorizado'),
+        # Fase contable: Proformas
+        ('proforma_enviada', 'Proforma enviada por correo'),
+        ('proforma_marcada_enviada', 'Proforma marcada como enviada'),
+        ('proforma_aceptada', 'Proforma aceptada'),
+        ('proforma_rechazada', 'Proforma rechazada'),
+        ('proforma_anulada', 'Proforma anulada'),
+        ('proforma_eliminada', 'Borrador de proforma eliminado'),
+        ('proforma_facturada', 'Proforma facturada'),
+        ('proforma_venta_eliminada', 'Proforma liberada al eliminar su factura'),
+        # Fase contable: Compras
+        ('purchase_complete', 'Compra: datos del comprobante completados'),
+        ('purchase_debt_adjust', 'Compra: cuenta por pagar ajustada al total con IVA'),
+        ('purchase_delete', 'Compra eliminada (stock revertido)'),
+        ('debt_payment_delete', 'Pago de cuenta por pagar eliminado'),
+        ('debt_delete', 'Cuenta por pagar eliminada'),
+        ('provider_type_fill', 'Proveedores: tipo de identificación completado por orden'),
+        # Fase contable: Ventas
+        ('comprobante_anulado_sri', 'Comprobante marcado como anulado en el SRI'),
+        ('retencion_recibida_registro', 'Registro de retención recibida'),
+        ('retencion_recibida_anulacion', 'Anulación del registro de una retención recibida'),
+        ('cxc_cobro_eliminado', 'Cobro eliminado de una cuenta por cobrar'),
+        ('regularizacion_datos_origen', 'Regularización de datos de origen (orden con decisión)'),
+        # Fase contable: catálogo de retenciones (D0)
+        ('catalogo_vigencia_nueva', 'Nueva vigencia en el catálogo de retenciones'),
     )
     created_at = models.DateTimeField(default=timezone.now, db_index=True, verbose_name='Fecha')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
@@ -81,7 +107,7 @@ class AuditLog(models.Model):
     company = models.ForeignKey('pos.Company', null=True, blank=True, on_delete=models.SET_NULL,
                                 related_name='+', verbose_name='Empresa')
     action = models.CharField(max_length=40, choices=ACTIONS, verbose_name='Acción')
-    detail = models.JSONField(default=dict, blank=True, verbose_name='Detalle')
+    detail = models.JSONField(default=dict, blank=True, encoder=DjangoJSONEncoder, verbose_name='Detalle')
     ip = models.GenericIPAddressField(null=True, blank=True, verbose_name='IP')
 
     class Meta:
