@@ -1390,3 +1390,16 @@ Verificación: lectura del código y restricciones de base, consulta de referenc
 **Pruebas:** `python -m pytest tests/test_ticket_continuo.py tests/test_ticket_diseno.py tests/test_impresos.py -q -o addopts=` con la venv local y settings de pruebas: **20 aprobadas, 26,50 s, SQLite**. Se usaron los contextos ficticios en memoria de `test_ticket_diseno.py` para doce renderizados con/sin petición: una hoja de 58 mm, área útil de 48 mm, 6,58–6,70 mm blancos al final, tipografía mínima 8 pt/9 pt para descripción, contenido/orden/importes conservados y pie sin solapamiento. Capturas rasterizadas con PDFium a 203 dpi; en 40 líneas se muestra inicio/final y se entrega el PDF completo. Revisión visual del cierre largo y `git diff --check` correctos. No se repitió la suite completa por ser una entrega exclusiva de muestras y documentación.
 
 **Límites:** no se comprobó el dominio publicado ni impresora/escáner físicos; no se desplegó, emitió, pagó ni envió correo. Los pendientes fiscales del RIDE y el A4 quedan fuera de esta tarea. La rama avanza sobre la entrega actual, preservando la ascendencia de `4ce7888`.
+
+
+## 2026-10-30 — Maqueta navegable: locales y puntos de emisión
+
+**Hecho:** diseño concreto para distinguir establecimientos de puntos de emisión. Catálogo con búsqueda y tarjetas, alta de local en tres pasos con revisión, alta de puntos, numeración ilustrativa de factura/NC y selector. Un cambio de preferencia no altera el borrador abierto; cambiar el punto del borrador es una acción explícita. Puntos pendientes bloqueados en el selector. Marca colibrí, coral y azul; código completo sin partir en la cabecera móvil.
+
+**Archivos:** `propuestas/establecimientos/index.html`, `locales.css`, `locales.js`, `README.md`; `capturas/establecimientos/` (siete WebP y `verificacion.json`); este informe y `HANDOFF.md`. Rutas relativas a `entregas/facturaporaqui/`. Sin cambios en plantillas operativas, backend ni datos. JavaScript sin dependencias, estado solo en memoria; texto introducido se presenta con `textContent`.
+
+**Pruebas realizadas:** `node --check` correcto. Chromium local: 48 comprobaciones de vistas a 360, 390, 768, 1024, 1360 y 1440 px, sin desbordes del documento ni diálogos fuera de pantalla, sin errores JS ni respuestas HTTP >=400. En cada ancho: campos obligatorios, código 000, duplicado de establecimiento, alta en tres pasos, confirmación obligatoria, duplicado de punto dentro de local, punto nuevo pendiente, selección, independencia de preferencia/borrador, búsqueda vacía, consulta de numeración sin incrementos, Escape/restauración de foco, foco visible y recarga que elimina el estado ficticio. Recorridos con movimiento reducido. Revisión visual de capturas de escritorio, móvil y revisión del formulario. WebP de 19–57 KB.
+
+**Alcance:** maqueta local, no interfaz publicada. No se declara persistencia, autorización de usuarios, aislamiento entre empresas, validación fiscal ni emisión comprobados. No se ejecutó pytest porque no se modificó código de la aplicación; las pruebas corresponden al HTML/CSS/JS de la propuesta. Teléfono físico e integración siguen pendientes. No se desplegó, pagó ni envió correo. Claude dispone de la lista exacta de datos y contrato requerido en HANDOFF; esta tarea no abre cambios en módulos ajenos.
+
+[Ver propuesta y capturas](propuestas/establecimientos/README.md).

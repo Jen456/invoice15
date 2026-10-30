@@ -1,5 +1,21 @@
 # Handoff compartido — frontend
 
+## Estado actual — maqueta navegable de locales y puntos (Codex, 30/10/2026)
+
+Entrega enfocada en establecimientos: [abrir maqueta y capturas](propuestas/establecimientos/README.md). Catálogo con búsqueda, puntos agrupados por local, alta guiada en tres pasos, errores por campo, confirmación, alta de puntos y numeraciones de consulta. Selector de punto preferido y vista ilustrativa de factura que conserva el punto del borrador al cambiar la preferencia. Los puntos pendientes no son seleccionables.
+
+Estado solo en memoria con datos ficticios, sin conexión al sistema. Colibrí, paleta y adaptación móvil. Chromium: 48 comprobaciones de vistas a 360/390/768/1024/1360/1440 px; flujos, teclado, Escape y movimiento reducido. Siete capturas WebP en `capturas/establecimientos/`; evidencia en `verificacion.json`. Sin modificaciones al backend, plantillas operativas, numeraciones, despliegue ni peticiones externas.
+
+## Pendiente para Codex — integración del diseño de locales
+
+- [x] Catálogo, registro guiado y selector como maqueta navegable con datos ficticios.
+- [x] Comprobar pantallas, errores y conservación del punto de un borrador; registrar capturas.
+- [ ] Trasladar el diseño a las plantillas reales cuando Claude publique el contrato. La maqueta no acredita aislamiento o persistencia del servidor.
+
+## Notas entre agentes — contrato pendiente de locales (Codex → Claude)
+
+El diseño se puede revisar sin servidor Django en `propuestas/establecimientos/index.html`. No se proponen endpoints ficticios. Faltan las rutas, acciones y nombres de campos reales para listar/crear establecimientos y puntos, guardar preferencia por usuario/empresa y fijar el punto del formulario/documento. Datos requeridos: identificador, código, nombre, dirección, matriz explícita si está disponible, activo, permisos para agregar/seleccionar y motivo de bloqueo; por documento y ambiente, estado de configuración, último utilizado y próximo número de referencia. La selección no debe cambiar el punto de otros operadores ni de borradores abiertos. El servidor debe comprobar permisos, vigencia y unicidad; conservar la numeración atómica existente. Ver [propuesta técnica previa](propuestas/establecimientos/PROPUESTA.md).
+
 ## Estado actual — ticket B revalidado y muestras actualizadas (Codex, 30/10/2026)
 
 La solicitud recibida vuelve a citar `4ce7888`. Tras fetch, el remoto real es `plataforma=3192d5d` y `frontend/etapa3=e94c3a9` al empezar esta revisión. La rama ya contiene `4ce7888`, el rediseño `165fbc7` y la integración `a6f5db3` de las correcciones de Claude. **No se retrocedió ni reimplementó el ticket**; no se tocó código operativo, regla @page, vista, URL ni decisiones fiscales.
@@ -27,7 +43,8 @@ La propietaria pide facilitar la operación de varias sucursales del mismo RUC. 
 ## Pendiente para Codex — locales y puntos
 
 - [x] Revisar lo existente y definir recorrido, diseño, datos y pruebas requeridas.
-- [ ] Maquetas y posterior integración de tarjetas de locales, puntos y selector, sobre el contrato del backend. Ningún cambio de emisión desde frontend.
+- [x] Maquetas de tarjetas de locales, puntos y selector: entrega navegable del 30/10 enlazada arriba.
+- [ ] Integración real sobre el contrato del backend. Ningún cambio de emisión desde frontend.
 
 ## Notas entre agentes — locales y puntos (Codex → Claude)
 
