@@ -1,5 +1,26 @@
 # Handoff compartido — frontend
 
+## Estado actual — análisis ERPNext para 104, 103 y 101; IA pendiente (Codex, 30/10/2026)
+
+La propietaria deja pendiente el chatbot y pide un alcance comercial/contable concreto. [Análisis y propuesta acotada](ANALISIS-ERPNEXT-COMERCIAL-CONTABLE.md), sobre `frontend/etapa3=2dcdaa6` y `github/plataforma=3549c16` ya integrado tras fetch; ERPNext revisado en `352583128432733415df48c1509f86ef97cf7688` (13.0.0-dev, 2020). **Solo documentación.** No se ejecutó ERPNext ni se cambió código o el orden aprobado de implementación.
+
+Hallazgo principal: Proformas/Compras/Ventas aportan fuentes reutilizables, pero no existe todavía el libro mayor. La importación genera propuestas, no asientos registrados; «Reporte de Resultados» es una comparación operativa. Recomendación para el objetivo actual: validar fuentes y casilleros → hojas 104/103 → libro mínimo, caja/bancos y costos → cierre/101. Detalles, evidencia y criterios de aceptación en el análisis. No equivale a que el complemento Contable esté disponible ni desplegado.
+
+## Pendiente para Codex — análisis contable acotado
+
+- [x] Revisar los procesos comerciales/contables del fork ERPNext y contrastarlos con el código actual de FacturaPorAquí.
+- [x] Distinguir lo ya implementado de lo necesario para 104/103/101 y registrar una propuesta por entregas.
+- [x] Dejar la IA expresamente pendiente, conservando su documento de propuesta.
+- [ ] Reutilizar las maquetas existentes de cierre, 104/103 y contabilidad cuando Claude publique el contrato de la entrega elegida; no conectar datos o endpoints supuestos.
+
+## Notas entre agentes — prioridad 104/103/101 (Codex → Claude)
+
+Próximo trabajo recomendado, acotado: contrato de cierre tributario y mapa de datos/casilleros por versión y período, usando Compras/Ventas/Retenciones existentes. Separar IVA, retenciones de renta efectuadas y recibidas; identificar datos desconocidos y saldos anteriores. No rehacer la Etapa 2 ni iniciar CRM, nómina, todos los conectores bancarios o IA. Para 101 sí hacen falta apertura, partida doble, costo histórico, ajustes, estados y conciliación tributaria; no derivarlo del reporte operativo.
+
+**Corrección de especificación por revisar antes de programar:** el plan y el informe normativo describen «casillero +50», pero sus propios ejemplos incluyen `3030→3530` y `3480→3980`. Usar mapa explícito de casillero de base y de valor con código/concepto/vigencia; no una operación genérica. También separar la elegibilidad de un comprobante electrónico para el formulario del reconocimiento de asientos sin XML (apertura, depreciación, etc.). No se modificaron aquí esos documentos históricos ni las reglas fiscales.
+
+Se necesitan el contrato real de período/RUC, fuentes y faltantes por casillero, saldos arrastrados, estados de revisión, permisos y exportación antes de integrar las pantallas. Los endpoints quedan por definir por backend. Las fuentes oficiales SRI no pudieron consultarse desde este entorno; Claude debe contrastarlas y dejar su versión/fecha y revisión contable. El análisis no certifica casilleros actuales ni autoriza declaraciones automáticas o despliegues. Precio del complemento sigue pendiente.
+
 ## Estado actual — propuesta de asistente IA prepago (Codex, 30/10/2026)
 
 La propietaria pide evaluar antes de programar. [Propuesta Ingenioso IA](propuestas/ASISTENTE-IA.md): alcance gradual, comparación de proveedores, costos ilustrativos, complemento anual con cupo mensual y recargas prepagadas, permisos por empresa y diseño previsto. **Solo documentación; implementación, precio y contratación de API pendientes de decisión.** No cambiar planes, activar cobros ni anunciar disponibilidad a partir de esta propuesta.
@@ -7,7 +28,7 @@ La propietaria pide evaluar antes de programar. [Propuesta Ingenioso IA](propues
 ## Pendiente para Codex — propuesta de IA
 
 - [x] Presentar una propuesta de producto, cobro, costos y reparto con Claude antes de tocar código.
-- [ ] Tras la decisión de la propietaria, diseñar las maquetas del chat, suscripción, saldo y revisión de borradores; integrar solo con un contrato backend publicado.
+- [ ] **En pausa por decisión posterior de la propietaria (30/10):** no iniciar las maquetas, el piloto ni la integración del chat. Retomar únicamente cuando lo solicite expresamente, con contrato backend publicado.
 
 ## Notas entre agentes — propuesta de IA (Codex → Claude)
 

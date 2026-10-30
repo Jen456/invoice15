@@ -1482,3 +1482,20 @@ A petición de evaluar antes de programar, se documenta «Ingenioso IA» como co
 Se revisaron AGENTS y HANDOFF, la descripción de planes/pagos y la integración PayPhone mediante lecturas acotadas. La plantilla de suscripción declara renovación anual manual: no se prometió débito automático. Fetch confirma `plataforma=3549c16` ya incluido en la rama; base de esta propuesta `e4c48c6`. Las tarifas de OpenAI/Anthropic no pudieron verificarse desde este entorno restringido; el costo de USD 0,005 por tarea es expresamente hipotético y no identifica un proveedor.
 
 Archivos: `propuestas/ASISTENTE-IA.md`, `HANDOFF.md` y este informe. Validación: consistencia de las simulaciones y enlaces relativos, `git diff --check`; sin pytest ni capturas porque solo cambia documentación. No se modificó código, modelos, vistas, pagos, precios vigentes, permisos o configuración; no se solicitaron credenciales, llamaron APIs facturables ni desplegó nada. Siguiente paso sujeto a la decisión de la propietaria: alcance/cobro, comparación verificada y maquetas.
+
+## 2026-10-30 — ERPNext y alcance comercial/contable para 104, 103 y 101
+
+La propietaria deja pendiente el chatbot y prioriza revisar procesos comerciales y contables sin ampliar innecesariamente el producto. Se revisó el código de `Jen456/erpnext` en `352583128432733415df48c1509f86ef97cf7688` (24/11/2020, versión 13.0.0-dev) como referencia de procesos, sin instalarlo ni copiar código. En FacturaPorAquí, base `2dcdaa6`; fetch confirma `github/plataforma=3549c16` ya integrado. Se leyeron AGENTS, HANDOFF, el plan/informe normativo y contratos, además de modelos, servicios, consultas, reportes y puntos de integración contable relevantes.
+
+Hallazgos documentados: separar documento, saldo, stock y asiento; reutilizar Proformas/Compras/Ventas/CxC/CxP/Retenciones; la propuesta de importación no registra un libro mayor; el reporte operativo de Resultados no es una base para 101; hace falta costo histórico, apertura, libro y cierre. Se propone completar las fuentes y preparar 104/103 antes de ampliar bancos, y llegar al 101 con estados y conciliación tributaria. Se conservan el plan histórico y sus decisiones: la priorización es una propuesta, no una reordenación implementada.
+
+Se señala una inconsistencia de la especificación anterior (`+50` para casilleros frente a sus ejemplos de cuatro dígitos), a resolver con un mapa explícito versionado y validación oficial/contable. Se distingue autorización fiscal de reconocimiento contable y retenciones efectuadas de recibidas. No se modificaron reglas fiscales. Las páginas oficiales SRI no son accesibles con la política de red actual; no se presenta el informe normativo previo como comprobación independiente de vigencia.
+
+Archivos cambiados, relativos a `entregas/facturaporaqui/`:
+
+- `ANALISIS-ERPNEXT-COMERCIAL-CONTABLE.md`: comparación con evidencias, diagrama, matriz de capacidades/faltantes, dependencias de cada formulario, cuatro entregas acotadas, criterios de aceptación y fuentes.
+- `propuestas/ASISTENTE-IA.md`: estado pendiente/en pausa por indicación de la propietaria; propuesta conservada.
+- `HANDOFF.md`: Estado actual, tareas de Codex y notas para Claude; contrato de cierre/casilleros como próximo paso recomendado y pausa de IA.
+- Este informe.
+
+Verificación: lectura estática y contraste de referencias con ambos checkouts, hashes, enlaces locales y a fuentes del fork en el commit exacto; aritmética del ejemplo ficticio de costo/margen; revisión de cambios y `git diff --check`. Sin pytest ni nuevas capturas: no se cambian plantillas, estáticos ni backend. No se ejecutó ERPNext ni se verificó producción; el estado publicado procede del HANDOFF de Claude. Sin pagos, emisiones, correos, acceso a secretos o despliegue. La entrega se registra mediante commit de documentación en `frontend/etapa3`.

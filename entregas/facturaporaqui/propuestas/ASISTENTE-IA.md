@@ -1,6 +1,6 @@
 # Propuesta: Ingenioso IA para FacturaPorAquí
 
-Fecha: 30/10/2026, Ecuador. Estado: **propuesta para decidir antes de programar**. No se crea una funcionalidad disponible, no se contrata una API y no se fijan precios comerciales.
+Fecha: 30/10/2026, Ecuador. Estado: **pendiente / en pausa por decisión de la propietaria**. La prioridad pasa al análisis comercial y contable para 104, 103 y 101. Se conserva la propuesta como referencia; no iniciar maquetas, pilotos, integración de API ni cobros de IA hasta que se retome expresamente. No se crea una funcionalidad disponible, no se contrata una API y no se fijan precios comerciales.
 
 ## Recomendación
 
