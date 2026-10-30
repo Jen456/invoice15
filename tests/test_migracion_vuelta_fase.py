@@ -3,7 +3,11 @@ destinos y el orden de MIGRACIONES-FASE-CONTABLE.md, y otra ida: el menú, los m
 
 Por subproceso con SQLite en archivo, como test_migracion_proformas: `migrate pos 0019` deshace varias migraciones en un
 mismo plan, y ahí los modelos históricos de Permission quedan desfasados respecto de Module y Group (la vuelta de pos 0031
-fallaba con ValueError «Must be "Permission" instance»). Llamar a forwards/backwards de una en una no lo reproduce."""
+fallaba con ValueError «Must be "Permission" instance»). Llamar a forwards/backwards de una en una no lo reproduce.
+
+Tras la vuelta, también idas parciales: la vuelta deja las filas de Permission y ContentType, y organizar_menu solo debe
+crear el módulo de una app que esté migrada (antes, `migrate proformas` creaba «Retenciones recibidas» sin sus tablas y
+`migrate comprobantes` creaba «Proformas»)."""
 import json
 import os
 import subprocess
@@ -62,6 +66,14 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
         assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
         assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)
         assert not any(c.startswith('change_anulado_sri_') for m in sin_fase['modulos'] for c in m[4])
+
+        manage(env, 'migrate', 'proformas', '--noinput', '-v', '0')   # ida parcial: solo Proformas
+        urls = {m[0] for m in estado(env)['modulos']}
+        assert '/proformas/' in urls and '/comprobantes/retenciones-recibidas/' not in urls
+        manage(env, 'migrate', 'proformas', 'zero', '--noinput', '-v', '0')
+        manage(env, 'migrate', 'comprobantes', '--noinput', '-v', '0')   # ida parcial: D0, Compras y Ventas, sin Proformas
+        urls = {m[0] for m in estado(env)['modulos']}
+        assert '/comprobantes/retenciones-recibidas/' in urls and '/proformas/' not in urls
 
         manage(env, 'migrate', '--noinput', '-v', '0')   # el camino de una nueva publicación
         assert pendientes(env) == []

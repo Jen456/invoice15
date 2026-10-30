@@ -82,7 +82,21 @@ MODULOS_NUEVOS = (
 )
 
 
-def organizar_menu(ModuleType, Module, Permission):
+def _sin_migrar(apps, app, permisos):
+    """Con los modelos históricos de una migración (`apps`): algún modelo de esos permisos no existe en ese estado. Las
+    filas de Permission no bastan para saberlo: una vuelta las deja (Django no las borra) y una ida parcial posterior
+    crearía el módulo de una app sin sus tablas. Sin `apps` (start_installation, registro real) nunca."""
+    if apps is None:
+        return False
+    for modelo in set(permisos.values_list('content_type__model', flat=True)):
+        try:
+            apps.get_model(app, modelo)
+        except LookupError:
+            return True
+    return False
+
+
+def organizar_menu(ModuleType, Module, Permission, apps=None):
     nombres = {url: (nombre, orden) for _, _, _, modulos in ESTRUCTURA for url, nombre, orden in modulos}
     for antiguo, nuevo in RENOMBRAR.items():
         ModuleType.objects.filter(name=antiguo).exclude(name=nuevo).update(name=nuevo)
@@ -98,8 +112,8 @@ def organizar_menu(ModuleType, Module, Permission):
         tipos[nombre] = tipo
     for app, url, icono, descripcion, codigos in MODULOS_NUEVOS:
         permisos = Permission.objects.filter(content_type__app_label=app, codename__in=codigos)
-        if not permisos.exists():
-            continue   # app aún sin migrar: nunca se muestra un módulo sin implementar
+        if not permisos.exists() or _sin_migrar(apps, app, permisos):
+            continue   # app aún sin migrar (o deshecha): nunca se muestra un módulo sin implementar
         modulo = Module.objects.filter(url=url).first() or Module.objects.create(
             url=url, name=nombres[url][0], icon=icono, description=descripcion)
         modulo.permissions.set(permisos)

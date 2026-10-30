@@ -26,7 +26,7 @@ def forwards(apps, schema_editor):
     Module = apps.get_model('security', 'Module')
     if not Module.objects.exists():
         return   # base nueva: lo hará start_installation
-    organizar_menu(apps.get_model('security', 'ModuleType'), Module, apps.get_model('auth', 'Permission'))
+    organizar_menu(apps.get_model('security', 'ModuleType'), Module, apps.get_model('auth', 'Permission'), apps=apps)
     sync_roles(apps.get_model('auth', 'Group'), Module, apps.get_model('security', 'GroupModule'))
 
 
