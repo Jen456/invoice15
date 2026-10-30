@@ -11,9 +11,6 @@
     <div class="fpa-plan fp-plan-empresas">
         <header class="fp-welcome fp-multi-heading"><img src="{% static 'img/brand/isotipo.png' %}" width="64" height="64" alt="Colibrí de FacturaPorAquí"><span class="fp-eyebrow">Plan multiempresa</span><h1>Empresas del plan</h1>
             <p>Un solo pago cubre varias empresas con RUC distintos. Cada una tiene su propia firma electrónica, numeración y configuración de facturación.</p></header>
-        {% for message in messages %}
-            <div class="alert {% if message.level_tag == 'error' %}alert-danger{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
-        {% endfor %}
 
         {% if not multiempresa %}
             <section class="card"><div class="card-body">

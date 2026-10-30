@@ -18,16 +18,10 @@ $(function () {
     if (!contenedor || !$.fn.select2) return;
     $('.fp-producto-xml').each(function () {
         var select = $(this);
-        // Conservar selección y campo originales, sin clonar el formset.
-        select.find('option').filter(function () { return this.value && !this.selected; }).remove();
+        // Sobre las opciones que dibuja el servidor (todos los productos de la empresa, también los no inventariados):
+        // la búsqueda de Compras (search_product) solo devuelve inventariados. Conserva el campo y la selección.
         select.select2({theme: 'bootstrap4', width: '100%', language: 'es', minimumInputLength: 2,
-            placeholder: 'Busca por nombre o código', allowClear: true,
-            ajax: {url: contenedor.getAttribute('data-productos-url'), type: 'POST', dataType: 'json', delay: 250,
-                headers: {'X-CSRFToken': csrftoken},
-                data: function (p) { return {action: 'search_product', term: p.term, ids: '[]'}; },
-                processResults: function (filas) { return {results: Array.isArray(filas) ? filas.map(function (p) { return {id: p.id, text: p.code + ' · ' + p.name}; }) : []}; }
-            }
-        });
+            placeholder: 'Busca por nombre o código', allowClear: true});
     });
     var aviso = contenedor.querySelector('[data-advertencia="posible_duplicado"]');
     var confirmar = contenedor.querySelector('.fp-stage-duplicate');

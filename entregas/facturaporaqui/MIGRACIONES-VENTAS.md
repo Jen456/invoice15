@@ -168,7 +168,7 @@ Las tres de unicidad son condicionales (`estado='registrada'`): una retención a
   2. Si la tabla de módulos está vacía (base sin instalar), termina: lo hará `start_installation`.
   3. Si no, agrega `change_anulado_sri_sale` al módulo `/pos/sale/admin/` y `change_anulado_sri_creditnote` a `/pos/credit/note/admin/`.
   4. Ejecuta `sync_roles`.
-- **backwards:** quita esos dos permisos de los módulos y ejecuta `sync_roles`. Las filas de `Permission` se dejan.
+- **backwards:** quita esos dos permisos de los módulos y de los grupos por ids en las tablas intermedias, como comprobantes 0023. Las filas de `Permission` se dejan. Hasta el 30/10/2026 usaba los gestores de la relación y `sync_roles`, y fallaba al deshacer junto con otras migraciones (`migrate pos 0019`: ValueError «Must be "Permission" instance»); corregido en `1c4973d`.
 
 **Reversible:** sí.
 
@@ -193,12 +193,11 @@ Las tres de unicidad son condicionales (`estado='registrada'`): una retención a
   1. Crea los permisos de comprobantes que falten: `view_retencionrecibida`, `add_retencionrecibida`, `change_retencionrecibida` y los cuatro `change_anulado_sri_*`.
   2. Si no hay módulos, termina: lo hará `start_installation`.
   3. Agrega cada `change_anulado_sri_<modelo>` a su módulo: `/comprobantes/retenciones/`, `/comprobantes/liquidaciones/`, `/comprobantes/notas-debito/` y `/comprobantes/guias/`.
-  4. Llama a `organizar_menu` (la versión generalizada de B0). Crea el módulo `/comprobantes/retenciones-recibidas/` («Retenciones recibidas», icono `fas fa-hand-holding-usd`, con los tres permisos de la retención recibida) desde `MODULOS_NUEVOS` y lo coloca en «Administrativo», orden 3, desde `ESTRUCTURA`. **No crea el módulo a mano.**
+  4. Llama a `organizar_menu` (la versión generalizada de B0) con los modelos históricos (`apps`, desde el 30/10/2026: no crea el módulo de una app que no esté migrada en ese estado, como Proformas en una ida parcial tras una vuelta). Crea el módulo `/comprobantes/retenciones-recibidas/` («Retenciones recibidas», icono `fas fa-hand-holding-usd`, con los tres permisos de la retención recibida) desde `MODULOS_NUEVOS` y lo coloca en «Administrativo», orden 3, desde `ESTRUCTURA`. **No crea el módulo a mano.**
   5. Ejecuta `sync_roles`.
 - **backwards:**
   1. Borra el módulo `/comprobantes/retenciones-recibidas/` (sus `GroupModule` caen en cascada).
-  2. Quita los cuatro permisos de anulado de sus módulos.
-  3. Ejecuta `sync_roles`.
+  2. Quita los cuatro permisos de anulado de sus módulos y, de los grupos, esos cuatro y los de la retención recibida. Lo hace por ids en las tablas intermedias, sin `sync_roles` (desde `90da085`: con los gestores de la relación y `sync_roles` no se podía deshacer junto con las de D0).
   - Las filas de `Permission` se dejan.
 
 **Reversible:** sí.
@@ -216,7 +215,7 @@ Las tres de unicidad son condicionales (`estado='registrada'`): una retención a
 
 **Costo:** milisegundos.
 
-**Pruebas:** `tests/test_migracion_menu_ventas.py` (3 pruebas, en SQLite y en PostgreSQL). Ejecuta las funciones de pos 0031 y comprobantes 0023 con los modelos históricos hacia adelante y hacia atrás: el resto del menú queda igual, repetir no duplica y en una base sin módulos no se crea nada. También comprueba los permisos de cada rol.
+**Pruebas:** `tests/test_migracion_menu_ventas.py` (3 pruebas, en SQLite y en PostgreSQL). Ejecuta las funciones de pos 0031 y comprobantes 0023 con los modelos históricos hacia adelante y hacia atrás: el resto del menú queda igual, repetir no duplica y en una base sin módulos no se crea nada. También comprueba los permisos de cada rol. `tests/test_migracion_vuelta_fase.py` recorre por subproceso, sobre una instalación con menú, la vuelta documentada en `MIGRACIONES-FASE-CONTABLE.md`, la ida completa (las 19 en un solo plan, como `desplegar.sh`), otra vuelta, dos idas parciales (`migrate proformas` y, tras `migrate proformas zero`, `migrate comprobantes`: esta migración no crea «Proformas» ni la de Proformas crea «Retenciones recibidas») y otra ida completa.
 
 ---
 

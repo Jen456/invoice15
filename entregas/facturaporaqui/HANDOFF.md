@@ -1,5 +1,95 @@
 # Handoff compartido — frontend
 
+## Estado actual — fase contable lista para proponer su publicación, sin publicar (Claude, 30/10/2026)
+
+La entrega de diseño de Codex (`adbe62f`, anotada en `d2bed3d`) queda integrada en `plataforma` sin reescribir historial, con los commits de abajo encima. **Código probado: `22ff73d`.** Lo posterior es un solo commit de documentación: cambia `entregas/facturaporaqui/`, que ninguna prueba lee, y el docstring y un comentario de `tests/test_migracion_vuelta_fase.py`; esa prueba se repitió sobre el commit final. **No se publicó nada**: la app sigue en lo publicado el 28/10 (`98cfa20`) y la base publicada no tiene ninguna de las 19 migraciones.
+
+- **`1c4973d`, vuelta de `pos/0031`:** el ensayo sobre una copia del respaldo diario falló en `migrate pos 0019_orden_de_las_lineas` con ValueError «Must be "Permission" instance». Es el mismo fallo de modelos históricos que ya tuvo `comprobantes/0023`. La vuelta ahora quita sus permisos por ids en las tablas intermedias.
+- **`e6edc6d`, X-R1 (decisión de la propietaria, 30/10):**
+  - «Completar datos», al revisar y al guardar, ya no deja convertir en 04 una compra sin tipo con retención vigente (el caso X-R1), con un mensaje que no propone anular nada.
+  - Si la compra ya tiene su tipo registrado, la retención lo bloquea como antes: el campo sale deshabilitado con el aviso de siempre, «La retención … usa este número: anúlala antes de cambiarlo.».
+  - `retenciones.crear()` también rechaza la 04, con la compra bloqueada.
+  - No se anula ni se modifica ningún documento existente.
+- **`1e87949` y `7ec9c67`, reenvío (de la revisión):** una retención o liquidación devuelta o no autorizada no cuenta como vigente, y al reenviarla:
+  - una retención no se reenvía si su compra pasó a 04: completa X-R1;
+  - ninguna de las dos se reenvía si la compra ya tiene otra vigente del mismo tipo. El patrón ya existía antes de la fase y podían quedar dos retenciones autorizadas; con la fase, además, la cuenta por pagar habría abonado las dos;
+  - una liquidación devuelta sobre una compra que pasó a 04 todavía se reenvía (ver las decisiones);
+  - además, «Completar datos» ya no muestra «…anúlala antes de cambiarlo» cuando no bloquea ningún campo.
+- **`7929a13` y `0f0b830`, revisión de la entrega de diseño:** seis defectos corregidos, más el filtro «Tipo» de la bandeja de Importación. El detalle está en las notas para Codex, abajo.
+- **`a5e92a4` y `22ff73d`, menú tras una vuelta:** `organizar_menu` creaba el módulo de una app sin migrar en una ida parcial, porque la vuelta deja sus filas de `Permission`. Ahora mira los modelos históricos de la migración (`comprobantes/0023`, `proformas/0003` e `importacion/0003`–`0004`).
+- **Pruebas nuevas:**
+  - `tests/test_migracion_vuelta_fase.py`: por subproceso y sobre una instalación con menú, recorre vuelta documentada, ida completa (las 19 en un solo plan), otra vuelta, dos idas parciales e ida completa;
+  - las de X-R1 y el reenvío, en `tests/test_retencion_sobre_compra.py` y `tests/test_integracion_anulados_compras.py`;
+  - el selector de tipo, en `tests/test_importacion_recibidos.py`;
+  - las de mensajes, reforzadas.
+
+  Las que prueban un rechazo fallan sin su corrección: lo comprobé quitándola, una por una. Las de control (completar como factura, reenvío permitido) pasan con o sin ella. El cambio de `importacion/0003`–`0004` no tiene prueba propia, porque la vuelta documentada no baja de `importacion 0004`.
+- **Ensayo de migraciones** sobre una copia del respaldo diario en PostgreSQL 16, con el rol de la aplicación:
+  - ida y comprobaciones;
+  - datos existentes intactos en sus columnas anteriores, salvo dos filas del catálogo de retenciones que `comprobantes/0015` cambia a propósito (la del 310 hasta el 31/07/2026 deja de tener porcentaje editable y la «fuente» del 3440 anota el bloque del 06/08/2026); en menú, roles y permisos solo se añaden filas;
+  - vuelta documentada, con el esquema idéntico al publicado;
+  - otra ida idéntica a la primera por claves naturales (972 filas): solo cambian los ids de las filas que se vuelven a crear y la hora de aplicación en `django_migrations`.
+
+  Resultados y cifras en [`MIGRACIONES-FASE-CONTABLE.md`](MIGRACIONES-FASE-CONTABLE.md).
+- **Pruebas sobre `22ff73d`:** SQLite 1389 aprobadas, 44 omitidas (solo PostgreSQL), 0 fallos; PostgreSQL 1433 aprobadas, 0 fallos.
+
+## Pendiente — antes y después de publicar (Claude, 30/10/2026)
+
+- [ ] **Publicar**, solo con la autorización de la propietaria, siguiendo las precauciones de `MIGRACIONES-FASE-CONTABLE.md`. Antes, repetir el ensayo con datos del día: en VM101, `verif-firma/ensayo-fase/ensayo_migraciones_fase.sh <checkout> [volcado]` toma el último respaldo diario o el volcado que se le pase, sobre copias temporales que se borran al terminar. El volcado de `desplegar.sh` se hace justo antes de `migrate`, así que para ensayar con datos del día hace falta uno aparte. La regularización histórica sigue solo en modo ensayo.
+- [ ] **Decisiones de la propietaria** (ninguna cambia campos ni pantallas de los contratos):
+  - Proformas: si los envíos fallidos cuentan para el límite de 60 por hora;
+  - Compras: si `retenciones_autorizadas` y `liquidacion_vigente` cuentan solo comprobantes de PRODUCCIÓN, y el IVA sobre base + ICE (D7, con el contador);
+  - Ventas: si el aviso del día 7 de «Anulado en el SRI» cuenta la prórroga al siguiente día hábil;
+  - D0-b a D0-f (escenarios del 310 y el 332E desde el 01/08/2026), antes del 15/12/2026;
+  - D9: precio del complemento (sigue «Precio por anunciar»).
+  - El aviso de bloqueo de «Completar datos» con retención vigente, «La retención … usa este número: anúlala antes de cambiarlo.», es el de siempre para cambiar tipo o numeración ya registrados. Si prefieres que no mencione anular, se cambia el texto.
+  - **Reenvío de comprobantes devueltos** (de la revisión; el patrón ya existía antes de esta fase). Un comprobante devuelto o no autorizado no cuenta como vigente: se puede emitir otro y después reenviar el primero. Ya se cerró el caso del 04 para retenciones y el de otra vigente para retenciones y liquidaciones. Quedan tres casos que cambian reglas, y los decides tú:
+    - una liquidación devuelta o no autorizada sobre una compra que mientras tanto pasó a 04 en «Completar datos» todavía se reenvía. Si el SRI la autoriza, la compra queda en 04 con una liquidación autorizada, porque la autorización solo pone 03 a las compras sin tipo. Propuesta: no reenviarla si la compra ya no es 03 ni está sin tipo;
+    - una retención devuelta sobre una liquidación que mientras tanto se marcó «Anulado en el SRI» todavía se puede reenviar. Propuesta: que «Anulado en el SRI» de la liquidación se niegue mientras tenga encima una retención devuelta o no autorizada («Elimina antes la retención …»), como ya hace la factura con una nota de crédito sin enviar. Las devueltas sí se pueden eliminar;
+    - notas de crédito y guías de remisión siguen el mismo patrón. Reenviar una nota de crédito devuelta después de emitir otra por las mismas líneas podría acreditar dos veces la factura; no lo comprobé de punta a punta. Propuesta: no reenviarla si ya hay otra vigente para lo mismo, como retenciones y liquidaciones.
+- [ ] **Backend, para una próxima entrega:**
+  - `liquidaciones.calcular` deja en cero el descuento de la línea;
+  - la ficha de una retención recibida no sabe si el plan está vencido: `puede_anular` debe mirar también el plan y devolver un `aviso_plan` (contrato de Ventas, apartado B, punto 5; nota 4 de Codex);
+  - unificar el formato de importes en los mensajes (punto 6);
+  - los RIDE A4 de factura y NC con `alt="Logotipo del emisor"`;
+  - si un catálogo grande hace lenta «Crear compra desde el XML», una búsqueda de productos propia de esa pantalla, sin el filtro de inventariados de `search_product`;
+  - eliminar desde el listado de comprobantes adicionales (`ComprobanteListView.post`, acción `delete`, en `core/comprobantes/views.py`). Decide con el estado leído sin bloqueo:
+    - si coincide con un envío en curso, puede borrar una retención que el SRI acaba de autorizar;
+    - ya pasaba antes de la fase;
+    - corrección: abrir `transaction.atomic()` y, dentro, volver a leerla con `select_for_update` antes de mirar `BLOQUEAN_BORRADO`, como `SaleDeleteView`;
+  - al reenviar una retención o liquidación devuelta, la compra queda bloqueada mientras dura la llamada al SRI (hasta cerca de un minuto si el SRI no responde). Mientras tanto esperan las operaciones que bloquean o escriben esa compra: guardar «Completar datos», emitir otra retención o liquidación sobre ella, eliminarla, registrar una nota que la modifique, marcar «Anulado en el SRI» una liquidación suya y editar su proveedor, que bloquea todas sus compras. No esperan las lecturas (abrirla o «Revisar»), ni registrar o eliminar un pago de su cuenta por pagar, ni vincularle un documento importado. Separar la comprobación del envío es una mejora posible.
+- [ ] **Codex:**
+  - botones por permiso de proveedores, gastos, tipos de gasto y «Registrar pago» de cuentas por pagar (apartado B, punto 6 de Compras). El servidor ya bloquea esas acciones y no hace falta backend: la etiqueta `{% permisos_de 'codigo' … as fpa_permisos %}` de `core/pos/templatetags/permisos.py` da los booleanos del rol activo, como en la papelera de cobros;
+  - el estilo del selector «Tipo» de Importación, si lo quieres distinto;
+  - teléfono e impresora físicos;
+  - Bancos, Contabilidad y Tributario siguen como maquetas (Etapa 3 en adelante, sin empezar).
+
+## Notas entre agentes — revisión de la entrega `adbe62f` (Claude → Codex)
+
+Revisé el diff contra los contratos y las vistas. Confirmé estos defectos y los corregí en `7929a13`, `0f0b830` y `22ff73d`. Los puntos 1 a 3 corrigen comportamiento sin tocar el diseño, el 4 añade un control (el selector «Tipo») y el 5 y el 6 solo refuerzan pruebas:
+
+1. **«Empresas del plan»** (`suscripciones/empresas.html`) conservaba su propio `{% for message in messages %}`, así que con `fp_mensajes.html` cada mensaje salía dos veces. Quité el bucle; `test_plan_multiempresa.py` exige ahora el mensaje una sola vez.
+2. **«Crear compra desde el XML»:** `search_product` de Compras solo devuelve productos inventariados, y `compra.js` borraba las demás opciones, así que se perdían los productos no inventariados que la pantalla admite.
+   - Ahora Select2 busca localmente sobre las opciones del servidor, con `minimumInputLength: 2` y el mismo texto «código · nombre». Quité `data-productos-url`.
+   - El error fue mío: el punto 3 del apartado B del contrato sugería `search_product`. Ya está corregido.
+3. **Proformas, duplicar con avisos:** `fpAcciones.avisar` recibía el aviso sin el tercer argumento y lo mostraba como «Operación completada». Cuando hay avisos, ahora es una advertencia.
+4. **Retenciones recibidas → «Abre el comprobante 07 recibido»:** `?cod_doc=07` no llegaba a la API.
+   - Ahora la bandeja tiene un selector «Tipo» (`#fp-import-type`, `name="cod_doc"`) junto a «Mostrar», con los tipos que admite la API. `importacion.js` lo envía y lo elige al abrir con `?cod_doc=`; un valor desconocido se ignora.
+   - Un primer arreglo aplicaba el filtro sin mostrarlo y no se podía quitar, así que lo convertí en el selector visible.
+   - Dale el estilo que quieras, pero consérvalo dentro de `form#fp-import-filters`, con `id="fp-import-type"`, `name="cod_doc"`, su `<label for="fp-import-type">` y las opciones en este orden: vacía, 01, 04, 05 y 07. `test_importacion_recibidos.py` lo comprueba con lxml y `importacion.js` lo lee como `filters.elements.cod_doc`.
+5. **Prueba de mensajes en el layout horizontal:** `/dashboard/` usa `hzt_dashboard.html`, que tiene su propio include, así que la prueba no cubría el de `hzt_body.html`. Ahora también recorre `/pos/product/` en los dos layouts, y si se quita el include de `hzt_body.html`, falla.
+6. **Prueba del aviso de plan:** `'message_error(errors)' not in html` ya no comprobaba nada. Ahora exige que no haya `fp-message`, y si se quita el filtro de `plan` de `fp_mensajes.html`, falla.
+
+El resto de la entrega quedó como lo entregaste:
+- el marco de mensajes, con escape, niveles y una sola presentación;
+- `list_url|default:request.path`;
+- `linea.aviso`;
+- la papelera de cobros con `permisos_de`;
+- la reapertura del formulario de «Anulado en el SRI»;
+- el PDF de proformas.
+
+**Base para tu próxima entrega:** la punta de `plataforma` en GitHub tras esta integración.
+
 ## Estado actual — maqueta navegable de locales y puntos (Codex, 30/10/2026)
 
 Entrega enfocada en establecimientos: [abrir maqueta y capturas](propuestas/establecimientos/README.md). Catálogo con búsqueda, puntos agrupados por local, alta guiada en tres pasos, errores por campo, confirmación, alta de puntos y numeraciones de consulta. Selector de punto preferido y vista ilustrativa de factura que conserva el punto del borrador al cambiar la preferencia. Los puntos pendientes no son seleccionables.
@@ -97,23 +187,15 @@ D0 Fase A (`6d2a066`), Etapa 1 (Proformas) y Etapa 2 (Compras, y Ventas y Empres
 
 ## Pendiente — fase contable integrada (Claude, 29/10/2026)
 
-- [ ] **Publicar**, solo con la autorización de la propietaria y siguiendo las precauciones de `MIGRACIONES-FASE-CONTABLE.md` (volcado, ensayo sobre una copia, ventana con el servicio y el temporizador detenidos). La regularización histórica sigue solo en modo ensayo.
-- [ ] **Decisiones de la propietaria** (ninguna cambia campos ni pantallas de los contratos):
-  - Proformas: si los envíos fallidos cuentan para el límite de 60 por hora;
-  - Compras: si `retenciones_autorizadas` y `liquidacion_vigente` cuentan solo comprobantes de PRODUCCIÓN, y el IVA sobre base + ICE (D7, con el contador);
-  - Ventas: si el aviso del día 7 de «Anulado en el SRI» cuenta la prórroga al siguiente día hábil (hoy pide confirmación pasado el día 7; si se decide, cambia el texto del aviso);
-  - D0-b a D0-f (escenarios del 310 y el 332E desde el 01/08/2026), antes del 15/12/2026;
-  - D9: precio del complemento (sigue «Precio por anunciar»).
-- [ ] **Hallazgo X-R1 (backend, sin efecto hoy en datos: nada de esto está publicado):** «Completar datos» acepta cambiar a nota de crédito del proveedor (04) una compra sin tipo, de contado (sin cuenta por pagar) y sin líneas con producto, que ya tiene una retención vigente: una registrada con «Completar después» y solo con líneas de gasto, o una antigua sin líneas. La retención queda sobre una 04, que `compras.admite_retencion` no admite. Arreglo mínimo propuesto: en `compras._plan_completar`, rechazar un tipo de `TIPOS_SIN_RETENCION` si `retenciones.retencion_vigente(compra)` existe, con su prueba, y la misma guardia dentro de `retenciones.crear()`. Cambia una regla del contrato de Compras (pantalla «Completar datos»): lo decide la propietaria.
-- [ ] **Backend, para una próxima entrega:** `liquidaciones.calcular` deja en cero el descuento de la línea; la ficha de una retención recibida no sabe si el plan está vencido (contrato de Ventas, apartado B, punto 5); unificar el formato de importes en los mensajes (punto 6); los RIDE A4 con `alt="Logotipo del emisor"` (ver «Pendiente — tras las correcciones del ticket»).
+Sustituido por «Pendiente — antes y después de publicar (Claude, 30/10/2026)», arriba. X-R1 quedó corregido por decisión de la propietaria (`e6edc6d`, `1e87949` y `7ec9c67`).
 
 ## Pendiente para Codex — diseño de la fase contable (Claude, 29/10/2026)
 
-- [ ] **Diseño de las pantallas de Proformas, Compras y Ventas** sobre sus contratos, en una rama que parta de la base indicada abajo:
+- [x] **Diseño de las pantallas de Proformas, Compras y Ventas** sobre sus contratos (entregado en `adbe62f` e integrado el 30/10), en una rama que parta de la base indicada abajo:
   - [`CONTRATO-PANTALLAS-PROFORMAS.md`](CONTRATO-PANTALLAS-PROFORMAS.md)
   - [`CONTRATO-PANTALLAS-COMPRAS.md`](CONTRATO-PANTALLAS-COMPRAS.md)
   - [`CONTRATO-PANTALLAS-VENTAS.md`](CONTRATO-PANTALLAS-VENTAS.md)
-- [ ] Lo que cada contrato deja para Codex en su lista de pendientes (Proformas: apartado E; Compras y Ventas: apartado B), en particular:
+- [x] Lo que cada contrato deja para Codex en su lista de pendientes (Proformas: apartado E; Compras y Ventas: apartado B); lo que queda está en «Pendiente — antes y después de publicar (Claude, 30/10/2026)». En particular:
   - mensajes de éxito que hoy salen en la ventana titulada «Error» de `hzt_body.html`/`vtc_body.html` (coordinarlo conmigo: es del marco común);
   - autocompletado de productos por línea en «Crear compra desde el XML»;
   - mostrar la clave `aviso` de cada línea en «Liquidación de compra» y enlazar «Retenciones recibidas» con «Registrar retención recibida» desde un 07;

@@ -9,10 +9,11 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth.models import Group
+from lxml import html as lhtml
 
 from core.importacion import recibidos, servicios as sv, sri_autorizacion
 from core.importacion.models import DocumentoImportado, EventoImportacion
-from core.importacion.views import acciones_posibles
+from core.importacion.views import TIPOS_IMPORTADOS, acciones_posibles
 from core.importacion.xml_sri import procesar_xml_sri
 from core.pos import emision
 from core.tenancy.context import company_context
@@ -218,6 +219,17 @@ class TestClasificacionYAcciones:
         datos = client.get('/importacion/api/documentos/?bandeja=todos&cod_doc=07').json()
         assert datos['total'] == 1 and datos['documentos'][0]['cod_doc'] == '07'
         assert client.get('/importacion/api/documentos/?bandeja=todos&cod_doc=03').status_code == 400
+
+    def test_filtro_por_tipo_a_la_vista(self, client, empresa, dueno):
+        """«Abre el comprobante 07 recibido» llega con ?cod_doc=07: la bandeja muestra el tipo en un selector que se puede
+        cambiar, con los mismos tipos que admite la API (un ?cod_doc desconocido lo ignora importacion.js)."""
+        helpers.iniciar_sesion(client, dueno, empresa=empresa)
+        respuesta = client.get('/importacion/recibidos/?cod_doc=07')
+        assert respuesta.status_code == 200
+        arbol = lhtml.fromstring(respuesta.content)
+        tipos = arbol.xpath('//form[@id="fp-import-filters"]//select[@id="fp-import-type"][@name="cod_doc"]')
+        assert len(tipos) == 1 and tipos[0].xpath('.//option/@value') == ['', *TIPOS_IMPORTADOS]
+        assert arbol.xpath('//label[@for="fp-import-type"]')
 
 
 @pytest.mark.django_db

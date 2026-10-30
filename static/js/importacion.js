@@ -158,10 +158,14 @@
         const status = document.getElementById('fp-import-filter-status');
         let page = 1, pages = 1, sequence = 0;
         select.value = filters.dataset.bandeja;
+        // Tipo a la vista y modificable: ?cod_doc=07 (desde Retenciones recibidas) lo elige al abrir; otro valor se ignora.
+        const tipo = filters.elements.cod_doc, pedido = new URLSearchParams(location.search).get('cod_doc') || '';
+        if (Array.from(tipo.options).some(opcion => opcion.value === pedido)) tipo.value = pedido;
         async function load(target = 1) {
             const current = ++sequence;
             try {
                 const params = new URLSearchParams({bandeja: select.value, q: q.value, pagina: target});
+                if (tipo.value) params.set('cod_doc', tipo.value);
                 const data = await request('documentos/?' + params);
                 if (current !== sequence) return;
                 page = data.pagina; pages = data.paginas;

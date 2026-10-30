@@ -136,3 +136,28 @@ class TestLiquidacionDeLaCompra:
             assert sl.liquidacion_vigente(anulada) is None
             assert [f['codigo'] for f in anulada.toJSON(detalle=True)['faltantes']] == ['liquidacion_pendiente']
             assert type(liq).objects.get(pk=liq.pk).status == 'authorized'
+
+    def test_devuelta_no_se_reenvia_si_la_compra_ya_tiene_otra_vigente(self, empresa, usuario, compra, sri):  # noqa: F811
+        """Con la primera liquidación devuelta, liquidaciones.crear() admite otra; reenviar la primera dejaría dos
+        liquidaciones autorizadas sobre la misma compra. emision.emitir no la reenvía y no cambia nada."""
+        sri.respuestas_recepcion = [('DEVUELTA', [('35', 'ARCHIVO NO CUMPLE ESTRUCTURA XML')])]
+        with company_context(empresa):
+            with transaction.atomic():
+                primera = sl.crear(empresa, usuario, compra, {'tipo_identificacion': '05', 'forma_pago': '01'}, {})
+                emision.preparar(primera)
+            assert emision.emitir(primera)['estado'] == 'returned'
+            with transaction.atomic():
+                segunda = sl.crear(empresa, usuario, compra, {'tipo_identificacion': '05', 'forma_pago': '01'}, {})
+                emision.preparar(segunda)
+            sri.respuestas_autorizacion = ['AUTORIZADO']
+            assert emision.emitir(segunda)['resp'] is True
+            enviados = len(sri.recepciones)
+            sri.respuestas_autorizacion = ['AUTORIZADO']
+            resultado = emision.emitir(type(primera).objects.get(pk=primera.pk))
+            assert (resultado['resp'], resultado['estado']) == (False, 'returned')
+            assert resultado['error'].startswith(f'La compra #{compra.pk} ya tiene la liquidación de compra '
+                                                 f'{segunda.voucher_number_full} vigente (')
+            assert resultado['error'].endswith(' no se reenvió al SRI. No se anuló ni se cambió nada.')
+            assert type(primera).objects.get(pk=primera.pk).status == 'returned'
+            assert sl.liquidacion_vigente(Purchase.objects.get(pk=compra.pk)) == segunda
+        assert len(sri.recepciones) == enviados

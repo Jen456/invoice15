@@ -33,7 +33,7 @@ def forwards(apps, schema_editor):
         permiso = _permiso(Permission, modelo)
         for modulo in Module.objects.filter(url=url):
             modulo.permissions.add(permiso)
-    organizar_menu(apps.get_model('security', 'ModuleType'), Module, Permission)
+    organizar_menu(apps.get_model('security', 'ModuleType'), Module, Permission, apps=apps)
     sync_roles(apps.get_model('auth', 'Group'), Module, apps.get_model('security', 'GroupModule'))
 
 

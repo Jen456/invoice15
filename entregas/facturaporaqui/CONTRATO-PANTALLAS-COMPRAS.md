@@ -14,10 +14,21 @@
 >   `compras.datos_sustento_retencion` y la plantilla `comprobantes/retencion/create.html` muestra sus avisos como
 >   `<div class="alert alert-warning" data-advertencia="sustento_varias_tarifas|sustento_tarifa_no_disponible">` (contexto
 >   `avisos_sustento`: lista de `{codigo, texto}`). Codex conserva `data-advertencia`.
+> - **Cierre de la fase (30/10/2026):** «Completar datos» rechaza el tipo 04 en una compra con retención vigente (X-R1,
+>   decisión de la propietaria; texto en los errores de la pantalla) y `retenciones.crear()` tampoco guarda una retención
+>   sobre una 04. Una retención devuelta o no autorizada (que no cuenta como vigente) no se reenvía al SRI si su compra
+>   pasó a 04; una retención o una liquidación devuelta o no autorizada tampoco, si la compra ya tiene otra vigente del
+>   mismo tipo. «Enviar al SRI» responde «La compra #N es una nota de crédito del proveedor (04): sobre ella no se emite
+>   comprobante de retención, así que el comprobante de retención 001-… no se reenvió al SRI. No se anuló ni se cambió
+>   nada.» o «La compra #N ya tiene el comprobante de retención 001-… vigente (Autorizada), así que el comprobante de
+>   retención 001-… no se reenvió al SRI. No se anuló ni se cambió nada.» (el estado entre paréntesis es el de la otra;
+>   con una liquidación, solo el segundo, con «la liquidación de compra 001-…» en los dos números). Con retención vigente y sin datos llenos, `motivo_bloqueo` va vacío. En la pantalla 13 la búsqueda de
+>   producto por línea es local (punto 3 del apartado B) y la bandeja de Importación tiene el filtro «Tipo» (pantalla 15).
 > - Los 6 códigos de auditoría de Compras son choices de `AuditLog.ACTIONS` (`tenancy/0007`).
 > - Resultados y tablero restan la 04 (ver la nota al inicio del contrato de Ventas).
-> - Sigue pendiente del punto 8: mostrar la clave `aviso` de `liquidaciones.lineas_de_compra` en
->   `comprobantes/liquidacion/create.html` y enlazar Retenciones recibidas con la pantalla 14 en el diseño.
+> - Punto 8, hecho en el diseño (`adbe62f`): `comprobantes/liquidacion/create.html` muestra la clave `aviso` de cada línea
+>   y Retenciones recibidas enlaza con la bandeja de Recibidos filtrada por 07 (`?cod_doc=07`, que desde `0f0b830` elige el
+>   selector «Tipo»), desde donde se abre la pantalla 14.
 
 Este documento describe **lo que hace el código de la rama**, pantalla por pantalla, para que Codex haga el diseño sin romper nada y para que la propietaria vea qué cambia en Compras. Se escribió a partir de la sección 6 de su especificación interna de trabajo (no publicada), pero manda el código: cuando no coinciden, se describe el código y la diferencia queda anotada en «Diferencias con la especificación» de cada pantalla y en el resumen final (apartado C). Lo publicará el integrador en `HANDOFF.md`.
 
@@ -59,7 +70,7 @@ Cada ruta, nombre de URL, nombre de campo, acción y mensaje de este documento s
 
 **Mensajes de Django**
 - «Compra #N registrada.», «Datos de la compra guardados», «Compra #N creada desde el XML» y «Retención recibida registrada (N documentos sustento)» salen con `messages.success`.
-- El marco general (`hzt_body.html` o `vtc_body.html`) muestra todos los mensajes, también los de éxito, en una ventana titulada «Error». Ver el apartado B.
+- Desde `adbe62f` el marco general (`hzt_body.html` o `vtc_body.html`) los muestra con `fp_mensajes.html`, una sola vez y con el título de su nivel (los de éxito, «Operación completada»). Ver el apartado B, punto 2.
 
 **Reglas de plan (`PlanMiddleware`, sin cambios en esta rama)**
 
@@ -358,7 +369,7 @@ Paso de un estado a otro: incompleta → completa al completar los datos, al aut
 | Situación | Campos bloqueados | Motivo que se muestra |
 |---|---|---|
 | Compra creada desde un XML (`origen = importacion`) | Tipo, establecimiento, punto, secuencial, autorización y fecha de emisión | «El tipo de comprobante, la numeración, la autorización y la fecha de emisión vienen del XML autorizado.» |
-| Con retención vigente | Los de esos datos que ya están llenos (los vacíos se pueden llenar) | «La retención 001-001-… usa este número: anúlala antes de cambiarlo.» |
+| Con retención vigente | Los de esos datos que ya están llenos (los vacíos se pueden llenar) | «La retención 001-001-… usa este número: anúlala antes de cambiarlo.» Sin ninguno lleno no se bloquea nada y el motivo va vacío (desde el 30/10/2026). |
 | Con liquidación vigente | El tipo siempre y la numeración ya llena | «La liquidación 001-001-… usa este número: anúlala antes de cambiarlo.» |
 
 **Acciones (POST de formulario con `{% csrf_token %}`)**
@@ -379,6 +390,7 @@ Paso de un estado a otro: incompleta → completa al completar los datos, al aut
   - «Una nota de crédito del proveedor no tiene cuenta por pagar propia y esta compra se registró a crédito: elimínala y regístrala de nuevo como nota de crédito.»
   - «Una nota de venta no discrimina IVA y esta compra tiene IVA: elimínala y regístrala de nuevo con tarifa 0 %.»
   - Al pasar a 03, las reglas de la liquidación (pantalla 2) y numeración vacía.
+- Tipo frente a la retención vigente (X-R1, desde el 30/10/2026; código `retencion_vigente`): «Esta compra tiene la retención 001-001-… vigente y sobre una nota de crédito del proveedor (04) no se emite comprobante de retención: no se puede registrar como 04. No se guardó ningún cambio.» Sale al revisar y al guardar; no anula ni cambia la retención.
 - Fecha frente a la tarifa de las líneas: «Las líneas de esta compra tienen IVA del 15 %, que rige desde el 01/04/2024: la fecha de emisión es anterior. Revisa la fecha.» y «Las líneas de esta compra tienen IVA del 12 %, que no rige para comprobantes desde el 01/04/2024: revisa la fecha de emisión.».
 
 **Textos obligatorios:** «Las líneas, el stock y el subtotal registrado no cambian.» y, junto a `ajustar_cxp`, «Cambia la deuda de $X (sin IVA) a $Y (total con IVA). Queda registrado.» (si aún no hay total, «$Y» se sustituye por «el total que resulte de los importes»). La insignia «Calculada sin IVA» acompaña a la cuenta con base `subtotal`.
@@ -579,7 +591,7 @@ Paso de un estado a otro: incompleta → completa al completar los datos, al aut
 ## 13. Importación: crear compra desde el XML (nueva: página y API)
 
 - **Rutas:** página `GET/POST /importacion/documentos/<pk>/compra/` (`importacion_compra`) y API `GET/POST /importacion/api/documentos/<pk>/compra/` (`importacion_api_compra`).
-- **Vistas:** `CompraDesdeDocumento` y `CompraDesdeDocumentoApi` (`core/importacion/views.py`); servicios en `core/importacion/compras.py`. **Plantilla:** `importacion/compra.html` (extiende `importacion/base.html`). **JS:** `core/importacion/static/importacion/js/compra.js` (solo «Usar sugerencia»).
+- **Vistas:** `CompraDesdeDocumento` y `CompraDesdeDocumentoApi` (`core/importacion/views.py`); servicios en `core/importacion/compras.py`. **Plantilla:** `importacion/compra.html` (extiende `importacion/base.html`). **JS:** `core/importacion/static/importacion/js/compra.js`: «Usar sugerencia», el autocompletado local de Select2 sobre `.fp-producto-xml` (desde `adbe62f`, corregido en `7929a13`) y el aviso `posible_duplicado` movido junto a `.fp-stage-duplicate` como advertencia.
 - **Permisos:** `change_documentoimportado` + `add_purchase` (Propietario y Administrador). Documento de otra empresa: 404.
 - **Plan:** solo Ilimitado y Multiempresa; vencido, solo consulta (el POST de crear responde 403).
 
@@ -657,9 +669,9 @@ Paso de un estado a otro: incompleta → completa al completar los datos, al aut
 
 **Página: acción.** Éxito: redirige a `/pos/purchase/` con «Compra #N creada desde el XML». Error: la misma página con el error arriba. Otro `action`: «Acción no válida.».
 
-**Identificadores:** `[data-fp-sugerencia]` (id del campo destino) y `data-valor` en el botón «Usar sugerencia»; `data-bloqueo` y `data-advertencia` en las alertas; la clase `fp-importacion-compra` con `data-documento`. Las pruebas buscan «Usar sugerencia», `data-valor="06"`, «Los importes son los del XML autorizado.», «Se registra una línea de gasto por tarifa de IVA, con el motivo de la nota.», «Las notas de crédito y débito no mueven stock en esta etapa.» y que una nota no tenga `lineas-TOTAL_FORMS`.
+**Identificadores:** `[data-fp-sugerencia]` (id del campo destino) y `data-valor` en el botón «Usar sugerencia»; `data-bloqueo` y `data-advertencia` en las alertas; la clase `fp-importacion-compra` con `data-documento`; la clase `fp-producto-xml` en el selector de producto de cada línea (sin ella no arranca el autocompletado) y `.fp-stage-duplicate` en el bloque de la casilla `confirmar_no_duplicada`. Las pruebas buscan «Usar sugerencia», `data-valor="06"`, «Los importes son los del XML autorizado.», «Se registra una línea de gasto por tarifa de IVA, con el motivo de la nota.», «Las notas de crédito y débito no mueven stock en esta etapa.» y que una nota no tenga `lineas-TOTAL_FORMS`.
 
-**Libre para el diseño:** todo el aspecto; el selector de producto por línea (hoy lista todos los productos de la empresa) puede pasar a un autocompletado si conserva el `name`.
+**Libre para el diseño:** todo el aspecto. El selector de producto por línea ya es un autocompletado local sobre todos los productos de la empresa; conserva el `name` (`lineas-N-product`) y la clase `fp-producto-xml`.
 
 **Diferencias con la especificación:** bloqueos nuevos `ambiente_pruebas`, `proveedor_incompleto`, `tarifa_desconocida` y `sin_lineas`; claves nuevas en la propuesta (`proveedor`, `nombre_sustento_sugerido`, `subtotal`, `por_tarifa`, `agrupar_obligatorio`, `exige_confirmar_sin_verificar`, `confirmaciones`, `textos`, `lineas[].solo_gasto`, `lineas[].codigo_auxiliar`, `compra_modificada.base_calculo`); `type_expense` de las líneas agrupadas; confirmación `confirmar_no_duplicada`; las notas 04 y 05 siempre se agrupan; los 400 llevan `codigo`; contexto adicional `filas` y `url_documento`.
 
@@ -721,7 +733,7 @@ Paso de un estado a otro: incompleta → completa al completar los datos, al aut
 
 - **Ficha:** botones «Crear compra» (a `urls.compra`) y «Registrar retención recibida» (a `urls.retencion_recibida`), distintos del botón «Vincular» de cada candidato; secciones nuevas «Documento modificado», «Motivos», «Líneas del XML» y «Retención recibida (versión …, período …)» con «Documento sustento …»; avisos «Registrada en Retenciones recibidas.» (07 vinculado) y «Vinculado con la compra #N.»; `crear_proveedor` pide además `parte_relacionada` (`''` sin indicar, `no`, `si`).
 - **Servicio de revisión:** `vincular_compra` con un 07: «Un comprobante de retención no se vincula con una compra: regístralo en «Registrar retención recibida».»; con una compra de otro tipo: «La compra es de otro tipo de comprobante (…): no es este documento.»; `vincular_venta` solo con una factura emitida; `crear_proveedor` con un 07: «El emisor de un comprobante de retención es tu cliente (agente de retención), no un proveedor.». Los candidatos de conciliación marcan `exacto: true` y la razón «mismo comprobante».
-- **API de documentos:** filtro nuevo `?cod_doc=01|04|05|07` («Tipo de comprobante no válido.» con otro valor).
+- **API de documentos:** filtro nuevo `?cod_doc=01|04|05|07` («Tipo de comprobante no válido.» con otro valor). Desde el 30/10/2026 la bandeja (`importacion/_filtros.html`) lo ofrece como selector «Tipo» (`#fp-import-type`, `name="cod_doc"`: «Todos los tipos» y esos cuatro valores), junto a «Mostrar». `static/js/importacion.js` lo envía si tiene valor y lo elige al abrir con `?cod_doc=` de la URL (un valor que no está entre las opciones se ignora). El enlace «Abre el comprobante 07 recibido» de Retenciones recibidas abre la bandeja con `?cod_doc=07`. Sin JavaScript el formulario sigue oculto.
 - **Nueva importación:** «Se admiten facturas, notas de crédito, notas de débito y retenciones (01, 04, 05 y 07).». Los tipos 03 y 06 siguen como «tipo no soportado todavía. Por ahora se importan facturas (01), notas de crédito (04), notas de débito (05) y comprobantes de retención (07).». Advertencias nuevas del lector: `motivos_descuadrados` y `retencion_descuadrada`.
 - **Pruebas que leen esta página:** «Registrar retención recibida», «Documento sustento 001001000000123», que un 07 vinculado no muestre «Reabrir revisión», «Documento modificado», «Líneas del XML», el enlace `/compra/` y `name="parte_relacionada"`.
 - **Diferencias con la especificación:** claves nuevas `aviso_contable`, `motivo_sin_reabrir` y `urls.retenciones_recibidas`; un 07 aprobado ofrece también `reabrir`; los emitidos 04, 05 y 07 ofrecen además `descartar`; `reabrir` deja de ofrecerse cuando está bloqueado.
@@ -767,18 +779,18 @@ Paso de un estado a otro: incompleta → completa al completar los datos, al aut
 
 ## B. Pendiente para Codex
 
-1. **Diseño de todas las pantallas** sobre este contrato. No hubo revisión visual en navegador: los JS solo pasaron `node --check` y las vistas se probaron con el cliente de Django.
-2. **Mensajes de éxito con título «Error».** «Compra #N registrada.», «Datos de la compra guardados», «Compra #N creada desde el XML» y «Retención recibida registrada (…)» salen en la ventana global de `hzt_body.html`/`vtc_body.html`, que titula todo «Error». Esas plantillas no son de esta rama; que el integrador o Codex distingan el nivel del mensaje.
-3. **Autocompletado de productos por línea** en «Crear compra desde el XML» (pantalla 13): hoy cada línea lista todos los productos de la empresa. Usar una búsqueda AJAX como `search_product`, conservando `lineas-N-product`. El servidor ya valida el id.
-4. **Errores por campo en la página «Crear compra desde el XML»:** la plantilla solo muestra bajo su campo los de `cod_sustento` y `email`; los demás llegan como errores del formulario o del servicio arriba. Mostrar `field.errors` de todos los campos.
-5. **Aviso de posible duplicado:** sale con las demás advertencias (`data-advertencia="posible_duplicado"`) y su casilla `confirmar_no_duplicada` aparece abajo. Conviene ponerlo junto a la casilla y con más realce.
+1. **Diseño de todas las pantallas** sobre este contrato: hecho por Codex en `adbe62f` (presentación de marca y adaptación móvil). Su revisión en navegador está en `RESULTADOS-FRONTEND.md` y `propuestas/fase-integrada/`. Quedan el teléfono y la impresora físicos.
+2. **Mensajes de éxito con título «Error»:** hecho (`adbe62f`). `hzt_body.html` y `vtc_body.html` (y `hzt_dashboard.html`, con su propio include) ya no pasan los mensajes de Django a `message_error`: incluyen `fp_mensajes.html`, que los pinta en la página una sola vez y con el título de su nivel: «Operación completada» (éxito), «Revisa este aviso» (advertencia), «No se pudo completar» (error) e «Información» (los demás). La ventana `message_error` sigue para los errores de las acciones AJAX.
+3. **Autocompletado de productos por línea** en «Crear compra desde el XML» (pantalla 13): hecho (`adbe62f`, corregido en la integración). Es una búsqueda local de Select2 sobre las opciones que dibuja el servidor (todos los productos de la empresa) y conserva `lineas-N-product`. **No** usar `search_product` de Compras: solo devuelve productos inventariados y dejaría fuera productos que esta pantalla admite. Si un catálogo grande lo hace lento, hace falta una búsqueda propia de esta pantalla (backend).
+4. **Errores por campo en la página «Crear compra desde el XML»:** hecho (`adbe62f`): la plantilla muestra `field.errors` bajo todos sus campos.
+5. **Aviso de posible duplicado:** hecho (`adbe62f`): `compra.js` lo pone junto a la casilla `confirmar_no_duplicada` (`.fp-stage-duplicate`) como advertencia.
 6. **Botones sin permiso que se dibujan igual** (comportamiento anterior, el servidor decide): «Registrar pago» en cuentas por pagar, editar y eliminar en proveedores, y los de gastos y tipos de gasto. En Compras ya se ocultan según `permisos_listado`; Codex puede aplicar el mismo patrón donde haya un booleano en el contexto.
 7. **Botón «Actualizar» del listado de compras:** apunta a `{{ list_url }}`, que esa vista no pasa (como antes); recarga la página actual.
-8. **Fuera de las pantallas de esta rama, para el integrador o Codex:**
+8. **Fuera de las pantallas de esta rama, para el integrador o Codex** (todo hecho: los dos de diseño en `adbe62f`, el de `RetencionCrearView` en `f109d4d`):
    - mostrar la clave `aviso` de cada línea de `liquidaciones.lineas_de_compra` en `comprobantes/liquidacion/create.html`;
    - `RetencionCrearView.iniciales` debe usar `compras.datos_sustento_retencion` (con los avisos `sustento_varias_tarifas` y `sustento_tarifa_no_disponible`) después de traer D0, y rechazar las compras con `compras.admite_retencion(compra) == False` (notas de crédito);
    - el diseño de Retenciones recibidas de O2 debe enlazar con la pantalla 14.
-9. **Móvil:** las tablas de líneas de «Nueva compra» y de «Crear compra desde el XML» son anchas; la segunda ya usa `data-label` por celda.
+9. **Móvil:** hecho en `adbe62f`: `static/js/fase-contable.js` añade la etiqueta de cada celda a las tablas de líneas y `static/css/facturaporaqui.css` las adapta a pantallas estrechas.
 10. **Textos y fragmentos que comprueban las pruebas** (no cambiarlos sin avisar al integrador):
     - Compras: `id="fp-compra-opciones"`; los literales de `list.js` de la pantalla 1; «Las líneas, el stock y el subtotal registrado no cambian.»; «Cambia la deuda de $100.00 (sin IVA)»; «vienen del XML autorizado»; «Usar sugerencia» con `?tipo=gasto` y su ausencia sin él.
     - Gastos: «¿Tienes factura?». Tipos de gasto: «Usar sugerencia».

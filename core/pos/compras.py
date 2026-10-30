@@ -864,7 +864,9 @@ def bloqueos_de(compra):
     retencion = retenciones.retencion_vigente(compra)
     if retencion is not None:
         llenos = [c for c in ('tipo_comprobante', *CAMPOS_NUMERACION) if getattr(compra, c)]
-        return llenos, f'La retención {retencion.voucher_number_full} usa este número: anúlala antes de cambiarlo.', False
+        # sin datos llenos no se bloquea nada: sin motivo (el contrato lo pide vacío y no se sugiere anular la retención)
+        motivo = f'La retención {retencion.voucher_number_full} usa este número: anúlala antes de cambiarlo.' if llenos else ''
+        return llenos, motivo, False
     liquidacion = liquidaciones.liquidacion_vigente(compra)
     if liquidacion is not None:   # el tipo lo da la liquidación (03 al autorizarse), aunque todavía esté vacío
         llenos = ['tipo_comprobante'] + [c for c in CAMPOS_NUMERACION if getattr(compra, c)]
@@ -933,6 +935,14 @@ def _plan_completar(compra, datos, deudas):
             n[campo] = actuales[campo]           # campo deshabilitado en el formulario: se conserva
         elif not ignorar and n[campo] != actuales[campo]:
             raise ErrorCompra(motivo, codigo='bloqueado')
+    if n['tipo_comprobante'] in cat.TIPOS_SIN_RETENCION:
+        # X-R1: bloqueos_de no fija un tipo vacío; una compra sin tipo con retención vigente no pasa a 04
+        from core.comprobantes import retenciones
+        retencion = retenciones.retencion_vigente(compra)
+        if retencion is not None:
+            raise ErrorCompra(f'Esta compra tiene la retención {retencion.voucher_number_full} vigente y sobre una nota de '
+                              'crédito del proveedor (04) no se emite comprobante de retención: no se puede registrar como '
+                              '04. No se guardó ningún cambio.', codigo='retencion_vigente')
     modo = 'liquidacion' if n['tipo_comprobante'] == '03' else 'si'
     advertencias, confirmaciones = _validar_cabecera(n, compra.provider, modo=modo, origen=compra.origen, parcial=True,
                                                      date_joined=compra.date_joined, compra_id=compra.pk)
