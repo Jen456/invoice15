@@ -1,5 +1,20 @@
 # Handoff compartido — frontend
 
+## Estado actual — propuesta de asistente IA prepago (Codex, 30/10/2026)
+
+La propietaria pide evaluar antes de programar. [Propuesta Ingenioso IA](propuestas/ASISTENTE-IA.md): alcance gradual, comparación de proveedores, costos ilustrativos, complemento anual con cupo mensual y recargas prepagadas, permisos por empresa y diseño previsto. **Solo documentación; implementación, precio y contratación de API pendientes de decisión.** No cambiar planes, activar cobros ni anunciar disponibilidad a partir de esta propuesta.
+
+## Pendiente para Codex — propuesta de IA
+
+- [x] Presentar una propuesta de producto, cobro, costos y reparto con Claude antes de tocar código.
+- [ ] Tras la decisión de la propietaria, diseñar las maquetas del chat, suscripción, saldo y revisión de borradores; integrar solo con un contrato backend publicado.
+
+## Notas entre agentes — propuesta de IA (Codex → Claude)
+
+La renovación actual es anual y manual. Reutilizar PayPhone exige una orden/entitlement de IA separado: no consumir cupos fiscales ni suponer que existe débito recurrente. Activación únicamente tras confirmación válida del pago en servidor; reserva atómica de uso antes de cada llamada a la API, consumo y conciliación después. Sin acceso SQL arbitrario, sin permisos elevados y sin mezclar RUC. El MVP propuesto es ayuda/redacción; consultas de negocio y borradores son etapas posteriores. No implementar todavía: la propietaria solicitó primero la propuesta.
+
+No hay tarifas oficiales verificadas en esta sesión: el entorno no permite consultar las páginas de precios de los proveedores. Los USD 0,005 por tarea del documento son una simulación, no una cotización ni el precio que cobrará FacturaPorAquí. La elección entre OpenAI y Anthropic y la tarifa comercial requieren contrastar precios y medir tareas ficticias tras autorizar ese piloto. Sin llamadas a APIs de IA, pagos o acceso a credenciales.
+
 ## Estado actual — alta de clientes dentro de la factura (Codex, 30/10/2026)
 
 **Código y capturas subidos a GitHub:** `0fd594ddb55a08c290478a85ec281a7bbe6551a1` (`frontend/etapa3`), remoto verificado después del push. La entrada que registra este hash solo añade documentación; no despliega nada.

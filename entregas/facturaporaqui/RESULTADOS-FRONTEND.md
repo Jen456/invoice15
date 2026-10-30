@@ -1473,3 +1473,12 @@ El backend aún exige `birthdate` y lo precarga con la fecha actual incluso para
 [Capturas y pasos para revisar](capturas/cliente-en-factura/README.md).
 
 **Trazabilidad de entrega:** código, capturas e informe en `0fd594ddb55a08c290478a85ec281a7bbe6551a1`, subido a `frontend/etapa3` y confirmado con `git ls-remote`. Este registro posterior solo añade la referencia del commit publicado en GitHub; no cambia código ni publica en el dominio.
+
+
+## 2026-10-30 — Propuesta comercial y técnica de asistente IA
+
+A petición de evaluar antes de programar, se documenta «Ingenioso IA» como complemento prepago: alcance por etapas, comparación de proveedores, fórmula/simulación de consumo, suscripción anual con bolsa mensual, diseño de chat y estados de cobro, permisos multiempresa y reparto entre Claude/backend y Codex/frontend. Precios, cupos y modelo de API no aprobados; no se presenta ninguna función como disponible.
+
+Se revisaron AGENTS y HANDOFF, la descripción de planes/pagos y la integración PayPhone mediante lecturas acotadas. La plantilla de suscripción declara renovación anual manual: no se prometió débito automático. Fetch confirma `plataforma=3549c16` ya incluido en la rama; base de esta propuesta `e4c48c6`. Las tarifas de OpenAI/Anthropic no pudieron verificarse desde este entorno restringido; el costo de USD 0,005 por tarea es expresamente hipotético y no identifica un proveedor.
+
+Archivos: `propuestas/ASISTENTE-IA.md`, `HANDOFF.md` y este informe. Validación: consistencia de las simulaciones y enlaces relativos, `git diff --check`; sin pytest ni capturas porque solo cambia documentación. No se modificó código, modelos, vistas, pagos, precios vigentes, permisos o configuración; no se solicitaron credenciales, llamaron APIs facturables ni desplegó nada. Siguiente paso sujeto a la decisión de la propietaria: alcance/cobro, comparación verificada y maquetas.
