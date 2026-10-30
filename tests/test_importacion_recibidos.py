@@ -3,6 +3,7 @@ de notas de crédito (04), notas de débito (05) y comprobantes de retención 07
 del 07 para «Retenciones recibidas» (RetencionLeida); marca idempotente del documento; pantalla «Registrar retención
 recibida» con el servicio de Ventas (O2) sustituido; propuesta contable y filtro por tipo. Documentos ficticios."""
 import json
+import re
 import sys
 from datetime import date
 from decimal import Decimal
@@ -12,7 +13,7 @@ from django.contrib.auth.models import Group
 
 from core.importacion import recibidos, servicios as sv, sri_autorizacion
 from core.importacion.models import DocumentoImportado, EventoImportacion
-from core.importacion.views import acciones_posibles
+from core.importacion.views import TIPOS_IMPORTADOS, acciones_posibles
 from core.importacion.xml_sri import procesar_xml_sri
 from core.pos import emision
 from core.tenancy.context import company_context
@@ -218,6 +219,14 @@ class TestClasificacionYAcciones:
         datos = client.get('/importacion/api/documentos/?bandeja=todos&cod_doc=07').json()
         assert datos['total'] == 1 and datos['documentos'][0]['cod_doc'] == '07'
         assert client.get('/importacion/api/documentos/?bandeja=todos&cod_doc=03').status_code == 400
+
+    def test_filtro_por_tipo_a_la_vista(self, client, empresa, dueno):
+        """«Abre el comprobante 07 recibido» llega con ?cod_doc=07: la bandeja muestra el tipo en un selector que se puede
+        cambiar, con los mismos tipos que admite la API (un ?cod_doc desconocido lo ignora importacion.js)."""
+        helpers.iniciar_sesion(client, dueno, empresa=empresa)
+        html = client.get('/importacion/recibidos/?cod_doc=07').content.decode()
+        selector = html.split('<select id="fp-import-type" name="cod_doc"', 1)[1].split('</select>', 1)[0]
+        assert re.findall(r'<option value="(\w*)">', selector) == ['', *TIPOS_IMPORTADOS]
 
 
 @pytest.mark.django_db
