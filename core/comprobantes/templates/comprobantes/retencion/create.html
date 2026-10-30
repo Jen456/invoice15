@@ -20,6 +20,7 @@
     <form method="post" class="fp-retencion-form" novalidate>{% csrf_token %}
         {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
         {% if aviso %}<div class="alert alert-warning" role="alert">{{ aviso }}</div>{% endif %}
+        {% for a in avisos_sustento %}<div class="alert alert-warning" role="alert" data-advertencia="{{ a.codigo }}">{{ a.texto }}</div>{% endfor %}
         <section class="card fp-retencion-panel mb-3"><div class="card-body">
             <span class="fp-eyebrow">Paso 1 · Documento sustento</span><h2 class="h5">Factura del proveedor (documento sustento)</h2><p class="text-muted">Copia los datos de la factura que recibiste. Revisa el número y la autorización antes de continuar.</p>
             <div class="row">

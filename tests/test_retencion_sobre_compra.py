@@ -3,7 +3,7 @@
 - O1-F12: la compra sobre la que no se emite retención (compras.admite_retencion falso: nota de crédito del proveedor,
   04) se rechaza en GET y en POST con un mensaje claro, sin reservar número ni emitir nada.
 - O1-F11: el primer return de iniciales() usa compras.datos_sustento_retencion y pasa sus advertencias al contexto
-  (`avisos_sustento`).
+  (`avisos_sustento`), que la pantalla muestra como alertas con `data-advertencia="<código>"`.
 """
 import pytest
 from django.contrib.messages import get_messages
@@ -103,7 +103,8 @@ class TestAvisosDelSustento:
         assert (inicial['cod_doc_sustento'], inicial['num_doc_sustento'], inicial['aut_doc_sustento']) == \
             ('01', '001002000000820', AUTORIZACION)
         assert inicial['tarifa_iva'] == '15.00' and inicial['base_iva'] == factura.base_gravada
-        assert 'value="001002000000820"' in respuesta.content.decode()
+        html = respuesta.content.decode()
+        assert 'value="001002000000820"' in html and 'data-advertencia="sustento_' not in html
 
     def test_factura_con_varias_tarifas_avisa(self, web, empresa, usuario, proveedor):  # noqa: F811
         mixta = nueva_compra(empresa, usuario, proveedor, [ayuda.linea_gasto(price='100.00'),
@@ -113,6 +114,10 @@ class TestAvisosDelSustento:
         assert respuesta.status_code == 200
         assert [a['codigo'] for a in respuesta.context['avisos_sustento']] == ['sustento_varias_tarifas']
         assert not {'base_0', 'base_iva', 'tarifa_iva', 'valor_iva'} & set(respuesta.context['form'].initial)
+        html = respuesta.content.decode()   # la pantalla lo muestra: sin él, las bases vacías no se explican
+        assert ('<div class="alert alert-warning" role="alert" data-advertencia="sustento_varias_tarifas">La factura tiene '
+                'varias tarifas o bases exentas o no objeto: el comprobante de retención actual admite una sola tarifa. '
+                'Revisa las bases.</div>') in html
         assert respuesta.context['form'].initial['num_doc_sustento'] == '001002000000822'
 
     def test_compra_anterior_sin_tipo_como_antes(self, web, empresa, compra):  # noqa: F811
