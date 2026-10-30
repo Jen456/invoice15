@@ -1,4 +1,9 @@
 var tblPaymentsCtasCollect, tblCtasCollect;
+
+// Etapa 2 (O2): escapa el texto que se inserta en HTML armado a mano.
+function fpaTexto(x) {
+    return $('<div>').text(x === null || x === undefined ? '' : String(x)).html();
+}
 var date_current;
 var input_date_range;
 var ctas_collect = {
@@ -25,32 +30,33 @@ var ctas_collect = {
                 dataSrc: ""
             },
             columns: [
-                {data: "sale.voucher_number"},
-                {data: "sale.client"},
+                {data: "documento.numero"},
+                {data: "sale.client.user.names"},
                 {data: "date_joined"},
                 {data: "end_date"},
                 {data: "debt"},
                 {data: "saldo"},
-                {data: "state"},
-                {data: "state"},
+                {data: "estado.id"},
+                {data: "id"},
             ],
             columnDefs: [
                 {
-                    targets: [1],
-                    class: 'text-center',
+                    // Etapa 2 (O2): número del documento (factura o «ND 001-002-…»), escapado.
+                    targets: [0],
                     render: function (data, type, row) {
-                        if (!$.isEmptyObject(row.sale.client)) {
-                            return row.sale.client.user.names;
-                        }
-                        return 'Consumidor final';
+                        var numero = fpaTexto(row.documento.numero);
+                        return row.documento.tipo === 'nota_debito' ? 'ND ' + numero : numero;
                     }
                 },
                 {
-                    targets: [-6, -7],
+                    targets: [1],
                     class: 'text-center',
-                    render: function (data, type, row) {
-                        return data;
-                    }
+                    render: $.fn.dataTable.render.text()
+                },
+                {
+                    targets: [-6, -5],
+                    class: 'text-center',
+                    render: $.fn.dataTable.render.text()
                 },
                 {
                     targets: [-3, -4],
@@ -65,10 +71,8 @@ var ctas_collect = {
                     orderable: false,
                     class: 'text-center',
                     render: function (data, type, row) {
-                        if (data) {
-                            return '<span class="badge badge-danger badge-pill">Adeuda</span>';
-                        }
-                        return '<span class="badge badge-success badge-pill">Pagado</span>';
+                        var clases = {'pendiente': 'badge-danger', 'pagada': 'badge-success', 'anulada': 'badge-secondary'};
+                        return '<span class="badge ' + (clases[row.estado.id] || 'badge-light') + ' badge-pill">' + fpaTexto(row.estado.name) + '</span>';
                     }
                 },
                 {
@@ -76,8 +80,8 @@ var ctas_collect = {
                     orderable: false,
                     class: 'text-center',
                     render: function (data, type, row) {
-                        var buttons = '<a rel="payments" data-toggle="tooltip" title="Pagos" class="btn bg-blue btn-xs btn-flat"><i class="fas fa-dollar-sign"></i></a> ';
-                        buttons += '<a href="' + pathname + 'delete/' + row.id + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
+                        var buttons = '<a rel="payments" data-toggle="tooltip" title="Abonos" class="btn bg-blue btn-xs btn-flat"><i class="fas fa-dollar-sign"></i></a> ';
+                        buttons += '<a href="' + pathname + 'delete/' + parseInt(row.id, 10) + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
                         return buttons;
                     }
                 },
@@ -143,28 +147,44 @@ $(function () {
                 columns: [
                     {data: "index"},
                     {data: "date_joined"},
-                    {data: "valor"},
+                    {data: "tipo.name"},
+                    {data: "medio_pago.name"},
+                    {data: "referencia"},
+                    {data: "valor_texto"},
                     {data: "description"},
-                    {data: "valor"},
+                    {data: "id"},
                 ],
                 columnDefs: [
+                    {
+                        // Etapa 2 (O2): todo texto de terceros va escapado.
+                        targets: [1, 2, 3, 4, 6],
+                        render: $.fn.dataTable.render.text()
+                    },
                     {
                         targets: [-3],
                         class: 'text-center',
                         render: function (data, type, row) {
-                            return '$' + data.toFixed(2);
+                            return '$' + fpaTexto(data);
                         }
                     },
                     {
                         targets: [-1],
                         class: 'text-center',
                         render: function (data, type, row) {
-                            return '<a rel="delete" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-times"></i></a>';
+                            if (row.anulado) {
+                                return '<span class="badge badge-secondary">Anulado</span>';
+                            }
+                            if (row.tipo.id !== 'cobro') {
+                                return '';
+                            }
+                            return '<a rel="delete" class="btn btn-danger btn-xs btn-flat" title="Eliminar cobro"><i class="fas fa-times"></i></a>';
                         }
                     }
                 ],
                 rowCallback: function (row, data, index) {
-
+                    if (data.anulado) {
+                        $(row).css('text-decoration', 'line-through').addClass('text-muted');
+                    }
                 },
                 initComplete: function (settings, json) {
                     $(this).wrap('<div class="dataTables_scroll"><div/>');
@@ -184,7 +204,7 @@ $(function () {
             params.append('action', 'delete_pay');
             var args = {
                 'params': params,
-                'content': '¿Estas seguro de eliminar el registro?',
+                'content': '¿Eliminar este cobro? Queda registrado en la auditoría.',
                 'success': function (request) {
                     tblPaymentsCtasCollect.ajax.reload();
                 }

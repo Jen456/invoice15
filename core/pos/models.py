@@ -65,11 +65,29 @@ class Company(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     is_active = models.BooleanField(default=True, verbose_name='Activa')
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name='Fecha de alta')
+    # Etapa 2 (O2): datos tributarios que definen formularios, anexos y vencimientos. '' = «Sin indicar» (dato incompleto
+    # explícito): nunca se infieren ni se guardan solos; la pantalla de Empresa solo los sugiere.
+    tipo_contribuyente = models.CharField(max_length=20, choices=TIPO_CONTRIBUYENTE, blank=True, default='',
+                                          verbose_name='Tipo de contribuyente',
+                                          help_text='Sociedad o persona natural, obligada o no a llevar contabilidad. Define tus formularios y anexos.')
+    periodicidad_iva = models.CharField(max_length=10, choices=PERIODICIDAD_IVA, blank=True, default='',
+                                        verbose_name='Declaración del IVA',
+                                        help_text='Mensual. Semestral solo si vendes únicamente con tarifa 0 %, te retienen todo el IVA o estás en el RIMPE.')
 
 
     @property
     def leyenda_rimpe(self):
         return LEYENDAS_RIMPE.get(self.rimpe or '', '')
+
+    @property
+    def datos_tributarios_faltantes(self):
+        """Campos tributarios aún sin indicar ('' en las empresas existentes y en las nuevas hasta que se completan)."""
+        return [campo for campo in ('tipo_contribuyente', 'periodicidad_iva') if not getattr(self, campo)]
+
+    @property
+    def es_contribuyente_especial(self):
+        """Mismo criterio que xml_retencion: '' (registro y suscripciones) y '000' no son contribuyentes especiales."""
+        return (self.special_taxpayer or '').strip() not in ('', '000')
 
     def __str__(self):
         return self.business_name
@@ -744,6 +762,8 @@ class Receipt(TenantModel):
 
 # Campos de la emisión en dos fases que no se envían al navegador en toJSON().
 EXCLUIR_DEL_JSON = ('xml_signed', 'signed_at', 'sri_sent_at', 'emission_date')
+# Marca «Anulado en el SRI» (O2): toJSON entrega solo {'fecha'}; motivo, usuario e instante no salen al navegador.
+ANULADO_SRI_PRIVADO = ('anulado_sri_fecha', 'anulado_sri_motivo', 'anulado_sri_por', 'anulado_sri_registrado_en', 'anulado_sri_stock')
 
 
 CENTAVO = Decimal('0.01')
@@ -880,9 +900,20 @@ class Sale(TenantModel):
     xml_signed = models.TextField(null=True, blank=True, verbose_name='XML firmado')
     signed_at = models.DateTimeField(null=True, blank=True, verbose_name='Firmado el')
     sri_sent_at = models.DateTimeField(null=True, blank=True, verbose_name='Enviado al SRI el')
+    # Marca «Anulado en el SRI» (O2, core/pos/anulados.py): registra una anulación hecha en SRI en línea. No es un status:
+    # status conserva la respuesta real del SRI ('canceled' = autorizada y cubierta por notas de crédito).
+    anulado_sri_fecha = models.DateField(null=True, blank=True, verbose_name='Anulado en el SRI el')
+    anulado_sri_motivo = models.CharField(max_length=300, blank=True, default='', verbose_name='Motivo de la anulación')
+    anulado_sri_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', verbose_name='Marcado por')
+    anulado_sri_registrado_en = models.DateTimeField(null=True, blank=True, verbose_name='Marcado en el sistema el')
+    anulado_sri_stock = models.BooleanField(default=False, verbose_name='Se ajustó el inventario al anular')
 
     def __str__(self):
         return self.get_full_name()
+
+    @property
+    def anulado_en_sri(self):
+        return self.anulado_sri_fecha is not None
 
     def get_full_name(self):
         return f'{self.voucher_number_full} / {self.client.get_full_name()})'
@@ -1013,7 +1044,9 @@ class Sale(TenantModel):
 
     def toJSON(self):
         # El XML firmado no viaja al navegador (pesa y no hace falta); las fechas nuevas van como texto.
-        item = model_to_dict(self, exclude=EXCLUIR_DEL_JSON)
+        item = model_to_dict(self, exclude=EXCLUIR_DEL_JSON + ANULADO_SRI_PRIVADO)
+        # Solo la fecha: el listado del portal del cliente usa este mismo toJSON (ni motivo ni usuario).
+        item['anulado_sri'] = {'fecha': self.anulado_sri_fecha.strftime('%Y-%m-%d')} if self.anulado_sri_fecha else None
         item['emission_date'] = self.emission_date.strftime('%Y-%m-%d') if self.emission_date else ''
         item['company'] = self.company.toJSON()
         item['client'] = self.client.toJSON()
@@ -1092,12 +1125,14 @@ class Sale(TenantModel):
         verbose_name = 'Venta'
         verbose_name_plural = 'Ventas'
         constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='venta_numero_unico_por_secuencia')]
+        indexes = [models.Index(fields=['company', 'emission_date'], name='venta_emision')]
         default_permissions = ()
         permissions = (
             ('view_sale', 'Can view Venta'),
             ('add_sale', 'Can add Venta'),
             ('delete_sale', 'Can delete Venta'),
             ('view_sale_client', 'Can view_sale_client Venta'),
+            ('change_anulado_sri_sale', 'Puede marcar facturas como anuladas en el SRI'),
         )
 
 
@@ -1153,20 +1188,55 @@ class CtasCollect(TenantModel):
     saldo = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
     state = models.BooleanField(default=True)
 
+    ESTADOS = {'pendiente': 'Pendiente', 'pagada': 'Pagada', 'anulada': 'Anulada en el SRI'}
+
     def __str__(self):
         return self.get_full_name()
 
     def get_full_name(self):
-        return f"{self.sale.client.user.names} ({self.sale.client.dni}) / {self.date_joined.strftime('%Y-%m-%d')} / ${f'{self.debt:.2f}'}"
+        return (f"{self.documento()['numero']} · {self.sale.client.user.names} ({self.sale.client.dni}) / "
+                f"{self.date_joined.strftime('%Y-%m-%d')} / ${f'{self.debt:.2f}'}")
+
+    # Etapa 2 (O2): saldo = deuda − abonos vigentes (los abonos automáticos no se borran: se anulan); core/pos/cxc.py.
+    def saldo_actual(self):
+        abonado = self.paymentsctacollect_set.filter(anulado_en__isnull=True).aggregate(total=Sum('valor'))['total']
+        return (Decimal(self.debt) - Decimal(abonado or 0)).quantize(CENTAVO, rounding=ROUND_HALF_UP)
 
     def validate_debt(self):
+        from core.pos import cxc
+        cxc.recalcular(self)
+
+    @property
+    def es_de_nota_debito(self):
+        if hasattr(self, 'nd_id'):   # anotación de cxc.listado(): sin consulta por fila
+            return self.nd_id is not None
+        from django.core.exceptions import ObjectDoesNotExist
         try:
-            saldo = self.paymentsctacollect_set.aggregate(result=Coalesce(Sum('valor'), 0.00, output_field=FloatField()))['result']
-            self.saldo = float(self.debt) - float(saldo)
-            self.state = self.saldo > 0.00
-            self.save()
-        except:
-            pass
+            return self.nota_debito is not None
+        except ObjectDoesNotExist:
+            return False
+
+    def documento(self):
+        """Comprobante que originó la deuda: la factura o, en una CxC creada por una nota de débito, esa nota."""
+        if hasattr(self, 'nd_id'):
+            if self.nd_id is not None:
+                return {'tipo': 'nota_debito', 'id': self.nd_id, 'numero': self.nd_numero}
+        elif self.es_de_nota_debito:
+            return {'tipo': 'nota_debito', 'id': self.nota_debito.pk, 'numero': self.nota_debito.voucher_number_full}
+        return {'tipo': 'factura', 'id': self.sale_id, 'numero': self.sale.voucher_number_full}
+
+    def estado(self):
+        if hasattr(self, 'tiene_anulacion'):
+            anulada = self.tiene_anulacion
+        else:
+            anulada = self.paymentsctacollect_set.filter(tipo='anulacion', anulado_en__isnull=True).exists()
+        if anulada:
+            return 'anulada'
+        if hasattr(self, 'abonado'):
+            saldo = Decimal(self.debt) - Decimal(self.abonado or 0)
+        else:
+            saldo = self.saldo_actual()
+        return 'pagada' if saldo <= 0 else 'pendiente'
 
     def toJSON(self):
         item = model_to_dict(self)
@@ -1175,6 +1245,10 @@ class CtasCollect(TenantModel):
         item['end_date'] = self.end_date.strftime('%Y-%m-%d')
         item['debt'] = float(self.debt)
         item['saldo'] = float(self.saldo)
+        item['saldo_texto'] = f'{self.saldo:.2f}'
+        item['documento'] = self.documento()
+        estado = self.estado()
+        item['estado'] = {'id': estado, 'name': self.ESTADOS[estado]}
         return item
 
     class Meta:
@@ -1193,14 +1267,40 @@ class PaymentsCtaCollect(TenantModel):
     date_joined = models.DateField(default=datetime.now, verbose_name='Fecha de registro')
     description = models.CharField(max_length=500, null=True, blank=True, verbose_name='Detalles')
     valor = models.DecimalField(max_digits=9, decimal_places=2, default=0.00, verbose_name='Valor')
+    # Etapa 2 (O2): tipo y medio del abono. Los automáticos (NC, retención, anulación) no se borran: se anulan (anulado_en).
+    tipo = models.CharField(max_length=15, choices=TIPO_ABONO, default='cobro', verbose_name='Tipo de abono')
+    medio_pago = models.CharField(max_length=15, choices=MEDIOS_DE_PAGO, blank=True, default='', verbose_name='Medio de pago')
+    referencia = models.CharField(max_length=100, blank=True, default='', verbose_name='Referencia (n.º de transferencia, cheque o comprobante)')
+    registrado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', verbose_name='Registrado por')
+    registrado_en = models.DateTimeField(null=True, blank=True, verbose_name='Registrado el')
+    anulado_en = models.DateTimeField(null=True, blank=True, verbose_name='Abono anulado el')
+    anulado_motivo = models.CharField(max_length=300, blank=True, default='', verbose_name='Motivo de la anulación del abono')
 
     def __str__(self):
-        return self.ctas_collect.id
+        return f'Abono {self.pk} de la cuenta {self.ctas_collect_id}'
+
+    def documento(self):
+        """Número de la nota de crédito o de la retención recibida que generó el abono ('' en los demás)."""
+        from django.core.exceptions import ObjectDoesNotExist
+        try:
+            if self.tipo == 'nota_credito':
+                return self.nota_credito.voucher_number_full
+            if self.tipo == 'retencion':
+                return self.retencion_recibida.numero
+        except ObjectDoesNotExist:
+            pass
+        return ''
 
     def toJSON(self):
-        item = model_to_dict(self, exclude=['ctas_collect'])
+        item = model_to_dict(self, exclude=['ctas_collect', 'registrado_por', 'registrado_en', 'anulado_en', 'anulado_motivo'])
         item['date_joined'] = self.date_joined.strftime('%Y-%m-%d')
         item['valor'] = float(self.valor)
+        item['valor_texto'] = f'{self.valor:.2f}'
+        item['tipo'] = {'id': self.tipo, 'name': self.get_tipo_display()}
+        item['medio_pago'] = {'id': self.medio_pago, 'name': self.get_medio_pago_display() if self.medio_pago else 'Sin dato'}
+        item['referencia'] = self.referencia
+        item['documento'] = self.documento()
+        item['anulado'] = self.anulado_en is not None
         return item
 
     def save(self, force_insert=False, force_update=False, using=None,
@@ -1209,7 +1309,8 @@ class PaymentsCtaCollect(TenantModel):
             self.description = 's/n'
         elif len(self.description) == 0:
             self.description = 's/n'
-        super(PaymentsCtaCollect, self).save()
+        super(PaymentsCtaCollect, self).save(force_insert=force_insert, force_update=force_update, using=using,
+                                             update_fields=update_fields)
 
     class Meta:
         verbose_name = 'Pago Cuenta por cobrar'
@@ -1513,9 +1614,32 @@ class CreditNote(TenantModel):
     xml_signed = models.TextField(null=True, blank=True, verbose_name='XML firmado')
     signed_at = models.DateTimeField(null=True, blank=True, verbose_name='Firmado el')
     sri_sent_at = models.DateTimeField(null=True, blank=True, verbose_name='Enviado al SRI el')
+    # Marca «Anulado en el SRI» (O2, core/pos/anulados.py), como en la factura.
+    anulado_sri_fecha = models.DateField(null=True, blank=True, verbose_name='Anulado en el SRI el')
+    anulado_sri_motivo = models.CharField(max_length=300, blank=True, default='', verbose_name='Motivo de la anulación')
+    anulado_sri_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', verbose_name='Marcado por')
+    anulado_sri_registrado_en = models.DateTimeField(null=True, blank=True, verbose_name='Marcado en el sistema el')
+    anulado_sri_stock = models.BooleanField(default=False, verbose_name='Se ajustó el inventario al anular')
+    # Ajuste de la cuenta por cobrar de la factura al autorizarse (O2, core/pos/cxc.py). Las notas anteriores a la regla
+    # quedan en 'no_aplica' (migración pos 0030): lo histórico no se recalcula.
+    cxc_ajuste = models.CharField(max_length=12, choices=AJUSTE_CXC, default='pendiente', verbose_name='Ajuste de la cuenta por cobrar')
+    abono_cxc = models.OneToOneField('pos.PaymentsCtaCollect', null=True, blank=True, on_delete=models.PROTECT,
+                                     related_name='nota_credito', verbose_name='Abono en la cuenta por cobrar')
 
     def __str__(self):
         return self.motive
+
+    @property
+    def anulado_en_sri(self):
+        return self.anulado_sri_fecha is not None
+
+    def excedente_cxc(self):
+        """Parte del total que no se abonó a la cuenta por cobrar (distinta de 0 en 'parcial' y 'sin_saldo'). Una nota
+        anulada en el SRI no deja saldo a favor del cliente."""
+        if self.cxc_ajuste not in ('parcial', 'sin_saldo') or self.anulado_sri_fecha is not None:
+            return Decimal('0.00')
+        abonado = self.abono_cxc.valor if self.abono_cxc_id else Decimal('0')
+        return (Decimal(self.total) - Decimal(abonado)).quantize(CENTAVO, rounding=ROUND_HALF_UP)
 
     def get_iva_percent(self):
         return int(self.iva * 100)
@@ -1595,8 +1719,10 @@ class CreditNote(TenantModel):
         ElementTree.SubElement(xml_info_invoice, 'tipoIdentificacionComprador').text = self.sale.client.identification_type
         ElementTree.SubElement(xml_info_invoice, 'razonSocialComprador').text = self.sale.client.user.names
         ElementTree.SubElement(xml_info_invoice, 'identificacionComprador').text = self.sale.client.dni
-        if not self.company.special_taxpayer == '000':
-            ElementTree.SubElement(xml_info_invoice, 'contribuyenteEspecial').text = self.company.special_taxpayer
+        # El XSD de la NC 1.1.0 exige de 3 a 13 caracteres: con special_taxpayer '' (registro) se escribía vacío.
+        especial = (self.company.special_taxpayer or '').strip()
+        if self.company.es_contribuyente_especial and 3 <= len(especial) <= 13:
+            ElementTree.SubElement(xml_info_invoice, 'contribuyenteEspecial').text = especial
         ElementTree.SubElement(xml_info_invoice, 'obligadoContabilidad').text = self.company.obligated_accounting
         ElementTree.SubElement(xml_info_invoice, 'codDocModificado').text = self.sale.receipt.voucher_type
         ElementTree.SubElement(xml_info_invoice, 'numDocModificado').text = self.sale.voucher_number_full
@@ -1624,8 +1750,11 @@ class CreditNote(TenantModel):
         return '<?xml version="1.0" encoding="UTF-8"?>' + ElementTree.tostring(root, encoding='unicode'), access_key
 
     def toJSON(self):
-        item = model_to_dict(self, exclude=EXCLUIR_DEL_JSON)
+        item = model_to_dict(self, exclude=EXCLUIR_DEL_JSON + ANULADO_SRI_PRIVADO + ('abono_cxc',))
         item['emission_date'] = self.emission_date.strftime('%Y-%m-%d') if self.emission_date else ''
+        item['anulado_sri'] = {'fecha': self.anulado_sri_fecha.strftime('%Y-%m-%d')} if self.anulado_sri_fecha else None
+        item['cxc_ajuste'] = {'id': self.cxc_ajuste, 'name': self.get_cxc_ajuste_display()}
+        item['excedente_cxc'] = f'{self.excedente_cxc():.2f}'
         item['date_joined'] = self.date_joined.strftime('%Y-%m-%d')
         item['sale'] = self.sale.toJSON()
         item['company'] = self.company.toJSON()
@@ -1699,12 +1828,14 @@ class CreditNote(TenantModel):
         verbose_name = 'Nota de Credito'
         verbose_name_plural = 'Notas de Credito'
         constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='nota_numero_unico_por_secuencia')]
+        indexes = [models.Index(fields=['company', 'emission_date'], name='nc_emision')]
         default_permissions = ()
         permissions = (
             ('view_credit_note', 'Can view Nota de Credito'),
             ('add_credit_note', 'Can add Nota de Credito'),
             ('delete_credit_note', 'Can delete Nota de Credito'),
             ('view_credit_note_client', 'Can view_credit_note_client Nota de Credito'),
+            ('change_anulado_sri_creditnote', 'Puede marcar notas de crédito como anuladas en el SRI'),
         )
 
 

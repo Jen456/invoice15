@@ -68,7 +68,8 @@ def tipo_identificacion(identificacion):
 
 
 def retencion_vigente(compra):
-    return Retencion.objects.filter(purchase=compra).exclude(status__in=NO_CUENTAN).first()
+    # Etapa 2 (O2): una retención anulada en el SRI deja de contar y la compra admite una nueva.
+    return Retencion.objects.filter(purchase=compra, anulado_sri_fecha__isnull=True).exclude(status__in=NO_CUENTAN).first()
 
 
 def retenciones_autorizadas(compra):
@@ -77,7 +78,7 @@ def retenciones_autorizadas(compra):
     Es la única regla de «retención que cuenta» (Compras no filtra el estado por su cuenta); O2 le añade el filtro de
     las anuladas en el SRI.
     """
-    return Retencion.objects.filter(purchase=compra, status__in=AUTORIZADOS)
+    return Retencion.objects.filter(purchase=compra, status__in=AUTORIZADOS, anulado_sri_fecha__isnull=True)
 
 
 # Fuera de este módulo (Compras, Ventas) el catálogo se consulta solo con estas dos funciones: hay una fila por

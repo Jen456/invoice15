@@ -5,6 +5,7 @@ var report = {
             'action': 'search_report',
             'start_date': input_date_range.data('daterangepicker').startDate.format('YYYY-MM-DD'),
             'end_date': input_date_range.data('daterangepicker').endDate.format('YYYY-MM-DD'),
+            'alcance': $('select[name="alcance"]').val() || 'declarables',
         };
 
         if (all) {
@@ -22,7 +23,7 @@ var report = {
             dataType: 'json',
             success: function (request) {
                 if (!request.hasOwnProperty('error')) {
-                    fpaGrafico.pastel('container', request.map(function (r) { return r.name; }), request.map(function (r) { return r.y; }), {formato: 'dolares', titulo: 'Compras, ventas y gastos del período'});
+                    fpaGrafico.pastel('container', request.map(function (r) { return r.name; }), request.map(function (r) { return r.y; }), {formato: 'dolares', titulo: 'Ventas (por emisión) frente a compras y gastos (por registro)'});
                     return false;
                 }
                 message_error(request.error);
@@ -57,6 +58,11 @@ $(function () {
 
     $('.btnSearchAll').on('click', function () {
         report.list(true);
+    });
+
+    // Etapa 2 (O2): qué comprobantes se muestran (por defecto, autorizados en producción).
+    $('select[name="alcance"]').on('change', function () {
+        report.list(false);
     });
 
     report.list(false);

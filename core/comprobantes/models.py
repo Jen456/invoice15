@@ -13,7 +13,7 @@ from django.db import models, transaction
 from django.db.models import F, Q
 from django.utils import timezone
 
-from core.pos.choices import ENVIRONMENT_TYPE, INVOICE_STATUS
+from core.pos.choices import AJUSTE_CXC, ENVIRONMENT_TYPE, INVOICE_STATUS
 from core.tenancy.models_base import TenantModel
 from core.tenancy.storage import CompanyPath
 
@@ -162,9 +162,19 @@ class ComprobanteElectronico(TenantModel):
     authorization_date = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de autorización')
     xml_authorized = models.FileField(upload_to=CompanyPath('comprobantes/xml'), null=True, blank=True, verbose_name='XML autorizado')
     pdf_authorized = models.FileField(upload_to=CompanyPath('comprobantes/pdf'), null=True, blank=True, verbose_name='RIDE')
+    # Marca «Anulado en el SRI» (O2, core/pos/anulados.py): registra una anulación hecha en SRI en línea; status no cambia.
+    anulado_sri_fecha = models.DateField(null=True, blank=True, verbose_name='Anulado en el SRI el')
+    anulado_sri_motivo = models.CharField(max_length=300, blank=True, default='', verbose_name='Motivo de la anulación')
+    anulado_sri_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                        related_name='+', verbose_name='Marcado por')
+    anulado_sri_registrado_en = models.DateTimeField(null=True, blank=True, verbose_name='Marcado en el sistema el')
 
     class Meta:
         abstract = True
+
+    @property
+    def anulado_en_sri(self):
+        return self.anulado_sri_fecha is not None
 
     def save(self, *args, **kwargs):
         nuevo = self.pk is None
@@ -224,7 +234,8 @@ class Retencion(ComprobanteElectronico):
         ordering = ('-id',)
         default_permissions = ()
         permissions = (('view_retencion', 'Puede ver retenciones'), ('add_retencion', 'Puede emitir retenciones'),
-                       ('delete_retencion', 'Puede eliminar retenciones no enviadas'))
+                       ('delete_retencion', 'Puede eliminar retenciones no enviadas'),
+                       ('change_anulado_sri_retencion', 'Puede marcar retenciones como anuladas en el SRI'))
         constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='retencion_numero_unico_por_secuencia')]
 
     def __str__(self):
@@ -266,6 +277,7 @@ class Retencion(ComprobanteElectronico):
             'total_retenido': float(self.total_retenido), 'ambiente': self.get_environment_type_display(),
             'status': {'id': self.status, 'name': self.get_status_display()}, 'clave': self.access_code or '',
             'pdf': self.get_pdf_authorized(), 'xml': self.get_xml_authorized(),
+            'anulado_sri': {'fecha': self.anulado_sri_fecha.strftime('%Y-%m-%d')} if self.anulado_sri_fecha else None,
         }
 
 
@@ -318,7 +330,8 @@ class LiquidacionCompra(ComprobanteElectronico):
         default_permissions = ()
         permissions = (('view_liquidacioncompra', 'Puede ver liquidaciones de compra'),
                        ('add_liquidacioncompra', 'Puede emitir liquidaciones de compra'),
-                       ('delete_liquidacioncompra', 'Puede eliminar liquidaciones de compra no enviadas'))
+                       ('delete_liquidacioncompra', 'Puede eliminar liquidaciones de compra no enviadas'),
+                       ('change_anulado_sri_liquidacioncompra', 'Puede marcar liquidaciones de compra como anuladas en el SRI'))
         constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='liquidacion_numero_unico_por_secuencia')]
 
     def __str__(self):
@@ -387,6 +400,10 @@ class NotaDebito(ComprobanteElectronico):
     valor_iva = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='IVA')
     valor_total = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='Valor total')
     forma_pago = models.CharField(max_length=2, default='20', verbose_name='Forma de pago')
+    # Cuenta por cobrar propia que crea la nota al autorizarse (O2, core/pos/cxc.py); las anteriores quedan en 'no_aplica'.
+    cxc_ajuste = models.CharField(max_length=12, choices=AJUSTE_CXC, default='pendiente', verbose_name='Cuenta por cobrar')
+    cuenta_por_cobrar = models.OneToOneField('pos.CtasCollect', null=True, blank=True, on_delete=models.PROTECT,
+                                             related_name='nota_debito', verbose_name='Cuenta por cobrar creada')
 
     class Meta:
         verbose_name = 'Nota de débito'
@@ -394,7 +411,8 @@ class NotaDebito(ComprobanteElectronico):
         ordering = ('-id',)
         default_permissions = ()
         permissions = (('view_notadebito', 'Puede ver notas de débito'), ('add_notadebito', 'Puede emitir notas de débito'),
-                       ('delete_notadebito', 'Puede eliminar notas de débito no enviadas'))
+                       ('delete_notadebito', 'Puede eliminar notas de débito no enviadas'),
+                       ('change_anulado_sri_notadebito', 'Puede marcar notas de débito como anuladas en el SRI'))
         constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='nota_debito_numero_unico_por_secuencia')]
 
     def __str__(self):
@@ -463,7 +481,8 @@ class GuiaRemision(ComprobanteElectronico):
         ordering = ('-id',)
         default_permissions = ()
         permissions = (('view_guiaremision', 'Puede ver guías de remisión'), ('add_guiaremision', 'Puede emitir guías de remisión'),
-                       ('delete_guiaremision', 'Puede eliminar guías de remisión no enviadas'))
+                       ('delete_guiaremision', 'Puede eliminar guías de remisión no enviadas'),
+                       ('change_anulado_sri_guiaremision', 'Puede marcar guías de remisión como anuladas en el SRI'))
         constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='guia_numero_unico_por_secuencia')]
 
     def __str__(self):
@@ -493,3 +512,99 @@ class GuiaDetalle(TenantModel):
         verbose_name_plural = 'Detalles de guía de remisión'
         ordering = ('id',)
         default_permissions = ()
+
+
+# ------------------------------------------------------------------ Etapa 2 (O2): retenciones recibidas de clientes
+
+class RetencionRecibida(TenantModel):
+    """Comprobante de retención (07) que un cliente emitió a la empresa sobre una de sus facturas. Un registro por factura
+    sustento. No se emite ni se envía al SRI: se registra a mano o desde un 07 importado."""
+    ORIGENES = (('manual', 'Registro manual'), ('importado', 'Importado desde XML'))
+    ESTADOS = (('registrada', 'Registrada'), ('anulada', 'Anulada'))
+    VERIFICACION = (('sin_verificar', 'Registrada a mano, sin verificar en el SRI'),
+                    ('declarada_en_archivo', 'Autorización declarada en el archivo (sin verificar)'),
+                    ('verificada_sri', 'Verificada en el SRI'))
+    CXC = (('aplicada', 'Abonada a la cuenta por cobrar'), ('parcial', 'Abonada en parte: el resto excede el saldo'),
+           ('sin_cxc', 'Venta de contado: sin cuenta por cobrar'), ('sin_saldo', 'La cuenta por cobrar ya estaba saldada'),
+           ('revertida', 'Abono revertido al anular'))
+
+    venta = models.ForeignKey('pos.Sale', on_delete=models.PROTECT, related_name='retenciones_recibidas', verbose_name='Factura (documento sustento)')
+    cliente = models.ForeignKey('pos.Client', on_delete=models.PROTECT, related_name='+', verbose_name='Cliente (agente de retención)')
+    emisor_identificacion = models.CharField(max_length=13, verbose_name='RUC del agente de retención')
+    emisor_razon_social = models.CharField(max_length=300, verbose_name='Agente de retención')
+    establecimiento = models.CharField(max_length=3, verbose_name='Establecimiento')
+    punto_emision = models.CharField(max_length=3, verbose_name='Punto de emisión')
+    secuencial = models.CharField(max_length=9, verbose_name='Secuencial')
+    numero = models.CharField(max_length=17, verbose_name='Número')                       # 001-001-000000123
+    autorizacion = models.CharField(max_length=49, verbose_name='Autorización')           # 49 (clave), 37 o 10 dígitos
+    clave_acceso = models.CharField(max_length=49, blank=True, default='', verbose_name='Clave de acceso')
+    fecha_emision = models.DateField(verbose_name='Fecha de emisión')
+    periodo_fiscal = models.CharField(max_length=7, verbose_name='Período fiscal')         # MM/AAAA
+    ambiente = models.PositiveSmallIntegerField(choices=ENVIRONMENT_TYPE, verbose_name='Ambiente')
+    cod_doc_sustento = models.CharField(max_length=2, default='01', verbose_name='Tipo de documento sustento')
+    num_doc_sustento = models.CharField(max_length=15, verbose_name='Número del documento sustento')   # 15 dígitos, sin guiones
+    fecha_doc_sustento = models.DateField(verbose_name='Fecha del documento sustento')
+    total_renta = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Retenido de renta')
+    total_iva = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Retenido de IVA')
+    total_retenido = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Total retenido')
+    origen = models.CharField(max_length=10, choices=ORIGENES, default='manual', verbose_name='Origen')
+    documento_importado = models.ForeignKey('importacion.DocumentoImportado', null=True, blank=True, on_delete=models.PROTECT,
+                                            related_name='retenciones_recibidas', verbose_name='Documento importado')
+    verificacion = models.CharField(max_length=25, choices=VERIFICACION, default='sin_verificar', verbose_name='Verificación')
+    estado = models.CharField(max_length=10, choices=ESTADOS, default='registrada', verbose_name='Estado')
+    cxc_estado = models.CharField(max_length=10, choices=CXC, blank=True, default='', verbose_name='Cuenta por cobrar')
+    abono = models.OneToOneField('pos.PaymentsCtaCollect', null=True, blank=True, on_delete=models.PROTECT,
+                                 related_name='retencion_recibida', verbose_name='Abono en la cuenta por cobrar')
+    advertencias = models.JSONField(default=list, blank=True)                               # [{'codigo', 'texto'}] solo str
+    notas = models.CharField(max_length=300, blank=True, default='', verbose_name='Notas')
+    registrado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+', verbose_name='Registrado por')
+    registrado_en = models.DateTimeField(default=timezone.now, verbose_name='Registrado el')
+    anulado_sri_fecha = models.DateField(null=True, blank=True, verbose_name='Anulada el')
+    anulado_sri_motivo = models.CharField(max_length=300, blank=True, default='', verbose_name='Motivo de la anulación')
+    anulado_sri_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    anulado_sri_registrado_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Retención recibida'
+        verbose_name_plural = 'Retenciones recibidas'
+        ordering = ('-fecha_emision', '-id')
+        default_permissions = ()
+        permissions = (('view_retencionrecibida', 'Puede ver retenciones recibidas'),
+                       ('add_retencionrecibida', 'Puede registrar retenciones recibidas'),
+                       ('change_retencionrecibida', 'Puede anular el registro de una retención recibida'))
+        constraints = [
+            models.UniqueConstraint(fields=['company', 'emisor_identificacion', 'establecimiento', 'punto_emision', 'secuencial', 'venta'],
+                                    condition=models.Q(estado='registrada'), name='retencion_recibida_unica'),
+            models.UniqueConstraint(fields=['company', 'clave_acceso', 'venta'],
+                                    condition=models.Q(estado='registrada') & ~models.Q(clave_acceso=''),
+                                    name='retencion_recibida_clave_unica'),
+            models.UniqueConstraint(fields=['company', 'documento_importado', 'venta'],
+                                    condition=models.Q(estado='registrada') & models.Q(documento_importado__isnull=False),
+                                    name='retencion_recibida_documento_unica'),
+            models.CheckConstraint(condition=models.Q(total_retenido__gte=0) & models.Q(total_renta__gte=0) & models.Q(total_iva__gte=0),
+                                   name='retencion_recibida_totales_no_negativos'),
+        ]
+        indexes = [models.Index(fields=['company', 'fecha_emision'], name='retrec_fecha'),
+                   models.Index(fields=['company', 'venta'], name='retrec_venta')]
+
+    def __str__(self):
+        return f'Retención recibida {self.numero} · {self.emisor_razon_social}'
+
+
+class RetencionRecibidaDetalle(TenantModel):
+    retencion = models.ForeignKey(RetencionRecibida, on_delete=models.CASCADE, related_name='detalles')
+    impuesto = models.CharField(max_length=1, choices=CodigoRetencion.IMPUESTOS, verbose_name='Impuesto')   # 1 renta, 2 IVA
+    codigo = models.CharField(max_length=5, verbose_name='Código')        # copia (no FK): el catálogo cambia con D0
+    concepto = models.CharField(max_length=300, blank=True, default='', verbose_name='Concepto')
+    base_imponible = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Base imponible')
+    porcentaje = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Porcentaje')
+    valor_retenido = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Valor retenido')
+
+    class Meta:
+        verbose_name = 'Detalle de retención recibida'
+        verbose_name_plural = 'Detalles de retención recibida'
+        ordering = ('impuesto', 'id')
+        default_permissions = ()
+        constraints = [models.CheckConstraint(condition=models.Q(base_imponible__gt=0) & models.Q(porcentaje__gte=0)
+                                              & models.Q(porcentaje__lte=100) & models.Q(valor_retenido__gte=0),
+                                              name='retencion_recibida_detalle_valido')]

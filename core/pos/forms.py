@@ -452,16 +452,25 @@ class SaleForm(forms.ModelForm):
 
 
 class PaymentsCtaCollectForm(forms.ModelForm):
+    # Etapa 2 (O2): campos explícitos (con '__all__' se mostrarían los internos: tipo, registrado_*, anulado_*) y medio
+    # de pago obligatorio sin valor inicial. El cobro lo valida y guarda core/pos/cxc.registrar_cobro.
     def __init__(self, *args, **kwargs):
+        from core.pos.choices import MEDIOS_DE_PAGO
         super().__init__(*args, **kwargs)
         self.fields['valor'].widget.attrs['autofocus'] = True
-        self.fields['ctas_collect'].queryset = PaymentsCtaCollect.objects.none()
+        self.fields['ctas_collect'].queryset = CtasCollect.objects.none()
+        self.fields['medio_pago'].required = True
+        self.fields['medio_pago'].choices = [('', 'Elige el medio de pago')] + list(MEDIOS_DE_PAGO)
+        self.fields['referencia'].help_text = 'Obligatoria si el medio es un cheque.'
 
     class Meta:
         model = PaymentsCtaCollect
-        fields = '__all__'
+        fields = ('ctas_collect', 'date_joined', 'valor', 'medio_pago', 'referencia', 'description')
         widgets = {
             'ctas_collect': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
+            'medio_pago': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
+            'referencia': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'off',
+                                                 'placeholder': 'N.º de transferencia, cheque o comprobante'}),
             'date_joined': forms.DateInput(format='%Y-%m-%d', attrs={
                 'class': 'form-control datetimepicker-input',
                 'id': 'date_joined',
@@ -483,6 +492,17 @@ class PaymentsCtaCollectForm(forms.ModelForm):
         }
 
 
+# Etapa 2 (O2): coherencia del tipo de contribuyente con la contabilidad y el RUC (solo si el tipo está indicado).
+MENSAJES_EMPRESA = {
+    'contabilidad_obligada': 'Las sociedades y las personas naturales obligadas llevan contabilidad: marca «Obligado a llevar '
+                             'contabilidad: Sí».',
+    'contabilidad_no_obligada': 'Una persona natural no obligada a llevar contabilidad tiene «Obligado a llevar contabilidad: '
+                                'No».',
+    'ruc_persona_natural': 'El RUC {ruc} es de persona natural (tercer dígito {d}): no corresponde a una sociedad.',
+    'ruc_sociedad': 'El RUC {ruc} es de sociedad o entidad pública (tercer dígito {d}).',
+}
+
+
 class CompanyForm(forms.ModelForm):
     # Se pueden guardar los datos de la empresa sin firma ni correo propio;
     # la firma (.p12) solo se acepta con un plan pagado vigente.
@@ -499,6 +519,11 @@ class CompanyForm(forms.ModelForm):
             if self.instance.pk is not None and getattr(self.instance, name):
                 self.fields[name].widget.attrs['placeholder'] = 'Guardada. Déjala vacía para conservarla'
                 self.fields[name].help_text = 'Por seguridad no se muestra. Escribe una nueva solo si quieres cambiarla.'
+        # Etapa 2 (O2): sin valor inicial nuevo; la opción vacía es «Sin indicar» (la sugerencia no se guarda sola).
+        from core.pos.choices import PERIODICIDAD_IVA, TIPO_CONTRIBUYENTE
+        for name, opciones in (('tipo_contribuyente', TIPO_CONTRIBUYENTE), ('periodicidad_iva', PERIODICIDAD_IVA)):
+            if name in self.fields:
+                self.fields[name].choices = [('', 'Sin indicar')] + list(opciones)
         for i in self.visible_fields():
             if type(i.field) in [forms.CharField, forms.ImageField, forms.FileField, forms.IntegerField]:
                 i.field.widget.attrs.update({
@@ -524,6 +549,8 @@ class CompanyForm(forms.ModelForm):
             'environment_type': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
             'emission_type': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
             'retention_agent': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
+            'tipo_contribuyente': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
+            'periodicidad_iva': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
             'mobile': forms.TextInput(attrs={'placeholder': 'Ingrese un teléfono celular'}),
             'phone': forms.TextInput(attrs={'placeholder': 'Ingrese un teléfono convencional'}),
             'email': forms.TextInput(attrs={'placeholder': 'Ingrese un email'}),
@@ -564,7 +591,25 @@ class CompanyForm(forms.ModelForm):
         for name in self.OPCIONALES[1:]:
             if cleaned.get(name) is None:
                 cleaned[name] = ''
+        self._validar_tipo_contribuyente(cleaned)
         return cleaned
+
+    def _validar_tipo_contribuyente(self, cleaned):
+        """Etapa 2 (O2): el tipo de contribuyente frente a «Obligado a llevar contabilidad» y al tercer dígito del RUC."""
+        tipo = cleaned.get('tipo_contribuyente') or ''
+        if not tipo:
+            return
+        obligado = cleaned.get('obligated_accounting')
+        if tipo in ('sociedad', 'pn_obligada') and obligado == 'NO':
+            self.add_error('tipo_contribuyente', MENSAJES_EMPRESA['contabilidad_obligada'])
+        elif tipo == 'pn_no_obligada' and obligado == 'SI':
+            self.add_error('tipo_contribuyente', MENSAJES_EMPRESA['contabilidad_no_obligada'])
+        ruc = (cleaned.get('ruc') or self.instance.ruc or '').strip()
+        tercero = ruc[2] if len(ruc) >= 3 else ''
+        if tipo == 'sociedad' and tercero and tercero in '012345':
+            self.add_error('tipo_contribuyente', MENSAJES_EMPRESA['ruc_persona_natural'].format(ruc=ruc, d=tercero))
+        elif tipo.startswith('pn_') and tercero in ('6', '9'):
+            self.add_error('tipo_contribuyente', MENSAJES_EMPRESA['ruc_sociedad'].format(ruc=ruc, d=tercero))
 
     def save(self, commit=True):
         data = {}

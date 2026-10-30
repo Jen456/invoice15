@@ -1,5 +1,24 @@
 var tblCreditNote;
 var input_date_range;
+var fpaPermisos = null;
+
+// Etapa 2 (O2): escape del texto que se inserta en HTML y permisos del rol (json_script de la plantilla).
+function fpaTexto(x) {
+    return $('<div>').text(x === null || x === undefined ? '' : String(x)).html();
+}
+
+function fpaPermiso(codigo) {
+    if (fpaPermisos === null) {
+        var nodo = document.getElementById('fpa-permisos');
+        fpaPermisos = nodo ? JSON.parse(nodo.textContent) : {};
+    }
+    return fpaPermisos[codigo] === true;
+}
+
+function fpaFechaCorta(iso) {
+    var partes = String(iso || '').split('-');
+    return partes.length === 3 ? partes[2] + '/' + partes[1] + '/' + partes[0] : '';
+}
 var credit_note = {
     list: function (all) {
         var parameters = {
@@ -40,25 +59,41 @@ var credit_note = {
             ],
             columnDefs: [
                 {
+                    targets: [1, 2, 3, 4],
+                    render: $.fn.dataTable.render.text()
+                },
+                {
                     targets: [-6],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        var name = row.status.name;
+                        var name = fpaTexto(row.status.name);
+                        // Etapa 2 (O2): ajuste de la cuenta por cobrar, saldo a favor y marca de anulada.
+                        var cxc = '';
+                        if (row.cxc_ajuste) {
+                            cxc = '<br><small class="text-muted">Cuenta por cobrar: ' + fpaTexto(row.cxc_ajuste.name) + '</small>';
+                        }
+                        if (row.excedente_cxc && row.excedente_cxc !== '0.00') {
+                            cxc += '<br><small class="text-warning">Saldo a favor del cliente: $' + fpaTexto(row.excedente_cxc) + '</small>';
+                        }
+                        if (row.anulado_sri) {
+                            return '<span class="badge badge-secondary badge-pill">Anulada en el SRI (' + fpaTexto(fpaFechaCorta(row.anulado_sri.fecha)) + ')</span>' + cxc;
+                        }
                         switch (row.status.id) {
                             case "without_authorizing":
-                                return '<span class="badge badge-warning badge-pill">' + name + '</span>';
+                                return '<span class="badge badge-warning badge-pill">' + name + '</span>' + cxc;
                             case "in_process":
-                                return '<span class="badge badge-info badge-pill">' + name + '</span>';
+                                return '<span class="badge badge-info badge-pill">' + name + '</span>' + cxc;
                             case "returned":
                             case "not_authorized":
-                                return '<span class="badge badge-danger badge-pill">' + name + '</span>';
+                                return '<span class="badge badge-danger badge-pill">' + name + '</span>' + cxc;
                             case "authorized":
                             case "authorized_and_sent_by_email":
-                                return '<span class="badge badge-success badge-pill">' + name + '</span> ';
+                                return '<span class="badge badge-success badge-pill">' + name + '</span> ' + cxc;
                             case "sequential_registered_error":
                             case "canceled":
-                                return '<span class="badge badge-danger badge-pill">' + name + '</span>';
+                                return '<span class="badge badge-danger badge-pill">' + name + '</span>' + cxc;
                         }
+                        return name + cxc;
                     }
                 },
                 {
@@ -81,7 +116,14 @@ var credit_note = {
                             buttons += '<a rel="generate_invoice" class="dropdown-item"><i class="fas fa-sync-alt"></i> Consultar autorización en el SRI</a>';
                         } else if (['without_authorizing', 'returned', 'not_authorized'].includes(row.status.id)) {
                             buttons += '<a rel="generate_invoice" class="dropdown-item"><i class="fas fa-clipboard-check"></i> Enviar al SRI</a>';
+                        } else if (['authorized', 'authorized_and_sent_by_email'].includes(row.status.id) && row.anulado_sri) {
+                            // Etapa 2 (O2): anulada en el SRI: sin correo; los documentos siguen disponibles.
+                            buttons += '<a href="' + row.pdf_authorized + '" target="_blank" class="dropdown-item"><i class="fa-solid fa-file-pdf"></i> Imprimir pdf</a>';
+                            buttons += '<a href="' + row.xml_authorized + '" target="_blank" class="dropdown-item"><i class="fas fa-file-code"></i> Descargar xml</a>';
                         } else if (['authorized', 'authorized_and_sent_by_email'].includes(row.status.id)) {
+                            if (fpaPermiso('change_anulado_sri_creditnote')) {
+                                buttons += '<a href="/comprobantes/anulados/nota-credito/' + parseInt(row.id, 10) + '/update/" class="dropdown-item"><i class="fas fa-ban"></i> Marcar como anulada en el SRI</a>';
+                            }
                             buttons += '<a rel="send_invoice_by_email" class="dropdown-item"><i class="fas fa-envelope"></i> Enviar comprobantes por email</a>';
                             buttons += '<a href="' + row.pdf_authorized + '" target="_blank" class="dropdown-item"><i class="fa-solid fa-file-pdf"></i> Imprimir pdf</a>';
                             buttons += '<a href="' + row.xml_authorized + '" target="_blank" class="dropdown-item"><i class="fas fa-file-code"></i> Descargar xml</a>';

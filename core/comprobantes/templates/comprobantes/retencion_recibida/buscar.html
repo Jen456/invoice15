@@ -1,0 +1,35 @@
+{% extends 'skin.html' %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item"><a href="{% url 'comprobantes_retenciones_recibidas' %}"><i class="fas fa-hand-holding-usd"></i> Retenciones recibidas</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Elegir factura</li>
+{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-retencion-recibida-buscar">
+    <header class="fp-welcome"><span class="fp-eyebrow">Retención recibida · paso 1</span><h1>¿Sobre qué factura te retuvieron?</h1>
+        <p>Busca la factura por su número, el nombre del cliente o su RUC. Sin búsqueda se muestran tus facturas a crédito más recientes que todavía tienen saldo.</p></header>
+    <form method="get" class="form-row align-items-end mb-3">
+        <div class="form-group col-12 col-md-8"><label for="f-q">Número de factura, cliente o RUC</label><input type="search" id="f-q" name="q" value="{{ q }}" maxlength="100" class="form-control"></div>
+        <div class="form-group col-12 col-md-4"><button type="submit" class="btn btn-outline-secondary btn-block">Buscar</button></div>
+    </form>
+    <div class="table-responsive fp-retencion-listado">
+        <table class="table table-sm table-bordered bg-white fp-retencion-tabla">
+            <thead><tr><th scope="col">Factura</th><th scope="col">Fecha de emisión</th><th scope="col">Cliente</th><th scope="col" class="text-right">Total</th><th scope="col" class="text-right">Saldo por cobrar</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+            <tbody>
+            {% for v in ventas %}
+                <tr>
+                    <td data-label="Factura">{{ v.voucher_number_full }}</td>
+                    <td data-label="Fecha de emisión">{{ v.fecha_efectiva|date:"d/m/Y" }}</td>
+                    <td data-label="Cliente">{{ v.client.user.names }}<br><small class="text-muted">{{ v.client.dni }}</small></td>
+                    <td data-label="Total" class="text-right">${{ v.total|floatformat:2 }}</td>
+                    <td data-label="Saldo por cobrar" class="text-right">{% if v.saldo is None %}<span class="text-muted">Contado</span>{% else %}${{ v.saldo|floatformat:2 }}{% endif %}</td>
+                    <td data-label="Acciones"><a href="{% url 'comprobantes_retencion_recibida_nueva' v.pk %}" class="btn btn-sm fpa-btn-pagar">Registrar retención</a></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="text-muted">{% if q %}No hay facturas autorizadas que coincidan con «{{ q }}».{% else %}No tienes facturas a crédito con saldo. Busca la factura por su número o cliente.{% endif %}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <a href="{% url 'comprobantes_retenciones_recibidas' %}" class="btn btn-link">Volver al listado</a>
+</div>
+{% endblock %}

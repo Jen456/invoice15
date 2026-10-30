@@ -39,6 +39,8 @@ def validar_factura(venta, company):
     from core.pos.notas_credito import es_consumidor_final
     if venta.receipt.voucher_type != VOUCHER_TYPE[0][0]:
         raise ErrorNotaDebito('Las notas de débito solo se emiten sobre facturas.')
+    if getattr(venta, 'anulado_sri_fecha', None):
+        raise ErrorNotaDebito(f'La factura {venta.voucher_number_full} está anulada en el SRI.')
     if venta.status not in AUTORIZADOS:
         raise ErrorNotaDebito('La factura debe estar autorizada por el SRI para emitir una nota de débito.')
     if es_consumidor_final(venta.client):
@@ -84,7 +86,9 @@ def crear(company, usuario, venta, datos, motivos):
     """Nota de débito guardada (aún sin firmar). Llamar dentro de una transacción; la vista firma después."""
     from core.configuracion.servicios import receipt_para_emitir
     from core.pos.models import Sale
-    venta = Sale.objects.select_for_update().select_related('client__user', 'receipt').get(pk=venta.pk)
+    # Bloquea solo la venta (no su cliente ni su secuencia) y lee lo relacionado en otra consulta, sin bloqueo.
+    Sale.objects.select_for_update(of=('self',)).filter(pk=venta.pk).values_list('pk', flat=True).get()
+    venta = Sale.objects.select_related('client__user', 'receipt').get(pk=venta.pk)
     validar_factura(venta, company)
     doc, limpios, totales = calcular(venta, datos, motivos)
     cliente = venta.client

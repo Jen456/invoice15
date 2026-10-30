@@ -1,0 +1,77 @@
+{% extends 'skin.html' %}
+{% load widget_tweaks %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item"><a href="{% url 'comprobantes_retenciones_recibidas' %}"><i class="fas fa-hand-holding-usd"></i> Retenciones recibidas</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Registrar</li>
+{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-retencion-recibida-nueva">
+    <header class="fp-welcome"><span class="fp-eyebrow">Retención recibida · paso 2</span><h1>Retención sobre la factura {{ venta.voucher_number_full }}</h1>
+        <p>Cliente (agente de retención): <strong>{{ cliente.user.names }}</strong> · {{ cliente.dni }} · total de la factura ${{ venta.total|floatformat:2 }} ·
+            {% if cxc %}saldo por cobrar ${{ saldo|floatformat:2 }}{% else %}venta de contado (sin cuenta por cobrar){% endif %}</p>
+        <p class="text-muted">Copia los datos del comprobante de retención que te entregó el cliente. Se registra en FacturaPorAquí y se abona a la cuenta por cobrar de la factura; no se envía nada al SRI ni se consume cupo del plan.</p></header>
+    {% if anteriores %}
+        <div class="alert alert-light border"><strong>Retenciones ya registradas sobre esta factura:</strong>
+            {% for a in anteriores %}<a href="{% url 'comprobantes_retencion_recibida' a.pk %}">{{ a.numero }}</a> ({{ a.get_estado_display|lower }}, ${{ a.total_retenido|floatformat:2 }}){% if not forloop.last %} · {% endif %}{% endfor %}
+        </div>
+    {% endif %}
+    {% if impedimento %}
+        <div class="alert alert-warning" role="alert">{{ impedimento }}</div>
+        <a href="{% url 'comprobantes_retencion_recibida_buscar' %}" class="btn btn-link">Elegir otra factura</a>
+    {% else %}
+    <form method="post" class="fp-retencion-form" novalidate>{% csrf_token %}
+        {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+        <section class="card fp-retencion-panel mb-3"><div class="card-body">
+            <span class="fp-eyebrow">Comprobante del cliente</span><h2 class="h5">Datos de la retención</h2>
+            <div class="row">
+                {% for field in form %}
+                    <div class="form-group col-12 col-md-6 col-lg-4">
+                        <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                        {% if field.errors %}{% render_field field class="form-control is-invalid" %}{% else %}{% render_field field class="form-control" %}{% endif %}
+                        {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                        {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+            {% if pide_emisor_ruc %}<p class="small text-muted mb-0">El cliente de la factura está identificado con {{ cliente.dni }}: el agente de retención se identifica con un RUC de 13 dígitos (si es su cédula, la cédula seguida de 001).</p>{% endif %}
+        </div></section>
+        <section class="card fp-retencion-panel mb-3"><div class="card-body">
+            <span class="fp-eyebrow">Impuestos retenidos</span><h2 class="h5">Retenciones de renta e IVA</h2>
+            <p class="text-muted">Bases de renta hasta ${{ topes.renta|floatformat:2 }} (ya usado ${{ topes.usado_renta|floatformat:2 }}) · bases de IVA hasta ${{ topes.iva|floatformat:2 }} (ya usado ${{ topes.usado_iva|floatformat:2 }}). Deja vacías las líneas que no uses.</p>
+            {{ lineas.management_form }}{% for error in lineas.non_form_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+            {% for f in lineas %}
+                <fieldset class="row fp-retencion-linea"><legend>Línea {{ forloop.counter }}</legend>
+                    {% for field in f %}
+                        <div class="form-group col-12 {% if field.name == 'codigo' %}col-lg-6{% else %}col-md-4 col-lg-2{% endif %}">
+                            <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                            {% render_field field class="form-control" %}
+                            {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                            {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                        </div>
+                    {% endfor %}
+                </fieldset>
+            {% endfor %}
+        </div></section>
+        {% if resumen %}
+            <section class="card fp-retencion-revision mb-3 border-info"><div class="card-body">
+                <span class="fp-eyebrow">Revisión</span><h2 class="h5">Revisa antes de registrar</h2>
+                <p>Retención {{ resumen.doc.numero }} del {{ resumen.doc.fecha_emision|date:"d/m/Y" }} · período {{ resumen.doc.periodo_fiscal }} · agente {{ resumen.doc.emisor_razon_social }} ({{ resumen.doc.emisor_ruc }}){% if resumen.doc.clave_acceso %} · clave de acceso verificada contra el número, el RUC, la fecha y el ambiente{% endif %}.</p>
+                {% for a in resumen.advertencias %}<div class="alert alert-warning" role="status">{{ a.texto }}</div>{% endfor %}
+                <div class="table-responsive fp-retencion-resumen"><table class="table table-sm"><thead><tr><th>Impuesto</th><th>Código</th><th>Concepto</th><th class="text-right">Base</th><th class="text-right">%</th><th class="text-right">Retenido</th></tr></thead><tbody>
+                    {% for d in resumen.lineas %}<tr><td>{% if d.impuesto == '1' %}Renta{% else %}IVA{% endif %}</td><td>{{ d.codigo }}</td><td>{{ d.concepto }}</td><td class="text-right">{{ d.base_imponible|floatformat:2 }}</td><td class="text-right">{{ d.porcentaje|floatformat:2 }}</td><td class="text-right">{{ d.valor_retenido|floatformat:2 }}</td></tr>{% endfor %}
+                    <tr><td colspan="5" class="text-right">Renta</td><td class="text-right">${{ resumen.total_renta|floatformat:2 }}</td></tr>
+                    <tr><td colspan="5" class="text-right">IVA</td><td class="text-right">${{ resumen.total_iva|floatformat:2 }}</td></tr>
+                    <tr><td colspan="5" class="text-right"><strong>Total retenido</strong></td><td class="text-right"><strong>${{ resumen.total_retenido|floatformat:2 }}</strong></td></tr>
+                </tbody></table></div>
+                <p>{% if resumen.cxc_estado == 'sin_cxc' %}La venta fue de contado: la retención no abona ninguna cuenta por cobrar.{% elif resumen.cxc_estado == 'sin_saldo' %}La cuenta por cobrar ya no tiene saldo: no se abonará nada.{% else %}Se abonarán <strong>${{ resumen.abono_previsto|floatformat:2 }}</strong> a la cuenta por cobrar{% if resumen.excedente > 0 %} (excedente sin abonar: ${{ resumen.excedente|floatformat:2 }}){% endif %}.{% endif %}</p>
+                <button type="submit" name="action" value="registrar" class="btn fpa-btn-pagar">Registrar retención</button>
+                <button type="submit" name="action" value="calcular" class="btn btn-outline-secondary">Volver a revisar</button>
+            </div></section>
+        {% else %}
+            <button type="submit" name="action" value="calcular" class="btn fpa-btn-pagar">Revisar retención</button>
+        {% endif %}
+        <a href="{% url 'comprobantes_retencion_recibida_buscar' %}" class="btn btn-link">Cancelar</a>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

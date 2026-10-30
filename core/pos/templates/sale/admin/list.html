@@ -1,5 +1,5 @@
 {% extends 'list.html' %}
-{% load static %}
+{% load static permisos %}
 {% block assets_list %}
     <script src="{% static 'lib/bootstrap-daterangepicker-3.1/js/spanish.js' %}"></script>
     <script src="{% static 'lib/bootstrap-daterangepicker-3.1/js/daterangepicker.js' %}"></script>
@@ -22,6 +22,8 @@
 {% endblock %}
 
 {% block content_list_before %}
+    {# Etapa 2 (O2): permisos del rol para las opciones de anulado y retención recibida con json_script. #}
+    {% permisos_de 'change_anulado_sri_sale' 'add_retencionrecibida' as fpa_permisos %}{{ fpa_permisos|json_script:'fpa-permisos' }}
     <div class="row">
         <div class="col-lg-5 col-md-12">
             <div class="form-group">

@@ -1,4 +1,9 @@
 var input_date_range;
+// Etapa 2 (O2): escape del texto que se inserta en HTML armado a mano.
+function fpaTexto(x) {
+    return $('<div>').text(x === null || x === undefined ? '' : String(x)).html();
+}
+
 var current_date;
 var tblReport;
 var columns = [];
@@ -17,6 +22,7 @@ var report = {
             'action': 'search_report',
             'start_date': input_date_range.data('daterangepicker').startDate.format('YYYY-MM-DD'),
             'end_date': input_date_range.data('daterangepicker').endDate.format('YYYY-MM-DD'),
+            'alcance': $('select[name="alcance"]').val() || 'declarables',
         };
         if (all) {
             parameters['start_date'] = '';
@@ -102,27 +108,42 @@ var report = {
                 }
             ],
             columns: [
+                {data: "voucher_number_full"},
+                {data: "fecha_emision_efectiva"},
                 {data: "client.user.names"},
-                {data: "date_joined"},
                 {data: "payment_type.name"},
                 {data: "subtotal"},
                 {data: "total_dscto"},
                 {data: "total_iva"},
                 {data: "total"},
+                {data: "status.name"},
             ],
             columnDefs: [
                 {
-                    targets: [-5, -6],
+                    targets: [0, 2, 3],
+                    render: $.fn.dataTable.render.text()
+                },
+                {
+                    // Fecha de emisión con «*» si salió de la autorización o del registro (venta sin emission_date).
+                    targets: [1],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return data;
+                        var texto = fpaTexto(data);
+                        return row.fecha_emision_origen === 'sri' ? texto : texto + ' *';
                     }
                 },
                 {
-                    targets: [-1, -2, -3, -4],
+                    targets: [-2, -3, -4, -5],
                     class: 'text-center',
                     render: function (data, type, row) {
                         return '$' + data.toFixed(2);
+                    }
+                },
+                {
+                    targets: [-1],
+                    class: 'text-center',
+                    render: function (data, type, row) {
+                        return row.anulado_sri ? 'Anulada en el SRI' : fpaTexto(data);
                     }
                 }
             ],
@@ -163,5 +184,10 @@ $(function () {
 
     $('.btnSearchAll').on('click', function () {
         report.list(true);
+    });
+
+    // Etapa 2 (O2): qué comprobantes se muestran (por defecto, autorizados en producción).
+    $('select[name="alcance"]').on('change', function () {
+        report.list(false);
     });
 });

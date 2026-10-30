@@ -1,0 +1,52 @@
+{% extends 'skin.html' %}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item active" aria-current="page"><a href="{% url 'comprobantes_retenciones_recibidas' %}"><i class="fas fa-hand-holding-usd"></i> Retenciones recibidas</a></li>
+{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-retenciones-recibidas">
+    <header class="fp-welcome"><span class="fp-eyebrow">Ventas · cuentas por cobrar</span><h1>Retenciones recibidas</h1>
+        <p>Retenciones que te hicieron tus clientes sobre tus facturas. Al registrarlas se abonan a la cuenta por cobrar de la factura. No se envía nada al SRI.</p>
+        {% if puede_registrar %}<p><a href="{% url 'comprobantes_retencion_recibida_buscar' %}" class="btn fpa-btn-pagar">Registrar retención recibida</a></p>{% endif %}
+    </header>
+    {% for message in messages %}
+        <div class="alert {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'info' %}alert-info{% elif message.level_tag == 'warning' %}alert-warning{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
+    {% endfor %}
+    <form method="get" class="form-row align-items-end mb-3 fp-retenciones-recibidas-filtros">
+        <div class="form-group col-6 col-md-2"><label for="f-desde">Desde</label><input type="date" id="f-desde" name="desde" value="{{ filtros.desde }}" class="form-control"></div>
+        <div class="form-group col-6 col-md-2"><label for="f-hasta">Hasta</label><input type="date" id="f-hasta" name="hasta" value="{{ filtros.hasta }}" class="form-control"></div>
+        <div class="form-group col-12 col-md-4"><label for="f-q">Cliente, RUC o número</label><input type="search" id="f-q" name="q" value="{{ filtros.q }}" maxlength="100" class="form-control"></div>
+        <div class="form-group col-8 col-md-2"><label for="f-estado">Estado</label>
+            <select id="f-estado" name="estado" class="form-control">
+                <option value="registrada"{% if filtros.estado == 'registrada' %} selected{% endif %}>Registradas</option>
+                <option value="anulada"{% if filtros.estado == 'anulada' %} selected{% endif %}>Anuladas</option>
+                <option value="todas"{% if filtros.estado == 'todas' %} selected{% endif %}>Todas</option>
+            </select></div>
+        <div class="form-group col-4 col-md-2"><button type="submit" class="btn btn-outline-secondary btn-block">Filtrar</button></div>
+    </form>
+    <div class="table-responsive fp-retencion-listado">
+        <table class="table table-sm table-bordered bg-white fp-retencion-tabla">
+            <thead><tr><th scope="col">Número</th><th scope="col">Fecha</th><th scope="col">Cliente</th><th scope="col">Factura</th><th scope="col" class="text-right">Renta</th><th scope="col" class="text-right">IVA</th><th scope="col" class="text-right">Total</th><th scope="col">Cuenta por cobrar</th><th scope="col">Estado</th><th scope="col">Origen</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+            <tbody>
+            {% for r in retenciones %}
+                <tr>
+                    <td data-label="Número">{{ r.numero }}</td>
+                    <td data-label="Fecha">{{ r.fecha_emision|date:"d/m/Y" }}</td>
+                    <td data-label="Cliente">{{ r.emisor_razon_social }}<br><small class="text-muted">{{ r.emisor_identificacion }}</small></td>
+                    <td data-label="Factura">{{ r.venta.voucher_number_full }}</td>
+                    <td data-label="Renta" class="text-right">${{ r.total_renta|floatformat:2 }}</td>
+                    <td data-label="IVA" class="text-right">${{ r.total_iva|floatformat:2 }}</td>
+                    <td data-label="Total" class="text-right">${{ r.total_retenido|floatformat:2 }}</td>
+                    <td data-label="Cuenta por cobrar">{{ r.get_cxc_estado_display|default:"—" }}</td>
+                    <td data-label="Estado"><span class="badge {% if r.estado == 'registrada' %}badge-success{% else %}badge-secondary{% endif %}">{{ r.get_estado_display }}</span></td>
+                    <td data-label="Origen">{{ r.get_origen_display }}<br><small class="text-muted">{{ r.get_verificacion_display }}</small></td>
+                    <td data-label="Acciones"><a href="{% url 'comprobantes_retencion_recibida' r.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="11" class="text-muted">No hay retenciones recibidas con estos filtros.</td></tr>
+            {% endfor %}
+            </tbody>
+            <tfoot><tr><th colspan="4" class="text-right">Total registradas (filtro actual)</th><th class="text-right">${{ totales.renta|floatformat:2 }}</th><th class="text-right">${{ totales.iva|floatformat:2 }}</th><th class="text-right">${{ totales.total|floatformat:2 }}</th><th colspan="4"></th></tr></tfoot>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -10,6 +10,10 @@ from core.pos.forms import CompanyForm, Company
 from core.security.mixins import GroupPermissionMixin
 from core.suscripciones.servicios import tiene_plan
 
+# Etapa 2 (O2): datos tributarios que se auditan con company_change al cambiar y días que cubre el calendario.
+CAMPOS_TRIBUTARIOS = ('tipo_contribuyente', 'periodicidad_iva')
+DIAS_VENCIMIENTOS = 90
+
 
 class CompanyUpdateView(GroupPermissionMixin, UpdateView):
     template_name = 'company/create.html'
@@ -28,11 +32,14 @@ class CompanyUpdateView(GroupPermissionMixin, UpdateView):
         try:
             if action == 'create_or_edit':
                 instance = self.get_object()
+                antes = {campo: getattr(instance, campo) or '' for campo in CAMPOS_TRIBUTARIOS} if instance.pk else None
                 if instance.pk is not None:
                     form = CompanyForm(request.POST, request.FILES, instance=instance)
                 else:
                     form = CompanyForm(request.POST, request.FILES)
                 data = form.save()
+                if antes is not None and 'error' not in data:
+                    self.auditar_tributarios(request, form.instance, antes)
             elif action == 'load_certificate':
                 instance = self.get_object()
                 if not tiene_plan(instance):
@@ -57,8 +64,42 @@ class CompanyUpdateView(GroupPermissionMixin, UpdateView):
             data['error'] = str(e)
         return HttpResponse(json.dumps(data), content_type='application/json')
 
+    @staticmethod
+    def auditar_tributarios(request, company, antes):
+        """company_change con {campo: [antes, después]} si cambió el tipo de contribuyente o la periodicidad (solo str)."""
+        from core.tenancy.models import audit
+        cambios = {campo: [str(antes[campo]), str(getattr(company, campo) or '')] for campo in CAMPOS_TRIBUTARIOS
+                   if (getattr(company, campo) or '') != antes[campo]}
+        if cambios:
+            audit(request, 'company_change', company=company, campos=cambios)
+
+    def contexto_tributario(self, company):
+        """Sugerencias (nunca se guardan) y vencimientos de los próximos 90 días (Etapa 2, O2)."""
+        from dataclasses import asdict
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from core.pos import calendario_sri
+        from core.pos.choices import PERIODICIDAD_IVA, TIPO_CONTRIBUYENTE
+        tipo = calendario_sri.sugerir_tipo_contribuyente(company)
+        periodicidad = calendario_sri.sugerir_periodicidad_iva(company)
+        sugerencias = {'tipo': tipo, 'periodicidad': periodicidad, 'faltan': company.datos_tributarios_faltantes,
+                       'tipo_nombre': dict(TIPO_CONTRIBUYENTE).get(tipo[0], ''),
+                       'periodicidad_nombre': dict(PERIODICIDAD_IVA).get(periodicidad[0], '')}
+        hoy = timezone.localdate()
+        try:
+            vencimientos = [asdict(v) for v in calendario_sri.vencimientos_de_empresa(company, hoy,
+                                                                                      hoy + timedelta(days=DIAS_VENCIMIENTOS))]
+            aviso = ''
+        except ValueError:   # RUC inválido: no se puede calcular el noveno dígito
+            vencimientos = []
+            aviso = 'Revisa el RUC de la empresa: con él se calculan tus fechas de vencimiento.'
+        return {'sugerencias_tributarias': sugerencias, 'vencimientos': vencimientos, 'vencimientos_aviso': aviso}
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data()
+        context.update(self.contexto_tributario(self.request.company))
         context['title'] = 'Configuración de la Compañia'
         context['list_url'] = self.success_url
         context['action'] = 'create_or_edit'

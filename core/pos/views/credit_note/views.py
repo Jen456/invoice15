@@ -81,6 +81,7 @@ class CreditNoteCreateView(GroupPermissionMixin, CreateView):
                 data = []
                 term = request.POST['term']
                 ventas = (Sale.objects.filter(status__in=AUTORIZADOS, environment_type=request.company.environment_type)
+                          .filter(anulado_sri_fecha__isnull=True)
                           .filter(Q(voucher_number_full__icontains=term) | Q(voucher_number__icontains=term) | Q(client__user__names__icontains=term) | Q(client__dni__icontains=term))
                           .exclude(client__identification_type=IDENTIFICATION_TYPE[-2][0]).exclude(client__dni='9999999999999')
                           .order_by('voucher_number')[0:10])
