@@ -1,5 +1,5 @@
 {% extends 'form.html' %}
-{% load widget_tweaks %}
+{% load widget_tweaks permisos %}
 {% load static %}
 {% block assets_form %}
     <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
@@ -11,7 +11,10 @@
     <script src="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js' %}"></script>
     <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
     <script src="{% static 'sale/admin/js/form.js' %}"></script>
+    <script src="{% static 'sale/admin/js/llenado.js' %}" defer></script>
 {% endblock %}
+
+{% block form_title %}<span id="fp-sale-title">Nueva factura</span>{% endblock %}
 
 {% block form_fields %}
     {% if proforma_facturar %}
@@ -24,191 +27,89 @@
         </div>
         <input type="hidden" name="proforma_id" value="{{ proforma_facturar.id }}">
     {% endif %}
-    <div class="row">
-        <div class="col-lg-4">
-            <div class="form-group">
-                <label>{{ form.client.label }}:</label>
-                <div class="input-group input-group-search">
-                    {{ form.client }}
-                    <div class="input-group-append">
-                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-tasks"></i>
-                        </button>
-                        <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
-                            <a class="dropdown-item btnAddClient">
-                                <i class="fas fa-plus"></i> Crear cliente
-                            </a>
-                        </div>
-                    </div>
+    {% permisos_de 'add_product' as fp_alta %}
+    <div class="fp-sale-editor" data-company="{{ company.pk }}">
+    <p class="fp-sale-intro">Completa el cliente, añade los productos y revisa el pago.{% if fp_alta.add_product %} Puedes crear productos sin salir de esta factura.{% endif %}</p>
+    <fieldset class="fp-sale-section">
+        <legend><span>1</span> Cliente y documento</legend>
+        <div class="fp-sale-grid">
+            <div class="form-group fp-sale-client"><label for="{{ form.client.id_for_label }}">{{ form.client.label }}</label>
+                {{ form.client }}
+                <button type="button" class="btn btn-link btnAddClient fp-inline-action"><i class="fas fa-plus" aria-hidden="true"></i> Crear cliente aquí</button>
+            </div>
+            <div class="form-group"><label for="{{ form.date_joined.id_for_label }}">{{ form.date_joined.label }}</label>{{ form.date_joined }}</div>
+            <div class="form-group"><label for="{{ form.receipt.id_for_label }}">{{ form.receipt.label }}</label>{{ form.receipt }}</div>
+            <div class="form-group"><label for="{{ form.voucher_number.id_for_label }}">{{ form.voucher_number.label }}</label>{{ form.voucher_number }}<small class="text-muted">El número definitivo se asigna al emitir.</small></div>
+        </div>
+    </fieldset>
+    <fieldset class="fp-sale-section">
+        <legend><span>2</span> Productos y servicios</legend>
+        <div class="fp-sale-search">
+            <div class="form-group"><label for="fp-sale-search">Busca por nombre o código</label>
+                <input id="fp-sale-search" type="text" class="form-control" autocomplete="off" name="search_product" placeholder="Escribe para buscar un producto" aria-describedby="fp-search-help">
+                <small id="fp-search-help" class="text-muted">Selecciona un resultado para agregarlo. Después puedes cambiar la cantidad y el descuento.</small>
+            </div>
+            {% if fp_alta.add_product %}<button type="button" class="btn btn-primary fp-open-product" data-product-url="{% url 'product_create' %}" aria-haspopup="dialog" aria-controls="fp-product-dialog"><i class="fas fa-plus" aria-hidden="true"></i> Crear producto aquí</button>{% endif %}
+        </div>
+        <div class="fp-sale-tools">
+            <button type="button" class="btn btn-outline-secondary btnSearchProducts">Ver catálogo</button>
+            <button type="button" class="btn btn-link btnClearProducts">Limpiar búsqueda</button>
+            <button type="button" class="btn btn-link btnRemoveAllProducts">Quitar todos los productos</button>
+        </div>
+        <p id="fp-product-status" class="alert alert-info" role="status" hidden></p>
+        <div id="fp-sale-no-results" class="fp-sale-empty" hidden>No encontramos productos disponibles con esa búsqueda. {% if fp_alta.add_product %}Puedes usar «Crear producto aquí» sin perder los datos de esta factura.{% endif %}</div>
+        <div class="fp-sale-lines">
+            <table class="table table-bordered table-sm" id="tblProducts" style="width:100%">
+                <thead><tr><th>Eliminar</th><th>Código</th><th>Producto</th><th>Stock</th><th>Cantidad</th><th>P./Unitario</th><th>Descuento</th><th>Total</th></tr></thead><tbody></tbody>
+            </table>
+        </div>
+    </fieldset>
+    <fieldset class="fp-sale-section">
+        <legend><span>3</span> Pago y resumen</legend>
+        <div class="fp-sale-payment-layout">
+            <div>
+                <div class="content-electronic-billing">
+                    <p class="fp-sale-note"><input type="hidden" name="create_electronic_invoice" value="on"><i class="fas fa-file-invoice" aria-hidden="true"></i> Factura electrónica: se enviará al SRI al emitir.</p>
+                    <div class="form-group"><label for="{{ form.payment_method.id_for_label }}">{{ form.payment_method.label }}</label>{{ form.payment_method }}</div>
+                    <div class="form-group"><label for="{{ form.time_limit.id_for_label }}">{{ form.time_limit.label }}</label>{{ form.time_limit }}</div>
+                </div>
+                <div class="form-group"><label for="{{ form.payment_type.id_for_label }}">{{ form.payment_type.label }}</label>{{ form.payment_type }}</div>
+                <div class="fp-sale-grid">
+                    <div class="form-group input_sale"><label for="{{ form.cash.id_for_label }}">{{ form.cash.label }}</label>{{ form.cash }}</div>
+                    <div class="form-group input_sale"><label for="{{ form.change.id_for_label }}">{{ form.change.label }}</label>{{ form.change }}</div>
+                    <div class="form-group input_sale" style="display:none"><label for="{{ form.end_credit.id_for_label }}">{{ form.end_credit.label }}</label>{{ form.end_credit }}</div>
                 </div>
             </div>
-        </div>
-        <div class="col-lg-3">
-            <div class="form-group">
-                <label>{{ form.date_joined.label }}:</label>
-                {{ form.date_joined }}
+            <div class="fp-sale-summary"><h2>Resumen de tu factura</h2>
+                <table class="table table-sm"><tbody>
+                    <tr><td><label for="{{ form.subtotal_0.id_for_label }}">{{ form.subtotal_0.label }}</label></td><td>{{ form.subtotal_0 }}</td></tr>
+                    <tr><td><label for="{{ form.subtotal_12.id_for_label }}">Subtotal con IVA</label></td><td>{{ form.subtotal_12 }}</td></tr>
+                    <tr><td><label for="{{ form.total_dscto.id_for_label }}">{{ form.total_dscto.label }}</label></td><td>{{ form.total_dscto }}</td></tr>
+                    <tr><td><label for="{{ form.iva.id_for_label }}">IVA general %</label></td><td>{{ form.iva }}</td></tr>
+                    <tr><td><label for="{{ form.total_iva.id_for_label }}">{{ form.total_iva.label }}</label></td><td>{{ form.total_iva }}</td></tr>
+                    <tr class="fp-sale-total"><td><label for="{{ form.total.id_for_label }}">{{ form.total.label }}</label></td><td>{{ form.total }}</td></tr>
+                </tbody></table>
+                <p class="text-muted mb-0">Revisa las tarifas y los importes antes de emitir.</p>
             </div>
         </div>
-        <div class="col-lg-2">
-            <div class="form-group">
-                <label>{{ form.receipt.label }}:</label>
-                {{ form.receipt }}
-            </div>
-        </div>
-        <div class="col-lg-3">
-            <div class="form-group">
-                <label>{{ form.voucher_number.label }}:</label>
-                {{ form.voucher_number }}
-            </div>
-        </div>
-    </div>
-    <div class="row content-electronic-billing">
-        <div class="col-lg-2">
-            <div class="form-group">
-                <label>{{ form.create_electronic_invoice.label }}:</label><br>
-                {# Toda factura es electrónica y se transmite al emitirla (Res. NAC-DGERCGC25-00000014). #}
-                <input type="hidden" name="create_electronic_invoice" value="on">
-                <span class="badge badge-success">Sí, siempre</span>
-            </div>
-        </div>
-        <div class="col-lg-7">
-            <div class="form-group">
-                <label>{{ form.payment_method.label }}:</label>
-                {{ form.payment_method }}
-            </div>
-        </div>
-        <div class="col-lg-3">
-            <div class="form-group">
-                <label>{{ form.time_limit.label }}:</label>
-                {{ form.time_limit }}
-            </div>
-        </div>
-    </div>
-    <div class="card p-4">
-        <div class="row">
-            <div class="col-lg-12">
-                <div class="form-group">
-                    <label>Búsqueda de productos:</label>
-                    <div class="input-group input-group-search">
-                        <input type="text" class="form-control" autocomplete="off" name="search_product" placeholder="Ingrese el nombre de un producto">
-                        <div class="input-group-append">
-                            <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <i class="fas fa-tasks"></i>
-                            </button>
-                            <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
-                                <a class="dropdown-item btnSearchProducts">
-                                    <i class="fas fa-search"></i> Buscar productos
-                                </a>
-                                <a class="dropdown-item btnClearProducts">
-                                    <i class="fas fa-times"></i> Limpiar búsqueda
-                                </a>
-                                <a class="dropdown-item btnRemoveAllProducts">
-                                    <i class="fas fa-trash-alt"></i> Borrar todo
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-12">
-                <table style="width:100%;" class="table table-bordered table-sm" id="tblProducts">
-                    <thead>
-                    <tr>
-                        <th style="width: 5%;">Eliminar</th>
-                        <th style="width: 5%;">Código</th>
-                        <th style="width: 20%;">Producto</th>
-                        <th style="width: 5%;">Stock</th>
-                        <th style="width: 15%;">Cantidad</th>
-                        <th style="width: 15%;">P./Unitario</th>
-                        <th style="width: 15%;">Descuento</th>
-                        <th style="width: 15%;">Total</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="row d-flex flex-row-reverse">
-            <div class="col-lg-5">
-                <table class="table table-bordered table-sm">
-                    <tbody>
-                    <tr>
-                        <td><b>{{ form.subtotal_0.label|upper }}</b></td>
-                        <td>{{ form.subtotal_0 }}</td>
-                    </tr>
-                    <tr>
-                        <td><b>SUBTOTAL CON IVA</b></td>
-                        <td>{{ form.subtotal_12 }}</td>
-                    </tr>
-                    <tr>
-                        <td><b>{{ form.total_dscto.label|upper }}</b></td>
-                        <td>{{ form.total_dscto }}</td>
-                    </tr>
-                    <tr>
-                        <td><b>IVA GENERAL %</b></td>
-                        <td>{{ form.iva }}</td>
-                    </tr>
-                    <tr>
-                        <td><b>{{ form.total_iva.label|upper }}</b></td>
-                        <td>{{ form.total_iva }}</td>
-                    </tr>
-                    <tr>
-                        <td><b>{{ form.total.label|upper }}</b></td>
-                        <td>{{ form.total }}</td>
-                    </tr>
-                    <tr>
-                        <td><b>{{ form.payment_type.label|upper }}</b></td>
-                        <td>
-                            <div class="form-group mb-0">
-                                {{ form.payment_type }}
-                            </div>
-                        </td>
-                    </tr>
-                    <tr class="input_sale">
-                        <td><b>{{ form.cash.label|upper }}</b></td>
-                        <td>
-                            <div class="form-group mb-0">
-                                {{ form.cash }}
-                            </div>
-                        </td>
-                    </tr>
-                    <tr class="input_sale">
-                        <td><b>{{ form.change.label|upper }}</b></td>
-                        <td>
-                            <div class="form-group mb-0">
-                                {{ form.change }}
-                            </div>
-                        </td>
-                    </tr>
-                    <tr class="input_sale" style="display: none;">
-                        <td><b>{{ form.end_credit.label|upper }}</b></td>
-                        <td>
-                            <div class="form-group mb-0">
-                                {{ form.end_credit }}
-                            </div>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    </fieldset>
     </div>
 {% endblock %}
 
 {% block buttons %}
     <button type="submit" class="btn btn-primary btn-flat">
-        <i class="fas fa-file-invoice-dollar"></i> {% if proforma_facturar %}Emitir factura{% else %}Generar Venta{% endif %}
+        <i class="fas fa-file-invoice-dollar"></i> <span id="fp-sale-submit-label">Emitir factura</span>
     </button>
-    <a class="btn btn-success btn-flat btnAdditionalInfo">
-        <i class="fas fa-folder-plus"></i> Agregar información adicional a la factura
-    </a>
+    <button type="button" class="btn btn-outline-secondary btn-flat btnAdditionalInfo">
+        <i class="fas fa-folder-plus"></i> Información adicional
+    </button>
     <a href="{{ list_url }}" class="btn btn-danger btn-flat">
         <i class="fas fa-times"></i> Cancelar
     </a>
 {% endblock %}
 
 {% block content_form_before %}
+    {% include "sale/admin/_producto_rapido.html" %}
     <div id="myModalSearchProducts" tabindex="-1" class="modal fade" role="dialog">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">

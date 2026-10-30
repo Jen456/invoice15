@@ -518,7 +518,7 @@ class TestRegresion:
 
     def test_venta_sin_proforma_igual_que_antes(self, web, empresa, comprador, producto, sri):  # noqa: F811
         html = web.get(f'{VENTAS}add/').content.decode()
-        assert 'Generar Venta' in html and 'fp-proforma-precarga' not in html and 'name="proforma_id"' not in html
+        assert 'Emitir factura' in html and 'fp-proforma-precarga' not in html and 'name="proforma_id"' not in html
         assert 'Facturando la proforma' not in html
         sri.respuestas_autorizacion = ['AUTORIZADO']
         assert vender(web, comprador, producto)['resp'] is True

@@ -1,5 +1,30 @@
 # Handoff compartido — frontend
 
+## Estado actual — llenado ágil de factura y propuesta de respaldo del cobro (Codex, 30/10/2026)
+
+Se fusionó `plataforma=3549c16` mediante `46da1c8`, conservando las secciones de ambos agentes. Revisado el fork `Jen456/erpnext` en `352583128432733415df48c1509f86ef97cf7688` (declara 13.0.0-dev): [comparación de procesos](propuestas/venta-agil/FLUJOS-ERPNEXT.md). No se importó código ni se sustituyó Django/Frappe.
+
+**Implementado en las plantillas reales:** factura en tres secciones; creación de cliente visible; botón «Crear producto aquí», con alta real usando el formulario y endpoints existentes; conserva cliente, líneas e información adicional. Servicio/no inventariado se añade a las líneas; inventariado sin stock se crea, pero no se añade a la venta. Errores por campo, duplicados, permiso `add_product`, no doble POST y consulta después de respuesta perdida. Adaptación móvil y corrección del wrapper de tabla acumulado. Mismos campos, acciones, CSRF y cálculo fiscal. El ticket 08 conserva su opción y su etiqueta de acción propia.
+
+**Propuesta, aún sin backend:** [respaldo del cobro](propuestas/venta-agil/respaldo-cobro.html): comprobante PDF/JPG/PNG o nota interna del vendedor/administrador, referencia, importe, autor y estado de revisión. Selección de archivo en memoria, sin carga real. Los campos operativos `cash`/`change` siguen intactos hasta que el backend separe contado de efectivo.
+
+Pruebas SQLite: **73 aprobadas** en 24,90 s (estáticos, rutas, frontend, alta contextual, tarifas y conversión de proformas). Se actualizó la prueba que esperaba «Generar Venta» para exigir «Emitir factura», conservando sus verificaciones fiscales. Chromium: 36 comprobaciones de vistas de factura a 360/390/768/1024/1360/1440; alta real de producto en base ficticia, cantidades, pago crédito/efectivo, duplicados, stock, Escape/foco, movimiento reducido, sin desbordes ni errores JS/HTTP. Fallos controlados: respuesta de alta perdida, doble submit y formulario de empresa inesperado. Respaldo probado a los mismos seis anchos. Nueve capturas WebP (<150 KB cada una) y resultados JSON en `capturas/venta-agil/`. No se desplegó ni se realizaron emisiones, pagos o correos reales. PostgreSQL y teléfono físico pendientes.
+
+## Pendiente para Codex — factura y cobro
+
+- [x] Revisar procesos de ERPNext y documentar qué se adapta a nuestro flujo.
+- [x] Llenado por secciones, alta de producto sin salir y pruebas reales de la integración existente.
+- [x] Diseñar comprobante o nota de cobro con autoría y revisión; documentación y capturas.
+- [ ] Conectar el respaldo al backend cuando Claude publique su contrato. No simular guardado ni verificación.
+
+## Notas entre agentes — alta de producto y respaldo (Codex → Claude)
+
+1. Revisar `sale/admin/create.html`, `_producto_rapido.html`, `sale/admin/js/llenado.js`, el cambio acotado de `form.js` y `facturaporaqui.css`. `templates/form.html` solo añade un bloque de título con el valor anterior por defecto. `product/create.html` expone un marcador de empresa mediante el contexto existente. No se cambió backend.
+2. Alta: GET `/pos/product/add/` para campos/CSRF; POST mismo endpoint `action=validate_data` (`pattern=code` y `pattern=pattern` para nombre/categoría), después `action=add`. Éxito `{}` → POST `/pos/sale/admin/add/`, `action=search_product_code`, `code`. Es un producto persistido aun si se cancela luego la factura. Deseable devolver el JSON del producto en el alta para evitar la segunda consulta. No introducir inventario inicial sin su transacción/permiso.
+3. Dos límites existentes: el GET de alta cambia el módulo de la sesión; la validación de nombre de Bodega envía `pattern=name` pero la vista comprueba `pattern=pattern`. La nueva interfaz usa el valor que la vista entiende. La unicidad concurrente sigue protegida por la base, pero puede devolver un error SQL poco claro. Documentado, sin alterar tu backend.
+4. **Pedido nuevo de la propietaria:** reemplazar el uso indiscriminado de efectivo/cambio por respaldo de transacción o nota del vendedor/administrador. Revisar `Sale.payment_type` (`efectivo`/`credito`) frente al medio real y la forma SRI. No ocultar campos y mandar importes inventados. Reutilizar `PaymentsCtaCollect` donde aplique. Contrato detallado, campos, privacidad, autoría, permisos y criterios en [README de la entrega](propuestas/venta-agil/README.md#contrato-solicitado-a-claude--siguiente-entrega-de-backend). Publica rutas/actions reales y tratamiento del saldo pendiente; no están inventados en frontend. Archivo o nota al registrar un cobro; no exigirlo a una factura a crédito sin abono. Nota y archivo fuera de XML/RIDE y de `additional_info`.
+5. Autor/fecha/revisor desde servidor; archivo privado por empresa; subida no equivale a pago confirmado. Auditar revisión/correcciones y evitar abonos duplicados. La selección individual de puntos y la persistencia de borradores siguen con sus contratos pendientes, sin mezclar su implementación con esta entrega.
+
 ## Estado actual — fase contable lista para proponer su publicación, sin publicar (Claude, 30/10/2026)
 
 La entrega de diseño de Codex (`adbe62f`, anotada en `d2bed3d`) queda integrada en `plataforma` sin reescribir historial, con los commits de abajo encima. **Código probado: `22ff73d`.** Lo posterior es un solo commit de documentación: cambia `entregas/facturaporaqui/`, que ninguna prueba lee, y el docstring y un comentario de `tests/test_migracion_vuelta_fase.py`; esa prueba se repitió sobre el commit final. **No se publicó nada**: la app sigue en lo publicado el 28/10 (`98cfa20`) y la base publicada no tiene ninguna de las 19 migraciones.

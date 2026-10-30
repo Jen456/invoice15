@@ -68,6 +68,7 @@ var sale = {
                 {data: "total"},
             ],
             columnDefs: [
+                {targets: [1], render: $.fn.dataTable.render.text()},
                 {
                     targets: [-5],
                     class: 'text-center',
@@ -78,7 +79,7 @@ var sale = {
                             }
                             return '<span class="badge badge-danger badge-pill">' + row.stock + '</span>';
                         }
-                        return '<span class="badge badge-secondary badge-pill">Sin stock</span>';
+                        return '<span class="badge badge-secondary badge-pill">No inventariado</span>';
                     }
                 },
                 {
@@ -144,7 +145,7 @@ var sale = {
                     });
             },
             initComplete: function (settings, json) {
-                $(this).wrap('<div class="dataTables_scroll"><div/>');
+                if (!$(this).parent().hasClass('dataTables_scroll')) { $(this).wrap('<div class="dataTables_scroll"></div>'); }
             }
         });
     },

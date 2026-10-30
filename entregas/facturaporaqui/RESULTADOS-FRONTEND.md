@@ -1403,3 +1403,35 @@ Verificación: lectura del código y restricciones de base, consulta de referenc
 **Alcance:** maqueta local, no interfaz publicada. No se declara persistencia, autorización de usuarios, aislamiento entre empresas, validación fiscal ni emisión comprobados. No se ejecutó pytest porque no se modificó código de la aplicación; las pruebas corresponden al HTML/CSS/JS de la propuesta. Teléfono físico e integración siguen pendientes. No se desplegó, pagó ni envió correo. Claude dispone de la lista exacta de datos y contrato requerido en HANDOFF; esta tarea no abre cambios en módulos ajenos.
 
 [Ver propuesta y capturas](propuestas/establecimientos/README.md).
+
+
+## 2026-10-30 — Llenado de factura, alta contextual y respaldo del cobro
+
+### Alcance y decisiones
+
+Se fusionó `github/plataforma` (`3549c16`) en `frontend/etapa3` con `46da1c8`; único conflicto documental en HANDOFF resuelto conservando ambas entregas. Revisado por lectura de código el fork ERPNext indicado (`352583128432733415df48c1509f86ef97cf7688`, versión declarada 13.0.0-dev). Se compararon alta rápida, cotización/pedido/factura, entrega, cobro, devoluciones y compras con los contratos existentes. Informe en `propuestas/venta-agil/FLUJOS-ERPNEXT.md`: no implica ejecutar ERPNext ni copiar código GPL, cambiar de plataforma o adoptar su fiscalidad.
+
+### Cambios implementados
+
+- Factura real: tres secciones y campos originales, botón visible de crear cliente, búsqueda/alta de producto, líneas legibles en móvil/tablet y pago/resumen. Acciones al final sin tapar los campos. Etiquetas «Nueva factura»/«Emitir factura» y equivalentes para el ticket 08.
+- Alta contextual: carga el formulario Django existente en un diálogo, conserva los nombres y CSRF, muestra campos esenciales y opciones plegables. Verifica empresa de la página recibida y permiso de alta; no ejecuta sus scripts. FormData al endpoint actual y consulta posterior por código. Conserva cliente, cantidades, líneas e información adicional. No inventa ids, stock ni tarifas.
+- Servicios/no inventariados se incorporan; producto inventariado sin stock se crea, con aviso de registrar existencias antes de vender. Error por campo, duplicado, validación orientativa de código/nombre y cantidades; respuesta perdida se consulta sin repetir automáticamente la escritura. No se afirma persistencia de borradores al recargar ni protección completa contra cambios de empresa en otras pestañas (requiere contrato de backend).
+- Tabla: evita wrappers de scroll acumulados al reconstruirla, escapa el código como texto y diferencia «No inventariado» de cero existencias. Se conserva cálculo/orden/eventos originales.
+- Respaldo del cobro: maqueta separada con comprobante o nota, medio, referencia, importe, autor y estado pendiente. Selección de archivo local únicamente; no sube nada, no confirma un pago ni altera saldos. Contrato para Claude: condición contado/crédito separada del medio real, archivos privados, nota interna, autoría, revisión y abono sin duplicados. Los campos operativos efectivo/cambio se conservan mientras no exista ese contrato.
+
+### Archivos
+
+`templates/form.html` (bloque de título compatible); `core/pos/templates/product/create.html` (marcador de contexto); `core/pos/templates/sale/admin/create.html` y `_producto_rapido.html`; `core/pos/static/sale/admin/js/form.js` y `llenado.js`; `static/css/facturaporaqui.css`; `tests/test_alta_producto_en_factura.py`; `tests/test_proformas_conversion.py` (texto del botón, sin quitar verificaciones); `propuestas/venta-agil/{README.md,FLUJOS-ERPNEXT.md,respaldo-cobro.html,respaldo-cobro.css,respaldo-cobro.js}`; nueve capturas y tres JSON en `capturas/venta-agil/`; HANDOFF y este informe. Rutas de propuestas/capturas relativas a `entregas/facturaporaqui/`. No se cambió código de backend, nombres de campos, servicios, modelos, migraciones, firma, `.env` ni lógica SRI. Sin nuevas dependencias o CDN.
+
+### Pruebas y capturas
+
+- SQLite: `pytest tests/test_estaticos.py tests/test_rutas.py tests/test_frontend_integracion.py tests/test_alta_producto_en_factura.py tests/test_iva_tarifas.py tests/test_proformas_conversion.py -q -o addopts=` → **73 aprobadas, 24,90 s**. Incluye permisos de alta, aislamiento por empresa, duplicados y ninguna factura ni incremento de numeración al dar de alta un producto. Tarifas/conversión prueban el backend con SRI simulado. El primer pase detectó la expectativa antigua «Generar Venta»; se actualizó a «Emitir factura» manteniendo el resto de la prueba. El test de duplicado usa un savepoint por petición para aislar el rechazo SQL dentro de la transacción de pytest.
+- Chromium, datos ficticios SQLite: **36 comprobaciones de vistas** a 360/390/768/1024/1360/1440 px. Alta y recuperación reales, conservación del cliente/información, cantidad y totales, cambio crédito/efectivo, duplicado, producto inventariado sin stock, cierre/Escape con restauración de foco, movimiento reducido, sin scroll horizontal del documento ni errores JS/HTTP. Repetidas reconstrucciones sin wrappers acumulados.
+- Tras ajustar las etiquetas según factura/ticket, cuatro pruebas de alta y regresión se repitieron: **4 aprobadas, 14,29 s**.
+- Fallos simulados: POST confirmado por servidor con respuesta perdida (se consulta sin repetir alta ni añadir datos no confirmados), doble submit (un solo alta), rechazo de HTML sin marcador de empresa. No se interceptaron respuestas de éxito en el recorrido normal de alta.
+- Respaldo: seis anchos, archivo solo/nota sola/ambos, requisito de uno, contenido mostrado como texto y efectivo contextual. Documento ficticio seleccionado en memoria, nunca enviado. No valida la seguridad de una futura carga de archivos del backend.
+- Nueve capturas WebP, cada una menor de 150 KB: factura, producto y respaldo a 360/768/1360. Revisión visual de escritorio y móvil. `node --check` de los tres JS y `git diff --check` correctos.
+
+No se ejecutó la suite completa en esta entrega ni PostgreSQL; sí las suites relevantes arriba. No se realizaron emisiones, pagos ni correos reales, ni despliegue. Pendientes: contrato de respaldo y separación de medio/condición, prueba en teléfono físico y revisión de Claude para integrar/publicar.
+
+[Ver capturas, propuesta y contrato de backend](propuestas/venta-agil/README.md).

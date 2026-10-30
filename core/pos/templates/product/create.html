@@ -9,3 +9,4 @@
     <script src="{% static 'lib/bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js' %}"></script>
     <script src="{% static 'product/js/form.js' %}"></script>
 {% endblock %}
+{% block content_form_before %}<template id="fp-product-context" data-company="{{ company.pk }}"></template>{% endblock %}
