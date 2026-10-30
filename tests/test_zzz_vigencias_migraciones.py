@@ -64,7 +64,7 @@ def columnas(tabla):
 
 
 def retencion_enlazada(fila_pk):
-    """Retención con un detalle que apunta a la fila `fila_pk`, como la deja crear() (modelos actuales: esquema de 0015)."""
+    """Retención con un detalle que apunta a la fila `fila_pk`, como la deja crear() (modelos actuales: la base en la hoja)."""
     from core.comprobantes.models import Retencion, RetencionDetalle
     from core.pos.models import Provider, Purchase, Receipt
     empresa = helpers.crear_empresa('MIGRACION VIGENCIAS', plan=None)
@@ -103,6 +103,10 @@ def test_ida_y_vuelta_de_0013_a_0015_con_guardias():
         Codigo.objects.filter(impuesto='1', codigo='310', vigente_desde__isnull=True).update(vigente_hasta=date(2026, 6, 30))
 
         # Vuelta a 0014 con un detalle nuevo enlazado: queda sin fila, las filas nuevas se borran y las de 0004 se reabren.
+        # La retención se crea con los modelos actuales: antes, la hoja completa (las migraciones de Ventas que dependen de
+        # 0015, como comprobantes 0020, añaden columnas a la retención); la vuelta a 0014 las deshace primero.
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
         empresa, detalle_pk = retencion_enlazada(nueva_310.pk)
         apps = migrar(ESQUEMA)
         with company_context(empresa):

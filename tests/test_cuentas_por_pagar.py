@@ -19,7 +19,7 @@ from core.pos.senales_comprobantes import anulado_en_sri
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_ACCOUNTANT, ROLE_READONLY, AuditLog
 from tests import ayuda_compras as ayuda, helpers
-from tests.test_retenciones import (LISTA, codigos, empresa, formulario, numeracion, p12, sri,  # noqa: F401 (fixtures)
+from tests.test_retenciones import (LISTA, codigos, emitir, empresa, formulario, numeracion, p12, sri,  # noqa: F401 (fixtures)
                                     web)
 
 pytestmark = pytest.mark.django_db
@@ -153,7 +153,7 @@ class TestAbonosPorRetencion:
     def test_autorizada_por_la_vista_abona_una_cuenta_total_una_sola_vez(self, web, empresa, admin, proveedor, deuda, codigos,  # noqa: F811
                                                                          numeracion, sri):  # noqa: F811
         sri.respuestas_autorizacion = ['AUTORIZADO']
-        web.post(f'{LISTA}nueva/{deuda.purchase_id}/', {**formulario(self.lineas(codigos)), 'action': 'emitir'})
+        emitir(web, f'{LISTA}nueva/{deuda.purchase_id}/', formulario(self.lineas(codigos)))   # «Revisar» y «Emitir» con su huella (D0)
         retencion = self.retencion_de(empresa, deuda.purchase_id)
         assert retencion.status == 'authorized' and retencion.total_retenido == Decimal('6.50')
         assert saldo(empresa, deuda) == Decimal('108.50')
@@ -166,13 +166,13 @@ class TestAbonosPorRetencion:
     def test_una_cuenta_calculada_sin_iva_no_recibe_el_abono(self, web, empresa, proveedor, codigos, numeracion, sri):  # noqa: F811
         antigua = ayuda.compra_antigua(empresa, proveedor, '100.00', credito=True)
         sri.respuestas_autorizacion = ['AUTORIZADO']
-        web.post(f'{LISTA}nueva/{antigua.pk}/', {**formulario(self.lineas(codigos)), 'action': 'emitir'})
+        emitir(web, f'{LISTA}nueva/{antigua.pk}/', formulario(self.lineas(codigos)))   # «Revisar» y «Emitir» con su huella (D0)
         assert self.retencion_de(empresa, antigua).status == 'authorized'
         with company_context(empresa):
             assert DebtsPay.objects.get(purchase=antigua).saldo == Decimal('100.00')
 
     def test_autorizada_por_la_tarea_periodica(self, web, empresa, deuda, codigos, numeracion, sri):  # noqa: F811
-        web.post(f'{LISTA}nueva/{deuda.purchase_id}/', {**formulario(self.lineas(codigos)), 'action': 'emitir'})
+        emitir(web, f'{LISTA}nueva/{deuda.purchase_id}/', formulario(self.lineas(codigos)))   # «Revisar» y «Emitir» con su huella (D0)
         assert self.retencion_de(empresa, deuda.purchase_id).status == 'in_process' and saldo(empresa, deuda) == Decimal('115.00')
         sri.respuestas_autorizacion = ['AUTORIZADO']
         call_command('consultar_sri')
@@ -185,13 +185,13 @@ class TestAbonosPorRetencion:
             sri.respuestas_recepcion = [('DEVUELTA', [('35', 'ARCHIVO NO CUMPLE ESTRUCTURA XML')])]
         else:
             sri.respuestas_autorizacion = ['NO AUTORIZADO']
-        web.post(f'{LISTA}nueva/{deuda.purchase_id}/', {**formulario(self.lineas(codigos)), 'action': 'emitir'})
+        emitir(web, f'{LISTA}nueva/{deuda.purchase_id}/', formulario(self.lineas(codigos)))   # «Revisar» y «Emitir» con su huella (D0)
         assert self.retencion_de(empresa, deuda.purchase_id).status in ('not_authorized', 'returned')
         assert saldo(empresa, deuda) == Decimal('115.00')
 
     def test_anulada_en_el_sri_o_borrada_recalcula(self, web, empresa, deuda, codigos, numeracion, sri, monkeypatch):  # noqa: F811
         sri.respuestas_autorizacion = ['AUTORIZADO']
-        web.post(f'{LISTA}nueva/{deuda.purchase_id}/', {**formulario(self.lineas(codigos)), 'action': 'emitir'})
+        emitir(web, f'{LISTA}nueva/{deuda.purchase_id}/', formulario(self.lineas(codigos)))   # «Revisar» y «Emitir» con su huella (D0)
         retencion = self.retencion_de(empresa, deuda.purchase_id)
         assert saldo(empresa, deuda) == Decimal('108.50')
         # O2 añade a retenciones_autorizadas el filtro de anuladas en el SRI; aquí se simula para probar el receptor.
