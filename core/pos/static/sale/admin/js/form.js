@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
                                     action: 'validate_client'
                                 };
                             },
-                            message: 'El número de cédula ya se encuentra registrado',
+                            message: 'Ya existe un cliente con esta identificación. Puedes buscarlo aquí.',
                             method: 'POST',
                             headers: {
                                 'X-CSRFToken': csrftoken
@@ -450,17 +450,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
             }
         })
         .on('core.form.valid', function () {
-            var params = new FormData(fvClient.form);
-            params.append('action', 'create_client');
-            var args = {
-                'params': params,
-                'success': function (request) {
-                    select_client.select2('trigger', 'select', {data: request});
-                    fvSale.revalidateField('client');
-                    $('#myModalClient').modal('hide');
-                }
-            };
-            submit_with_formdata(args);
+            fpClienteRapido.guardar();
         });
 });
 
@@ -844,7 +834,7 @@ $(function () {
                 };
             },
         },
-        placeholder: 'Ingrese un nombre o número de cedula de un cliente',
+        placeholder: 'Busca por nombre o identificación',
         minimumInputLength: 1,
     })
         .on('select2:select', function (e) {
@@ -855,12 +845,7 @@ $(function () {
         });
 
     $('.btnAddClient').on('click', function () {
-        input_birthdate.datetimepicker('date', new Date());
         $('#myModalClient').modal('show');
-    });
-
-    $('#myModalClient').on('hidden.bs.modal', function () {
-        fvClient.resetForm(true);
     });
 
     $('#frmClient input[name="dni"]').on('keypress', function (e) {

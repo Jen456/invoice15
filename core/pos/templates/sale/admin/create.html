@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
     <script src="{% static 'sale/admin/js/form.js' %}"></script>
     <script src="{% static 'sale/admin/js/llenado.js' %}" defer></script>
+    <script src="{% static 'sale/admin/js/cliente_rapido.js' %}" defer></script>
 {% endblock %}
 
 {% block form_title %}<span id="fp-sale-title">Nueva factura</span>{% endblock %}
@@ -35,7 +36,8 @@
         <div class="fp-sale-grid">
             <div class="form-group fp-sale-client"><label for="{{ form.client.id_for_label }}">{{ form.client.label }}</label>
                 {{ form.client }}
-                <button type="button" class="btn btn-link btnAddClient fp-inline-action"><i class="fas fa-plus" aria-hidden="true"></i> Crear cliente aquí</button>
+                <button type="button" class="btn btn-link btnAddClient fp-inline-action" aria-haspopup="dialog" aria-controls="myModalClient"><i class="fas fa-plus" aria-hidden="true"></i> Crear cliente aquí</button>
+                <p id="fp-client-status" class="fp-client-status" role="status" hidden></p>
             </div>
             <div class="form-group"><label for="{{ form.date_joined.id_for_label }}">{{ form.date_joined.label }}</label>{{ form.date_joined }}</div>
             <div class="form-group"><label for="{{ form.receipt.id_for_label }}">{{ form.receipt.label }}</label>{{ form.receipt }}</div>
@@ -142,44 +144,7 @@
             </div>
         </div>
     </div>
-    <div id="myModalClient" tabindex="-2" class="modal fade" role="dialog">
-        <form class="form" id="frmClient" method="POST" autocomplete="off">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title font-weight-bold">
-                            <i class="fa fa-plus"></i> Nuevo registro de un cliente
-                        </h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="container-fluid">
-                            {% for field in frmUser.visible_fields %}
-                                <div class="form-group">
-                                    <label>{{ field.label }}:</label>
-                                    {{ field }}
-                                </div>
-                            {% endfor %}
-                            {% for field in frmClient.visible_fields %}
-                                <div class="form-group">
-                                    <label>{{ field.label }}:</label>
-                                    {{ field }}
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary btn-flat btn-block">
-                            <i class="fas fa-save"></i> Guardar registro
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </form>
-
-    </div>
+    {% include "sale/admin/_cliente_rapido.html" %}
     <div id="myModalAdditionalInfo" tabindex="-3" class="modal fade" role="dialog">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">

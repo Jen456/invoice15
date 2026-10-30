@@ -404,3 +404,65 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 @media(max-width:575px){.fp-sale-grid,.fp-product-fields{grid-template-columns:1fr}.fp-sale-section{padding:20px 0}.fp-sale-section legend{font-size:20px}.fp-sale-search>.btn{margin:0 0 16px;width:100%}.fp-sale-tools .btnRemoveAllProducts{margin-left:0}.fp-sale-summary{padding:16px}.fp-product-dialog{padding:20px;max-width:calc(100% - 16px);max-height:calc(100dvh - 16px);border-radius:16px}.fp-product-heading h2{font-size:23px}.fp-product-footer{flex-direction:column-reverse}.fp-product-dialog input,.fp-product-dialog select,.fp-product-dialog textarea{font-size:16px}.fp-sale-lines #tblProducts tbody tr{grid-template-columns:1fr}}
 
 .fp-sale-lines #tblProducts td:nth-child(6),.fp-sale-lines #tblProducts td:nth-child(8){white-space:nowrap}.fp-sale-editor #fp-product-status{background:#e5f1f6;color:#163b50;border-color:#87bacc}.fp-responsive-form:has(.fp-sale-editor)>.card>.fp-form-actions{position:static}.fp-stage .fp-sale-editor .fp-sale-section legend{font-size:21px}
+
+/* Cliente dentro de la factura: un solo formulario, con errores y búsqueda contextual. */
+.fp-client-modal { color: #163B50; }
+.fp-client-modal .modal-dialog { max-width: 780px; margin: 24px auto; height: calc(100% - 48px); }
+.fp-client-modal .modal-content { border: 1px solid #cbdfe8; border-radius: 20px; overflow: hidden; max-height: 100%; }
+.fp-client-modal .modal-header { padding: 24px; background: #E5F1F6; align-items: flex-start; }
+.fp-client-modal .modal-title { font-size: 25px; font-weight: 700; }
+.fp-client-eyebrow { font-size: 14px; color: #9e3522; font-weight: 700; margin: 0 0 6px; }
+.fp-client-modal .close { min-width: 44px; min-height: 44px; margin: 0 -8px 0 8px; padding: 4px; opacity: 1; color: #163B50; }
+.fp-client-modal .modal-body { padding: 24px; max-height: none; overscroll-behavior: contain; }
+.fp-client-modal #fp-client-intro { font-size: 16px; line-height: 1.6; }
+.fp-client-required { color: #476172; font-size: 14px; }
+.fp-client-modal fieldset { min-width: 0; margin: 24px 0 0; padding: 0; border: 0; }
+.fp-client-modal legend { width: auto; float: none; font-size: 19px; font-weight: 700; margin-bottom: 18px; }
+.fp-client-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+.fp-client-wide { grid-column: 1 / -1; }
+.fp-client-modal .form-group { min-width: 0; margin-bottom: 20px; }
+.fp-client-modal label { font-size: 15px; }
+.fp-client-modal label span, .fp-client-modal summary span { font-weight: 400; color: #476172; }
+.fp-client-modal .form-control { min-height: 46px; height: auto; font-size: 16px; color: #163B50; }
+.fp-client-modal .form-control::placeholder { color: #596e7c; opacity: 1; }
+.fp-client-modal .form-text { color: #476172; font-size: 14px; }
+.fp-client-modal .fp-inline-action { min-height: 44px; padding: 8px 0; text-align: left; font-size: 14px; white-space: normal; color: #9e3522; text-decoration: underline; }
+.fp-client-modal .fp-client-check { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.fp-client-check input { flex: 0 0 20px; width: 20px; height: 20px; accent-color: #CA462C; }
+.fp-client-check label { flex: 1 1 180px; margin: 0; padding: 8px 0; font-weight: 400; }
+.fp-client-modal details { border-top: 1px solid #cbdfe8; border-bottom: 1px solid #cbdfe8; padding: 0 0 4px; }
+.fp-client-modal summary { cursor: pointer; padding: 16px 0; font-weight: 600; }
+.fp-client-modal details .form-group:first-of-type { margin-top: 12px; }
+.fp-client-modal input[type=file] { max-width: 100%; padding: 8px; font-size: 14px; }
+.fp-client-draft-note { font-size: 14px; line-height: 1.6; color: #476172; margin: 18px 0 0; }
+.fp-client-modal .modal-footer { display: flex; flex-wrap: wrap; padding: 16px 24px; gap: 10px; background: #fff; }
+.fp-client-modal .modal-footer .btn { min-height: 46px; margin: 0; white-space: normal; }
+.fp-client-modal .modal-footer .btn-primary { background: #CA462C; border-color: #CA462C; }
+.fp-client-modal .alert { background: #fff0ec; border-color: #e9b6ac; color: #8c301f; overflow-wrap: anywhere; font-size: 15px; }
+.fp-client-modal .invalid-feedback { color: #a12d26; font-size: 14px; }
+.fp-client-modal [data-client-error]:not([hidden]) { display: block; }
+.fp-client-modal [hidden], #fp-client-status[hidden] { display: none !important; }
+.fp-client-modal :focus-visible { outline: 3px solid #163B50; outline-offset: 3px; }
+.fp-client-matches, .fp-client-status { padding: 16px; border: 1px solid #9fc5d5; border-radius: 12px; background: #E5F1F6; color: #163B50; overflow-wrap: anywhere; }
+.fp-client-matches { margin-bottom: 20px; }
+.fp-client-matches > p { margin: 0 0 12px; }
+.fp-client-match { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; }
+.fp-client-match + .fp-client-match { border-top: 1px solid #9fc5d5; }
+.fp-client-match .btn { flex-shrink: 0; min-height: 44px; }
+.fp-client-status { font-size: 15px; margin: 4px 0 16px; }
+@media (max-width: 799px) {
+ .fp-client-modal .modal-dialog { margin: 8px; height: calc(100% - 16px); max-width: none; }
+}
+@media (max-width: 575px) {
+ .fp-client-modal .modal-content { border-radius: 16px; }
+ .fp-client-modal .modal-header, .fp-client-modal .modal-body { padding: 18px; }
+ .fp-client-modal .modal-title { font-size: 23px; }
+ .fp-client-grid { grid-template-columns: minmax(0, 1fr); }
+ .fp-client-modal .modal-footer { padding: 12px 18px; }
+ .fp-client-modal .modal-footer .btn { flex: 1 1 100%; }
+ .fp-client-modal .modal-footer .btn-primary { order: -1; }
+ .fp-client-match { align-items: stretch; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+ .fp-client-modal, .fp-client-modal *, .fp-client-modal *::before, .fp-client-modal *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}

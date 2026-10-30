@@ -1435,3 +1435,39 @@ Se fusionó `github/plataforma` (`3549c16`) en `frontend/etapa3` con `46da1c8`; 
 No se ejecutó la suite completa en esta entrega ni PostgreSQL; sí las suites relevantes arriba. No se realizaron emisiones, pagos ni correos reales, ni despliegue. Pendientes: contrato de respaldo y separación de medio/condición, prueba en teléfono físico y revisión de Claude para integrar/publicar.
 
 [Ver capturas, propuesta y contrato de backend](propuestas/venta-agil/README.md).
+
+## 2026-10-30 — Clientes sin salir de la factura
+
+### Entrega acotada
+
+Mientras Claude prepara el respaldo de cobros, se mejora el alta de clientes de la factura real, sobre `9e65aea`. Fetch realizado; `github/plataforma` sigue en `3549c16`, ya integrado en la rama. Sin cambios en pagos, backend ni reglas fiscales.
+
+- Formulario de marca en un diálogo adaptable: identificación y datos del cliente, contacto y opciones de correos adicionales/imagen. Etiquetas asociadas, indicación de campos obligatorios, teclado numérico o de texto según identificación y botones cómodos en móvil. Usa los campos Django originales, incluidos los tipos de identificación del exterior.
+- «Guardar y usar cliente» crea el registro mediante el endpoint existente y lo selecciona en la factura. Se mantienen productos, cantidades, importes, forma/condición de pago e información adicional. No se emite nada al crear al cliente.
+- Cerrar o pulsar Escape conserva lo escrito mientras se permanezca en la página. El formulario solo se limpia tras el alta confirmada o la selección explícita de un cliente existente. No es un borrador persistido: recargar o salir pierde esos datos aún no guardados.
+- Errores del servidor junto al campo, con su texto escapado, foco y apertura automática de las opciones plegadas. El desplazamiento ocurre dentro del diálogo para mostrar campo y error, sin desplazar intencionalmente la factura. La búsqueda permite recuperar clientes ya registrados sin crear otro.
+- Mientras se guarda, se bloquea el segundo envío. Si se pierde la respuesta del POST, se conserva el formulario, se bloquea el reenvío y se ofrece consultar el cliente. Un resultado incierto no se presenta como éxito ni se vuelve a enviar automáticamente. Los resultados antiguos de una búsqueda se descartan al cambiar de identificación.
+
+### Archivos
+
+- `core/pos/templates/sale/admin/create.html`: incluye el diálogo, su script y la confirmación visible en la factura.
+- `core/pos/templates/sale/admin/_cliente_rapido.html`: formulario con campos/CSRF y acciones conservados.
+- `core/pos/static/sale/admin/js/cliente_rapido.js`: envío contextual, errores, selección, búsqueda, foco y conservación temporal.
+- `core/pos/static/sale/admin/js/form.js`: delega únicamente el guardado del cliente; elimina el borrado al cerrar y la sustitución de su fecha al reabrir; aclara los textos de búsqueda/duplicado. No cambia cálculos, emisión ni precarga de proformas.
+- `static/css/facturaporaqui.css`: estilos `fp-client-*`, foco, opciones plegadas y adaptación móvil, sin dependencias nuevas.
+- `capturas/cliente-en-factura/`: siete WebP, `verificacion.json`, `fallos-controlados.json` y guía de revisión. `HANDOFF.md` y este registro. Rutas de capturas/documentación relativas a `entregas/facturaporaqui/`.
+
+### Validación realizada
+
+- SQLite: `python -m pytest tests/test_estaticos.py tests/test_rutas.py tests/test_frontend_integracion.py tests/test_clientes_exterior_correos.py tests/test_alta_producto_en_factura.py tests/test_proformas_conversion.py -q -o addopts=` → **61 aprobadas, 23,29 s**. Incluye clientes del exterior, correos, conversión de proformas y alta de productos. El SRI/correo de las pruebas se simula; no son emisiones ni correos reales.
+- Chromium con servidor Django y SQLite locales, exclusivamente datos ficticios: **36 comprobaciones** a **360/390/768/1024/1360/1440 px**. Se probaron alta real, error real de correos adicionales, recuperación de duplicado sin nueva alta, selección, conservación de productos/importes/información adicional, cierre/Escape/foco y navegación con Tab. Sin desbordes de página, diálogo o formulario. Movimiento reducido a 390 y 1360 px. Sin errores JavaScript ni HTTP en el recorrido normal.
+- Tres escenarios adicionales: respuesta perdida después de guardar realmente (recuperada sin repetir POST); doble intento y Escape durante guardado (un solo POST); respuesta de búsqueda obsoleta tras cambiar identificación (descartada). Una interrupción de red inducida y esperada. Cero peticiones para emitir/editar facturas en los recorridos de navegador.
+- Se revisaron las capturas, incluido el error móvil completo. WebP de 24–55 KB, sin secretos. `node --check` y `git diff --check` correctos. No se añadieron librerías ni CDN.
+
+### Límites y siguiente paso
+
+No se ejecutó PostgreSQL ni la suite completa en esta intervención. El móvil se comprobó por emulación de navegador, no en teléfono físico. Sin despliegues, pagos, documentos reales o acceso a datos privados. Se reutiliza el contexto/permiso del endpoint actual; no se atribuye al frontend una nueva garantía de aislamiento entre pestañas.
+
+El backend aún exige `birthdate` y lo precarga con la fecha actual incluso para un cliente empresa. Se conserva el contrato, sin ocultarlo o inventar una fecha para guardar. Se deja a Claude la necesidad de revisar ese requisito, independiente del trabajo prioritario de cobros.
+
+[Capturas y pasos para revisar](capturas/cliente-en-factura/README.md).

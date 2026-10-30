@@ -1,0 +1,190 @@
+{
+  "browser": "Chromium",
+  "data": "Ficticios; SQLite local",
+  "checks": [
+    {
+      "name": "formulario sin desbordes",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "Escape, foco y conservación de datos",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "teclado permanece en diálogo",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "error del servidor junto al campo y detalles abiertos",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "alta real, selección y factura intacta",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "duplicado recuperado sin nueva alta",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "formulario sin desbordes",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Escape, foco y conservación de datos",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "teclado permanece en diálogo",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "error del servidor junto al campo y detalles abiertos",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "alta real, selección y factura intacta",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "duplicado recuperado sin nueva alta",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "formulario sin desbordes",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "Escape, foco y conservación de datos",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "teclado permanece en diálogo",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "error del servidor junto al campo y detalles abiertos",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "alta real, selección y factura intacta",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "duplicado recuperado sin nueva alta",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "formulario sin desbordes",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "Escape, foco y conservación de datos",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "teclado permanece en diálogo",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "error del servidor junto al campo y detalles abiertos",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "alta real, selección y factura intacta",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "duplicado recuperado sin nueva alta",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "formulario sin desbordes",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "Escape, foco y conservación de datos",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "teclado permanece en diálogo",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "error del servidor junto al campo y detalles abiertos",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "alta real, selección y factura intacta",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "duplicado recuperado sin nueva alta",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "formulario sin desbordes",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "Escape, foco y conservación de datos",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "teclado permanece en diálogo",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "error del servidor junto al campo y detalles abiertos",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "alta real, selección y factura intacta",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "duplicado recuperado sin nueva alta",
+      "width": 1440,
+      "result": "ok"
+    }
+  ],
+  "errors": [],
+  "httpErrors": [],
+  "invoiceWrites": 0,
+  "createRequests": 12
+}

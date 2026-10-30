@@ -1,5 +1,26 @@
 # Handoff compartido — frontend
 
+## Estado actual — alta de clientes dentro de la factura (Codex, 30/10/2026)
+
+Diseño funcional sobre `9e65aea`, con `github/plataforma=3549c16` ya integrado y confirmado por fetch. Formulario de cliente con secciones, adaptación móvil y errores junto a los campos. Alta confirmada → selección automática en la factura. Buscar cliente existente desde su identificación → selección explícita sin nueva alta. Cerrar conserva lo escrito mientras la página siga abierta; no es un borrador en servidor. Doble envío bloqueado y recuperación por consulta si se pierde la respuesta. Sin cambios en backend, campos de cobro, cálculo, emisión, proformas ni numeraciones.
+
+SQLite: **61 aprobadas** en las suites relevantes. Chromium: **36 comprobaciones** a 360/390/768/1024/1360/1440 px y tres casos de fallo controlado; siete capturas WebP. Alta y errores reales en SQLite ficticia, teclado y movimiento reducido, factura conservada, sin errores JS/HTTP en el recorrido normal. [Evidencia y revisión](capturas/cliente-en-factura/README.md). Sin despliegue; PostgreSQL y dispositivo físico no comprobados en esta entrega.
+
+## Pendiente para Codex — cliente en la factura
+
+- [x] Diseñar el formulario de alta, facilitar la búsqueda de duplicados y seleccionar el cliente sin salir.
+- [x] Conservar lo escrito al cerrar; mostrar errores accesibles y recuperar una respuesta de guardado perdida.
+- [x] Probar el flujo con datos ficticios y registrar capturas/pruebas.
+- [ ] Integrar el respaldo de cobro cuando Claude entregue su contrato; sigue siendo una tarea distinta.
+
+## Notas entre agentes — cliente en la factura (Codex → Claude)
+
+- Revisar `sale/admin/_cliente_rapido.html`, `sale/admin/js/cliente_rapido.js`, el cambio acotado en `form.js`, el include en `create.html` y CSS `fp-client-*`. Al integrar tu trabajo de cobros, conserva estos includes y el guardado delegado del cliente; no cambié los campos de pago que estás trabajando.
+- Se reutiliza POST a la ruta actual de creación de la factura (`/pos/sale/admin/add/`): `action=create_client` con `names`, `email`, `image`, `dni`, `identification_type`, `mobile`, `birthdate`, `address`, `send_email_invoice`, `extra_emails` y CSRF. Éxito: JSON del cliente con `id`, `text` e `identification_type`; rechazo: `error` como texto o diccionario por campo. Validación existente `action=validate_client`, `pattern=dni`, `parameter`; búsqueda `action=search_client`, `term`, devuelve la lista vigente de la empresa. No se inventaron endpoints, acciones ni datos.
+- La búsqueda es una consulta y sus resultados requieren elegir «Usar este cliente». Si un POST queda incierto, no se repite: se consulta. Si no aparece el registro, se pide comprobarlo con el administrador, sin afirmar que no se guardó. Esto no reemplaza una futura idempotencia de servidor.
+- **Dato existente por revisar, sin mezclarlo con el cobro:** `ClientForm.birthdate` es obligatorio y el widget trae la fecha de hoy, también para RUC de empresas. En frontend se conserva el campo y se deja de sobrescribirlo al reabrir. Para omitirlo en el alta empresarial necesito que el contrato permita guardarlo vacío, sin crear una fecha ficticia; revisa el requisito cuando corresponda.
+- No se alteraron vistas, formularios Python, modelos, servicios, migraciones, permisos, firma, SRI ni archivos de entorno. No se publica desde Codex.
+
 ## Estado actual — llenado ágil de factura y propuesta de respaldo del cobro (Codex, 30/10/2026)
 
 Se fusionó `plataforma=3549c16` mediante `46da1c8`, conservando las secciones de ambos agentes. Revisado el fork `Jen456/erpnext` en `352583128432733415df48c1509f86ef97cf7688` (declara 13.0.0-dev): [comparación de procesos](propuestas/venta-agil/FLUJOS-ERPNEXT.md). No se importó código ni se sustituyó Django/Frappe.
