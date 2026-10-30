@@ -58,6 +58,7 @@ LOCAL_APPS = [
     'core.comprobantes',
     'core.importacion',
     'core.proformas',
+    'core.adjuntos',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + LOCAL_APPS + THIRD_PARTY_APPS

@@ -167,10 +167,12 @@ $(function () {
                         class: 'text-center',
                         orderable: false,
                         render: function (data, type, row) {
+                            // Comprobantes de pago del pago (core/adjuntos): permisos y plan los decide el servidor.
+                            var botones = row.tipo === 'pago' ? '<button type="button" class="btn btn-outline-secondary btn-xs btn-flat mr-1" data-adjuntos-tipo="pago" data-adjuntos-id="' + parseInt(row.id, 10) + '" title="Comprobantes de pago" aria-label="Comprobantes de pago"><i class="fas fa-paperclip" aria-hidden="true"></i></button>' : '';
                             if (row.tipo === 'pago' && data) {
-                                return '<a rel="delete" class="btn btn-danger btn-xs btn-flat" title="Eliminar el pago"><i class="fas fa-times"></i></a>';
+                                botones += '<a rel="delete" class="btn btn-danger btn-xs btn-flat" title="Eliminar el pago"><i class="fas fa-times"></i></a>';
                             }
-                            return '';
+                            return botones;
                         }
                     }
                 ],

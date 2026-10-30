@@ -47,6 +47,7 @@ ESTRUCTURA = (
         ('/pos/ctas/collect/', 'Cuentas por cobrar', 1),
         ('/pos/debts/pay/', 'Cuentas por pagar', 2),
         ('/comprobantes/retenciones-recibidas/', 'Retenciones recibidas', 3),   # Etapa 2 (O2)
+        ('/adjuntos/', 'Comprobantes de pago', 4),   # comprobantes de pago adjuntos (core/adjuntos)
     )),
     ('Reportes', 'fas fa-chart-pie', 70, ()),   # sin cambios de nombre
     ('Configuración', 'fas fa-cogs', 80, (
@@ -79,6 +80,9 @@ MODULOS_NUEVOS = (
     ('comprobantes', '/comprobantes/retenciones-recibidas/', 'fas fa-hand-holding-usd',
      'Retenciones que te hicieron tus clientes sobre tus facturas',
      ('view_retencionrecibida', 'add_retencionrecibida', 'change_retencionrecibida')),
+    # Comprobantes de pago adjuntos (core/adjuntos): lo crea adjuntos 0003 en instalaciones existentes.
+    ('adjuntos', '/adjuntos/', 'fas fa-paperclip', 'Comprobantes de pago adjuntos a facturas, compras, gastos, cobros y pagos',
+     ('view_adjunto', 'add_adjunto', 'delete_adjunto')),
 )
 
 

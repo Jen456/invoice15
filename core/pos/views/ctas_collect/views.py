@@ -1,11 +1,13 @@
 import json
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import DeleteView, CreateView, FormView
 
+from core.adjuntos import registro as adjuntos
 from core.pos import cxc
 from core.pos.forms import PaymentsCtaCollectForm, CtasCollect
 from core.reports.forms import ReportForm
@@ -79,9 +81,11 @@ class CtasCollectCreateView(GroupPermissionMixin, CreateView):
                 cuenta = request.POST.get('ctas_collect', '')
                 if not str(cuenta).isdigit():
                     raise ValueError('Elige la cuenta por cobrar.')
-                cxc.registrar_cobro(request.company, request.user, int(cuenta), request.POST.get('date_joined', ''),
-                                    request.POST.get('valor', ''), request.POST.get('medio_pago', ''),
-                                    request.POST.get('referencia', ''), request.POST.get('description', ''))
+                with transaction.atomic():   # el comprobante adjunto (opcional) va en la misma transacción que el cobro
+                    abono = cxc.registrar_cobro(request.company, request.user, int(cuenta), request.POST.get('date_joined', ''),
+                                                request.POST.get('valor', ''), request.POST.get('medio_pago', ''),
+                                                request.POST.get('referencia', ''), request.POST.get('description', ''))
+                    adjuntos.adjuntar_al_registrar(request, 'cobro', abono)
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
         except ObjectDoesNotExist:
@@ -95,6 +99,7 @@ class CtasCollectCreateView(GroupPermissionMixin, CreateView):
         context['title'] = 'Nuevo registro de un Pago'
         context['list_url'] = self.success_url
         context['action'] = 'add'
+        context.update(adjuntos.contexto())
         return context
 
 

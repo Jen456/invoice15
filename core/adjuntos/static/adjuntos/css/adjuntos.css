@@ -1,0 +1,32 @@
+/* Comprobantes de pago adjuntos (prefijo fp-adjuntos). Diseño definitivo: Codex. */
+.fp-adjuntos-tabla td, .fp-adjuntos-tabla th { vertical-align: middle; }
+.fp-adjuntos-tabla td { overflow-wrap: anywhere; }
+.fp-adjuntos-eliminado td { text-decoration: line-through; color: #6c757d; }
+.fp-adjuntos-eliminado td:last-child { text-decoration: none; }
+.fp-adjuntos-form { border-top: 1px solid #d6e4ec; padding-top: 14px; margin-top: 14px; }
+.fp-adjuntos-form .form-control, .fp-adjuntos-form .btn { min-height: 44px; }
+.fp-adjuntos-documento { background: #E5F1F6; border-left: 4px solid #44BADD; border-radius: 8px; padding: 10px 14px; overflow-wrap: anywhere; }
+.fp-adjuntos-documento:empty { display: none; }
+.fp-adjuntos-progreso { color: #163B50; font-weight: 600; }
+.fp-adjuntos-btn { white-space: normal; }
+.fp-adjuntos-mes { max-width: 1440px; margin: auto; min-width: 0; color: #163B50; }
+.fp-adjuntos-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 0 0 20px; }
+.fp-adjuntos-resumen > div { background: #fff; border: 1px solid #cbdfe8; border-radius: 14px; padding: 14px 16px; }
+.fp-adjuntos-resumen strong { display: block; font-size: 28px; font-weight: 750; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+.fp-adjuntos-resumen .fp-adjuntos-falta strong { color: #CA462C; }
+.fp-adjuntos-filtro { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; background: #fff; border: 1px solid #cbdfe8; border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; }
+.fp-adjuntos-filtro input[type=month] { min-height: 44px; }
+.fp-adjuntos-filtro .btn { min-height: 44px; }
+.fp-adjuntos-mes h2 { font-size: 20px; font-weight: 750; margin: 24px 0 10px; }
+.fp-adjuntos-mes table { background: #fff; }
+.fp-adjuntos-mes td { vertical-align: middle; overflow-wrap: anywhere; }
+.fp-adjuntos-lista { list-style: none; padding: 0; margin: 0; }
+.fp-adjuntos-lista li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 2px 0; }
+.fp-adjuntos-tag { display: inline-block; border: 1px solid #b9d6e3; background: #e5f1f6; color: #163B50; border-radius: 20px; padding: .2rem .6rem; font-size: .82rem; font-weight: 700; }
+.fp-adjuntos-tag[data-falta] { background: #fdeae6; border-color: #e8a899; color: #9b321e; }
+@media (max-width: 767px) {
+    .fp-adjuntos-mes .table thead { position: absolute; left: -9999px; }
+    .fp-adjuntos-mes .table td { display: block; border-top: 0; }
+    .fp-adjuntos-mes .table td[data-label]::before { content: attr(data-label) ": "; font-weight: 700; }
+    .fp-adjuntos-mes .table tr { display: block; border-top: 2px solid #cbdfe8; }
+}

@@ -36,5 +36,6 @@ urlpatterns = [
     path('comprobantes/', include('core.comprobantes.urls')),
     path('importacion/', include('core.importacion.urls')),
     path('proformas/', include('core.proformas.urls')),
+    path('adjuntos/', include('core.adjuntos.urls')),
     path('', DashboardView.as_view(), name='dashboard'),
 ]

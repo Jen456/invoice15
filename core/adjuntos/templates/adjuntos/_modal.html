@@ -1,0 +1,43 @@
+{# Modal compartido de comprobantes de pago. Lo llena static/adjuntos/js/adjuntos.js (fpAdjuntos.abrir(tipo, id)); el servidor decide permisos y plan. #}
+<div class="modal fade fp-adjuntos-modal" id="fpAdjuntosModal" tabindex="-1" role="dialog" aria-labelledby="fpAdjuntosTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title font-weight-bold" id="fpAdjuntosTitulo"><i class="fas fa-paperclip" aria-hidden="true"></i> Comprobantes de pago</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <p class="fp-adjuntos-documento" id="fpAdjuntosDocumento"></p>
+                <div class="alert alert-warning" id="fpAdjuntosBloqueo" role="status" hidden></div>
+                <div class="alert alert-danger" id="fpAdjuntosError" role="alert" tabindex="-1" hidden></div>
+                <div class="alert alert-success" id="fpAdjuntosAviso" role="status" hidden></div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered fp-adjuntos-tabla">
+                        <thead><tr><th scope="col">Clase</th><th scope="col">Archivo</th><th scope="col">Referencia</th><th scope="col">Fecha</th>
+                            <th scope="col" class="text-right">Importe</th><th scope="col">Subido</th><th scope="col">Opciones</th></tr></thead>
+                        <tbody id="fpAdjuntosLista"><tr><td colspan="7" class="text-muted">Cargando…</td></tr></tbody>
+                    </table>
+                </div>
+                <form id="fpAdjuntosForm" class="fp-adjuntos-form" enctype="multipart/form-data" hidden>
+                    <h6 class="font-weight-bold">Adjuntar un comprobante</h6>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="fpAdjArchivo">Archivo (PDF o foto)</label>
+                            <input type="file" id="fpAdjArchivo" name="archivo" class="form-control-file" required multiple
+                                   accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
+                            <small class="form-text text-muted" id="fpAdjLimites"></small>
+                        </div>
+                        <div class="form-group col-md-6"><label for="fpAdjClase">Clase</label><select id="fpAdjClase" name="clase" class="form-control"></select></div>
+                        <div class="form-group col-md-4"><label for="fpAdjReferencia">Referencia</label>
+                            <input id="fpAdjReferencia" name="referencia" class="form-control" maxlength="100" autocomplete="off" placeholder="N.º de transferencia, cheque o comprobante"></div>
+                        <div class="form-group col-md-4"><label for="fpAdjFecha">Fecha del comprobante</label><input type="date" id="fpAdjFecha" name="fecha" class="form-control"></div>
+                        <div class="form-group col-md-4"><label for="fpAdjImporte">Importe</label><input type="number" step="0.01" min="0.01" id="fpAdjImporte" name="importe" class="form-control" inputmode="decimal"></div>
+                        <div class="form-group col-12"><label for="fpAdjDescripcion">Descripción (opcional)</label><input id="fpAdjDescripcion" name="descripcion" class="form-control" maxlength="300" autocomplete="off"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-flat"><i class="fas fa-upload" aria-hidden="true"></i> Subir comprobante</button>
+                    <span class="fp-adjuntos-progreso ml-2" id="fpAdjuntosProgreso" role="status" aria-live="polite"></span>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

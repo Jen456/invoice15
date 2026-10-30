@@ -1,0 +1,55 @@
+{% extends 'skin.html' %}{% load static %}
+{% block assets_body %}{{ block.super }}
+    <link rel="stylesheet" href="{% static 'adjuntos/css/adjuntos.css' %}">
+    <script src="{% static 'adjuntos/js/adjuntos.js' %}" defer></script>
+{% endblock %}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page"><i class="fas fa-paperclip" aria-hidden="true"></i> Comprobantes de pago</li>{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-adjuntos-mes">
+    <header class="fp-welcome"><span class="fp-eyebrow">Administrativo</span><h1>Comprobantes de pago de {{ mes|date:"F Y" }}</h1>
+        <p>Transferencias, depósitos, cheques y vouchers adjuntos a tus facturas, compras, gastos, cobros y pagos. Sirven de respaldo para
+            las declaraciones del mes y para la conciliación bancaria (Etapa 3).</p></header>
+    <form method="get" class="fp-adjuntos-filtro" role="search">
+        <div><label for="fpAdjMes" class="mb-1">Mes</label><input type="month" id="fpAdjMes" name="mes" class="form-control" value="{{ mes_valor }}" max="{% now 'Y-m' %}"></div>
+        <button type="submit" class="btn btn-primary">Ver mes</button>
+        <a class="btn btn-outline-secondary" href="?mes={{ anterior }}">&larr; Mes anterior</a>
+        {% if siguiente %}<a class="btn btn-outline-secondary" href="?mes={{ siguiente }}">Mes siguiente &rarr;</a>{% endif %}
+        {% if resumen.totales.adjuntos %}<a class="btn fpa-btn-pagar ml-auto" href="{% url 'adjuntos_zip' %}?mes={{ mes_valor }}"><i class="fas fa-file-archive" aria-hidden="true"></i> Descargar ZIP del mes ({{ resumen.totales.bytes_texto }})</a>{% endif %}
+    </form>
+    <div class="fp-adjuntos-resumen">
+        <div><span>Documentos del mes</span><strong>{{ resumen.totales.documentos }}</strong></div>
+        <div><span>Con comprobante</span><strong>{{ resumen.totales.con_comprobante }}</strong></div>
+        <div class="fp-adjuntos-falta"><span>Pagados por banco sin comprobante</span><strong>{{ resumen.totales.sin_comprobante }}</strong></div>
+        <div><span>Archivos adjuntos</span><strong>{{ resumen.totales.adjuntos }}</strong></div>
+    </div>
+
+    <h2 id="fp-adjuntos-faltantes">Pendientes de comprobante</h2>
+    <p class="text-muted">Documentos del mes pagados o cobrados por un medio distinto del efectivo que no tienen ningún comprobante adjunto.</p>
+    <div class="table-responsive"><table class="table table-sm table-bordered" aria-labelledby="fp-adjuntos-faltantes">
+        <thead><tr><th scope="col">Documento</th><th scope="col">Tercero</th><th scope="col">Fecha</th><th scope="col" class="text-right">Importe</th><th scope="col">Medio de pago</th><th scope="col">Opciones</th></tr></thead>
+        <tbody>
+        {% for f in resumen.faltantes %}
+            <tr><td data-label="Documento"><span class="fp-adjuntos-tag" data-falta>{{ f.tipo_nombre }}</span> {{ f.numero }}</td><td data-label="Tercero">{{ f.tercero }}</td>
+                <td data-label="Fecha">{{ f.fecha }}</td><td data-label="Importe" class="text-right">{% if f.importe %}${{ f.importe }}{% else %}—{% endif %}</td><td data-label="Medio">{{ f.medio }}</td>
+                <td data-label="Opciones"><button type="button" class="btn btn-primary btn-xs btn-flat fp-adjuntos-btn" data-adjuntos-tipo="{{ f.tipo }}" data-adjuntos-id="{{ f.id }}"><i class="fas fa-paperclip" aria-hidden="true"></i> Adjuntar</button></td></tr>
+        {% empty %}<tr><td colspan="6" class="text-muted">Todo lo pagado por banco en este mes tiene su comprobante.</td></tr>{% endfor %}
+        </tbody></table></div>
+
+    <h2 id="fp-adjuntos-todos">Documentos del mes y sus comprobantes</h2>
+    <div class="table-responsive"><table class="table table-sm table-bordered" aria-labelledby="fp-adjuntos-todos">
+        <thead><tr><th scope="col">Documento</th><th scope="col">Tercero</th><th scope="col">Fecha</th><th scope="col" class="text-right">Importe</th><th scope="col">Medio de pago</th><th scope="col">Comprobantes</th><th scope="col">Opciones</th></tr></thead>
+        <tbody>
+        {% for f in resumen.filas %}
+            <tr><td data-label="Documento"><span class="fp-adjuntos-tag">{{ f.tipo_nombre }}</span> {{ f.numero }}</td><td data-label="Tercero">{{ f.tercero }}</td>
+                <td data-label="Fecha">{{ f.fecha }}</td><td data-label="Importe" class="text-right">{% if f.importe %}${{ f.importe }}{% else %}—{% endif %}</td><td data-label="Medio">{{ f.medio }}</td>
+                <td data-label="Comprobantes">{% if f.adjuntos %}<ul class="fp-adjuntos-lista">{% for a in f.adjuntos %}
+                    <li><a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.clase.name }}</a><small class="text-muted">{{ a.referencia|default:"" }} {{ a.fecha }}{% if a.importe %} · ${{ a.importe }}{% endif %}</small></li>{% endfor %}</ul>
+                    {% elif f.requiere %}<span class="fp-adjuntos-tag" data-falta>Sin comprobante</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                <td data-label="Opciones"><button type="button" class="btn btn-outline-secondary btn-xs btn-flat fp-adjuntos-btn" data-adjuntos-tipo="{{ f.tipo }}" data-adjuntos-id="{{ f.id }}"><i class="fas fa-paperclip" aria-hidden="true"></i> Comprobantes</button></td></tr>
+        {% empty %}<tr><td colspan="7" class="text-muted">No hay facturas, compras, gastos, cobros ni pagos registrados en este mes.</td></tr>{% endfor %}
+        </tbody></table></div>
+    <p class="text-muted small">Formatos admitidos: {{ limites.formatos }}, hasta {{ limites.max_mb }} MB por archivo. Los comprobantes quitados se conservan en el historial de cada documento.</p>
+</div>
+{% include 'adjuntos/_modal.html' %}
+<script>document.addEventListener('fp-adjuntos:cerrado', function (e) { if (e.detail && e.detail.cambios) window.location.reload(); });</script>
+{% endblock %}

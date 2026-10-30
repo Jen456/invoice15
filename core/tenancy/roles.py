@@ -20,10 +20,12 @@ ACCOUNTANT_URLS = REPORT_URLS | {'/pos/sale/admin/', '/pos/credit/note/admin/', 
                                  '/pos/provider/', '/comprobantes/retenciones/',
                                  '/comprobantes/liquidaciones/', '/comprobantes/notas-debito/', '/comprobantes/guias/',
                                  '/importacion/lotes/', '/importacion/pendientes/', '/importacion/recibidos/',
-                                 '/proformas/', '/comprobantes/retenciones-recibidas/'} | PROFILE_URLS
+                                 '/proformas/', '/comprobantes/retenciones-recibidas/', '/adjuntos/'} | PROFILE_URLS
 # Permisos que un rol de solo lectura nunca recibe aunque el módulo esté en su menú.
 WRITE_PREFIXES = ('add_', 'change_', 'delete_', 'adjust_')
 SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note', 'add_proforma', 'change_proforma'}
+# Escritura que sí recibe el Contador: adjuntar y quitar comprobantes de pago (respaldo contable), nunca documentos.
+ACCOUNTANT_WRITE = {'add_adjunto', 'delete_adjunto'}
 
 
 def role_modules(role, modules):
@@ -35,7 +37,7 @@ def role_modules(role, modules):
         return [m for m in staff if m.url not in {'/pos/product/stock/adjustment/', '/user/', '/pos/company/update/',
                                                   '/suscripcion/', '/configuracion/facturacion/', '/importacion/nueva/'}], False
     if role == ROLE_ACCOUNTANT:
-        return [m for m in staff if m.url in ACCOUNTANT_URLS], False
+        return [m for m in staff if m.url in ACCOUNTANT_URLS], 'accountant'
     if role == ROLE_SELLER:
         return [m for m in staff if m.url in SELLER_URLS], 'seller'
     if role == ROLE_CLIENT:
@@ -55,7 +57,8 @@ def sync_roles(Group, Module, GroupModule):
             GroupModule.objects.get_or_create(group=group, module=module)
             for permission in module.permissions.all():
                 is_write = permission.codename.startswith(WRITE_PREFIXES)
-                if write is True or not is_write or (write == 'seller' and permission.codename in SELLER_WRITE):
+                if write is True or not is_write or (write == 'seller' and permission.codename in SELLER_WRITE) \
+                        or (write == 'accountant' and permission.codename in ACCOUNTANT_WRITE):
                     permissions.add(permission)
         group.permissions.set(permissions)
 

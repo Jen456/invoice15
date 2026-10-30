@@ -182,7 +182,8 @@ class TestMenu:
             ('importacion', '/importacion/recibidos/'), ('importacion', '/importacion/nueva/'), ('importacion', '/importacion/lotes/'),
             ('importacion', '/importacion/pendientes/'), ('importacion', '/importacion/reglas/'),
             ('proformas', '/proformas/'),   # Proformas (Etapa 1) declara su módulo
-            ('comprobantes', '/comprobantes/retenciones-recibidas/')]   # Etapa 2 (O2)
+            ('comprobantes', '/comprobantes/retenciones-recibidas/'),   # Etapa 2 (O2)
+            ('adjuntos', '/adjuntos/')]   # comprobantes de pago adjuntos
 
     def test_importacion_queda_igual_y_se_recrea_igual(self):
         antes = estado_menu()

@@ -3,11 +3,13 @@ referencia, abonos por retención y nota de crédito, y borrados que exigen dele
 auditados. Las reglas están en core.pos.cuentas_por_pagar."""
 import json
 
+from django.db import transaction
 from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, FormView
 
+from core.adjuntos import registro as adjuntos
 from core.pos import cuentas_por_pagar
 from core.pos.forms import DebtsPay, PaymentsDebtsPay, PaymentsDebtsPayForm
 from core.reports.forms import ReportForm
@@ -105,10 +107,12 @@ class DebtsPayCreateView(GroupPermissionMixin, CreateView):
                     deuda_id = int(request.POST.get('debts_pay') or 0)
                 except ValueError:
                     deuda_id = 0
-                cuentas_por_pagar.registrar_pago(
-                    deuda_id, request.user, fecha=request.POST.get('date_joined'), valor=request.POST.get('valor'),
-                    medio_pago=request.POST.get('medio_pago'), referencia=request.POST.get('referencia', ''),
-                    descripcion=request.POST.get('description', ''))
+                with transaction.atomic():   # el comprobante adjunto (opcional) va en la misma transacción que el pago
+                    pago = cuentas_por_pagar.registrar_pago(
+                        deuda_id, request.user, fecha=request.POST.get('date_joined'), valor=request.POST.get('valor'),
+                        medio_pago=request.POST.get('medio_pago'), referencia=request.POST.get('referencia', ''),
+                        descripcion=request.POST.get('description', ''))
+                    adjuntos.adjuntar_al_registrar(request, 'pago', pago)
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
         except Exception as e:
@@ -120,6 +124,7 @@ class DebtsPayCreateView(GroupPermissionMixin, CreateView):
         context['title'] = 'Nuevo registro de un Pago'
         context['list_url'] = self.success_url
         context['action'] = 'add'
+        context.update(adjuntos.contexto())
         return context
 
 
