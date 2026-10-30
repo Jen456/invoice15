@@ -8,6 +8,9 @@ from core.pos.forms import ExpensesForm, Expenses
 from core.reports.forms import ReportForm
 from core.security.mixins import GroupPermissionMixin
 
+# Con factura, el gasto se registra en Compras como compra de gasto (sustenta el IVA y el ATS).
+URL_GASTO = '/pos/purchase/add/?tipo=gasto'
+
 
 class ExpensesListView(GroupPermissionMixin, FormView):
     template_name = 'expenses/list.html'
@@ -20,7 +23,7 @@ class ExpensesListView(GroupPermissionMixin, FormView):
         try:
             if action == 'search':
                 data = []
-                queryset =  Expenses.objects.filter()
+                queryset = Expenses.objects.select_related('type_expense')
                 start_date = request.POST['start_date']
                 end_date = request.POST['end_date']
                 if len(start_date) and len(end_date):
@@ -37,6 +40,7 @@ class ExpensesListView(GroupPermissionMixin, FormView):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Listado de Gastos'
         context['create_url'] = reverse_lazy('expenses_create')
+        context['url_gasto'] = URL_GASTO
         return context
 
 
@@ -63,6 +67,7 @@ class ExpensesCreateView(GroupPermissionMixin, CreateView):
         context = super().get_context_data()
         context['title'] = 'Nuevo registro de un Gasto'
         context['list_url'] = self.success_url
+        context['url_gasto'] = URL_GASTO
         context['action'] = 'add'
         return context
 
@@ -95,6 +100,7 @@ class ExpensesUpdateView(GroupPermissionMixin, UpdateView):
         context = super().get_context_data()
         context['title'] = 'Edición de un Gasto'
         context['list_url'] = self.success_url
+        context['url_gasto'] = URL_GASTO
         context['action'] = 'edit'
         return context
 

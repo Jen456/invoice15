@@ -1,4 +1,5 @@
 {% extends 'form.html' %}
+{% load widget_tweaks %}
 {% load static %}
 {% block assets_form %}
     <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
@@ -10,4 +11,17 @@
     <script src="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js' %}"></script>
     <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
     <script src="{% static 'expenses/js/form.js' %}"></script>
+{% endblock %}
+
+{% block form_fields %}
+    <div class="alert alert-info" role="note">
+        ¿Tienes factura? <a href="{{ url_gasto }}">Regístrala en Compras como compra de gasto</a> (sustenta el IVA y el ATS).
+    </div>
+    {% for field in form.visible_fields %}
+        <div class="form-group">
+            <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+            {{ field|add_class:'form-control' }}
+            {% if field.name == 'referencia' %}<small class="form-text text-muted">Obligatoria si pagas con cheque (escribe su número).</small>{% endif %}
+        </div>
+    {% endfor %}
 {% endblock %}

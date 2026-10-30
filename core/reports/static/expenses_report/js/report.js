@@ -1,7 +1,10 @@
+// Reporte de gastos sin comprobante (espec-etapa2-compras §6.I): medio de pago («Sin dato» en los anteriores) y
+// referencia. Texto escapado.
 var input_date_range;
 var current_date;
 var tblReport;
 var columns = [];
+
 var report = {
     initTable: function () {
         tblReport = $('#tblReport').DataTable({
@@ -103,24 +106,14 @@ var report = {
             ],
             columns: [
                 {data: "id"},
-                {data: "type_expense.name"},
+                {data: "type_expense.name", render: $.fn.dataTable.render.text()},
                 {data: "date_joined"},
-                {data: "description"},
-                {data: "valor"},
+                {data: "description", render: $.fn.dataTable.render.text()},
+                {data: "medio_pago.name", render: $.fn.dataTable.render.text()},
+                {data: "referencia", render: $.fn.dataTable.render.text()},
+                {data: "valor", orderable: false, class: 'text-right', render: function (data) { return '$' + Number(data).toFixed(2); }},
             ],
-            columnDefs: [
-                {
-                    targets: [-1],
-                    orderable: false,
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        return '$' + data.toFixed(2);
-                    }
-                }
-            ],
-            rowCallback: function (row, data, index) {
 
-            },
             initComplete: function (settings, json) {
                 $(this).wrap('<div class="dataTables_scroll"><div/>');
             }

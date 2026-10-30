@@ -4,8 +4,16 @@ from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView
 
+from core.pos import compras
+from core.pos.catalogos_sri import SUSTENTOS, nombre
 from core.pos.forms import TypeExpense, TypeExpenseForm
 from core.security.mixins import GroupPermissionMixin
+
+
+def sugerencia_de_sustento(request):
+    """Sustento sugerido para los gastos de la empresa (01 si vende con IVA, si no 02). Solo se muestra (DC12)."""
+    codigo = compras.sustento_gasto_sugerido(request.company)
+    return {'sustento_gasto_sugerido': codigo, 'nombre_sustento_sugerido': nombre(SUSTENTOS, codigo)}
 
 
 class TypeExpenseListView(GroupPermissionMixin, TemplateView):
@@ -63,6 +71,7 @@ class TypeExpenseCreateView(GroupPermissionMixin, CreateView):
         context = super().get_context_data()
         context['list_url'] = self.success_url
         context['title'] = 'Nuevo registro de un Tipo de Gasto'
+        context.update(sugerencia_de_sustento(self.request))
         context['action'] = 'add'
         return context
 
@@ -102,6 +111,7 @@ class TypeExpenseUpdateView(GroupPermissionMixin, UpdateView):
         context = super().get_context_data()
         context['list_url'] = self.success_url
         context['title'] = 'Edición de un Tipo de Gasto'
+        context.update(sugerencia_de_sustento(self.request))
         context['action'] = 'edit'
         return context
 

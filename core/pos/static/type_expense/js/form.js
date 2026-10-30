@@ -1,3 +1,5 @@
+// Tipo de gasto (espec-etapa2-compras §6.F): cuenta contable y sustento opcionales, sin valor inicial; «Usar sugerencia»
+// solo cambia el campo en el navegador (DC12).
 document.addEventListener('DOMContentLoaded', function (e) {
     const fv = FormValidation.formValidation(document.getElementById('frmForm'), {
             locale: 'es_ES',
@@ -78,6 +80,13 @@ $(function () {
 
     $('input[name="name"]').on('keypress', function (e) {
         return validate_text_box({'event': e, 'type': 'letters'});
+    });
+
+    $('#fp-usar-sugerencia').on('click', function () {
+        try {
+            $('select[name="cod_sustento"]').val(JSON.parse(document.getElementById('fp-sustento-sugerido').textContent));
+        } catch (e) {
+        }
     });
 
 });

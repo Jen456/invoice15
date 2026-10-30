@@ -14,20 +14,28 @@
 
 {% block form_fields %}
     <div class="form-group">
-        <label>{{ form.debts_pay.label }}:</label>
+        <label for="{{ form.debts_pay.id_for_label }}">{{ form.debts_pay.label }}:</label>
         {{ form.debts_pay }}
     </div>
     <div class="form-group">
-        <label>{{ form.date_joined.label }}:</label>
+        <label for="date_joined">{{ form.date_joined.label }}:</label>
         {{ form.date_joined }}
     </div>
     <div class="form-group">
-        <label>{{ form.valor.label }}:</label> <span class="badge badge-secondary badge-pill deuda">Deuda: $0.00</span>
+        <label for="{{ form.valor.id_for_label }}">{{ form.valor.label }}:</label> <span class="badge badge-secondary badge-pill deuda">Deuda: $0.00</span>
         {{ form.valor }}
     </div>
     <div class="form-group">
-        <label>{{ form.description.label }}:</label>
+        <label for="{{ form.medio_pago.id_for_label }}">{{ form.medio_pago.label }}:</label>
+        {{ form.medio_pago }}
+    </div>
+    <div class="form-group">
+        <label for="{{ form.referencia.id_for_label }}">{{ form.referencia.label }}:</label>
+        {{ form.referencia }}
+        <small class="form-text text-muted">Obligatoria si pagas con cheque (escribe su número).</small>
+    </div>
+    <div class="form-group">
+        <label for="{{ form.description.id_for_label }}">{{ form.description.label }}:</label>
         {{ form.description }}
     </div>
 {% endblock %}
-

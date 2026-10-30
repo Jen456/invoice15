@@ -93,7 +93,9 @@ class ProviderUpdateView(GroupPermissionMixin, UpdateView):
         action = request.POST['action']
         try:
             if action == 'edit':
-                data = self.get_form().save()
+                form = self.get_form()
+                form.usuario = request.user      # completada_por de las compras que queden completas
+                data = form.save()
             elif action == 'validate_data':
                 data = {'valid': True}
                 queryset = Provider.objects.all().exclude(id=self.object.id)

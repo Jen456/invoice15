@@ -1,7 +1,14 @@
+// Reporte de cuentas por pagar (espec-etapa2-compras §6.I): base de cálculo, pagado, abonado (retenciones y notas de
+// crédito del proveedor) y saldo. Texto escapado.
 var input_date_range;
 var current_date;
 var tblReport;
 var columns = [];
+
+function dinero(valor) {
+    return valor === null || valor === undefined ? '—' : '$' + valor;
+}
+
 var report = {
     initTable: function () {
         tblReport = $('#tblReport').DataTable({
@@ -102,38 +109,34 @@ var report = {
                 }
             ],
             columns: [
-                {data: "purchase.provider.name"},
-                {data: "purchase.provider.ruc"},
+                {data: "purchase.provider.name", render: $.fn.dataTable.render.text()},
+                {data: "purchase.provider.ruc", render: $.fn.dataTable.render.text()},
+                {data: "purchase.numero_comprobante", render: $.fn.dataTable.render.text()},
                 {data: "purchase.date_joined"},
-                {data: "purchase.end_credit"},
-                {data: "debt"},
-                {data: "saldo"},
-                {data: "state"},
-            ],
-            columnDefs: [
+                {data: "end_date"},
                 {
-                    targets: [-1],
-                    orderable: false,
-                    class: 'text-center',
+                    data: "base_calculo.id", class: 'text-center',
                     render: function (data, type, row) {
-                        if (data) {
-                            return 'Adeuda';
-                        }
-                        return 'No adeuda';
+                        return data === 'subtotal' ? 'Calculada sin IVA' : 'Total con IVA';
+                    }
+                },
+                {data: "debt", class: 'text-right', render: function (data) { return '$' + Number(data).toFixed(2); }},
+                {data: "pagado", class: 'text-right', render: function (data) { return dinero(data); }},
+                {data: "abonado", class: 'text-right', render: function (data) { return dinero(data); }},
+                {
+                    data: "saldo", class: 'text-right',
+                    render: function (data, type, row) {
+                        return row.saldo_a_favor ? 'Saldo a favor $' + Math.abs(Number(data)).toFixed(2) : '$' + Number(data).toFixed(2);
                     }
                 },
                 {
-                    targets: [-2, -3],
-                    orderable: false,
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        return '$' + data;
+                    data: "state", orderable: false, class: 'text-center',
+                    render: function (data) {
+                        return data ? 'Adeuda' : 'No adeuda';
                     }
-                }
+                },
             ],
-            rowCallback: function (row, data, index) {
 
-            },
             initComplete: function (settings, json) {
                 $(this).wrap('<div class="dataTables_scroll"><div/>');
             }

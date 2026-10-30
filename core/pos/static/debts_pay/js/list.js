@@ -1,6 +1,18 @@
+// Cuentas por pagar (espec-etapa2-compras §6.E): base de cálculo, pagado, abonado y saldo; pagos con medio de pago y
+// referencia y abonos por retención o nota de crédito. Solo los pagos se borran, y solo con delete_debts_pay (el
+// servidor responde 403 sin él). Texto escapado: la razón social puede venir del XML de un tercero.
 var tblPaymentsDebtsPay, tblDebtsPay;
-var date_current;
 var input_date_range;
+var puede_borrar = false;
+
+function dinero(valor) {
+    return valor === null || valor === undefined ? '—' : '$' + valor;
+}
+
+function centavos(valor) {
+    return Math.round(Number(valor || 0) * 100);
+}
+
 var debts_pay = {
     list: function (all) {
         var parameters = {
@@ -25,33 +37,35 @@ var debts_pay = {
                 dataSrc: ""
             },
             columns: [
-                {data: "purchase.number"},
-                {data: "purchase.provider.name"},
-                {data: "date_joined"},
-                {data: "end_date"},
-                {data: "debt"},
-                {data: "saldo"},
-                {data: "state"},
-                {data: "state"},
-            ],
-            columnDefs: [
+                {data: "purchase.numero_comprobante", render: $.fn.dataTable.render.text()},
+                {data: "purchase.provider.name", render: $.fn.dataTable.render.text()},
+                {data: "date_joined", class: 'text-center'},
+                {data: "end_date", class: 'text-center'},
+                {data: "debt", class: 'text-right', render: function (data) { return '$' + Number(data).toFixed(2); }},
                 {
-                    targets: [-5, -6],
+                    data: "base_calculo.id",
                     class: 'text-center',
+                    render: function (data) {
+                        return data === 'subtotal' ? '<span class="badge badge-secondary">Calculada sin IVA</span>' : 'Total con IVA';
+                    }
                 },
+                {data: "pagado", class: 'text-right', render: function (data) { return dinero(data); }},
+                {data: "abonado", class: 'text-right', render: function (data) { return dinero(data); }},
                 {
-                    targets: [-3, -4],
-                    orderable: false,
-                    class: 'text-center',
+                    data: "saldo",
+                    class: 'text-right',
                     render: function (data, type, row) {
-                        return '$' + data.toFixed(2);
+                        if (row.saldo_a_favor) {
+                            return '<span class="badge badge-info">Saldo a favor</span> $' + Math.abs(Number(data)).toFixed(2);
+                        }
+                        return '$' + Number(data).toFixed(2);
                     }
                 },
                 {
-                    targets: [-2],
+                    data: "state",
                     orderable: false,
                     class: 'text-center',
-                    render: function (data, type, row) {
+                    render: function (data) {
                         if (data) {
                             return '<span class="badge badge-danger badge-pill">Adeuda</span>';
                         }
@@ -59,12 +73,14 @@ var debts_pay = {
                     }
                 },
                 {
-                    targets: [-1],
+                    data: "id",
                     orderable: false,
                     class: 'text-center',
                     render: function (data, type, row) {
-                        var buttons = '<a rel="payments" data-toggle="tooltip" title="Pagos" class="btn bg-blue btn-xs btn-flat"><i class="fas fa-dollar-sign"></i></a> ';
-                        buttons += '<a href="' + pathname + 'delete/' + row.id + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
+                        var buttons = '<a rel="payments" data-toggle="tooltip" title="Pagos y abonos" class="btn bg-blue btn-xs btn-flat"><i class="fas fa-dollar-sign"></i></a> ';
+                        if (puede_borrar) {
+                            buttons += '<a href="' + pathname + 'delete/' + parseInt(row.id, 10) + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
+                        }
                         return buttons;
                     }
                 },
@@ -72,14 +88,20 @@ var debts_pay = {
             initComplete: function (settings, json) {
                 $('[data-toggle="tooltip"]').tooltip();
                 $(this).wrap('<div class="dataTables_scroll"><div/>');
-                var total = json.reduce((a, b) => a + (b.saldo || 0), 0);
-                $('.total').html('$' + total.toFixed(2));
+                var total = json.reduce(function (suma, fila) { return suma + Math.max(centavos(fila.saldo), 0); }, 0);
+                $('.total').text('$' + (total / 100).toFixed(2));
             }
         });
     }
 };
 
 $(function () {
+
+    try {
+        puede_borrar = JSON.parse(document.getElementById('fp-cxp-puede-borrar').textContent) === true;
+    } catch (e) {
+        puede_borrar = false;
+    }
 
     input_date_range = $('input[name="date_range"]');
 
@@ -129,30 +151,29 @@ $(function () {
                 },
                 columns: [
                     {data: "index"},
-                    {data: "date_joined"},
-                    {data: "valor"},
-                    {data: "description"},
-                    {data: "valor"},
-                ],
-                columnDefs: [
                     {
-                        targets: [-3],
-                        class: 'text-center',
-                        render: function (data, type, row) {
-                            return '$' + data.toFixed(2);
+                        data: "tipo",
+                        render: function (data) {
+                            return {'pago': 'Pago', 'retencion': 'Retención emitida', 'nota_credito': 'Nota de crédito'}[data] || '';
                         }
                     },
+                    {data: "date_joined"},
+                    {data: "valor", class: 'text-right', render: function (data) { return dinero(data); }},
+                    {data: "medio_pago.name", render: $.fn.dataTable.render.text()},
+                    {data: "referencia", render: $.fn.dataTable.render.text()},
+                    {data: "description", render: $.fn.dataTable.render.text()},
                     {
-                        targets: [-1],
+                        data: "puede_borrar",
                         class: 'text-center',
+                        orderable: false,
                         render: function (data, type, row) {
-                            return '<a rel="delete" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-times"></i></a>';
+                            if (row.tipo === 'pago' && data) {
+                                return '<a rel="delete" class="btn btn-danger btn-xs btn-flat" title="Eliminar el pago"><i class="fas fa-times"></i></a>';
+                            }
+                            return '';
                         }
                     }
                 ],
-                rowCallback: function (row, data, index) {
-
-                },
                 initComplete: function (settings, json) {
                     $(this).wrap('<div class="dataTables_scroll"><div/>');
                 }
@@ -171,7 +192,7 @@ $(function () {
             params.append('action', 'delete_pay');
             var args = {
                 'params': params,
-                'content': '¿Estas seguro de eliminar el registro?',
+                'content': '¿Estas seguro de eliminar el pago? Queda registrado.',
                 'success': function (request) {
                     tblPaymentsDebtsPay.ajax.reload();
                 }

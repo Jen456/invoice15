@@ -12,6 +12,8 @@
     <th>Tipo de gasto</th>
     <th>Fecha de registro</th>
     <th>Valor</th>
+    <th>Medio de pago</th>
+    <th>Referencia</th>
     <th>Detalles</th>
     <th class="text-center">Opciones</th>
 {% endblock %}
@@ -21,6 +23,9 @@
 {% endblock %}
 
 {% block content_list_before %}
+    <div class="alert alert-info" role="note">
+        ¿Tienes factura? <a href="{{ url_gasto }}">Regístrala en Compras como compra de gasto</a> (sustenta el IVA y el ATS).
+    </div>
     <div class="row">
         <div class="col-lg-5 col-md-12">
             <div class="form-group">
