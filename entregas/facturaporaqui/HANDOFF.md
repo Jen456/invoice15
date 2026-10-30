@@ -1,5 +1,25 @@
 # Handoff compartido — frontend
 
+## Estado actual — ticket B revalidado y muestras actualizadas (Codex, 30/10/2026)
+
+La solicitud recibida vuelve a citar `4ce7888`. Tras fetch, el remoto real es `plataforma=3192d5d` y `frontend/etapa3=e94c3a9` al empezar esta revisión. La rama ya contiene `4ce7888`, el rediseño `165fbc7` y la integración `a6f5db3` de las correcciones de Claude. **No se retrocedió ni reimplementó el ticket**; no se tocó código operativo, regla @page, vista, URL ni decisiones fiscales.
+
+- Pruebas locales del ticket continuo, diseño e impresos: **20 aprobadas en 26,50 s**, SQLite.
+- Doce renderizados (1/5/40 líneas, normales/largas, con/sin petición): una hoja de 58 mm, texto dentro de 48 mm, tipografía mínima 8 pt, descripción mínima 9 pt, contenido y orden conservados. Blanco final **6,58–6,70 mm**; pie cursivo sin solapamiento.
+- Seis PDF actuales y ocho capturas WebP: [muestras actualizadas](propuestas/ticket-b/revalidacion-20261030/README.md). Incluyen las correcciones de matriz, local de la numeración y fecha de emisión. Muestras originales conservadas.
+- No se verificó producción ni se desplegó. Impresión y escáner físicos siguen pendientes. Los pendientes fiscales del RIDE quedan intactos.
+
+## Pendiente para Codex — solicitud repetida del ticket
+
+- [x] Confirmar el historial y conservar el rediseño/correcciones existentes.
+- [x] Revalidar las pruebas y actualizar muestras de 1/5/40 líneas normales y largas.
+- [x] Registrar evidencia actual y enlace de entrega para Claude.
+
+## Notas entre agentes — ticket actual (Codex → Claude)
+
+La plantilla vigente ya incorpora tu revisión; esta entrega solo actualiza muestras y documentación sobre la rama actual. No necesita endpoints ni cambios del backend. Para revisar el ticket, usar los PDF de `propuestas/ticket-b/revalidacion-20261030/`, no los de la carpeta superior. La publicación sigue a tu cargo y requiere la autorización de la propietaria; el estado del dominio no se dedujo del historial de Git.
+
+
 ## Estado actual — revisión de locales y puntos (Codex, 30/10/2026)
 
 La propietaria pide facilitar la operación de varias sucursales del mismo RUC. Se revisó el código de `d2bed3d` (backend `3192d5d`) y se documentó la [propuesta de locales y puntos de emisión](propuestas/establecimientos/PROPUESTA.md). Ya se registran varios establecimientos/puntos, pero el asistente confirma un punto global por empresa. No se implementó un selector que simule independencia entre usuarios.
@@ -106,7 +126,7 @@ Rama `fase/ticket-correcciones` sobre `8d2eead` (entrega `165fbc7` de Codex): `d
 
 - [ ] Publicar `fase/ticket-correcciones` (integrada en `plataforma` en `a6f5db3`) con la aprobación de la propietaria. Después, revisar en papel de 58 mm real: impresora, controlador y escáner siguen sin verificar.
 - [ ] Tarea aparte: los RIDE A4 de factura (`sale/format/invoice.html:16`) y de nota de crédito (`credit_note/format/invoice.html:16`) siguen con `alt="Logotipo del emisor"`. Con un logo registrado que ya no está, los dos imprimen esa frase (comprobado con `create_pdf` y datos ficticios). Corregir con `alt=""` y una prueba de logo inexistente como la del ticket.
-- [ ] Las muestras de `propuestas/ticket-b/` son del diseño de `165fbc7`, sin la línea de matriz ni el aviso de pendiente.
+- [x] Muestras actualizadas el 30/10 en `propuestas/ticket-b/revalidacion-20261030/`; los originales de `165fbc7` en la carpeta superior se conservan como históricos.
 
 ## Estado actual — README técnico y manual de clientes PDF (Codex, 28/10/2026)
 

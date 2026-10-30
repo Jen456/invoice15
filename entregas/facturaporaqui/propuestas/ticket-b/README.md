@@ -1,5 +1,7 @@
 # Ticket térmico — diseño B
 
+**Muestras actuales (30/10/2026):** [revalidación con las correcciones de Claude](revalidacion-20261030/README.md). Los archivos de esta carpeta superior se conservan como evidencia del diseño original del 28/10.
+
 Muestras generadas con `printer.create_pdf_continuo` y datos ficticios el 28/10/2026, sobre la base **4ce7888**. No son comprobantes emitidos al SRI ni capturas de producción.
 
 ## Muestras de 58 mm

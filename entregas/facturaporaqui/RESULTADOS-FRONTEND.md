@@ -1377,3 +1377,16 @@ Petición: facilitar el registro y uso de varios locales del mismo RUC. Revisado
 Archivos cambiados: `propuestas/establecimientos/PROPUESTA.md`, HANDOFF y este informe. Propuesta con recorrido, nombres amigables, esquema, requisitos de datos y pruebas de concurrencia, permisos, histórico y numeración para Claude. No se modificó código operativo ni se implementaron rutas o campos nuevos.
 
 Verificación: lectura del código y restricciones de base, consulta de referencias remotas (`plataforma` 3192d5d, frontend d2bed3d al comenzar), enlaces relativos y `git diff --check`. No se ejecutaron suites ni se tomaron capturas nuevas: esta entrega solo documenta el diagnóstico y la propuesta, no una interfaz implementada. Sin despliegue ni acceso a datos de producción.
+
+
+## 30/10/2026 — ticket B: solicitud repetida, revalidación y muestras vigentes
+
+**Diagnóstico:** la petición cita `4ce7888`, pero fetch devuelve plataforma `3192d5d` y frontend `e94c3a9`. Se comprobó por ascendencia que el rediseño `165fbc7` y las correcciones integradas por Claude en `a6f5db3` ya están en nuestra rama. Leídos AGENTS, las secciones del 28/10 y el contrato del ticket. No se rehízo ni degradó la plantilla existente.
+
+**Trabajo:** seis PDF ficticios de 1/5/40 líneas normales y largas actualizados mediante el generador real `create_pdf_continuo`, con las correcciones de dirección matriz, local de la numeración y fecha de emisión. Ocho capturas WebP (máximo 145244 bytes), sin reemplazar las muestras históricas. El pie conserva colibrí y datos ficticios del proveedor en cursiva.
+
+**Archivos cambiados:** `propuestas/ticket-b/README.md`, `propuestas/ticket-b/revalidacion-20261030/{README.md,verificacion.json,ticket-01-normal.pdf,ticket-01-largo.pdf,ticket-05-normal.pdf,ticket-05-largo.pdf,ticket-40-normal.pdf,ticket-40-largo.pdf}`, `capturas/ticket-b-20261030/*.webp`, HANDOFF y este informe. Ningún cambio de plantillas, pruebas, backend, URLs ni datos fiscales.
+
+**Pruebas:** `python -m pytest tests/test_ticket_continuo.py tests/test_ticket_diseno.py tests/test_impresos.py -q -o addopts=` con la venv local y settings de pruebas: **20 aprobadas, 26,50 s, SQLite**. Se usaron los contextos ficticios en memoria de `test_ticket_diseno.py` para doce renderizados con/sin petición: una hoja de 58 mm, área útil de 48 mm, 6,58–6,70 mm blancos al final, tipografía mínima 8 pt/9 pt para descripción, contenido/orden/importes conservados y pie sin solapamiento. Capturas rasterizadas con PDFium a 203 dpi; en 40 líneas se muestra inicio/final y se entrega el PDF completo. Revisión visual del cierre largo y `git diff --check` correctos. No se repitió la suite completa por ser una entrega exclusiva de muestras y documentación.
+
+**Límites:** no se comprobó el dominio publicado ni impresora/escáner físicos; no se desplegó, emitió, pagó ni envió correo. Los pendientes fiscales del RIDE y el A4 quedan fuera de esta tarea. La rama avanza sobre la entrega actual, preservando la ascendencia de `4ce7888`.
