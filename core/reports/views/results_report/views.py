@@ -6,6 +6,7 @@ from django.http import HttpResponse
 from django.views.generic import FormView
 
 from core.pos import consultas
+from core.pos.compras import subtotal_con_signo
 from core.pos.models import Purchase, Sale, Expenses
 from core.reports.forms import ReportForm
 from core.security.mixins import GroupModuleMixin
@@ -39,7 +40,8 @@ class ResultsReportView(GroupModuleMixin, FormView):
                 purchase = Purchase.objects.all()
                 if len(start_date) and len(end_date):
                     purchase = purchase.filter(date_joined__range=[start_date, end_date])
-                purchase = float(purchase.aggregate(result=Coalesce(Sum('subtotal'), 0.00, output_field=FloatField()))['result'])
+                # la nota de crédito del proveedor (04) resta; las compras sin tipo suman como antes
+                purchase = float(purchase.aggregate(result=Coalesce(Sum(subtotal_con_signo()), 0.00, output_field=FloatField()))['result'])
 
                 if alcance == 'todos':
                     sale = Sale.objects.all()
