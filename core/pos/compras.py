@@ -933,6 +933,14 @@ def _plan_completar(compra, datos, deudas):
             n[campo] = actuales[campo]           # campo deshabilitado en el formulario: se conserva
         elif not ignorar and n[campo] != actuales[campo]:
             raise ErrorCompra(motivo, codigo='bloqueado')
+    if n['tipo_comprobante'] in cat.TIPOS_SIN_RETENCION:
+        # X-R1: bloqueos_de no fija un tipo vacío; una compra sin tipo con retención vigente no pasa a 04
+        from core.comprobantes import retenciones
+        retencion = retenciones.retencion_vigente(compra)
+        if retencion is not None:
+            raise ErrorCompra(f'Esta compra tiene la retención {retencion.voucher_number_full} vigente y sobre una nota de '
+                              'crédito del proveedor (04) no se emite comprobante de retención: no se puede registrar como '
+                              '04. No se guardó ningún cambio.', codigo='retencion_vigente')
     modo = 'liquidacion' if n['tipo_comprobante'] == '03' else 'si'
     advertencias, confirmaciones = _validar_cabecera(n, compra.provider, modo=modo, origen=compra.origen, parcial=True,
                                                      date_joined=compra.date_joined, compra_id=compra.pk)

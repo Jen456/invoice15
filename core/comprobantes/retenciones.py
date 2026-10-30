@@ -193,7 +193,11 @@ def crear(company, usuario, compra, datos, lineas, *, huella_revisada):
     """
     from core.configuracion.servicios import receipt_para_emitir
     from core.pos.models import Purchase
+    from core.pos.compras import admite_retencion
     compra = Purchase.objects.select_for_update().select_related('provider').get(pk=compra.pk)   # una retención a la vez
+    if not admite_retencion(compra):   # X-R1: el tipo leído con el bloqueo (la vista ya lo rechaza antes)
+        raise ErrorRetencion(f'La compra #{compra.pk} es una nota de crédito del proveedor (04): sobre ella no se emite '
+                             'comprobante de retención. No se emitió nada.')
     vigente = retencion_vigente(compra)
     if vigente is not None:
         raise ErrorRetencion(f'Esta compra ya tiene la retención {vigente.voucher_number_full} ({vigente.get_status_display()}).')
