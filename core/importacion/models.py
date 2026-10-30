@@ -261,3 +261,25 @@ class ReglaImportacion(TenantModel):
         permissions = (('view_reglaimportacion', 'Puede ver las reglas de importación'),
                        ('change_reglaimportacion', 'Puede cambiar las reglas de importación'))
         constraints = [models.UniqueConstraint(fields=['company'], name='regla_importacion_unica_por_empresa')]
+
+
+class EquivalenciaProducto(TenantModel):
+    """Código del proveedor → producto propio. Solo se guarda cuando el usuario marca «Recordar» al crear una compra desde
+    un XML (DC8): el emparejamiento es una decisión del usuario, no se adivina."""
+    proveedor = models.ForeignKey('pos.Provider', on_delete=models.CASCADE, related_name='+')
+    codigo_proveedor = models.CharField(max_length=25, verbose_name='Código del proveedor')
+    producto = models.ForeignKey('pos.Product', on_delete=models.CASCADE, related_name='+')
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    creado = models.DateTimeField(default=timezone.now)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Equivalencia de producto del proveedor'
+        verbose_name_plural = 'Equivalencias de productos de proveedores'
+        default_permissions = ()
+        ordering = ('proveedor', 'codigo_proveedor')
+        constraints = [models.UniqueConstraint(fields=['company', 'proveedor', 'codigo_proveedor'],
+                                               name='equivalencia_producto_unica')]
+
+    def __str__(self):
+        return f'{self.codigo_proveedor} → {self.producto_id}'

@@ -1,0 +1,146 @@
+{% extends 'skin.html' %}
+{% load widget_tweaks static %}
+{% block content %}
+<div class="fp-compra-completar">
+    <div class="card {{ dashboard.card }}">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-edit"></i> {{ title }} #{{ compra.id }}</h3>
+        </div>
+        <div class="card-body">
+            <p class="mb-1">Proveedor: <strong>{{ compra.provider.name }}</strong> · {{ compra.provider.ruc }}</p>
+            <p class="mb-1">Fecha de registro: {{ compra.date_joined }} · Subtotal registrado: ${{ compra.subtotal|floatformat:2 }}
+                {% if compra.version_datos == 1 and compra.datos_incompletos %}<span class="badge badge-secondary">Compra anterior · sin IVA</span>
+                {% elif compra.datos_incompletos %}<span class="badge badge-warning">Datos incompletos</span>{% endif %}
+                {% if compra.fuera_plazo_ats %}<span class="badge badge-danger">Fuera del plazo del ATS</span>{% endif %}
+            </p>
+            <p class="font-weight-bold">Las líneas, el stock y el subtotal registrado no cambian.</p>
+
+            {% if motivo_bloqueo %}
+                <div class="alert alert-info" role="status">{{ motivo_bloqueo }}</div>
+            {% endif %}
+            {% if faltantes %}
+                <div class="alert alert-warning" role="status">
+                    <strong>Le falta a esta compra:</strong>
+                    <ul class="mb-0">{% for f in faltantes %}<li>{{ f.texto }}</li>{% endfor %}</ul>
+                </div>
+            {% endif %}
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+
+                <section class="mb-3" aria-labelledby="fp-completar-comprobante">
+                    <h2 class="h6 font-weight-bold" id="fp-completar-comprobante">Datos del comprobante</h2>
+                    <div class="row">
+                        {% for field in form %}{% if field.name in campos_cabecera %}
+                            <div class="form-group col-12 col-md-6 col-lg-4">
+                                <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                                {% if field.errors %}{% render_field field class="form-control is-invalid" %}{% else %}{% render_field field class="form-control" %}{% endif %}
+                                {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                                {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endif %}{% endfor %}
+                    </div>
+                </section>
+
+                {% if campos_importes_visibles %}
+                    <section class="mb-3" aria-labelledby="fp-completar-importes">
+                        <h2 class="h6 font-weight-bold" id="fp-completar-importes">Importes de la factura</h2>
+                        <p class="text-muted">Escríbelos todos (usa 0 donde no haya valor) o déjalos todos vacíos. El total se calcula.</p>
+                        <div class="row">
+                            {% for field in form %}{% if field.name in campos_importes %}
+                                <div class="form-group col-6 col-md-4 col-lg-3">
+                                    <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
+                                    {% if field.errors %}{% render_field field class="form-control is-invalid" %}{% else %}{% render_field field class="form-control" %}{% endif %}
+                                    {% for error in field.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+                                </div>
+                            {% endif %}{% endfor %}
+                        </div>
+                    </section>
+                {% endif %}
+
+                {% if cuenta_por_pagar %}
+                    <section class="mb-3" aria-labelledby="fp-completar-cuenta">
+                        <h2 class="h6 font-weight-bold" id="fp-completar-cuenta">Cuenta por pagar</h2>
+                        <p>Deuda ${{ cuenta_por_pagar.debt }} · pagado ${{ cuenta_por_pagar.pagado }} · saldo ${{ cuenta_por_pagar.saldo }}
+                            {% if cuenta_por_pagar.base_calculo.id == 'subtotal' %}<span class="badge badge-secondary">Calculada sin IVA</span>{% endif %}</p>
+                        {% if puede_ajustar_cxp %}
+                            <div class="form-check">
+                                {% render_field form.ajustar_cxp class="form-check-input" %}
+                                <label class="form-check-label" for="{{ form.ajustar_cxp.id_for_label }}">{{ form.ajustar_cxp.label }}</label>
+                            </div>
+                            <p class="small text-muted">Cambia la deuda de ${{ cuenta_por_pagar.debt }} (sin IVA) a
+                                {% if total_con_iva %}${{ total_con_iva }}{% else %}el total que resulte de los importes{% endif %}
+                                (total con IVA). Queda registrado.</p>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if confirmaciones_visibles %}
+                    <section class="mb-3" aria-labelledby="fp-completar-confirmar">
+                        <h2 class="h6 font-weight-bold" id="fp-completar-confirmar">Confirmaciones</h2>
+                        {% for field in form %}{% if field.name in confirmaciones_visibles %}
+                            <div class="form-check">
+                                {% render_field field class="form-check-input" %}
+                                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            </div>
+                        {% endif %}{% endfor %}
+                        {% for codigo, texto in textos_confirmacion.items %}<p class="small text-muted mb-1">{{ texto }}</p>{% endfor %}
+                    </section>
+                {% endif %}
+
+                {% if resumen %}
+                    <section class="card border-info mb-3" aria-labelledby="fp-completar-resumen"><div class="card-body">
+                        <h2 class="h6 font-weight-bold" id="fp-completar-resumen">Revisa los cambios antes de guardar</h2>
+                        {% if resumen.cambios %}
+                            <div class="table-responsive"><table class="table table-sm">
+                                <thead><tr><th>Dato</th><th>Antes</th><th>Después</th></tr></thead>
+                                <tbody>
+                                {% for c in resumen.cambios %}
+                                    <tr><td>{{ c.etiqueta }}</td>
+                                        <td>{% if c.antes is None or c.antes == '' %}—{% elif c.antes is True %}Sí{% elif c.antes is False %}No{% else %}{{ c.antes }}{% endif %}</td>
+                                        <td>{% if c.despues is None or c.despues == '' %}—{% elif c.despues is True %}Sí{% elif c.despues is False %}No{% else %}{{ c.despues }}{% endif %}</td></tr>
+                                {% endfor %}
+                                </tbody>
+                            </table></div>
+                        {% else %}
+                            <p>No hay cambios.</p>
+                        {% endif %}
+                        {% if resumen.total %}<p>Total con IVA: <strong>${{ resumen.total }}</strong></p>{% endif %}
+                        {% if resumen.advertencias %}
+                            <div class="alert alert-warning" role="status"><ul class="mb-0">{% for a in resumen.advertencias %}<li>{{ a.texto }}</li>{% endfor %}</ul></div>
+                        {% endif %}
+                        {% if resumen.faltantes %}
+                            <div class="alert alert-secondary" role="status"><strong>Seguirá incompleta:</strong>
+                                <ul class="mb-0">{% for f in resumen.faltantes %}<li>{{ f.texto }}</li>{% endfor %}</ul></div>
+                        {% else %}
+                            <p class="text-success">Con estos datos la compra queda completa.</p>
+                        {% endif %}
+                    </div></section>
+                {% endif %}
+
+                <button type="submit" name="action" value="revisar" class="btn btn-outline-secondary">Revisar cambios</button>
+                <button type="submit" name="action" value="completar" class="btn btn-primary">Guardar datos</button>
+                <a href="{{ list_url }}" class="btn btn-link">Cancelar</a>
+            </form>
+
+            <hr>
+            <h2 class="h6 font-weight-bold">Líneas registradas</h2>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead><tr><th>Producto o gasto</th><th>Tarifa</th><th class="text-right">Cantidad</th><th class="text-right">Precio</th><th class="text-right">Subtotal</th></tr></thead>
+                    <tbody>
+                    {% for l in lineas %}
+                        <tr><td>{% if l.product %}{{ l.product.full_name }}{% else %}{{ l.descripcion }}{% endif %}</td>
+                            <td>{{ l.nombre_tarifa }}</td><td class="text-right">{{ l.cant }}</td>
+                            <td class="text-right">${{ l.price|floatformat:2 }}</td><td class="text-right">${{ l.subtotal|floatformat:2 }}</td></tr>
+                    {% empty %}
+                        <tr><td colspan="5" class="text-muted">Sin líneas.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

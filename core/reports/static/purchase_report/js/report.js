@@ -1,8 +1,31 @@
+// Reporte de compras (espec-etapa2-compras §6.I): columnas del listado más el sustento; el pie separa el total con IVA de
+// las compras completas (las notas de crédito restan) del subtotal registrado de las incompletas. Texto escapado.
 var input_date_range;
 var current_date;
 var tblReport;
 var columns = [];
+
+function esc(valor) {
+    return $('<div>').text(valor === null || valor === undefined ? '' : String(valor)).html();
+}
+
+function dinero(valor) {
+    return valor === null || valor === undefined ? '—' : '$' + valor;
+}
+
 var report = {
+    totales: function (parameters) {
+        $.ajax({
+            url: pathname, type: 'POST', dataType: 'json', headers: {'X-CSRFToken': csrftoken},
+            data: $.extend({}, parameters, {'action': 'totales'})
+        }).done(function (data) {
+            if (data.error) {
+                return;
+            }
+            $('.fp-total-completas').text('$' + data.completas.total + ' (' + data.completas.cantidad + ' compras completas)');
+            $('.fp-total-incompletas').text('$' + data.incompletas.subtotal + ' (' + data.incompletas.cantidad + ' compras con datos incompletos)');
+        });
+    },
     initTable: function () {
         tblReport = $('#tblReport').DataTable({
             autoWidth: false,
@@ -17,11 +40,13 @@ var report = {
             'action': 'search_report',
             'start_date': input_date_range.data('daterangepicker').startDate.format('YYYY-MM-DD'),
             'end_date': input_date_range.data('daterangepicker').endDate.format('YYYY-MM-DD'),
+            'fecha': $('#fp-reporte-fecha').val(),
         };
         if (all) {
             parameters['start_date'] = '';
             parameters['end_date'] = '';
         }
+        report.totales(parameters);
         tblReport = $('#tblReport').DataTable({
             destroy: true,
             autoWidth: false,
@@ -102,32 +127,44 @@ var report = {
                 }
             ],
             columns: [
-                {data: "number"},
+                {data: "numero_comprobante", render: $.fn.dataTable.render.text()},
+                {data: "tipo_comprobante.name", render: $.fn.dataTable.render.text()},
+                {data: "cod_sustento.id", render: $.fn.dataTable.render.text()},
+                {data: "provider.name", render: $.fn.dataTable.render.text()},
+                {data: "provider.ruc", render: $.fn.dataTable.render.text()},
+                {data: "fecha_emision", render: function (data) { return data ? data : '—'; }},
                 {data: "date_joined"},
-                {data: "provider.name"},
-                {data: "provider.ruc"},
-                {data: "payment_type.name"},
-                {data: "subtotal"},
-            ],
-            columnDefs: [
+                {data: "payment_type.name", render: $.fn.dataTable.render.text()},
                 {
-                    targets: [-4, -5, -6, -2, -3],
-                    class: 'text-center',
+                    data: "subtotal", class: 'text-right',
                     render: function (data, type, row) {
-                        return data;
+                        return (row.signo === -1 ? '-$' : '$') + Number(data).toFixed(2);
+                    }
+                },
+                {data: "total_iva", class: 'text-right', render: function (data) { return dinero(data); }},
+                {
+                    data: "total", class: 'text-right',
+                    render: function (data, type, row) {
+                        return data === null ? '—' : (row.signo === -1 ? '-$' : '$') + data;
                     }
                 },
                 {
-                    targets: [-1],
-                    class: 'text-center',
+                    data: "datos_incompletos", class: 'text-center',
                     render: function (data, type, row) {
-                        return '$' + data.toFixed(2);
+                        var insignias = [];
+                        if (row.datos_incompletos && row.version_datos === 1) {
+                            insignias.push('Compra anterior · sin IVA');
+                        } else if (row.datos_incompletos) {
+                            insignias.push('Datos incompletos');
+                        }
+                        if (row.fuera_plazo_ats) {
+                            insignias.push('Fuera del plazo del ATS');
+                        }
+                        return esc(insignias.join(' · ') || 'Completa');
                     }
-                }
+                },
             ],
-            rowCallback: function (row, data, index) {
 
-            },
             initComplete: function (settings, json) {
                 $(this).wrap('<div class="dataTables_scroll"><div/>');
             }
@@ -162,5 +199,9 @@ $(function () {
 
     $('.btnSearchAll').on('click', function () {
         report.list(true);
+    });
+
+    $('#fp-reporte-fecha').on('change', function () {
+        report.list(false);
     });
 });

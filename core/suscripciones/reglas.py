@@ -3,7 +3,9 @@
 Sin plan pagado la empresa usa el inventario (productos, categorías,
 proveedores, compras y cuentas por pagar a proveedores) con los límites del
 plan «gratuito», además de usuarios, perfil y datos de la empresa. Ventas,
-facturación electrónica, clientes y el resto de reportes exigen un plan pagado.
+facturación electrónica, clientes, proformas y el resto de reportes exigen un plan pagado.
+Las proformas no consumen cupo: con el cupo agotado solo se bloquea «Facturar» (la
+pantalla de venta está en RUTAS_DE_EMISION).
 """
 import calendar
 
@@ -15,7 +17,7 @@ RUTAS_DE_PAGO = (
     '/pos/sale/', '/pos/credit/note/', '/pos/client/', '/pos/receipt/', '/pos/voucher/errors/',
     '/pos/promotions/', '/pos/ctas/collect/', '/pos/expenses/', '/pos/type/expense/',
     '/reports/sale/', '/reports/expenses/', '/reports/ctas/collect/', '/reports/results/', '/reports/earnings/',
-    '/comprobantes/',
+    '/comprobantes/', '/proformas/',
 )
 
 # Incluidos solo en los planes ilimitados (Ilimitado y Multiempresa), por decisión comercial del 15/10/2026.

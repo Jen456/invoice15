@@ -1,3 +1,5 @@
+// Registrar un pago de cuenta por pagar (espec-etapa2-compras §6.E): medio de pago obligatorio y sin valor inicial;
+// referencia obligatoria con cheque. El servidor valida el saldo y la fecha (cuentas_por_pagar.registrar_pago).
 var fv;
 var input_date_joined;
 var select_debts_pay;
@@ -37,10 +39,27 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 },
                 valor: {
                     validators: {
+                        notEmpty: {},
                         numeric: {
                             message: 'El valor no es un número',
                             thousandsSeparator: '',
                             decimalSeparator: '.'
+                        }
+                    }
+                },
+                medio_pago: {
+                    validators: {
+                        notEmpty: {message: 'Elige el medio de pago'}
+                    }
+                },
+                referencia: {
+                    validators: {
+                        stringLength: {max: 100},
+                        callback: {
+                            message: 'Escribe el número del cheque',
+                            callback: function (input) {
+                                return fv.form.querySelector('[name="medio_pago"]').value !== 'cheque' || input.value.trim() !== '';
+                            }
                         }
                     }
                 },
@@ -124,7 +143,7 @@ $(function () {
         .on('select2:select', function (e) {
             fv.revalidateField('debts_pay');
             var data = e.params.data;
-            $('.deuda').html('Deuda: $' + data.saldo.toFixed(2));
+            $('.deuda').text('Saldo: $' + Number(data.saldo).toFixed(2));
             $('input[name="valor"]').trigger("touchspin.updatesettings", {max: data.saldo});
         })
         .on('select2:clear', function (e) {
@@ -161,6 +180,10 @@ $(function () {
     });
 
     $('.deuda').html('');
+
+    $('select[name="medio_pago"]').on('change', function () {
+        fv.revalidateField('referencia');
+    });
 
     $('i[data-field="valor"]').hide();
 });

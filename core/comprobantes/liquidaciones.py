@@ -46,17 +46,36 @@ def validar_identificacion(tipo, identificacion):
 
 
 def liquidacion_vigente(compra):
-    return LiquidacionCompra.objects.filter(purchase=compra).exclude(status__in=NO_CUENTAN).first()
+    # Etapa 2 (O2): una liquidación anulada en el SRI deja de contar.
+    return LiquidacionCompra.objects.filter(purchase=compra, anulado_sri_fecha__isnull=True).exclude(status__in=NO_CUENTAN).first()
 
 
 def lineas_de_compra(compra):
-    """Líneas de la compra con la tarifa sugerida: la del producto (15 %, 5 % o 0 %; exento y no objeto, 0 %)."""
-    def sugerida(producto):
-        tarifa = redondear(PORCENTAJE_IVA.get(producto.tarifa_iva, TARIFAS[0] if producto.with_tax else TARIFAS[2]))
+    """Líneas de la compra con la tarifa sugerida: la guardada en la línea (compras de la Etapa 2) o, sin ella, la del
+    producto (15 %, 5 % o 0 %; exento y no objeto, 0 %). Las líneas de gasto no tienen producto: usan su descripción."""
+    def sugerida(detalle):
+        if detalle.codigo_porcentaje and detalle.tarifa is not None:
+            tarifa = redondear(detalle.tarifa)
+        elif detalle.product_id:
+            producto = detalle.product
+            tarifa = redondear(PORCENTAJE_IVA.get(producto.tarifa_iva, TARIFAS[0] if producto.with_tax else TARIFAS[2]))
+        else:
+            tarifa = TARIFAS[2]
         return tarifa if tarifa in TARIFAS else TARIFAS[2]
-    return [{'detalle': d.pk, 'codigo': (d.product.code or '')[:25], 'descripcion': d.product.name[:300],
-             'cantidad': Decimal(d.cant), 'precio_unitario': Decimal(d.price), 'tarifa': sugerida(d.product)}
-            for d in compra.purchasedetail_set.select_related('product').order_by('pk')]
+    lineas = []
+    for d in compra.purchasedetail_set.select_related('product').order_by('pk'):
+        codigo = (d.product.code if d.product_id else d.codigo_proveedor) or ''
+        descripcion = d.descripcion or (d.product.name if d.product_id else '')
+        linea = {'detalle': d.pk, 'codigo': codigo[:25], 'descripcion': descripcion[:300],
+                 'cantidad': Decimal(d.cant), 'precio_unitario': Decimal(d.price), 'tarifa': sugerida(d), 'aviso': ''}
+        if d.codigo_porcentaje and d.tarifa is not None and redondear(d.tarifa) not in TARIFAS:
+            linea['aviso'] = (f'La compra registró esta línea con IVA del {redondear(d.tarifa)} %, que la liquidación no admite: '
+                              'revisa la tarifa (la compra quedará incompleta si la liquidación no coincide).')
+        elif d.total_dscto:
+            linea['aviso'] = ('La compra registró un descuento en esta línea y la liquidación toma cantidad × precio: '
+                              'la compra quedará incompleta si la liquidación no coincide.')
+        lineas.append(linea)
+    return lineas
 
 
 def calcular(compra, datos, elegidas):

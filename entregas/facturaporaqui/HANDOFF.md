@@ -1,5 +1,65 @@
 # Handoff compartido — frontend
 
+## Estado actual — fase contable integrada en `plataforma`, sin publicar (Claude, 29/10/2026)
+
+D0 Fase A (`6d2a066`), Etapa 1 (Proformas) y Etapa 2 (Compras, y Ventas y Empresa) están fusionadas en `plataforma`, en este orden: `7f0e576` Proformas → `eaa6d10` Compras → `fff9bb3` Ventas → `90da085` correcciones de la integración → `f109d4d` piezas compartidas (`fase/integracion-cruces`). Los commits posteriores (`8c8a657` y la corrección de su revisión) solo cambian documentación en `entregas/facturaporaqui/`. **No se publicó nada**: la app sigue en lo publicado el 28/10 y la base publicada no tiene ninguna de estas migraciones.
+
+- **Correcciones de la integración (`90da085`):** las pruebas de Compras emiten la retención con la huella de «Revisar» que exige D0; la vuelta de `comprobantes/0023` quita su módulo y sus permisos por ids (antes no se podía deshacer junto con las de D0); la prueba de migraciones de D0 crea su retención con todas las migraciones aplicadas.
+- **Piezas compartidas (`fase/integracion-cruces`):** códigos de auditoría de la fase en `AuditLog.ACTIONS` y `AuditLog.detail` con `DjangoJSONEncoder` (`tenancy/0007`); Resultados y tablero restan la nota de crédito del proveedor (04); «Retención sobre una compra» rechaza la 04 y precarga el sustento desde Compras; pruebas cruzadas del 07 importado de punta a punta, de «Anulado en el SRI» sobre compras y de seguridad por filas en todas las tablas de empresa.
+- **Pruebas:** las suites completas de SQLite y PostgreSQL se ejecutaron sobre `8c8a657`, antes de subirlo; lo posterior solo cambia `entregas/`, que ninguna prueba lee. Los totales están en el informe de entrega a la propietaria.
+- **Migraciones:** 19 nuevas. Orden, efecto sobre los datos existentes y precauciones de aplicación y de reversión en [`MIGRACIONES-FASE-CONTABLE.md`](MIGRACIONES-FASE-CONTABLE.md); detalle por rama en [`MIGRACIONES-PROFORMAS.md`](MIGRACIONES-PROFORMAS.md), [`MIGRACIONES-COMPRAS.md`](MIGRACIONES-COMPRAS.md) y [`MIGRACIONES-VENTAS.md`](MIGRACIONES-VENTAS.md).
+- **Norma:** la sección «Anulación» de [`NORMA-RETENCIONES-2026-10.md`](NORMA-RETENCIONES-2026-10.md) se corrigió contra las Res. NAC-DGERCGC25-00000014 y 25-00000017 (prórroga al día hábil, aceptación del receptor y excepciones).
+
+## Pendiente — fase contable integrada (Claude, 29/10/2026)
+
+- [ ] **Publicar**, solo con la autorización de la propietaria y siguiendo las precauciones de `MIGRACIONES-FASE-CONTABLE.md` (volcado, ensayo sobre una copia, ventana con el servicio y el temporizador detenidos). La regularización histórica sigue solo en modo ensayo.
+- [ ] **Decisiones de la propietaria** (ninguna cambia campos ni pantallas de los contratos):
+  - Proformas: si los envíos fallidos cuentan para el límite de 60 por hora;
+  - Compras: si `retenciones_autorizadas` y `liquidacion_vigente` cuentan solo comprobantes de PRODUCCIÓN, y el IVA sobre base + ICE (D7, con el contador);
+  - Ventas: si el aviso del día 7 de «Anulado en el SRI» cuenta la prórroga al siguiente día hábil (hoy pide confirmación pasado el día 7; si se decide, cambia el texto del aviso);
+  - D0-b a D0-f (escenarios del 310 y el 332E desde el 01/08/2026), antes del 15/12/2026;
+  - D9: precio del complemento (sigue «Precio por anunciar»).
+- [ ] **Hallazgo X-R1 (backend, sin efecto hoy en datos: nada de esto está publicado):** «Completar datos» acepta cambiar a nota de crédito del proveedor (04) una compra sin tipo, de contado (sin cuenta por pagar) y sin líneas con producto, que ya tiene una retención vigente: una registrada con «Completar después» y solo con líneas de gasto, o una antigua sin líneas. La retención queda sobre una 04, que `compras.admite_retencion` no admite. Arreglo mínimo propuesto: en `compras._plan_completar`, rechazar un tipo de `TIPOS_SIN_RETENCION` si `retenciones.retencion_vigente(compra)` existe, con su prueba, y la misma guardia dentro de `retenciones.crear()`. Cambia una regla del contrato de Compras (pantalla «Completar datos»): lo decide la propietaria.
+- [ ] **Backend, para una próxima entrega:** `liquidaciones.calcular` deja en cero el descuento de la línea; la ficha de una retención recibida no sabe si el plan está vencido (contrato de Ventas, apartado B, punto 5); unificar el formato de importes en los mensajes (punto 6); los RIDE A4 con `alt="Logotipo del emisor"` (ver «Pendiente — tras las correcciones del ticket»).
+
+## Pendiente para Codex — diseño de la fase contable (Claude, 29/10/2026)
+
+- [ ] **Diseño de las pantallas de Proformas, Compras y Ventas** sobre sus contratos, en una rama que parta de la base indicada abajo:
+  - [`CONTRATO-PANTALLAS-PROFORMAS.md`](CONTRATO-PANTALLAS-PROFORMAS.md)
+  - [`CONTRATO-PANTALLAS-COMPRAS.md`](CONTRATO-PANTALLAS-COMPRAS.md)
+  - [`CONTRATO-PANTALLAS-VENTAS.md`](CONTRATO-PANTALLAS-VENTAS.md)
+- [ ] Lo que cada contrato deja para Codex en su lista de pendientes (Proformas: apartado E; Compras y Ventas: apartado B), en particular:
+  - mensajes de éxito que hoy salen en la ventana titulada «Error» de `hzt_body.html`/`vtc_body.html` (coordinarlo conmigo: es del marco común);
+  - autocompletado de productos por línea en «Crear compra desde el XML»;
+  - mostrar la clave `aviso` de cada línea en «Liquidación de compra» y enlazar «Retenciones recibidas» con «Registrar retención recibida» desde un 07;
+  - las revisiones de ancho, teclado y movimiento reducido que pide cada contrato, y texto seguro en columnas y modales.
+- [ ] Bancos, Contabilidad y Tributario siguen como maquetas: su backend es de la Etapa 3 en adelante, que no empezó.
+
+## Notas entre agentes — fase contable integrada (Claude → Codex)
+
+- **Base exacta para integrar el diseño:** la punta de `plataforma` en GitHub tras esta entrega (su código es el de `f109d4d`; lo posterior solo cambia `entregas/`). Parte de él y entrega tu rama fusionando `plataforma`, como hasta ahora.
+- **Contratos definitivos:** los tres. Cada uno empieza con la nota «Estado en `plataforma` tras la integración», que manda sobre lo que el resto del documento dice de la rama (por ejemplo, la pantalla 14 de Compras ya funciona y «Retención sobre una compra» ya rechaza la 04). Campos, acciones, permisos, estados, mensajes e identificadores no cambian; si una decisión pendiente cambiara un texto, lo anotaré aquí.
+- **No cambies** modelos, migraciones, vistas Python, rutas ni nombres de URL, ni los `name=`, valores de `action`, identificadores, `data-*` y fragmentos que comprueban las pruebas (cada contrato los lista). Si un diseño los necesita distintos, pídelo aquí y lo cambio con su prueba.
+- Datos ficticios únicamente; no despliegues. Los textos comerciales siguen las reglas de la nota de la fase contable del 28/10 (sin «homologado», sin «declaramos por ti», sin logos del SRI, la Supercias ni los bancos).
+
+## Estado actual — ticket térmico corregido tras la revisión, sin publicar (Claude, 28/10/2026)
+
+Rama `fase/ticket-correcciones` sobre `8d2eead` (entrega `165fbc7` de Codex): `dc274d4` y el commit de la segunda revisión. Solo cambian `core/pos/templates/sale/format/ticket.html`, sus pruebas y esta documentación. `@page`, `alto_pagina`, `create_pdf_continuo`, la vista y la URL siguen como en `165fbc7`. **Integrado en `plataforma` (`a6f5db3`); sin publicar.**
+
+- **Cabecera con los datos del XML:** «Dirección matriz» sale de `company.main_address` (dirMatriz). «Establecimiento» sale de `sale.receipt.establishment_address`, con respaldo a `company.establishment_address` (dirEstablecimiento): es el local de la numeración de la venta, aunque después la empresa cambie de punto de emisión. Sustituye a la nota de la entrega del ticket B que lo daba como el mismo `establishment_address`.
+- **Fecha de emisión:** `emission_date` (fechaEmision), con respaldo a `get_date_joined` mientras la venta no se haya preparado para firmar.
+- **Factura aún sin clave de acceso:** aviso en cursiva «Comprobante pendiente de autorización: aún no tiene clave de acceso.» en lugar de «Clave de acceso: None». Un cliente sin nombres sale vacío, no «None».
+- **Logo del emisor que falta o no se puede leer:** `alt=""`; el ticket ya no imprime «Logotipo del emisor».
+- **Alto:** la línea de matriz añade 5,0 mm si la dirección cabe en una línea y 8,7 mm si ocupa dos (la de los datos de demostración). Con los contextos de `test_ticket_diseno.py`, 1/5/40 líneas normales pasan de 318/410/1219 mm a 330/423/1231 mm y las largas de 339/518/2076 a 352/530/2088 mm; de esos 12,4 mm, 3,7 son la dirección de establecimiento más larga del contexto de prueba (con la misma dirección y sin la línea de matriz, el alto es idéntico al de `8d2eead`). El aviso de pendiente ocupa lo mismo que la clave. Sigue siendo una hoja con menos de 12 mm en blanco al final.
+- **Pruebas:** `test_impresos.py::test_ticket_de_factura_sin_firmar_con_los_datos_del_xml` imprime por la vista real y compara direcciones y fecha con el XML; la clave nula se lee de la base dentro de `company_context`, no del objeto en memoria. En `test_ticket_diseno.py`: logo real pequeño dentro del área, logo inexistente sin texto alternativo (con y sin petición), importe grande sin partir en ninguna aparición y última línea cerrada antes de «Subtotal sin impuestos». `test_ticket_continuo.py`, `test_ticket_diseno.py` y `test_impresos.py`: **20 aprobadas** en SQLite (32,95 s) y en PostgreSQL (118,10 s). Suite SQLite: **575 aprobadas y 7 omitidas en 289,78 s**.
+- **Sin prueba a propósito:** `white-space: nowrap` del importe de línea. Con cualquier importe que admite la base (`max_digits=9`, hasta 9999999,99) el PDF sale idéntico con y sin la regla; solo un importe imposible de guardar (99999999999,99) se parte. Se conserva como protección.
+
+## Pendiente — tras las correcciones del ticket (Claude, 28/10/2026)
+
+- [ ] Publicar `fase/ticket-correcciones` (integrada en `plataforma` en `a6f5db3`) con la aprobación de la propietaria. Después, revisar en papel de 58 mm real: impresora, controlador y escáner siguen sin verificar.
+- [ ] Tarea aparte: los RIDE A4 de factura (`sale/format/invoice.html:16`) y de nota de crédito (`credit_note/format/invoice.html:16`) siguen con `alt="Logotipo del emisor"`. Con un logo registrado que ya no está, los dos imprimen esa frase (comprobado con `create_pdf` y datos ficticios). Corregir con `alt=""` y una prueba de logo inexistente como la del ticket.
+- [ ] Las muestras de `propuestas/ticket-b/` son del diseño de `165fbc7`, sin la línea de matriz ni el aviso de pendiente.
+
 ## Estado actual — README técnico y manual de clientes PDF (Codex, 28/10/2026)
 
 - **README raíz ampliado:** arquitectura, módulos/rutas, multiempresa y RLS, matriz de variables por finalidad (sin valores privados), preparación local, firma Python, numeración, PayPhone, importación, procesos systemd, mantenimiento, respaldo/reversión, pruebas y diagnóstico. Basado en la lectura del código vigente; plataforma `a8b893c` ya integrada.
@@ -52,7 +112,7 @@ Actualizada frontend/etapa3 por avance rápido sobre **4ce7888**; leídas las en
 
 - `core/pos/templates/sale/format/ticket.html`: texto oscuro de 8–9 pt, regla coral, logo del emisor proporcional cuando existe, descripción a todo el ancho, cantidad/precio/importe debajo y descuento visible en cada línea. Sin mayúsculas forzadas. Total de 12 pt con todo el ancho disponible. Colibrí de 6 mm y los cuatro datos del proveedor en cursiva al final, en flujo normal.
 - Papel de **58 mm**, área de texto de **48 mm**. Regla `@page` idéntica a 4ce7888 (incluido su valor por defecto); contexto `sale` / `alto_pagina` intacto. Sin estimación de alto, posiciones fijas/absolutas, `min-height` internos ni saltos forzados. CSS propio en línea; sin recursos externos ni nuevas dependencias.
-- Se mantienen valores y condiciones de factura/ticket, efectivo/crédito, RIMPE, contribuyente especial, proveedor e impuestos por tarifa; líneas en el orden recibido. La etiqueta «Establecimiento» corresponde al mismo campo `establishment_address` existente. No se modifican las decisiones fiscales pendientes ni el A4.
+- Se mantienen valores y condiciones de factura/ticket, efectivo/crédito, RIMPE, contribuyente especial, proveedor e impuestos por tarifa; líneas en el orden recibido. La etiqueta «Establecimiento» corresponde al mismo campo `establishment_address` existente *(superado: ahora sale de la numeración de la venta y se añade «Dirección matriz»; ver «ticket térmico corregido tras la revisión», Claude, 28/10/2026)*. No se modifican las decisiones fiscales pendientes ni el A4.
 - **Pruebas:** las dos regresiones de `test_ticket_continuo.py` pasan sin modificarlas; doce regresiones nuevas para contenido, geometría y legibilidad. Suite SQLite: **571 aprobadas, 7 omitidas en 111,36 s**. Tras el último ajuste para no repetir la razón social cuando no hay nombre comercial: **16 pruebas de cierre aprobadas en 19,07 s** y un PDF ficticio confirma una sola aparición del nombre. Se actualizó en `test_impresos.py` la expectativa de «N.º» y su comentario de mayúsculas; se mantienen las comprobaciones de seguridad y proveedor.
 - **Muestras:** seis PDF (1/5/40 líneas, normales y largas), un PDF con logo ficticio, trece capturas y medidas en `propuestas/ticket-b/`. Doce renderizados comprobados, con y sin petición: una hoja, texto dentro de 48 mm, 6,57–6,69 mm blancos al final, contenido y orden íntegros. Importes hasta 9999999,99 y nombres sin espacios sin cortes.
 

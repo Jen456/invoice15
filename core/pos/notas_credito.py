@@ -6,6 +6,8 @@
   factura, no del navegador. La factura se bloquea mientras se crea la nota: dos a la vez no se pisan.
 - Motivo obligatorio. Solo vuelve al stock lo que se inventaría.
 - La factura pasa a «Anulado» cuando las notas autorizadas cubren su total.
+- Etapa 2 (O2): una factura marcada «Anulado en el SRI» no admite notas nuevas, y las notas anuladas en el SRI no cuentan
+  como acreditadas ni cubren la factura.
 """
 from decimal import Decimal
 
@@ -31,6 +33,7 @@ def es_consumidor_final(cliente):
 def acreditado_por_detalle(venta):
     from core.pos.models import CreditNoteDetail
     filas = (CreditNoteDetail.objects.filter(sale_detail__sale=venta).exclude(credit_note__status__in=NO_CUENTAN)
+             .filter(credit_note__anulado_sri_fecha__isnull=True)
              .values('sale_detail_id').annotate(cantidad=Sum('cant')))
     return {f['sale_detail_id']: f['cantidad'] or 0 for f in filas}
 
@@ -38,6 +41,8 @@ def acreditado_por_detalle(venta):
 def validar_factura(venta, company):
     if venta.receipt.voucher_type != VOUCHER_TYPE[0][0]:
         raise ErrorNotaCredito('Las notas de crédito solo se emiten sobre facturas.')
+    if getattr(venta, 'anulado_sri_fecha', None):
+        raise ErrorNotaCredito(f'La factura {venta.voucher_number_full} está anulada en el SRI.')
     if venta.status not in AUTORIZADOS:
         raise ErrorNotaCredito('La factura debe estar autorizada por el SRI para emitir una nota de crédito.')
     if es_consumidor_final(venta.client):
@@ -57,7 +62,9 @@ def crear(company, venta_id, lineas, motivo):
     motivo = ' '.join((motivo or '').split())
     if not motivo:
         raise ErrorNotaCredito('Escribe el motivo de la nota de crédito.')
-    venta = Sale.objects.select_for_update().select_related('client', 'receipt').get(pk=venta_id)
+    # Bloquea solo la venta (no su cliente ni su secuencia) y lee lo relacionado en otra consulta, sin bloqueo.
+    Sale.objects.select_for_update(of=('self',)).filter(pk=venta_id).values_list('pk', flat=True).get()
+    venta = Sale.objects.select_related('client', 'receipt').get(pk=venta_id)
     validar_factura(venta, company)
     acreditado = acreditado_por_detalle(venta)
     detalles = {d.pk: d for d in venta.saledetail_set.select_related('product')}
@@ -96,10 +103,14 @@ def crear(company, venta_id, lineas, motivo):
 
 
 def actualizar_factura(venta_id):
-    """La factura queda «Anulado» cuando las notas de crédito autorizadas cubren su total."""
+    """La factura queda «Anulado» cuando las notas de crédito autorizadas (y no anuladas en el SRI) cubren su total, y
+    vuelve a «Autorizada» si deja de estar cubierta (al marcar una de esas notas como anulada en el SRI)."""
     from core.pos.models import CreditNote, Sale
     venta = Sale.all_companies.get(pk=venta_id)
-    acreditado = (CreditNote.all_companies.filter(sale_id=venta_id, status__in=AUTORIZADOS)
+    acreditado = (CreditNote.all_companies.filter(sale_id=venta_id, status__in=AUTORIZADOS, anulado_sri_fecha__isnull=True)
                   .aggregate(total=Sum('total'))['total'] or Decimal('0'))
-    if venta.status in AUTORIZADOS and Decimal(acreditado) >= Decimal(venta.total) - Decimal('0.005'):
+    cubierta = Decimal(acreditado) >= Decimal(venta.total) - Decimal('0.005')
+    if venta.status in AUTORIZADOS and cubierta:
         Sale.all_companies.filter(pk=venta_id).update(status='canceled')
+    elif venta.status == 'canceled' and not cubierta:
+        Sale.all_companies.filter(pk=venta_id).update(status='authorized')

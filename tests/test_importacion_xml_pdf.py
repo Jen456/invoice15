@@ -11,7 +11,7 @@ import pytest
 from core.importacion import clave_acceso, limites, ride_pdf, sri_autorizacion
 from core.importacion.xml_sri import procesar_xml_sri, procesarXmlSri
 from core.pos import emision
-from tests import fabricas_sri as f
+from tests import fabricas_recibidos as recibidos, fabricas_sri as f
 
 
 def procesar(xml):
@@ -185,12 +185,15 @@ class TestReceptores:
 
 
 class TestTiposNoSoportados:
+    """Desde la Etapa 2 se importan 01, 04, 05 y 07: la liquidación de compra (03) y la guía de remisión (06) siguen sin
+    soporte y no se interpretan como otro tipo."""
 
-    @pytest.mark.parametrize('cod_doc, nombre', [('04', 'Nota de crédito'), ('05', 'Nota de débito'), ('07', 'Comprobante de retención')])
-    def test_no_se_interpretan_como_facturas(self, cod_doc, nombre):
-        r = procesar(f.autorizacion(f.factura(cod_doc=cod_doc)))
+    @pytest.mark.parametrize('cod_doc, nombre', [('03', 'Liquidación de compra'), ('06', 'Guía de remisión')])
+    def test_no_se_interpretan_como_otro_tipo(self, cod_doc, nombre):
+        r = procesar(f.autorizacion(recibidos.no_soportado(cod_doc)))
         assert not r.aceptado and not r.tipo_soportado and r.comprobante is None
         assert codigos(r.errores) == ['tipo_no_soportado'] and nombre in r.errores[0].texto
+        assert 'notas de crédito (04), notas de débito (05) y comprobantes de retención (07)' in r.errores[0].texto
 
 
 class TestRidePdf:

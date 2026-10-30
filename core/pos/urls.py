@@ -44,6 +44,7 @@ urlpatterns = [
     # purchase
     path('purchase/', PurchaseListView.as_view(), name='purchase_list'),
     path('purchase/add/', PurchaseCreateView.as_view(), name='purchase_create'),
+    path('purchase/complete/<int:pk>/', PurchaseCompleteView.as_view(), name='purchase_complete'),
     path('purchase/delete/<int:pk>/', PurchaseDeleteView.as_view(), name='purchase_delete'),
     # type_expense
     path('type/expense/', TypeExpenseListView.as_view(), name='type_expense_list'),

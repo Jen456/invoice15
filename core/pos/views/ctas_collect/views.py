@@ -1,14 +1,19 @@
 import json
 
-from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import DeleteView, CreateView, FormView
 
-from core.pos.forms import PaymentsCtaCollectForm, CtasCollect, PaymentsCtaCollect
+from core.pos import cxc
+from core.pos.forms import PaymentsCtaCollectForm, CtasCollect
 from core.reports.forms import ReportForm
 from core.security.mixins import GroupPermissionMixin
+
+
+def _json(data, status=200):
+    return HttpResponse(json.dumps(data), content_type='application/json', status=status)
 
 
 class CtasCollectListView(GroupPermissionMixin, FormView):
@@ -17,35 +22,29 @@ class CtasCollectListView(GroupPermissionMixin, FormView):
     permission_required = 'view_ctas_collect'
 
     def post(self, request, *args, **kwargs):
+        # Etapa 2 (O2): listados con cxc.listado / cxc.abonos (consultas constantes) y cobros eliminados con
+        # cxc.eliminar_cobro (permiso delete_ctas_collect del rol, auditado; sin él, 403).
         data = {}
-        action = request.POST['action']
+        action = request.POST.get('action', '')
         try:
             if action == 'search':
-                data = []
-                queryset = CtasCollect.objects.filter()
-                start_date = request.POST['start_date']
-                end_date = request.POST['end_date']
-                if len(start_date) and len(end_date):
-                    queryset = queryset.filter(date_joined__range=[start_date, end_date])
-                for i in queryset:
-                    data.append(i.toJSON())
+                start_date, end_date = request.POST.get('start_date', ''), request.POST.get('end_date', '')
+                data = [i.toJSON() for i in cxc.listado(start_date or None, end_date or None)]
             elif action == 'search_pays':
                 data = []
-                for count, i in enumerate(PaymentsCtaCollect.objects.filter(ctas_collect_id=request.POST['id']).order_by('id')):
+                for count, i in enumerate(cxc.abonos(int(request.POST['id']))):
                     item = i.toJSON()
                     item['index'] = count + 1
                     data.append(item)
             elif action == 'delete_pay':
-                id = request.POST['id']
-                payment = PaymentsCtaCollect.objects.get(pk=id)
-                ctascollect = payment.ctas_collect
-                payment.delete()
-                ctascollect.validate_debt()
+                cxc.eliminar_cobro(request, int(request.POST['id']))
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
+        except cxc.ErrorCxC as e:
+            return _json({'error': str(e)}, status=403 if e.codigo == 'sin_permiso_eliminar' else 200)
         except Exception as e:
-            data['error'] = str(e)
-        return HttpResponse(json.dumps(data), content_type='application/json')
+            data = {'error': str(e)}
+        return _json(data)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -62,30 +61,34 @@ class CtasCollectCreateView(GroupPermissionMixin, CreateView):
     permission_required = 'add_ctas_collect'
 
     def post(self, request, *args, **kwargs):
-        action = request.POST['action']
+        # Etapa 2 (O2): el cobro lo registra cxc.registrar_cobro (medio de pago, referencia, Decimal y validaciones).
+        action = request.POST.get('action', '')
         data = {}
         try:
             if action == 'search_ctas_collect':
                 data = []
-                term = request.POST['term']
-                for i in CtasCollect.objects.filter(Q(sale__client__user__names__icontains=term) | Q(sale__client__dni__icontains=term)).exclude(state=False)[0:10]:
+                term = request.POST.get('term', '').strip()
+                cuentas = (cxc.listado().filter(state=True, tiene_anulacion=False)
+                           .filter(Q(sale__client__user__names__icontains=term) | Q(sale__client__dni__icontains=term)
+                                   | Q(sale__voucher_number_full__icontains=term) | Q(nd_numero__icontains=term))[0:10])
+                for i in cuentas:
                     item = i.toJSON()
                     item['text'] = i.get_full_name()
                     data.append(item)
             elif action == 'add':
-                with transaction.atomic():
-                    payment = PaymentsCtaCollect()
-                    payment.ctas_collect_id = int(request.POST['ctas_collect'])
-                    payment.date_joined = request.POST['date_joined']
-                    payment.valor = float(request.POST['valor'])
-                    payment.description = request.POST['description']
-                    payment.save()
-                    payment.ctas_collect.validate_debt()
+                cuenta = request.POST.get('ctas_collect', '')
+                if not str(cuenta).isdigit():
+                    raise ValueError('Elige la cuenta por cobrar.')
+                cxc.registrar_cobro(request.company, request.user, int(cuenta), request.POST.get('date_joined', ''),
+                                    request.POST.get('valor', ''), request.POST.get('medio_pago', ''),
+                                    request.POST.get('referencia', ''), request.POST.get('description', ''))
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
+        except ObjectDoesNotExist:
+            data = {'error': 'La cuenta por cobrar no existe: actualiza la página.'}
         except Exception as e:
-            data['error'] = str(e)
-        return HttpResponse(json.dumps(data), content_type='application/json')
+            data = {'error': str(e)}
+        return _json(data)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data()
@@ -102,12 +105,14 @@ class CtasCollectDeleteView(GroupPermissionMixin, DeleteView):
     permission_required = 'delete_ctas_collect'
 
     def post(self, request, *args, **kwargs):
+        # Etapa 2 (O2): no se borra una CxC con cobros (antes caían en cascada sin auditoría) ni con abonos automáticos.
+        cuenta = self.get_object()   # de otra empresa → 404
         data = {}
         try:
-            self.get_object().delete()
+            cxc.eliminar_cxc(cuenta.pk)
         except Exception as e:
             data['error'] = str(e)
-        return HttpResponse(json.dumps(data), content_type='application/json')
+        return _json(data)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

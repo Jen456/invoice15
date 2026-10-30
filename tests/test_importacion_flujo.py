@@ -16,7 +16,7 @@ from core.security.models import Module, ModuleType
 from core.suscripciones.models import SubscriptionPeriod
 from core.tenancy.context import company_context, platform_scope
 from core.tenancy.models import Membership, ROLE_ACCOUNTANT, ROLE_OWNER, ROLE_READONLY, ROLE_SELLER
-from tests import fabricas_sri as f, helpers
+from tests import fabricas_recibidos as recibidos, fabricas_sri as f, helpers
 from tests.test_importacion_xml_pdf import SRISimulado
 
 pytestmark = pytest.mark.django_db
@@ -107,7 +107,7 @@ class TestImportacion:
 
     def test_lote_con_fallos_parciales(self, empresa, dueno, sri):
         lote = importar(empresa, dueno, ('bien.xml', recibida()), ('roto.xml', '<autorizacion><estado>'),
-                        ('notas.txt', 'hola'), ('ride.pdf', f.pdf()), ('nc.xml', f.autorizacion(f.factura(cod_doc='04'))))
+                        ('notas.txt', 'hola'), ('ride.pdf', f.pdf()), ('liq.xml', f.autorizacion(recibidos.no_soportado('03'))))
         with company_context(empresa):
             assert [e.estado for e in lote.entradas.order_by('orden')] == ['procesado', 'rechazado', 'rechazado', 'en_cola', 'rechazado']
             sv.procesar_lote(lote, dueno)
@@ -174,7 +174,7 @@ class TestPdfYSri:
             assert lote.entradas.filter(estado='procesado').count() == 3
 
     def test_clave_de_tipo_no_soportado(self, empresa, dueno, sri):
-        lote = importar(empresa, dueno, ('nd.pdf', f.pdf(('barras', f.clave(cod_doc='05')))))
+        lote = importar(empresa, dueno, ('guia.pdf', f.pdf(('barras', f.clave(cod_doc='06')))))
         with company_context(empresa):
             sv.procesar_lote(lote, dueno)
             entrada = lote.entradas.get()
@@ -355,8 +355,10 @@ class TestMenu:
 
     def test_grupos_nombres_y_orden(self):
         assert list(ModuleType.objects.order_by('orden').values_list('name', flat=True)) == [
-            'Comprobantes Electrónicos', 'Clientes y promociones', 'Compras y gastos', 'Importación de documentos', 'Bodega',
-            'Administrativo', 'Reportes', 'Configuración', 'Seguridad']
+            'Comprobantes Electrónicos', 'Cotizaciones', 'Clientes y promociones', 'Compras y gastos', 'Importación de documentos',
+            'Bodega', 'Administrativo', 'Reportes', 'Configuración', 'Seguridad']
+        m = Module.objects.get(url='/proformas/')
+        assert m.module_type.name == 'Cotizaciones' and m.orden == 1 and m.name == 'Proformas'
         assert Module.objects.get(url='/pos/sale/admin/').name == 'Facturas emitidas'   # misma URL
         compras = Module.objects.filter(module_type__name='Compras y gastos').order_by('orden').values_list('name', flat=True)
         assert list(compras)[:3] == ['Compras registradas', 'Documentos recibidos', 'Proveedores']

@@ -1,3 +1,5 @@
+// Gasto sin comprobante (espec-etapa2-compras §6.F): medio de pago obligatorio y sin valor inicial; referencia
+// obligatoria con cheque. El servidor repite estas reglas (ExpensesForm).
 var input_date_joined;
 var fv;
 
@@ -41,6 +43,22 @@ document.addEventListener('DOMContentLoaded', function (e) {
                     validators: {
                         notEmpty: {},
                         numeric: {decimalSeparator: '.'}
+                    }
+                },
+                medio_pago: {
+                    validators: {
+                        notEmpty: {message: 'Elige el medio de pago'}
+                    }
+                },
+                referencia: {
+                    validators: {
+                        stringLength: {max: 100},
+                        callback: {
+                            message: 'Escribe el número del cheque',
+                            callback: function (input) {
+                                return fv.form.querySelector('[name="medio_pago"]').value !== 'cheque' || input.value.trim() !== '';
+                            }
+                        }
                     }
                 },
             },
@@ -118,6 +136,10 @@ $(function () {
         .on('keypress', function (e) {
             return validate_text_box({'event': e, 'type': 'decimals'});
         });
+
+    $('select[name="medio_pago"]').on('change', function () {
+        fv.revalidateField('referencia');
+    });
 
     $('i[data-field="valor"]').hide();
 });

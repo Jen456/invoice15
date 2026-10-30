@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 PAYMENT_TYPE = (
@@ -115,3 +116,40 @@ PORCENTAJE_IVA = {'0': Decimal('0'), '2': Decimal('12'), '3': Decimal('14'), '4'
 NOMBRE_TARIFA_IVA = {'4': '15 %', '5': '5 %', '0': '0 %', '7': 'exento de IVA', '6': 'no objeto de IVA', '2': '12 %', '3': '14 %',
                      '10': '13 %'}
 ORDEN_TARIFAS_IVA = ('4', '10', '3', '2', '5', '0', '6', '7')
+
+# Medio con el que se cobra o se paga (cobros, pagos a proveedores y gastos). Común a O1 y O2 (commit B0).
+MEDIOS_DE_PAGO = (
+    ('efectivo', 'Efectivo'), ('transferencia', 'Transferencia'), ('deposito', 'Depósito'), ('cheque', 'Cheque'),
+    ('tarjeta_debito', 'Tarjeta de débito'), ('tarjeta_credito', 'Tarjeta de crédito'),
+    ('compensacion', 'Compensación de deudas'), ('otro', 'Otro'),
+)
+# Forma de pago del SRI (tabla 13 del ATS / PAYMENT_METHOD) que corresponde a cada medio; 'otro' no tiene equivalente.
+FORMA_PAGO_SRI_DE_MEDIO = {'efectivo': '01', 'transferencia': '20', 'deposito': '20', 'cheque': '20',
+                           'tarjeta_debito': '16', 'tarjeta_credito': '19', 'compensacion': '15'}
+
+# Etapa 2 · ventas y empresa (O2)
+TIPO_CONTRIBUYENTE = (
+    ('sociedad', 'Sociedad'),
+    ('pn_obligada', 'Persona natural obligada a llevar contabilidad'),
+    ('pn_no_obligada', 'Persona natural no obligada a llevar contabilidad'),
+)
+PERIODICIDAD_IVA = (('mensual', 'Mensual'), ('semestral', 'Semestral'))
+TIPO_ABONO = (
+    ('cobro', 'Cobro registrado'),
+    ('nota_credito', 'Nota de crédito'),
+    ('retencion', 'Retención recibida'),
+    ('anulacion', 'Anulación en el SRI'),
+)
+AJUSTE_CXC = (
+    ('no_aplica', 'Anterior a la regla: no ajusta la cuenta por cobrar'),
+    ('pendiente', 'Se aplica al autorizarse'),
+    ('aplicada', 'Aplicada a la cuenta por cobrar'),
+    ('parcial', 'Aplicada en parte: el resto excede el saldo'),
+    ('sin_cxc', 'Venta de contado: sin cuenta por cobrar'),
+    ('sin_saldo', 'La cuenta por cobrar ya estaba saldada'),
+    ('revertida', 'Revertida al anular el comprobante'),
+)
+# Estados de una factura válida para el SRI ('canceled' = autorizada y cubierta por notas de crédito).
+ESTADOS_DECLARABLES_VENTA = ('authorized', 'authorized_and_sent_by_email', 'canceled')
+# Desde esta fecha el SRI no admite anular facturas a consumidor final (Res. NAC-DGERCGC25-00000014 y 25-00000017).
+CONSUMIDOR_FINAL_NO_ANULABLE_DESDE = date(2026, 1, 1)

@@ -1,5 +1,9 @@
+// Proveedor con los datos del ATS (espec-etapa2-compras §6.D). La validación definitiva es la del servidor
+// (proveedores.validar_proveedor); aquí la identificación se revisa según el tipo elegido. La parte relacionada no tiene
+// valor inicial (DC12). El tipo de sujeto se calcula con RUC o cédula y se elige con pasaporte o identificación del exterior.
 var btnSearchRUCInSRI;
-var input_ruc;
+var input_ruc, select_tipo, select_sujeto;
+var fv;
 
 var provider = {
     searchRUCInSRI: function () {
@@ -14,22 +18,14 @@ var provider = {
                 'X-CSRFToken': csrftoken
             },
             dataType: 'json',
-            beforeSend: function () {
-                $('input[name="name"]').val('');
-            },
             success: function (request) {
                 if (!request.hasOwnProperty('error')) {
                     $('input[name="name"]').val(request.razonSocial);
-                    var content = '<dl>';
+                    var detalles = $('#details').empty();
                     Object.entries(request).forEach(([key, value]) => {
-                        content += '<dt>' + key.toUpperCase() + '</dt>';
-                        if (typeof (value) == "object") {
-                            content += '<dd>' + JSON.stringify(value) + '</dd>'
-                        } else {
-                            content += '<dd>' + value + '</dd>'
-                        }
+                        detalles.append($('<dt>').text(key.toUpperCase()));
+                        detalles.append($('<dd>').text(typeof (value) == "object" ? JSON.stringify(value) : value));
                     });
-                    $('#details').html(content);
                     $('#myModalSRI').modal('show');
                     return false;
                 }
@@ -39,17 +35,30 @@ var provider = {
                 message_error((jqXHR.responseJSON && jqXHR.responseJSON.error) || (errorThrown + ' ' + textStatus));
             }
         });
+    },
+    actualizarTipo: function () {
+        var tipo = select_tipo.val();
+        var numero = (input_ruc.val() || '').replace(/\s/g, '');
+        if (tipo === '04') {
+            select_sujeto.val(numero.length >= 3 && '69'.indexOf(numero.charAt(2)) >= 0 ? '02' : '01').prop('disabled', true);
+        } else if (tipo === '05') {
+            select_sujeto.val('01').prop('disabled', true);
+        } else {
+            select_sujeto.prop('disabled', false);
+        }
+        btnSearchRUCInSRI.prop('disabled', !(tipo === '04' && numero.length === 13));
     }
 };
 
 document.addEventListener('DOMContentLoaded', function (e) {
-    const fv = FormValidation.formValidation(document.getElementById('frmForm'), {
+    fv = FormValidation.formValidation(document.getElementById('frmForm'), {
             locale: 'es_ES',
             localization: FormValidation.locales.es_ES,
             plugins: {
                 trigger: new FormValidation.plugins.Trigger(),
                 submitButton: new FormValidation.plugins.SubmitButton(),
                 bootstrap: new FormValidation.plugins.Bootstrap(),
+                excluded: new FormValidation.plugins.Excluded(),
                 icon: new FormValidation.plugins.Icon({
                     valid: 'fa fa-check',
                     invalid: 'fa fa-times',
@@ -80,17 +89,19 @@ document.addEventListener('DOMContentLoaded', function (e) {
                         }
                     }
                 },
+                tipo_identificacion: {
+                    validators: {
+                        notEmpty: {message: 'Elige el tipo de identificación'}
+                    }
+                },
                 ruc: {
                     validators: {
                         notEmpty: {},
-                        stringLength: {
-                            min: 13
-                        },
-                        digits: {},
                         callback: {
-                            message: 'El número de ruc es incorrecto',
+                            message: 'La identificación no corresponde al tipo elegido',
                             callback: function (input) {
-                                return validate_dni_ruc(input.value);
+                                var tipo = fv.form.querySelector('[name="tipo_identificacion"]').value;
+                                return !tipo || identificacion_valida(tipo, input.value);
                             },
                         },
                         remote: {
@@ -102,12 +113,28 @@ document.addEventListener('DOMContentLoaded', function (e) {
                                     action: 'validate_data'
                                 };
                             },
-                            message: 'El número de ruc ya se encuentra registrado',
+                            message: 'La identificación ya se encuentra registrada',
                             method: 'POST',
                             headers: {
                                 'X-CSRFToken': csrftoken
                             },
                         },
+                    }
+                },
+                tipo_sujeto: {
+                    validators: {
+                        callback: {
+                            message: 'Elige si es persona natural o sociedad',
+                            callback: function (input) {
+                                var tipo = fv.form.querySelector('[name="tipo_identificacion"]').value;
+                                return !es_identificacion_extranjera(tipo) || input.value !== '';
+                            }
+                        }
+                    }
+                },
+                parte_relacionada: {
+                    validators: {
+                        notEmpty: {message: 'Indica si es parte relacionada'}
                     }
                 },
                 mobile: {
@@ -162,11 +189,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
                     }
                 },
                 address: {
-                    validators: {
-                        // stringLength: {
-                        //     min: 4,
-                        // }
-                    }
+                    validators: {}
                 }
             },
         }
@@ -199,7 +222,19 @@ document.addEventListener('DOMContentLoaded', function (e) {
         .on('core.form.valid', function () {
             var args = {
                 'params': new FormData(fv.form),
-                'form': fv.form
+                'form': fv.form,
+                'success': function (request) {
+                    var destino = $(fv.form).attr('data-url');
+                    var avisos = (request.advertencias || []).map(function (a) { return a.texto; }).join('\n');
+                    if (!avisos) {
+                        location.href = destino;
+                        return;
+                    }
+                    alert_sweetalert({
+                        'title': 'Proveedor guardado', 'type': 'warning', 'message': avisos,
+                        'callback': function () { location.href = destino; }
+                    });
+                }
             };
             submit_with_formdata(args);
         });
@@ -209,15 +244,24 @@ $(function () {
 
     btnSearchRUCInSRI = $('.btnSearchRUCInSRI');
     input_ruc = $('input[name="ruc"]');
+    select_tipo = $('select[name="tipo_identificacion"]');
+    select_sujeto = $('select[name="tipo_sujeto"]');
 
     input_ruc
-        .on('keyup', function () {
-            var ruc = $(this).val();
-            btnSearchRUCInSRI.prop('disabled', ruc.length < 13);
+        .on('keyup change', function () {
+            provider.actualizarTipo();
         })
         .on('keypress', function (e) {
-            return validate_text_box({'event': e, 'type': 'numbers'});
+            return es_identificacion_extranjera(select_tipo.val()) || validate_text_box({'event': e, 'type': 'numbers'});
         });
+
+    select_tipo.on('change', function () {
+        provider.actualizarTipo();
+        if (input_ruc.val()) {
+            fv.revalidateField('ruc');
+        }
+        fv.revalidateField('tipo_sujeto');
+    });
 
     $('input[name="mobile"]').on('keypress', function (e) {
         return validate_text_box({'event': e, 'type': 'numbers'});
@@ -226,6 +270,8 @@ $(function () {
     btnSearchRUCInSRI.on('click', function () {
         provider.searchRUCInSRI();
     });
+
+    provider.actualizarTipo();
 
     $('i[data-field="search_ruc_sri"]').hide();
 });

@@ -1,650 +1,557 @@
-var tblProducts, tblSearchProducts;
-var current_date;
-var fvPurchase, fvProvider;
-var select_provider, select_payment_type;
-var input_date_joined, input_search_product, input_end_credit;
-var container_credit;
+// Nueva compra (espec-etapa2-compras §6.B). El servidor valida y calcula todo (compras.calcular / crear_compra); aquí solo
+// se arma la cabecera y las líneas. Nada que decida el crédito tributario se elige de oficio (DC12): forma de pago y
+// sustento empiezan vacíos; las sugerencias solo cambian el campo con «Usar sugerencia». Los importes llegan como texto.
+var opciones = {tarifas: [], sustentos: [], comprobantes_por_sustento: {}};
+var tipo_inicial = 'inventario';
+var sustento_sugerido = '';
+var select_provider, select_compra_modificada, input_search_product;
+var temporizador_calculo = null;
+var ultimo_calculo = null;
 
-var purchase = {
-    detail: {
-        products: [],
-    },
-    calculateInvoice: function () {
-        var subtotal = 0.00;
-        this.detail.products.forEach(function (value, index, array) {
-            value.subtotal = value.cant * value.price;
-            subtotal += value.subtotal;
-        });
-        $('.subtotal').html('$' + subtotal.toFixed(2));
-    },
-    listProducts: function () {
-        this.calculateInvoice();
-        tblProducts = $('#tblProducts').DataTable({
-            autoWidth: false,
-            destroy: true,
-            data: this.detail.products,
-            ordering: false,
-            lengthChange: false,
-            searching: false,
-            paginate: false,
-            columns: [
-                {data: "id"},
-                {data: "code"},
-                {data: "short_name"},
-                {data: "cant"},
-                {data: "price"},
-                {data: "subtotal"},
-            ],
-            columnDefs: [
-                {
-                    targets: [-3],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        return '<input type="text" class="form-control" autocomplete="off" name="cant" value="' + row.cant + '">';
-                    }
-                },
-                {
-                    targets: [-1],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        return '$' + data.toFixed(2);
-                    }
-                },
-                {
-                    targets: [-2],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        return '$' + data.toFixed(2);
-                    }
-                },
-                {
-                    targets: [0],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        return '<a rel="remove" class="btn btn-danger btn-flat btn-xs"><i class="fas fa-times"></i></a>';
-                    }
-                },
-            ],
-            rowCallback: function (row, data, index) {
-                var tr = $(row).closest('tr');
-                tr.find('input[name="cant"]')
-                    .TouchSpin({
-                        min: 1,
-                        max: 10000000
-                    })
-                    .on('keypress', function (e) {
-                        return validate_text_box({'event': e, 'type': 'numbers'});
-                    });
-            },
-            initComplete: function (settings, json) {
-                $(this).wrap('<div class="dataTables_scroll"><div/>');
-            }
-        });
-    },
-    getProductsIds: function () {
-        return this.detail.products.map(value => value.id);
-    },
-    addProduct: function (item) {
-        this.detail.products.push(item);
-        this.listProducts();
-    },
+var compra = {
+    lineas: [],
+    proveedor: null
 };
 
-document.addEventListener('DOMContentLoaded', function (e) {
-    fvPurchase = FormValidation.formValidation(document.getElementById('frmForm'), {
-            locale: 'es_ES',
-            localization: FormValidation.locales.es_ES,
-            plugins: {
-                trigger: new FormValidation.plugins.Trigger(),
-                submitButton: new FormValidation.plugins.SubmitButton(),
-                bootstrap: new FormValidation.plugins.Bootstrap(),
-                excluded: new FormValidation.plugins.Excluded(),
-                icon: new FormValidation.plugins.Icon({
-                    valid: 'fa fa-check',
-                    invalid: 'fa fa-times',
-                    validating: 'fa fa-refresh',
-                }),
-            },
-            fields: {
-                number: {
-                    validators: {
-                        notEmpty: {},
-                        digits: {},
-                        stringLength: {
-                            min: 8,
-                        },
-                        remote: {
-                            url: pathname,
-                            data: function () {
-                                return {
-                                    pattern: 'number',
-                                    number: fvPurchase.form.querySelector('[name="number"]').value,
-                                    action: 'validate_purchase'
-                                };
-                            },
-                            message: 'El número de factura ya se encuentra registrado',
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrftoken
-                            },
-                        }
-                    }
-                },
-                payment_type: {
-                    validators: {
-                        notEmpty: {
-                            message: 'Seleccione un tipo de pago'
-                        },
-                    }
-                },
-                provider: {
-                    validators: {
-                        notEmpty: {
-                            message: 'Seleccione un proveedor'
-                        },
-                    }
-                },
-                date_joined: {
-                    validators: {
-                        notEmpty: {
-                            message: 'La fecha es obligatoria'
-                        },
-                        date: {
-                            format: 'YYYY-MM-DD',
-                            message: 'La fecha no es válida'
-                        }
-                    }
-                },
-                end_credit: {
-                    validators: {
-                        notEmpty: {
-                            message: 'La fecha es obligatoria'
-                        },
-                        date: {
-                            format: 'YYYY-MM-DD',
-                            message: 'La fecha no es válida'
-                        }
-                    }
-                },
-            },
-        }
-    )
-        .on('core.element.validated', function (e) {
-            if (e.valid) {
-                const groupEle = FormValidation.utils.closest(e.element, '.form-group');
-                if (groupEle) {
-                    FormValidation.utils.classSet(groupEle, {
-                        'has-success': false,
-                    });
-                }
-                FormValidation.utils.classSet(e.element, {
-                    'is-valid': false,
-                });
-            }
-            const iconPlugin = fvPurchase.getPlugin('icon');
-            const iconElement = iconPlugin && iconPlugin.icons.has(e.element) ? iconPlugin.icons.get(e.element) : null;
-            iconElement && (iconElement.style.display = 'none');
-        })
-        .on('core.validator.validated', function (e) {
-            if (!e.result.valid) {
-                const messages = [].slice.call(fvPurchase.form.querySelectorAll('[data-field="' + e.field + '"][data-validator]'));
-                messages.forEach((messageEle) => {
-                    const validator = messageEle.getAttribute('data-validator');
-                    messageEle.style.display = validator === e.validator ? 'block' : 'none';
-                });
-            }
-        })
-        .on('core.form.valid', function () {
-            if (purchase.detail.products.length === 0) {
-                message_error('Debe tener al menos un item en el detalle');
-                return false;
-            }
-            var params = new FormData(fvPurchase.form);
-            params.append('end_credit', input_end_credit.val());
-            params.append('products', JSON.stringify(purchase.detail.products));
-            var args = {
-                'params': params,
-                'form': fvPurchase.form,
-            };
-            submit_with_formdata(args);
-        });
-});
+function esc(valor) {
+    return $('<div>').text(valor === null || valor === undefined ? '' : String(valor)).html();
+}
 
-document.addEventListener('DOMContentLoaded', function (e) {
-    fvProvider = FormValidation.formValidation(document.getElementById('frmProvider'), {
-            locale: 'es_ES',
-            localization: FormValidation.locales.es_ES,
-            plugins: {
-                trigger: new FormValidation.plugins.Trigger(),
-                submitButton: new FormValidation.plugins.SubmitButton(),
-                bootstrap: new FormValidation.plugins.Bootstrap(),
-                icon: new FormValidation.plugins.Icon({
-                    valid: 'fa fa-check',
-                    invalid: 'fa fa-times',
-                    validating: 'fa fa-refresh',
-                }),
-            },
-            fields: {
-                name: {
-                    validators: {
-                        notEmpty: {},
-                        stringLength: {
-                            min: 2,
-                        },
-                        remote: {
-                            url: pathname,
-                            data: function () {
-                                return {
-                                    parameter: fvProvider.form.querySelector('[name="name"]').value,
-                                    pattern: 'name',
-                                    action: 'validate_provider'
-                                };
-                            },
-                            message: 'El nombre ya se encuentra registrado',
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrftoken
-                            },
-                        }
-                    }
-                },
-                ruc: {
-                    validators: {
-                        notEmpty: {},
-                        stringLength: {
-                            min: 13
-                        },
-                        digits: {},
-                        callback: {
-                            message: 'El número de ruc es incorrecto',
-                            callback: function (input) {
-                                return validate_dni_ruc(input.value);
-                            },
-                        },
-                        remote: {
-                            url: pathname,
-                            data: function () {
-                                return {
-                                    parameter: fvProvider.form.querySelector('[name="ruc"]').value,
-                                    pattern: 'ruc',
-                                    action: 'validate_provider'
-                                };
-                            },
-                            message: 'El número de ruc ya se encuentra registrado',
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrftoken
-                            },
-                        }
-                    }
-                },
-                mobile: {
-                    validators: {
-                        notEmpty: {},
-                        stringLength: {
-                            min: 10
-                        },
-                        digits: {},
-                        remote: {
-                            url: pathname,
-                            data: function () {
-                                return {
-                                    parameter: fvProvider.form.querySelector('[name="mobile"]').value,
-                                    pattern: 'mobile',
-                                    action: 'validate_provider'
-                                };
-                            },
-                            message: 'El número de teléfono ya se encuentra registrado',
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrftoken
-                            },
-                        }
-                    }
-                },
-                email: {
-                    validators: {
-                        notEmpty: {},
-                        stringLength: {
-                            min: 5
-                        },
-                        regexp: {
-                            regexp: /^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$/i,
-                            message: 'El formato email no es correcto'
-                        },
-                        remote: {
-                            url: pathname,
-                            data: function () {
-                                return {
-                                    parameter: fvProvider.form.querySelector('[name="email"]').value,
-                                    pattern: 'email',
-                                    action: 'validate_provider'
-                                };
-                            },
-                            message: 'El email ya se encuentra registrado',
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrftoken
-                            },
-                        }
-                    }
-                },
-                address: {
-                    validators: {
-                        // stringLength: {
-                        //     min: 4,
-                        // }
-                    }
-                }
-            },
-        }
-    )
-        .on('core.element.validated', function (e) {
-            if (e.valid) {
-                const groupEle = FormValidation.utils.closest(e.element, '.form-group');
-                if (groupEle) {
-                    FormValidation.utils.classSet(groupEle, {
-                        'has-success': false,
-                    });
-                }
-                FormValidation.utils.classSet(e.element, {
-                    'is-valid': false,
-                });
-            }
-            const iconPlugin = fvProvider.getPlugin('icon');
-            const iconElement = iconPlugin && iconPlugin.icons.has(e.element) ? iconPlugin.icons.get(e.element) : null;
-            iconElement && (iconElement.style.display = 'none');
-        })
-        .on('core.validator.validated', function (e) {
-            if (!e.result.valid) {
-                const messages = [].slice.call(fvProvider.form.querySelectorAll('[data-field="' + e.field + '"][data-validator]'));
-                messages.forEach((messageEle) => {
-                    const validator = messageEle.getAttribute('data-validator');
-                    messageEle.style.display = validator === e.validator ? 'block' : 'none';
-                });
-            }
-        })
-        .on('core.form.valid', function () {
-            var params = new FormData(fvProvider.form);
-            params.append('action', 'create_provider');
-            var args = {
-                'params': params,
-                'success': function (request) {
-                    select_provider.select2('trigger', 'select', {data: request});
-                    fvPurchase.revalidateField('provider');
-                    $('#myModalProvider').modal('hide');
-                }
+function leer_json(id, defecto) {
+    try {
+        return JSON.parse(document.getElementById(id).textContent);
+    } catch (e) {
+        return defecto;
+    }
+}
+
+function texto_errores(error) {
+    if (typeof error === 'string') {
+        return error;
+    }
+    return Object.keys(error || {}).map(function (campo) {
+        var etiqueta = $('#frmProvider label[for="fp_proveedor_' + campo + '"]').text().replace(':', '') || campo;
+        return etiqueta + ': ' + [].concat(error[campo]).join(' ');
+    }).join('\n');
+}
+
+function campo(nombre) {
+    return $('#frmForm [name="' + nombre + '"]');
+}
+
+function modo_actual() {
+    return $('#frmForm input[name="modo_comprobante"]:checked').val() || 'si';
+}
+
+function tipo_actual() {
+    return modo_actual() === 'liquidacion' ? '03' : campo('tipo_comprobante').val();
+}
+
+var form_compra = {
+    lineas_para_enviar: function () {
+        return compra.lineas.map(function (l) {
+            var linea = {
+                tipo: l.tipo, cant: l.cant, price: l.price, descuento: l.descuento,
+                codigo_porcentaje: l.codigo_porcentaje
             };
-            submit_with_formdata(args);
+            if (l.tipo === 'producto') {
+                linea.product = l.product;
+            } else {
+                linea.descripcion = l.descripcion;
+                linea.type_expense = l.type_expense;
+            }
+            if (l.codigo_porcentaje === '8') {
+                linea.tarifa = l.tarifa;
+            }
+            return linea;
         });
-});
+    },
+    parametros: function (accion) {
+        var params = new FormData(document.getElementById('frmForm'));
+        params.set('action', accion);
+        params.set('lineas', JSON.stringify(this.lineas_para_enviar()));
+        return params;
+    },
+    enviar: function (accion, exito, fallo) {
+        $.ajax({
+            url: pathname,
+            data: this.parametros(accion),
+            type: 'POST',
+            dataType: 'json',
+            headers: {'X-CSRFToken': csrftoken},
+            processData: false,
+            contentType: false
+        }).done(function (data) {
+            if (data.error) {
+                if (fallo) {
+                    fallo(data);
+                } else {
+                    message_error(data.error);
+                }
+                return;
+            }
+            exito(data);
+        }).fail(function (jqXHR) {
+            message_error((jqXHR.responseJSON && jqXHR.responseJSON.error) || 'No se pudo completar la acción.');
+        });
+    },
+    // ------------------------------------------------------------------ cabecera
+    actualizar_modo: function () {
+        var modo = modo_actual();
+        $('#fp-aviso-liquidacion').toggleClass('d-none', modo !== 'liquidacion');
+        $('#fp-aviso-despues').toggleClass('d-none', modo !== 'despues');
+        $('#fp-grupo-tipo').toggleClass('d-none', modo === 'liquidacion');
+        $('#fp-numeracion').toggleClass('d-none', modo === 'liquidacion');
+        if (modo === 'liquidacion') {
+            ['estab', 'pto_emi', 'secuencial', 'autorizacion', 'fecha_emision'].forEach(function (n) {
+                campo(n).val('');
+            });
+            campo('tipo_comprobante').val('');
+        }
+        this.actualizar_tipo();
+    },
+    actualizar_tipo: function () {
+        var tipo = tipo_actual();
+        var actual = campo('cod_sustento').val();
+        var select = campo('cod_sustento').empty().append($('<option>').val('').text('Elige el sustento tributario'));
+        opciones.sustentos.forEach(function (s) {
+            var admitidos = opciones.comprobantes_por_sustento[s[0]] || [];
+            if (!tipo || admitidos.indexOf(tipo) >= 0) {
+                select.append($('<option>').val(s[0]).text(s[0] + ' · ' + s[1]));
+            }
+        });
+        if (select.find('option[value="' + actual + '"]').length) {
+            select.val(actual);
+        }
+        var con_doc = (opciones.tipos_con_doc_modificado || []).indexOf(tipo) >= 0;
+        $('#fp-doc-modificado').toggleClass('d-none', !con_doc);
+        $('#fp-grupo-forma-pago').toggleClass('d-none', (opciones.tipos_sin_forma_pago || []).indexOf(tipo) >= 0);
+        this.render_lineas();
+        this.programar_calculo();
+    },
+    al_elegir_proveedor: function (proveedor) {
+        compra.proveedor = proveedor;
+        var aviso = $('#fp-proveedor-aviso').empty().addClass('d-none');
+        if (!proveedor) {
+            return;
+        }
+        if (campo('parte_relacionada').val() === '' && proveedor.parte_relacionada !== null && proveedor.parte_relacionada !== undefined) {
+            campo('parte_relacionada').val(proveedor.parte_relacionada ? 'si' : 'no');   // dato ya registrado del proveedor
+        }
+        var tipo_id = proveedor.tipo_identificacion ? proveedor.tipo_identificacion.id : '';
+        if (campo('pago_loc_ext').val() === '' && (tipo_id === '04' || tipo_id === '05')) {
+            campo('pago_loc_ext').val('01');
+        }
+        if (proveedor.datos_completos === false) {
+            aviso.append($('<strong>').text('El proveedor tiene datos incompletos: '));
+            var lista = $('<ul class="mb-1">').appendTo(aviso);
+            (proveedor.faltantes || []).forEach(function (f) {
+                lista.append($('<li>').text(f.texto));
+            });
+            aviso.append($('<a>').attr('href', '/pos/provider/update/' + parseInt(proveedor.id, 10) + '/').attr('target', '_blank')
+                .text('Completar los datos del proveedor'));
+            aviso.removeClass('d-none');
+        }
+        select_compra_modificada.val(null).trigger('change');
+        this.validar_comprobante();
+        this.programar_calculo();
+    },
+    validar_comprobante: function () {
+        var aviso = $('#fp-comprobante-aviso').empty().addClass('d-none');
+        var datos = {
+            action: 'validate_comprobante', provider: select_provider.val() || '', tipo_comprobante: tipo_actual() || '',
+            estab: campo('estab').val(), pto_emi: campo('pto_emi').val(), secuencial: campo('secuencial').val()
+        };
+        if (!datos.provider || !datos.tipo_comprobante || !datos.secuencial) {
+            return;
+        }
+        $.ajax({url: pathname, type: 'POST', headers: {'X-CSRFToken': csrftoken}, data: datos, dataType: 'json'})
+            .done(function (data) {
+                if (data.error || !data.mensaje) {
+                    return;
+                }
+                aviso.text(data.mensaje + ' ');
+                if (data.documento_importado) {
+                    aviso.append($('<a>').attr('href', data.documento_importado.url_compra).text('Crear la compra desde el XML'))
+                        .append(' · ')
+                        .append($('<a>').attr('href', data.documento_importado.url).text('Ver el XML importado'));
+                }
+                aviso.toggleClass('alert-danger', !data.valid).toggleClass('alert-warning', data.valid).removeClass('d-none');
+            });
+    },
+    // ------------------------------------------------------------------ líneas
+    tarifas_admitidas: function () {
+        var tipo = tipo_actual();
+        if ((opciones.tipos_sin_iva_discriminado || []).indexOf(tipo) >= 0) {
+            return opciones.tarifas.filter(function (t) {
+                return (opciones.codigos_iva_nota_venta || []).indexOf(t.codigo) >= 0;
+            });
+        }
+        return opciones.tarifas;
+    },
+    agregar_producto: function (item) {
+        var admitidas = this.tarifas_admitidas().map(function (t) { return t.codigo; });
+        compra.lineas.push({
+            tipo: 'producto', product: item.id, nombre: item.full_name || item.value, codigo: item.code, cant: 1,
+            price: Number(item.price || 0).toFixed(2), descuento: '0.00',
+            codigo_porcentaje: admitidas.indexOf(item.tarifa_iva) >= 0 ? item.tarifa_iva : '', tarifa: ''
+        });
+        this.render_lineas();
+        this.programar_calculo();
+    },
+    agregar_gasto: function () {
+        compra.lineas.push({
+            tipo: 'gasto', descripcion: '', type_expense: null, type_expense_nombre: '', cant: 1, price: '',
+            descuento: '0.00', codigo_porcentaje: '', tarifa: ''
+        });
+        this.render_lineas();
+        $('#tblLineas tbody tr:last input[name="descripcion"]').focus();
+    },
+    render_lineas: function () {
+        var cuerpo = $('#tblLineas tbody').empty();
+        var admitidas = this.tarifas_admitidas();
+        var calculadas = (ultimo_calculo && ultimo_calculo.lineas) || [];
+        compra.lineas.forEach(function (l, i) {
+            if (l.codigo_porcentaje && !admitidas.some(function (t) { return t.codigo === l.codigo_porcentaje; })) {
+                l.codigo_porcentaje = '';
+            }
+            var fila = $('<tr>').attr('data-index', i);
+            var celda_nombre = $('<td>');
+            if (l.tipo === 'producto') {
+                celda_nombre.append($('<span class="badge badge-info mr-1">').text('Producto'))
+                    .append($('<span>').text(l.nombre));
+            } else {
+                celda_nombre.append($('<span class="badge badge-secondary mr-1">').text('Gasto'))
+                    .append($('<input type="text" class="form-control form-control-sm" name="descripcion" maxlength="300" aria-label="Descripción del gasto">')
+                        .attr('placeholder', 'Descripción del gasto').val(l.descripcion));
+            }
+            fila.append(celda_nombre);
+            var celda_tipo = $('<td>');
+            if (l.tipo === 'gasto') {
+                var select = $('<select class="form-control form-control-sm" name="type_expense" aria-label="Tipo de gasto" style="width: 100%;">');
+                if (l.type_expense) {
+                    select.append(new Option(l.type_expense_nombre, l.type_expense, true, true));
+                }
+                celda_tipo.append(select);
+            } else {
+                celda_tipo.text('—');
+            }
+            fila.append(celda_tipo);
+            fila.append($('<td>').append($('<input type="number" class="form-control form-control-sm" name="cant" min="1" step="1" aria-label="Cantidad">').val(l.cant)));
+            fila.append($('<td>').append($('<input type="text" class="form-control form-control-sm" name="price" inputmode="decimal" aria-label="Precio">').val(l.price)));
+            fila.append($('<td>').append($('<input type="text" class="form-control form-control-sm" name="descuento" inputmode="decimal" aria-label="Descuento en dólares">').val(l.descuento)));
+            var tarifa = $('<select class="form-control form-control-sm" name="codigo_porcentaje" aria-label="Tarifa de IVA">')
+                .append($('<option>').val('').text('Elige la tarifa'));
+            admitidas.forEach(function (t) {
+                tarifa.append($('<option>').val(t.codigo).text(t.nombre));
+            });
+            tarifa.val(l.codigo_porcentaje);
+            fila.append($('<td>').append(tarifa));
+            fila.append($('<td>').append($('<input type="text" class="form-control form-control-sm" name="tarifa" inputmode="decimal" aria-label="Tarifa del IVA diferenciado">')
+                .val(l.tarifa).prop('disabled', l.codigo_porcentaje !== '8').attr('placeholder', l.codigo_porcentaje === '8' ? '8.00' : '')));
+            var calculada = calculadas[i] || {};
+            fila.append($('<td class="text-right fp-base">').text(calculada.total ? '$' + calculada.total : '—'));
+            fila.append($('<td class="text-right fp-iva">').text(calculada.total_iva ? '$' + calculada.total_iva : '—'));
+            fila.append($('<td class="text-center">').append($('<button type="button" class="btn btn-danger btn-xs btn-flat" rel="remove" aria-label="Quitar la línea"><i class="fas fa-times"></i></button>')));
+            cuerpo.append(fila);
+        });
+        cuerpo.find('select[name="type_expense"]').each(function () {
+            form_compra.iniciar_tipo_gasto($(this));
+        });
+    },
+    iniciar_tipo_gasto: function (select) {
+        select.select2({
+            theme: 'bootstrap4', language: 'es', allowClear: true, placeholder: 'Tipo de gasto (opcional)',
+            ajax: {
+                delay: 250, type: 'POST', url: pathname, headers: {'X-CSRFToken': csrftoken},
+                data: function (params) {
+                    return {term: params.term || '', action: 'search_type_expense'};
+                },
+                processResults: function (data) {
+                    return {results: data.error ? [] : data};
+                }
+            }
+        }).on('select2:select', function (e) {
+            var i = parseInt($(this).closest('tr').attr('data-index'), 10);
+            compra.lineas[i].type_expense = e.params.data.id;
+            compra.lineas[i].type_expense_nombre = e.params.data.text;
+            // Con ?tipo=gasto el sustento se precarga solo si el tipo de gasto elegido lo tiene guardado.
+            var sustento = campo('cod_sustento');
+            if (tipo_inicial === 'gasto' && !sustento.val() && e.params.data.cod_sustento
+                && sustento.find('option[value="' + e.params.data.cod_sustento + '"]').length) {
+                sustento.val(e.params.data.cod_sustento);
+            }
+            form_compra.programar_calculo();
+        }).on('select2:clear', function () {
+            var i = parseInt($(this).closest('tr').attr('data-index'), 10);
+            compra.lineas[i].type_expense = null;
+            compra.lineas[i].type_expense_nombre = '';
+        });
+    },
+    // ------------------------------------------------------------------ cálculo en el servidor
+    programar_calculo: function () {
+        clearTimeout(temporizador_calculo);
+        temporizador_calculo = setTimeout(function () {
+            form_compra.calcular(false);
+        }, 600);
+    },
+    calcular: function (avisar) {
+        if (!select_provider.val() || compra.lineas.length === 0) {
+            return;
+        }
+        this.enviar('calcular', function (data) {
+            ultimo_calculo = data;
+            form_compra.mostrar_resumen(data);
+        }, function (data) {
+            ultimo_calculo = null;
+            $('#fp-resumen-error').text(data.error).removeClass('d-none');
+            $('#fp-resumen-tarifas, #fp-resumen-totales, #fp-resumen-advertencias, #fp-resumen-faltantes').addClass('d-none');
+            $('.fp-total-compra').text('—');
+            if (avisar) {
+                message_error(data.error);
+            }
+        });
+    },
+    mostrar_resumen: function (data) {
+        $('#fp-resumen-error').addClass('d-none').text('');
+        var tarifas = $('#fp-resumen-tarifas').removeClass('d-none').find('tbody').empty();
+        data.por_tarifa.forEach(function (g) {
+            $('<tr>').append($('<td>').text(g.nombre)).append($('<td class="text-right">').text('$' + g.base))
+                .append($('<td class="text-right">').text(g.valor === null ? '—' : '$' + g.valor)).appendTo(tarifas);
+        });
+        var totales = $('#fp-resumen-totales').removeClass('d-none').empty();
+        [['Subtotal sin impuestos', data.subtotal], ['Descuento', data.total_descuento],
+            ['IVA calculado por líneas', data.total_iva_calculado], ['IVA de la compra', data.total_iva], ['ICE', data.total_ice],
+            ['Propina', data.propina], ['Total con IVA', data.total]].forEach(function (par) {
+            totales.append($('<dt class="col-sm-6">').text(par[0])).append($('<dd class="col-sm-6 text-right">').text('$' + par[1]));
+        });
+        $('.fp-total-compra').text('$' + data.total);
+        var advertencias = $('#fp-resumen-advertencias').toggleClass('d-none', !data.advertencias.length).find('ul').empty();
+        data.advertencias.forEach(function (a) {
+            advertencias.append($('<li>').text(a.texto));
+        });
+        var faltantes = $('#fp-resumen-faltantes').toggleClass('d-none', !data.faltantes.length).find('ul').empty();
+        data.faltantes.forEach(function (f) {
+            faltantes.append($('<li>').text(f.texto));
+        });
+        (data.confirmaciones || []).forEach(function (codigo) {
+            $('.fp-confirmacion[data-confirmacion="' + codigo + '"]').removeClass('d-none');
+        });
+        // Solo se actualizan los importes de cada línea: rehacer la tabla quitaría el foco a quien está escribiendo.
+        $('#tblLineas tbody tr').each(function () {
+            var calculada = data.lineas[parseInt($(this).attr('data-index'), 10)] || {};
+            $(this).find('.fp-base').text(calculada.total ? '$' + calculada.total : '—');
+            $(this).find('.fp-iva').text(calculada.total_iva ? '$' + calculada.total_iva : '—');
+        });
+    },
+    guardar: function () {
+        if (compra.lineas.length === 0) {
+            message_error('Agrega al menos una línea a la compra.');
+            return;
+        }
+        dialog_action({
+            content: '¿Registrar la compra?',
+            success: function () {
+                form_compra.enviar('add', function () {
+                    location.href = $('#frmForm').attr('data-url');
+                }, function (data) {
+                    if (data.confirmacion) {
+                        $('.fp-confirmacion[data-confirmacion="' + data.confirmacion + '"]').removeClass('d-none');
+                    }
+                    message_error(data.error);
+                });
+            },
+            cancel: function () {
+            }
+        });
+    }
+};
+
+// Tipo de sujeto del proveedor: con RUC (tercer dígito 6 o 9 → sociedad) y cédula se calcula; con pasaporte o
+// identificación del exterior se elige. El servidor lo vuelve a calcular.
+function actualizar_sujeto_proveedor() {
+    var tipo = $('#frmProvider [name="tipo_identificacion"]').val();
+    var numero = ($('#frmProvider [name="ruc"]').val() || '').replace(/\s/g, '');
+    var sujeto = $('#frmProvider [name="tipo_sujeto"]');
+    if (tipo === '04') {
+        sujeto.val(numero.length >= 3 && '69'.indexOf(numero.charAt(2)) >= 0 ? '02' : '01').prop('disabled', true);
+    } else if (tipo === '05') {
+        sujeto.val('01').prop('disabled', true);
+    } else {
+        sujeto.prop('disabled', false);
+    }
+}
 
 $(function () {
+    opciones = leer_json('fp-compra-opciones', opciones);
+    tipo_inicial = leer_json('fp-compra-tipo-inicial', 'inventario');
+    sustento_sugerido = leer_json('fp-compra-sustento-sugerido', '');
+    select_provider = campo('provider');
+    select_compra_modificada = campo('compra_modificada');
+    input_search_product = $('#fp-buscar-producto');
 
-    current_date = new moment().format("YYYY-MM-DD");
-    input_date_joined = $('input[name="date_joined"]');
-    input_end_credit = $('input[name="end_credit"]');
-    container_credit = $(input_end_credit).parent().parent();
-    select_provider = $('select[name="provider"]');
-    input_search_product = $('input[name="search_product"]');
-    select_payment_type = $('select[name="payment_type"]');
-
-    $('.select2').select2({
-        theme: 'bootstrap4',
-        language: "es",
+    ['date_joined', 'end_credit', 'fecha_emision', 'fecha_doc_modificado'].forEach(function (id) {
+        $('#' + id).datetimepicker({format: 'YYYY-MM-DD', useCurrent: false, locale: 'es', keepOpen: false});
+        $('#' + id).on('change.datetimepicker', function () {
+            form_compra.programar_calculo();
+        });
     });
 
-    // Products
+    select_provider.select2({
+        theme: 'bootstrap4', language: 'es', allowClear: true, placeholder: 'Ingrese un nombre o ruc de proveedor',
+        minimumInputLength: 1,
+        ajax: {
+            delay: 250, type: 'POST', url: pathname, headers: {'X-CSRFToken': csrftoken},
+            data: function (params) {
+                return {term: params.term, action: 'search_provider'};
+            },
+            processResults: function (data) {
+                return {results: data.error ? [] : data};
+            }
+        }
+    }).on('select2:select', function (e) {
+        form_compra.al_elegir_proveedor(e.params.data);
+    }).on('select2:clear', function () {
+        form_compra.al_elegir_proveedor(null);
+    });
+
+    select_compra_modificada.select2({
+        theme: 'bootstrap4', language: 'es', allowClear: true, placeholder: 'Busca la factura del proveedor',
+        ajax: {
+            delay: 250, type: 'POST', url: pathname, headers: {'X-CSRFToken': csrftoken},
+            data: function (params) {
+                return {term: params.term || '', provider: select_provider.val() || '', action: 'search_compra_modificada'};
+            },
+            processResults: function (data) {
+                return {results: data.error ? [] : data};
+            }
+        }
+    });
+
+    $('#frmForm input[name="modo_comprobante"]').on('change', function () {
+        form_compra.actualizar_modo();
+    });
+    campo('tipo_comprobante').on('change', function () {
+        form_compra.actualizar_tipo();
+        form_compra.validar_comprobante();
+    });
+    campo('estab').add(campo('pto_emi')).add(campo('secuencial')).on('change', function () {
+        form_compra.validar_comprobante();
+    });
+    $('#frmForm').on('change', 'select[name="cod_sustento"], select[name="forma_pago"], select[name="parte_relacionada"], ' +
+        'select[name="pago_loc_ext"], select[name="payment_type"], input[name="total_ice"], input[name="propina"], ' +
+        'input[name="iva_factura"], input[name="autorizacion"]', function () {
+        form_compra.programar_calculo();
+    });
+
+    campo('payment_type').on('change', function () {
+        $('#fp-plazo-credito').toggleClass('d-none', $(this).val() !== 'credito');
+    }).trigger('change');
+
+    $('#fp-usar-sugerencia').on('click', function () {
+        var sustento = campo('cod_sustento');
+        if (sustento.find('option[value="' + sustento_sugerido + '"]').length) {
+            sustento.val(sustento_sugerido);
+            form_compra.programar_calculo();
+        } else {
+            message_error('El sustento sugerido no admite el tipo de comprobante elegido.');
+        }
+    });
 
     input_search_product.autocomplete({
         source: function (request, response) {
             $.ajax({
-                url: pathname,
+                url: pathname, type: 'POST', dataType: 'json', headers: {'X-CSRFToken': csrftoken},
                 data: {
-                    'action': 'search_product',
-                    'term': request.term,
-                    'ids': JSON.stringify(purchase.getProductsIds()),
-                },
-                dataType: "json",
-                type: "POST",
-                headers: {
-                    'X-CSRFToken': csrftoken
-                },
-                beforeSend: function () {
-
+                    'action': 'search_product', 'term': request.term,
+                    'ids': JSON.stringify(compra.lineas.filter(function (l) { return l.tipo === 'producto'; })
+                        .map(function (l) { return l.product; }))
                 },
                 success: function (data) {
-                    response(data);
+                    response(data.error ? [] : data);
                 }
             });
         },
-        min_length: 3,
+        minLength: 2,
         delay: 300,
         select: function (event, ui) {
             event.preventDefault();
-            $(this).blur();
-            ui.item.cant = 1;
-            purchase.addProduct(ui.item);
+            form_compra.agregar_producto(ui.item);
             $(this).val('').focus();
         }
     });
 
-    $('.btnClearProducts').on('click', function () {
-        input_search_product.val('').focus();
+    $('#fp-agregar-gasto').on('click', function () {
+        form_compra.agregar_gasto();
     });
 
-    $('#tblProducts tbody')
-        .off()
-        .on('change', 'input[name="cant"]', function () {
-            var tr = tblProducts.cell($(this).closest('td, li')).index();
-            purchase.detail.products[tr.row].cant = parseInt($(this).val());
-            purchase.calculateInvoice();
-            $('td:last', tblProducts.row(tr.row).node()).html('$' + purchase.detail.products[tr.row].subtotal.toFixed(2));
-        })
-        .on('change', 'input[name="price"]', function () {
-            var tr = tblProducts.cell($(this).closest('td, li')).index();
-            purchase.detail.products[tr.row].price = parseFloat($(this).val());
-            purchase.calculateInvoice();
-            $('td:last', tblProducts.row(tr.row).node()).html('$' + purchase.detail.products[tr.row].subtotal.toFixed(2));
-        })
-        .on('click', 'a[rel="remove"]', function () {
-            var tr = tblProducts.cell($(this).closest('td, li')).index();
-            purchase.detail.products.splice(tr.row, 1);
-            tblProducts.row(tr.row).remove().draw();
-            purchase.calculateInvoice();
-            $('.tooltip').remove();
-        });
-
-    $('.btnSearchProducts').on('click', function () {
-        tblSearchProducts = $('#tblSearchProducts').DataTable({
-            autoWidth: false,
-            destroy: true,
-            ajax: {
-                url: pathname,
-                type: 'POST',
-                headers: {
-                    'X-CSRFToken': csrftoken
-                },
-                data: {
-                    'action': 'search_product',
-                    'term': input_search_product.val(),
-                    'ids': JSON.stringify(purchase.getProductsIds()),
-                },
-                dataSrc: ""
-            },
-            columns: [
-                {data: "code"},
-                {data: "short_name"},
-                {data: "price"},
-                {data: "pvp"},
-                {data: "stock"},
-                {data: "id"},
-            ],
-            columnDefs: [
-                {
-                    targets: [-3, -4],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        return '$' + data.toFixed(2);
-                    }
-                },
-                {
-                    targets: [-2],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        if (row.stock > 0) {
-                            return '<span class="badge badge-success badge-pill">' + data + '</span>'
-                        }
-                        return '<span class="badge badge-warning badge-pill">' + data + '</span>'
-                    }
-                },
-                {
-                    targets: [-1],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        return '<a rel="add" class="btn btn-success btn-flat btn-xs"><i class="fas fa-plus"></i></a>'
-                    }
-                }
-            ],
-            rowCallback: function (row, data, index) {
-                if (data.stock === 0) {
-                    $(row).addClass('low-stock');
-                }
-            },
-            initComplete: function (settings, json) {
-                $(this).wrap('<div class="dataTables_scroll"><div/>');
+    $('#tblLineas tbody')
+        .on('change', 'input, select[name="codigo_porcentaje"]', function () {
+            var i = parseInt($(this).closest('tr').attr('data-index'), 10);
+            var nombre = $(this).attr('name');
+            if (nombre === 'type_expense' || isNaN(i)) {
+                return;
             }
-        });
-        $('#myModalSearchProducts').modal('show');
-    });
-
-    $('#myModalSearchProducts').on('shown.bs.modal', function () {
-        purchase.listProducts();
-    });
-
-    $('#tblSearchProducts tbody')
-        .off()
-        .on('click', 'a[rel="add"]', function () {
-            var row = tblSearchProducts.row($(this).parents('tr')).data();
-            row.cant = 1;
-            purchase.addProduct(row);
-            tblSearchProducts.row($(this).parents('tr')).remove().draw();
-        });
-
-    $('.btnRemoveAllProducts').on('click', function () {
-        if (purchase.detail.products.length === 0) return false;
-        dialog_action({
-            'content': '¿Estas seguro de eliminar todos los items de tu detalle?',
-            'success': function () {
-                purchase.detail.products = [];
-                purchase.listProducts();
-            },
-            'cancel': function () {
-
+            compra.lineas[i][nombre] = $(this).val();
+            if (nombre === 'codigo_porcentaje') {
+                if ($(this).val() !== '8') {
+                    compra.lineas[i].tarifa = '';
+                }
+                form_compra.render_lineas();
             }
+            form_compra.programar_calculo();
+        })
+        .on('click', 'button[rel="remove"]', function () {
+            var i = parseInt($(this).closest('tr').attr('data-index'), 10);
+            compra.lineas.splice(i, 1);
+            ultimo_calculo = null;
+            form_compra.render_lineas();
+            form_compra.programar_calculo();
         });
+
+    $('#fp-calcular').on('click', function () {
+        form_compra.calcular(true);
     });
 
-    // Search Provider
+    $('#frmForm').on('submit', function (e) {
+        e.preventDefault();
+        form_compra.guardar();
+    });
 
-    select_provider.select2({
-        theme: "bootstrap4",
-        language: 'es',
-        allowClear: true,
-        ajax: {
-            delay: 250,
-            type: 'POST',
-            headers: {
-                'X-CSRFToken': csrftoken
-            },
-            url: pathname,
-            data: function (params) {
-                return {
-                    term: params.term,
-                    action: 'search_provider'
-                };
-            },
-            processResults: function (data) {
-                return {
-                    results: data
-                };
-            },
-        },
-        placeholder: 'Ingrese un nombre o ruc de proveedor',
-        minimumInputLength: 1,
-    })
-        .on('select2:select', function (e) {
-            fvPurchase.revalidateField('provider');
-        })
-        .on('select2:clear', function (e) {
-            fvPurchase.revalidateField('provider');
-        });
-
+    // Proveedor nuevo desde el modal (mismos campos y validación que la pantalla de proveedores).
     $('.btnAddProvider').on('click', function () {
         $('#myModalProvider').modal('show');
     });
-
+    $('#frmProvider [name="tipo_identificacion"], #frmProvider [name="ruc"]').on('change keyup', actualizar_sujeto_proveedor);
     $('#myModalProvider').on('hidden.bs.modal', function () {
-        fvProvider.resetForm(true);
+        document.getElementById('frmProvider').reset();
+        $('#fp-proveedor-errores').addClass('d-none').text('');
+        actualizar_sujeto_proveedor();
     });
-
-    $('input[name="ruc"]').on('keypress', function (e) {
-        return validate_text_box({'event': e, 'type': 'numbers'});
-    });
-
-    $('input[name="mobile"]').on('keypress', function (e) {
-        return validate_text_box({'event': e, 'type': 'numbers'});
-    });
-
-    // Form
-
-    $('input[name="number"]').on('keypress', function (e) {
-        return validate_text_box({'event': e, 'type': 'numbers'});
-    });
-
-    select_payment_type
-        .on('change.select2', function () {
-            fvPurchase.revalidateField('payment_type');
-            var id = $(this).val();
-            var start_date = input_date_joined.val();
-            input_end_credit.datetimepicker('minDate', start_date);
-            input_end_credit.datetimepicker('date', start_date);
-            $(container_credit).hide();
-            if (id === 'credito') {
-                $(container_credit).show();
+    $('#frmProvider').on('submit', function (e) {
+        e.preventDefault();
+        var params = new FormData(this);
+        params.append('action', 'create_provider');
+        $.ajax({
+            url: pathname, data: params, type: 'POST', dataType: 'json', headers: {'X-CSRFToken': csrftoken},
+            processData: false, contentType: false
+        }).done(function (data) {
+            if (data.error) {
+                $('#fp-proveedor-errores').text(texto_errores(data.error)).css('white-space', 'pre-line').removeClass('d-none');
+                return;
             }
+            var opcion = new Option(data.text, data.id, true, true);
+            select_provider.append(opcion).trigger('change');
+            select_provider.trigger({type: 'select2:select', params: {data: data}});
+            $('#myModalProvider').modal('hide');
+        }).fail(function (jqXHR) {
+            message_error((jqXHR.responseJSON && jqXHR.responseJSON.error) || 'No se pudo crear el proveedor.');
         });
-
-    input_date_joined.datetimepicker({
-        format: 'YYYY-MM-DD',
-        useCurrent: false,
-        locale: 'es',
-        orientation: 'bottom',
-        keepOpen: false
     });
 
-    input_date_joined.on('change.datetimepicker', function (e) {
-        fvPurchase.revalidateField('date_joined');
-        input_end_credit.datetimepicker('minDate', e.date);
-        input_end_credit.datetimepicker('date', e.date);
-    });
-
-    input_end_credit.datetimepicker({
-        useCurrent: false,
-        format: 'YYYY-MM-DD',
-        locale: 'es',
-        keepOpen: false,
-        minDate: current_date
-    });
-
-    input_end_credit.datetimepicker('date', input_end_credit.val());
-
-    input_end_credit.on('change.datetimepicker', function (e) {
-        fvPurchase.revalidateField('end_credit');
-    });
-
-    $(container_credit).hide();
-
-    $('i[data-field="provider"]').hide();
-    $('i[data-field="input_search_product"]').hide();
+    form_compra.actualizar_modo();
+    actualizar_sujeto_proveedor();
+    if (tipo_inicial === 'gasto') {
+        form_compra.agregar_gasto();
+    }
 });

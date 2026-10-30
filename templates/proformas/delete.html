@@ -1,0 +1,8 @@
+{% extends 'delete.html' %}
+{% block delete_content %}
+    <p class="text-center font-weight-bold mt-3">
+        <i class="fas fa-trash fa-3x" aria-hidden="true"></i><br><br>
+        ¿Eliminar el borrador {{ object.numero_completo }} de {{ object.cliente_nombre }}?
+    </p>
+    <p class="text-center text-muted">Solo se elimina un borrador que nunca se envió. Su número no se vuelve a usar.</p>
+{% endblock %}

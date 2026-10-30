@@ -1,0 +1,22 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'plataforma:index' %}">Inicio</a> ›
+        <a href="{% url 'plataforma:comprobantes_codigoretencion_changelist' %}">Códigos de retención</a> › Nueva vigencia
+    </div>
+{% endblock %}
+{% block content %}
+    <p>Vigencia abierta del código <strong>{{ abierta.codigo }}</strong> ({{ abierta.get_impuesto_display }}):
+        {{ abierta.porcentaje }} %{% if abierta.porcentaje_editable %} (variable){% endif %},
+        desde {{ abierta.vigente_desde|date:"d/m/Y"|default:"inicio no documentado" }}. Fuente: {{ abierta.fuente|default:"—" }}</p>
+    <p>La fila abierta se cierra el día anterior a la nueva vigencia y se crea otra con el mismo concepto. Lo ya emitido
+        guarda su propia copia del código y el porcentaje: no cambia. Queda en la auditoría.</p>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <table>{{ form.as_table }}</table>
+        <input type="hidden" name="action" value="nueva_vigencia">
+        {% for pk in seleccion %}<input type="hidden" name="{{ casilla }}" value="{{ pk }}">{% endfor %}
+        <div class="submit-row"><input type="submit" name="aplicar" value="Crear la vigencia" class="default"></div>
+    </form>
+{% endblock %}

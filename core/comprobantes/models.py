@@ -4,13 +4,16 @@ nota de débito (05) y guía de remisión (06).
 Todos comparten la emisión en dos fases de core/pos/emision.py (fecha y clave fijadas una vez, XML firmado
 guardado antes de enviarlo, consulta por clave) y descuentan 1 del cupo del plan cuando el SRI los autoriza.
 """
+from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
+from django.db.models import F, Q
 from django.utils import timezone
 
-from core.pos.choices import ENVIRONMENT_TYPE, INVOICE_STATUS
+from core.pos.choices import AJUSTE_CXC, ENVIRONMENT_TYPE, INVOICE_STATUS
 from core.tenancy.models_base import TenantModel
 from core.tenancy.storage import CompanyPath
 
@@ -21,8 +24,27 @@ def redondear(valor):
     return Decimal(valor).quantize(CENTAVO, rounding=ROUND_HALF_UP)
 
 
+class CodigoRetencionQuerySet(models.QuerySet):
+
+    def vigentes(self, fecha, incluir_inactivos=False):
+        """Filas disponibles el día `fecha`: activas y con `fecha` dentro de su vigencia (desde nulo = inicio no
+        documentado; hasta nulo = abierta). Como las vigencias de un código no se solapan, cada código sale una vez.
+        incluir_inactivos=True añade las filas retiradas (activo=False) que cubren esa fecha.
+
+        Que no se solapen lo garantiza clean() (panel y nueva_vigencia() pasan por full_clean) y las migraciones, no la
+        base de datos: un save() o update() directo que solape dos filas haría salir el código dos veces aquí (y vigente()
+        tomaría la de inicio más reciente)."""
+        filas = self if incluir_inactivos else self.filter(activo=True)
+        return filas.filter(Q(vigente_desde__isnull=True) | Q(vigente_desde__lte=fecha),
+                            Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=fecha))
+
+
 class CodigoRetencion(models.Model):
-    """Catálogo de la plataforma (no es de una empresa): códigos y porcentajes vigentes del SRI."""
+    """Catálogo de la plataforma (no es de una empresa): códigos y porcentajes del SRI, una fila por vigencia.
+
+    Un cambio de porcentaje o de concepto no edita la fila: cierra la vigente (vigente_hasta) y abre otra (acción
+    «Nueva vigencia» del panel). Lo emitido no depende del catálogo: cada detalle guarda su propia copia.
+    """
     IMPUESTOS = (('1', 'Renta'), ('2', 'IVA'))
 
     impuesto = models.CharField(max_length=1, choices=IMPUESTOS, verbose_name='Impuesto')
@@ -35,15 +57,90 @@ class CodigoRetencion(models.Model):
     activo = models.BooleanField(default=True, verbose_name='Disponible')
     fuente = models.CharField(max_length=300, blank=True, verbose_name='Fuente (resolución o tabla del SRI)')
     orden = models.PositiveSmallIntegerField(default=0, verbose_name='Orden')
+    vigente_desde = models.DateField(null=True, blank=True, verbose_name='Vigente desde',
+                                     help_text='Vacío: inicio no documentado en esta revisión del catálogo (no se inventa una fecha).')
+    vigente_hasta = models.DateField(null=True, blank=True, verbose_name='Vigente hasta',
+                                     help_text='Vacío: vigencia abierta.')
+    ayuda = models.CharField(max_length=500, blank=True, verbose_name='Ayuda',
+                             help_text='Texto que ve el emisor al elegir el código.')
+
+    objects = CodigoRetencionQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'Código de retención'
         verbose_name_plural = 'Códigos de retención'
         ordering = ('impuesto', '-comun', 'orden', 'codigo')
-        constraints = [models.UniqueConstraint(fields=['impuesto', 'codigo'], name='codigo_retencion_unico')]
+        constraints = [
+            models.UniqueConstraint(fields=['impuesto', 'codigo', 'vigente_desde'], name='codigo_retencion_vigencia_unica'),
+            # NULL no choca con NULL en un índice único: una sola fila abierta y una sola sin inicio por código.
+            models.UniqueConstraint(fields=['impuesto', 'codigo'], condition=Q(vigente_hasta__isnull=True),
+                                    name='codigo_retencion_una_abierta'),
+            models.UniqueConstraint(fields=['impuesto', 'codigo'], condition=Q(vigente_desde__isnull=True),
+                                    name='codigo_retencion_un_inicio_nulo'),
+            models.CheckConstraint(condition=Q(vigente_desde__isnull=True) | Q(vigente_hasta__isnull=True)
+                                   | Q(vigente_hasta__gte=F('vigente_desde')), name='codigo_retencion_hasta_no_antes_de_desde'),
+        ]
 
     def __str__(self):
         return f'{self.codigo} · {self.concepto} ({self.porcentaje}%)'
+
+    @classmethod
+    def vigente(cls, impuesto, codigo, fecha, incluir_inactivos=False):
+        """Fila del código vigente el día `fecha`, o None."""
+        return (cls.objects.vigentes(fecha, incluir_inactivos).filter(impuesto=impuesto, codigo=codigo)
+                .order_by(F('vigente_desde').desc(nulls_last=True)).first())
+
+    @property
+    def vigencia_empezada(self):
+        """Ya pudo usarse al emitir: su porcentaje, su concepto, sus fechas y su fuente no se editan (se abre otra vigencia)."""
+        return self.vigente_desde is None or self.vigente_desde <= timezone.localdate()
+
+    def clean(self):
+        if self.vigente_desde and self.vigente_hasta and self.vigente_hasta < self.vigente_desde:
+            raise ValidationError({'vigente_hasta': 'La vigencia no puede terminar antes de empezar.'})
+        otras = CodigoRetencion.objects.filter(impuesto=self.impuesto, codigo=self.codigo).exclude(pk=self.pk)
+        if self.vigente_hasta is not None:
+            otras = otras.filter(Q(vigente_desde__isnull=True) | Q(vigente_desde__lte=self.vigente_hasta))
+        if self.vigente_desde is not None:
+            otras = otras.filter(Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=self.vigente_desde))
+        solapada = otras.first()
+        if solapada is not None:
+            raise ValidationError(f'La vigencia se solapa con la del código {self.codigo} '
+                                  f'({_fecha(solapada.vigente_desde, "sin inicio")} – {_fecha(solapada.vigente_hasta, "abierta")}).')
+
+    def nueva_vigencia(self, desde, porcentaje, porcentaje_editable, fuente, ayuda=''):
+        """Cierra esta fila (la abierta del código) el día anterior a `desde` y crea la siguiente, con el mismo concepto,
+        orden y uso común. `desde` es posterior a hoy. Devuelve la fila nueva; ValidationError si las fechas no encajan."""
+        with transaction.atomic():
+            actual = CodigoRetencion.objects.select_for_update().get(pk=self.pk)
+            if actual.vigente_hasta is not None:
+                raise ValidationError(f'La fila del código {self.codigo} ya está cerrada: la vigencia nueva se abre '
+                                      'desde la fila abierta.')
+            exigir_inicio_futuro(desde)
+            if actual.vigente_desde is not None and desde <= actual.vigente_desde:
+                raise ValidationError(f'La vigencia nueva debe empezar después del {actual.vigente_desde:%d/%m/%Y}.')
+            actual.vigente_hasta = desde - timedelta(days=1)
+            actual.save(update_fields=['vigente_hasta'])
+            nueva = CodigoRetencion(impuesto=actual.impuesto, codigo=actual.codigo, concepto=actual.concepto, porcentaje=porcentaje,
+                                    porcentaje_editable=porcentaje_editable, comun=actual.comun, activo=actual.activo,
+                                    fuente=fuente, orden=actual.orden, vigente_desde=desde, ayuda=ayuda)
+            nueva.full_clean()
+            nueva.save()
+        self.vigente_hasta = actual.vigente_hasta
+        return nueva
+
+
+def exigir_inicio_futuro(desde):
+    """Una vigencia nueva de un código ya existente empieza después de hoy: si empezara antes, cerraría con efecto
+    retroactivo la fila con la que ya se emitió y cambiaría al instante el cálculo de todas las empresas. Una vigencia
+    retroactiva (una resolución publicada tarde) se carga con una migración revisada, como 0015."""
+    hoy = timezone.localdate()
+    if desde is None or desde <= hoy:
+        raise ValidationError(f'La vigencia nueva debe empezar después de hoy ({hoy:%d/%m/%Y}): lo ya emitido no se reescribe.')
+
+
+def _fecha(valor, vacio):
+    return f'{valor:%d/%m/%Y}' if valor else vacio
 
 
 class ComprobanteElectronico(TenantModel):
@@ -65,9 +162,19 @@ class ComprobanteElectronico(TenantModel):
     authorization_date = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de autorización')
     xml_authorized = models.FileField(upload_to=CompanyPath('comprobantes/xml'), null=True, blank=True, verbose_name='XML autorizado')
     pdf_authorized = models.FileField(upload_to=CompanyPath('comprobantes/pdf'), null=True, blank=True, verbose_name='RIDE')
+    # Marca «Anulado en el SRI» (O2, core/pos/anulados.py): registra una anulación hecha en SRI en línea; status no cambia.
+    anulado_sri_fecha = models.DateField(null=True, blank=True, verbose_name='Anulado en el SRI el')
+    anulado_sri_motivo = models.CharField(max_length=300, blank=True, default='', verbose_name='Motivo de la anulación')
+    anulado_sri_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                        related_name='+', verbose_name='Marcado por')
+    anulado_sri_registrado_en = models.DateTimeField(null=True, blank=True, verbose_name='Marcado en el sistema el')
 
     class Meta:
         abstract = True
+
+    @property
+    def anulado_en_sri(self):
+        return self.anulado_sri_fecha is not None
 
     def save(self, *args, **kwargs):
         nuevo = self.pk is None
@@ -127,7 +234,8 @@ class Retencion(ComprobanteElectronico):
         ordering = ('-id',)
         default_permissions = ()
         permissions = (('view_retencion', 'Puede ver retenciones'), ('add_retencion', 'Puede emitir retenciones'),
-                       ('delete_retencion', 'Puede eliminar retenciones no enviadas'))
+                       ('delete_retencion', 'Puede eliminar retenciones no enviadas'),
+                       ('change_anulado_sri_retencion', 'Puede marcar retenciones como anuladas en el SRI'))
         constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='retencion_numero_unico_por_secuencia')]
 
     def __str__(self):
@@ -169,6 +277,7 @@ class Retencion(ComprobanteElectronico):
             'total_retenido': float(self.total_retenido), 'ambiente': self.get_environment_type_display(),
             'status': {'id': self.status, 'name': self.get_status_display()}, 'clave': self.access_code or '',
             'pdf': self.get_pdf_authorized(), 'xml': self.get_xml_authorized(),
+            'anulado_sri': {'fecha': self.anulado_sri_fecha.strftime('%Y-%m-%d')} if self.anulado_sri_fecha else None,
         }
 
 
@@ -180,6 +289,10 @@ class RetencionDetalle(TenantModel):
     base_imponible = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Base imponible')
     porcentaje = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Porcentaje')
     valor_retenido = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Valor retenido')
+    # Fila (vigencia) del catálogo con la que se calculó. Solo trazabilidad: el XML y el RIDE salen de la copia de arriba.
+    # Vacío en los detalles anteriores a las vigencias (no se rellena por inferencia).
+    codigo_catalogo = models.ForeignKey(CodigoRetencion, null=True, blank=True, on_delete=models.PROTECT, related_name='+',
+                                        verbose_name='Fila del catálogo')
 
     class Meta:
         verbose_name = 'Detalle de retención'
@@ -217,7 +330,8 @@ class LiquidacionCompra(ComprobanteElectronico):
         default_permissions = ()
         permissions = (('view_liquidacioncompra', 'Puede ver liquidaciones de compra'),
                        ('add_liquidacioncompra', 'Puede emitir liquidaciones de compra'),
-                       ('delete_liquidacioncompra', 'Puede eliminar liquidaciones de compra no enviadas'))
+                       ('delete_liquidacioncompra', 'Puede eliminar liquidaciones de compra no enviadas'),
+                       ('change_anulado_sri_liquidacioncompra', 'Puede marcar liquidaciones de compra como anuladas en el SRI'))
         constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='liquidacion_numero_unico_por_secuencia')]
 
     def __str__(self):
@@ -286,6 +400,10 @@ class NotaDebito(ComprobanteElectronico):
     valor_iva = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='IVA')
     valor_total = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name='Valor total')
     forma_pago = models.CharField(max_length=2, default='20', verbose_name='Forma de pago')
+    # Cuenta por cobrar propia que crea la nota al autorizarse (O2, core/pos/cxc.py); las anteriores quedan en 'no_aplica'.
+    cxc_ajuste = models.CharField(max_length=12, choices=AJUSTE_CXC, default='pendiente', verbose_name='Cuenta por cobrar')
+    cuenta_por_cobrar = models.OneToOneField('pos.CtasCollect', null=True, blank=True, on_delete=models.PROTECT,
+                                             related_name='nota_debito', verbose_name='Cuenta por cobrar creada')
 
     class Meta:
         verbose_name = 'Nota de débito'
@@ -293,7 +411,8 @@ class NotaDebito(ComprobanteElectronico):
         ordering = ('-id',)
         default_permissions = ()
         permissions = (('view_notadebito', 'Puede ver notas de débito'), ('add_notadebito', 'Puede emitir notas de débito'),
-                       ('delete_notadebito', 'Puede eliminar notas de débito no enviadas'))
+                       ('delete_notadebito', 'Puede eliminar notas de débito no enviadas'),
+                       ('change_anulado_sri_notadebito', 'Puede marcar notas de débito como anuladas en el SRI'))
         constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='nota_debito_numero_unico_por_secuencia')]
 
     def __str__(self):
@@ -362,7 +481,8 @@ class GuiaRemision(ComprobanteElectronico):
         ordering = ('-id',)
         default_permissions = ()
         permissions = (('view_guiaremision', 'Puede ver guías de remisión'), ('add_guiaremision', 'Puede emitir guías de remisión'),
-                       ('delete_guiaremision', 'Puede eliminar guías de remisión no enviadas'))
+                       ('delete_guiaremision', 'Puede eliminar guías de remisión no enviadas'),
+                       ('change_anulado_sri_guiaremision', 'Puede marcar guías de remisión como anuladas en el SRI'))
         constraints = [models.UniqueConstraint(fields=['receipt', 'voucher_number'], name='guia_numero_unico_por_secuencia')]
 
     def __str__(self):
@@ -392,3 +512,99 @@ class GuiaDetalle(TenantModel):
         verbose_name_plural = 'Detalles de guía de remisión'
         ordering = ('id',)
         default_permissions = ()
+
+
+# ------------------------------------------------------------------ Etapa 2 (O2): retenciones recibidas de clientes
+
+class RetencionRecibida(TenantModel):
+    """Comprobante de retención (07) que un cliente emitió a la empresa sobre una de sus facturas. Un registro por factura
+    sustento. No se emite ni se envía al SRI: se registra a mano o desde un 07 importado."""
+    ORIGENES = (('manual', 'Registro manual'), ('importado', 'Importado desde XML'))
+    ESTADOS = (('registrada', 'Registrada'), ('anulada', 'Anulada'))
+    VERIFICACION = (('sin_verificar', 'Registrada a mano, sin verificar en el SRI'),
+                    ('declarada_en_archivo', 'Autorización declarada en el archivo (sin verificar)'),
+                    ('verificada_sri', 'Verificada en el SRI'))
+    CXC = (('aplicada', 'Abonada a la cuenta por cobrar'), ('parcial', 'Abonada en parte: el resto excede el saldo'),
+           ('sin_cxc', 'Venta de contado: sin cuenta por cobrar'), ('sin_saldo', 'La cuenta por cobrar ya estaba saldada'),
+           ('revertida', 'Abono revertido al anular'))
+
+    venta = models.ForeignKey('pos.Sale', on_delete=models.PROTECT, related_name='retenciones_recibidas', verbose_name='Factura (documento sustento)')
+    cliente = models.ForeignKey('pos.Client', on_delete=models.PROTECT, related_name='+', verbose_name='Cliente (agente de retención)')
+    emisor_identificacion = models.CharField(max_length=13, verbose_name='RUC del agente de retención')
+    emisor_razon_social = models.CharField(max_length=300, verbose_name='Agente de retención')
+    establecimiento = models.CharField(max_length=3, verbose_name='Establecimiento')
+    punto_emision = models.CharField(max_length=3, verbose_name='Punto de emisión')
+    secuencial = models.CharField(max_length=9, verbose_name='Secuencial')
+    numero = models.CharField(max_length=17, verbose_name='Número')                       # 001-001-000000123
+    autorizacion = models.CharField(max_length=49, verbose_name='Autorización')           # 49 (clave), 37 o 10 dígitos
+    clave_acceso = models.CharField(max_length=49, blank=True, default='', verbose_name='Clave de acceso')
+    fecha_emision = models.DateField(verbose_name='Fecha de emisión')
+    periodo_fiscal = models.CharField(max_length=7, verbose_name='Período fiscal')         # MM/AAAA
+    ambiente = models.PositiveSmallIntegerField(choices=ENVIRONMENT_TYPE, verbose_name='Ambiente')
+    cod_doc_sustento = models.CharField(max_length=2, default='01', verbose_name='Tipo de documento sustento')
+    num_doc_sustento = models.CharField(max_length=15, verbose_name='Número del documento sustento')   # 15 dígitos, sin guiones
+    fecha_doc_sustento = models.DateField(verbose_name='Fecha del documento sustento')
+    total_renta = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Retenido de renta')
+    total_iva = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Retenido de IVA')
+    total_retenido = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Total retenido')
+    origen = models.CharField(max_length=10, choices=ORIGENES, default='manual', verbose_name='Origen')
+    documento_importado = models.ForeignKey('importacion.DocumentoImportado', null=True, blank=True, on_delete=models.PROTECT,
+                                            related_name='retenciones_recibidas', verbose_name='Documento importado')
+    verificacion = models.CharField(max_length=25, choices=VERIFICACION, default='sin_verificar', verbose_name='Verificación')
+    estado = models.CharField(max_length=10, choices=ESTADOS, default='registrada', verbose_name='Estado')
+    cxc_estado = models.CharField(max_length=10, choices=CXC, blank=True, default='', verbose_name='Cuenta por cobrar')
+    abono = models.OneToOneField('pos.PaymentsCtaCollect', null=True, blank=True, on_delete=models.PROTECT,
+                                 related_name='retencion_recibida', verbose_name='Abono en la cuenta por cobrar')
+    advertencias = models.JSONField(default=list, blank=True)                               # [{'codigo', 'texto'}] solo str
+    notas = models.CharField(max_length=300, blank=True, default='', verbose_name='Notas')
+    registrado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+', verbose_name='Registrado por')
+    registrado_en = models.DateTimeField(default=timezone.now, verbose_name='Registrado el')
+    anulado_sri_fecha = models.DateField(null=True, blank=True, verbose_name='Anulada el')
+    anulado_sri_motivo = models.CharField(max_length=300, blank=True, default='', verbose_name='Motivo de la anulación')
+    anulado_sri_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    anulado_sri_registrado_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Retención recibida'
+        verbose_name_plural = 'Retenciones recibidas'
+        ordering = ('-fecha_emision', '-id')
+        default_permissions = ()
+        permissions = (('view_retencionrecibida', 'Puede ver retenciones recibidas'),
+                       ('add_retencionrecibida', 'Puede registrar retenciones recibidas'),
+                       ('change_retencionrecibida', 'Puede anular el registro de una retención recibida'))
+        constraints = [
+            models.UniqueConstraint(fields=['company', 'emisor_identificacion', 'establecimiento', 'punto_emision', 'secuencial', 'venta'],
+                                    condition=models.Q(estado='registrada'), name='retencion_recibida_unica'),
+            models.UniqueConstraint(fields=['company', 'clave_acceso', 'venta'],
+                                    condition=models.Q(estado='registrada') & ~models.Q(clave_acceso=''),
+                                    name='retencion_recibida_clave_unica'),
+            models.UniqueConstraint(fields=['company', 'documento_importado', 'venta'],
+                                    condition=models.Q(estado='registrada') & models.Q(documento_importado__isnull=False),
+                                    name='retencion_recibida_documento_unica'),
+            models.CheckConstraint(condition=models.Q(total_retenido__gte=0) & models.Q(total_renta__gte=0) & models.Q(total_iva__gte=0),
+                                   name='retencion_recibida_totales_no_negativos'),
+        ]
+        indexes = [models.Index(fields=['company', 'fecha_emision'], name='retrec_fecha'),
+                   models.Index(fields=['company', 'venta'], name='retrec_venta')]
+
+    def __str__(self):
+        return f'Retención recibida {self.numero} · {self.emisor_razon_social}'
+
+
+class RetencionRecibidaDetalle(TenantModel):
+    retencion = models.ForeignKey(RetencionRecibida, on_delete=models.CASCADE, related_name='detalles')
+    impuesto = models.CharField(max_length=1, choices=CodigoRetencion.IMPUESTOS, verbose_name='Impuesto')   # 1 renta, 2 IVA
+    codigo = models.CharField(max_length=5, verbose_name='Código')        # copia (no FK): el catálogo cambia con D0
+    concepto = models.CharField(max_length=300, blank=True, default='', verbose_name='Concepto')
+    base_imponible = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Base imponible')
+    porcentaje = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Porcentaje')
+    valor_retenido = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Valor retenido')
+
+    class Meta:
+        verbose_name = 'Detalle de retención recibida'
+        verbose_name_plural = 'Detalles de retención recibida'
+        ordering = ('impuesto', 'id')
+        default_permissions = ()
+        constraints = [models.CheckConstraint(condition=models.Q(base_imponible__gt=0) & models.Q(porcentaje__gte=0)
+                                              & models.Q(porcentaje__lte=100) & models.Q(valor_retenido__gte=0),
+                                              name='retencion_recibida_detalle_valido')]

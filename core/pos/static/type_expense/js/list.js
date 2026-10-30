@@ -1,3 +1,4 @@
+// Tipos de gasto con cuenta contable y sustento («Sin indicar» si no se eligió). Texto escapado con render.text.
 var type_expense = {
     list: function () {
         $('#data').DataTable({
@@ -17,7 +18,9 @@ var type_expense = {
             },
             columns: [
                 {data: "id"},
-                {data: "name"},
+                {data: "name", render: $.fn.dataTable.render.text()},
+                {data: "cuenta_contable", render: $.fn.dataTable.render.text()},
+                {data: "nombre_sustento", render: $.fn.dataTable.render.text()},
                 {data: "id"},
             ],
             columnDefs: [
@@ -25,8 +28,9 @@ var type_expense = {
                     targets: [-1],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        var buttons = '<a href="' + pathname + 'update/' + row.id + '/" data-toggle="tooltip" title="Editar" class="btn btn-warning btn-xs btn-flat"><i class="fas fa-edit"></i></a> ';
-                        buttons += '<a href="' + pathname + 'delete/' + row.id + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
+                        var id = parseInt(row.id, 10);
+                        var buttons = '<a href="' + pathname + 'update/' + id + '/" data-toggle="tooltip" title="Editar" class="btn btn-warning btn-xs btn-flat"><i class="fas fa-edit"></i></a> ';
+                        buttons += '<a href="' + pathname + 'delete/' + id + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
                         return buttons;
                     }
                 },

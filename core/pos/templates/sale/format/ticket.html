@@ -46,6 +46,7 @@
         .fp-ticket-meta { margin-top: 2.5mm; font-size: 8pt; }
         .fp-ticket-meta p { margin-bottom: 1mm; }
         .fp-ticket-key { display: block; font-family: 'Courier New', monospace; font-size: 8pt; overflow-wrap: anywhere; }
+        .fp-ticket-pending { font-style: italic; }
         .fp-ticket-section { margin-top: 3mm; }
         .fp-ticket h2.fp-ticket-section-title { font-size: 9pt; font-weight: 700; padding-bottom: 1.5mm; border-bottom: .25mm solid #111; }
         .fp-ticket-line { padding: 2mm 0; border-bottom: .2mm dashed #555; }
@@ -75,14 +76,15 @@
 <body class="fp-ticket-body">
 <main class="fp-ticket">
     <header class="fp-ticket-header">
-        {% if sale.company.image %}<img src="{{ sale.company.get_image }}" alt="Logotipo del emisor" class="fp-ticket-logo">{% endif %}
+        {% if sale.company.image %}<img src="{{ sale.company.get_image }}" alt="" class="fp-ticket-logo">{% endif %}
         <h1>{{ sale.company.tradename|default:sale.company.business_name }}</h1>
         {% if sale.company.tradename and sale.company.business_name and sale.company.business_name != sale.company.tradename %}
             <p class="fp-ticket-legal-name">{{ sale.company.business_name }}</p>
         {% endif %}
         <div class="fp-ticket-company">
             <p><strong>RUC:</strong> {{ sale.company.ruc }}</p>
-            <p><strong>Establecimiento:</strong> {{ sale.company.establishment_address }}</p>
+            <p><strong>Dirección matriz:</strong> {{ sale.company.main_address }}</p>
+            <p><strong>Establecimiento:</strong> {{ sale.receipt.establishment_address|default:sale.company.establishment_address }}</p>
             {% if sale.company.phone %}<p><strong>Teléfono:</strong> {{ sale.company.phone }}</p>{% endif %}
             {% if sale.company.mobile %}<p><strong>Celular:</strong> {{ sale.company.mobile }}</p>{% endif %}
             {% if sale.is_invoice %}
@@ -100,12 +102,16 @@
 
     <div class="fp-ticket-meta">
         {% if sale.is_invoice %}
-            <p><strong>Fecha de emisión:</strong> {{ sale.get_date_joined }}</p>
+            <p><strong>Fecha de emisión:</strong> {% if sale.emission_date %}{{ sale.emission_date|date:'Y-m-d' }}{% else %}{{ sale.get_date_joined }}{% endif %}</p>
             <p><strong>Fecha de autorización:</strong> {{ sale.get_authorization_date }}</p>
             <p><strong>Ambiente:</strong> {{ sale.get_environment_type_display }}<br><strong>Emisión:</strong> {{ sale.company.get_emission_type_display }}</p>
-            <p><strong>Clave de acceso:</strong><span class="fp-ticket-key">{{ sale.access_code }}</span></p>
+            {% if sale.access_code %}
+                <p><strong>Clave de acceso:</strong><span class="fp-ticket-key">{{ sale.access_code }}</span></p>
+            {% else %}
+                <p class="fp-ticket-pending">Comprobante pendiente de autorización: aún no tiene clave de acceso.</p>
+            {% endif %}
         {% endif %}
-        <p><strong>Cliente:</strong> {{ sale.client.user.names }}</p>
+        <p><strong>Cliente:</strong> {{ sale.client.user.names|default:'' }}</p>
         <p><strong>Identificación:</strong> {{ sale.client.dni }}</p>
         {% if sale.is_invoice %}<p><strong>Método de pago:</strong> {{ sale.get_payment_method_display }}</p>{% endif %}
     </div>

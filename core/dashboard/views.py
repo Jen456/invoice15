@@ -7,6 +7,7 @@ from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.views.generic import TemplateView
 
+from core.pos.compras import subtotal_con_signo
 from core.pos.models import Product, Sale, Client, Provider, Category, Purchase
 from core.security.models import Dashboard
 
@@ -42,7 +43,8 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 data.append({'name': 'Ventas', 'data': rows})
                 rows = []
                 for month in range(1, 13):
-                    result = Purchase.objects.filter(date_joined__month=month, date_joined__year=year).aggregate(result=Coalesce(Sum('subtotal'), 0.00, output_field=FloatField()))['result']
+                    # la nota de crédito del proveedor (04) resta; las compras sin tipo suman como antes
+                    result = Purchase.objects.filter(date_joined__month=month, date_joined__year=year).aggregate(result=Coalesce(Sum(subtotal_con_signo()), 0.00, output_field=FloatField()))['result']
                     rows.append(float(result))
                 data.append({'name': 'Compras', 'data': rows})
             else:

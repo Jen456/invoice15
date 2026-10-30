@@ -1,5 +1,23 @@
 {% extends 'form.html' %}
+{% load widget_tweaks %}
 {% load static %}
 {% block assets_form %}
     <script src="{% static 'type_expense/js/form.js' %}"></script>
+{% endblock %}
+
+{% block form_fields %}
+    {{ sustento_gasto_sugerido|json_script:"fp-sustento-sugerido" }}
+    {% for field in form.visible_fields %}
+        <div class="form-group">
+            <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+            {{ field|add_class:'form-control' }}
+            {% if field.name == 'cod_sustento' %}
+                <div class="small mt-1 fp-sugerencia">
+                    Sugerencia: <strong>{{ sustento_gasto_sugerido }}</strong> — {{ nombre_sustento_sugerido }}.
+                    <button type="button" class="btn btn-link btn-sm p-0 align-baseline" id="fp-usar-sugerencia">Usar sugerencia</button>
+                </div>
+            {% endif %}
+            {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+        </div>
+    {% endfor %}
 {% endblock %}

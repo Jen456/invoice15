@@ -1,5 +1,34 @@
 var tblSale;
 var input_date_range;
+var fpaPermisos = null;
+
+// Etapa 2 (O2): escape del texto que se inserta en HTML y permisos del rol (json_script de la plantilla).
+function fpaTexto(x) {
+    return $('<div>').text(x === null || x === undefined ? '' : String(x)).html();
+}
+
+function fpaPermiso(codigo) {
+    if (fpaPermisos === null) {
+        var nodo = document.getElementById('fpa-permisos');
+        fpaPermisos = nodo ? JSON.parse(nodo.textContent) : {};
+    }
+    return fpaPermisos[codigo] === true;
+}
+
+function fpaFechaCorta(iso) {
+    var partes = String(iso || '').split('-');
+    return partes.length === 3 ? partes[2] + '/' + partes[1] + '/' + partes[0] : '';
+}
+
+function fpaConsumidorFinal(row) {
+    return row.client.identification_type.id === '07' || row.client.dni === '9999999999999';
+}
+
+function fpaAnulableEnSri(row) {
+    // Desde el 01/01/2026 el SRI no permite anular facturas a consumidor final (el servidor lo vuelve a comprobar).
+    var emision = row.emission_date || row.authorization_date || row.date_joined;
+    return !fpaConsumidorFinal(row) || emision < '2026-01-01';
+}
 var sale = {
     list: function (all) {
         var parameters = {
@@ -40,10 +69,17 @@ var sale = {
             ],
             columnDefs: [
                 {
+                    targets: [1, 2, 3],
+                    render: $.fn.dataTable.render.text()
+                },
+                {
                     targets: [-6],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        var name = row.status.name;
+                        var name = fpaTexto(row.status.name);
+                        if (row.anulado_sri) {
+                            return '<span class="badge badge-secondary badge-pill">Anulada en el SRI (' + fpaTexto(fpaFechaCorta(row.anulado_sri.fecha)) + ')</span>';
+                        }
                         if (row.receipt.voucher_type.id === '08') {
                             return '<span class="badge badge-secondary badge-pill">Sin facturación</span>';
                         }
@@ -68,7 +104,7 @@ var sale = {
                     targets: [-7],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return data.toUpperCase();
+                        return fpaTexto(String(data).toUpperCase());
                     }
                 },
                 {
@@ -100,6 +136,9 @@ var sale = {
                             buttons += '<a rel="generate_invoice" class="dropdown-item"><i class="fas fa-sync-alt"></i> Consultar autorización en el SRI</a>';
                         } else if (['without_authorizing', 'returned', 'not_authorized'].includes(row.status.id) && row.receipt.voucher_type.id === '01') {
                             buttons += '<a rel="generate_invoice" class="dropdown-item"><i class="fas fa-clipboard-check"></i> Enviar al SRI</a>';
+                        } else if (['authorized', 'authorized_and_sent_by_email'].includes(row.status.id) && row.anulado_sri) {
+                            // Etapa 2 (O2): anulada en el SRI: sin correo, sin NC/ND/guía ni retención recibida.
+                            buttons += '<a href="' + row.xml_authorized + '" target="_blank" class="dropdown-item"><i class="fas fa-file-code"></i> Descargar xml</a>';
                         } else if (['authorized', 'authorized_and_sent_by_email'].includes(row.status.id)) {
                             buttons += '<a rel="send_invoice_by_email" class="dropdown-item"><i class="fas fa-envelope"></i> Enviar comprobantes por email</a>';
                             buttons += '<a href="' + row.xml_authorized + '" target="_blank" class="dropdown-item"><i class="fas fa-file-code"></i> Descargar xml</a>';
@@ -109,6 +148,17 @@ var sale = {
                                 buttons += '<a href="/comprobantes/notas-debito/nueva/' + row.id + '/" class="dropdown-item"><i class="fas fa-plus-circle"></i> Crear nota de débito</a>';
                                 // Guía de remisión del traslado de lo vendido (core/comprobantes).
                                 buttons += '<a href="/comprobantes/guias/nueva/' + row.id + '/" class="dropdown-item fp-guia-opcion"><i class="fas fa-truck" aria-hidden="true"></i> Crear guía de remisión</a>';
+                            }
+                        }
+                        // Etapa 2 (O2): retención recibida y marca «Anulado en el SRI» (autorizada o cubierta por NC, sin anular).
+                        if (!row.anulado_sri && row.receipt.voucher_type.id === '01'
+                            && ['authorized', 'authorized_and_sent_by_email', 'canceled'].includes(row.status.id)) {
+                            var id = parseInt(row.id, 10);
+                            if (fpaPermiso('add_retencionrecibida') && !fpaConsumidorFinal(row)) {
+                                buttons += '<a href="/comprobantes/retenciones-recibidas/add/' + id + '/" class="dropdown-item"><i class="fas fa-hand-holding-usd"></i> Registrar retención recibida</a>';
+                            }
+                            if (fpaPermiso('change_anulado_sri_sale') && fpaAnulableEnSri(row)) {
+                                buttons += '<a href="/comprobantes/anulados/factura/' + id + '/update/" class="dropdown-item"><i class="fas fa-ban"></i> Marcar como anulada en el SRI</a>';
                             }
                         }
                         buttons += '</div></div></div>';
