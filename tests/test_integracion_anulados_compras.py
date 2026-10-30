@@ -73,7 +73,7 @@ class TestRetencionSobreLaCompra:
 
     def test_anulada_en_el_sri_deja_de_abonar_la_cuenta_por_pagar(self, empresa, usuario, deuda, codigos, numeracion,  # noqa: F811
                                                                   sri):  # noqa: F811
-        compra = compra_de(empresa, deuda.purchase)
+        compra = leer(empresa, lambda: Purchase.objects.select_related('provider').get(pk=deuda.purchase_id))
         ret = self.emitir(empresa, usuario, compra, codigos, sri)
         retenido = Decimal(ret.total_retenido)
         assert retenido > 0 and len(sri.recepciones) == 1
