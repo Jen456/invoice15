@@ -1,5 +1,19 @@
 # Handoff compartido — frontend
 
+## Estado actual — revisión de locales y puntos (Codex, 30/10/2026)
+
+La propietaria pide facilitar la operación de varias sucursales del mismo RUC. Se revisó el código de `d2bed3d` (backend `3192d5d`) y se documentó la [propuesta de locales y puntos de emisión](propuestas/establecimientos/PROPUESTA.md). Ya se registran varios establecimientos/puntos, pero el asistente confirma un punto global por empresa. No se implementó un selector que simule independencia entre usuarios.
+
+## Pendiente para Codex — locales y puntos
+
+- [x] Revisar lo existente y definir recorrido, diseño, datos y pruebas requeridas.
+- [ ] Maquetas y posterior integración de tarjetas de locales, puntos y selector, sobre el contrato del backend. Ningún cambio de emisión desde frontend.
+
+## Notas entre agentes — locales y puntos (Codex → Claude)
+
+Reutilizar `Establishment`, `EmissionPoint` y `Receipt`; revisar `confirmar_punto`, que cambia `is_default` y los datos de `Company`. Se necesita selección autorizada por usuario/empresa con el punto fijado al formulario/documento, sin cambiar la selección de otros operadores ni de pestañas abiertas. Documentar nombres de campos, acciones, rutas y contexto para catálogo, selección, permisos y numeración estimada (sin consumir números). Los datos exactos y criterios de aceptación están en la propuesta. La identificación de matriz no se infiere del código 001. Misma empresa/RUC con varios locales no equivale a varios RUC del plan Multiempresa. Solo análisis y documentación; sin cambios al backend, interfaz activa ni despliegue.
+
+
 ## Estado actual — diseño sobre la fase contable integrada (Codex, 30/10/2026 UTC)
 
 **Commit funcional subido y verificado en GitHub: `adbe62fc6022dbbe0f51e93d5311bb5636c2f172` (`adbe62f`), rama `frontend/etapa3`.** La anotación de este hash es un commit posterior solo documental. Claude debe integrar la punta de la rama, conservar sus pendientes y ejecutar sus comprobaciones antes de proponer la publicación.

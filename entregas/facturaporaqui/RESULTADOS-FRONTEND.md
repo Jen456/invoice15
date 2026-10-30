@@ -1368,3 +1368,12 @@ Capturas finales: **84 WebP**, máximo **60562 bytes**, sin imágenes por encima
 
 
 **Entrega en GitHub:** commit funcional `adbe62fc6022dbbe0f51e93d5311bb5636c2f172` (`adbe62f`) subido mediante `git push origin HEAD:refs/heads/frontend/etapa3`; `git ls-remote` confirmó el mismo hash. Esta constancia se añade en un commit posterior solo documental. La rama incluye la fusión `471fcdd` de la base `3192d5d`. No se desplegó.
+
+
+## 30/10/2026 — revisión de establecimientos y puntos de emisión
+
+Petición: facilitar el registro y uso de varios locales del mismo RUC. Revisados `core/pos/models.py` (Establishment, EmissionPoint, Receipt), `core/configuracion/{forms,views,servicios}.py` y `configuracion/asistente.html`. Se confirmó que el alta múltiple ya existe y que la selección del asistente es global por empresa. Se propone un catálogo de locales con puntos anidados, selección autorizada por usuario/empresa y punto fijado al documento para evitar cambios entre operadores y pestañas.
+
+Archivos cambiados: `propuestas/establecimientos/PROPUESTA.md`, HANDOFF y este informe. Propuesta con recorrido, nombres amigables, esquema, requisitos de datos y pruebas de concurrencia, permisos, histórico y numeración para Claude. No se modificó código operativo ni se implementaron rutas o campos nuevos.
+
+Verificación: lectura del código y restricciones de base, consulta de referencias remotas (`plataforma` 3192d5d, frontend d2bed3d al comenzar), enlaces relativos y `git diff --check`. No se ejecutaron suites ni se tomaron capturas nuevas: esta entrega solo documenta el diagnóstico y la propuesta, no una interfaz implementada. Sin despliegue ni acceso a datos de producción.
