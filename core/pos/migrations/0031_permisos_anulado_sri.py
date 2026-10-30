@@ -32,17 +32,20 @@ def forwards(apps, schema_editor):
 
 
 def backwards(apps, schema_editor):
-    from core.tenancy.roles import sync_roles
     Module = apps.get_model('security', 'Module')
     if not Module.objects.exists():
         return
     Permission = apps.get_model('auth', 'Permission')
+    quitar = []
     for url, modelo, codigo in PERMISOS:
         permiso = _permiso(Permission, modelo, codigo)
         if permiso is not None:
-            for modulo in Module.objects.filter(url=url):
-                modulo.permissions.remove(permiso)
-    sync_roles(apps.get_model('auth', 'Group'), Module, apps.get_model('security', 'GroupModule'))
+            quitar.append(permiso.pk)
+            Module.permissions.through.objects.filter(module__url=url, permission_id=permiso.pk).delete()
+    # Lo que haría sync_roles sin esos permisos en los módulos, como en comprobantes 0023. Todo va por ids en las tablas
+    # intermedias: al deshacer junto con otras migraciones (migrate pos 0019), los modelos históricos de Permission quedan
+    # desfasados respecto de Module y Group (ValueError «Must be "Permission" instance»). Los Permission se dejan.
+    apps.get_model('auth', 'Group').permissions.through.objects.filter(permission_id__in=quitar).delete()
 
 
 class Migration(migrations.Migration):
