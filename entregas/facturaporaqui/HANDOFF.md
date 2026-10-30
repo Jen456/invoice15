@@ -1,8 +1,50 @@
 # Handoff compartido — frontend
 
+## Estado actual — fase contable integrada en `plataforma`, sin publicar (Claude, 29/10/2026)
+
+D0 Fase A (`6d2a066`), Etapa 1 (Proformas) y Etapa 2 (Compras, y Ventas y Empresa) están fusionadas en `plataforma`, en este orden: `7f0e576` Proformas → `eaa6d10` Compras → `fff9bb3` Ventas → `90da085` correcciones de la integración → `f109d4d` piezas compartidas (`fase/integracion-cruces`). El commit que añade esta sección solo agrega documentación en `entregas/facturaporaqui/`. **No se publicó nada**: la app sigue en lo publicado el 28/10 y la base publicada no tiene ninguna de estas migraciones.
+
+- **Correcciones de la integración (`90da085`):** las pruebas de Compras emiten la retención con la huella de «Revisar» que exige D0; la vuelta de `comprobantes/0023` quita su módulo y sus permisos por ids (antes no se podía deshacer junto con las de D0); la prueba de migraciones de D0 crea su retención con todas las migraciones aplicadas.
+- **Piezas compartidas (`fase/integracion-cruces`):** códigos de auditoría de la fase en `AuditLog.ACTIONS` y `AuditLog.detail` con `DjangoJSONEncoder` (`tenancy/0007`); Resultados y tablero restan la nota de crédito del proveedor (04); «Retención sobre una compra» rechaza la 04 y precarga el sustento desde Compras; pruebas cruzadas del 07 importado de punta a punta, de «Anulado en el SRI» sobre compras y de seguridad por filas en todas las tablas de empresa.
+- **Pruebas:** las suites completas de SQLite y PostgreSQL se ejecutaron sobre el commit que trae esta sección, antes de subirlo; los totales están en el informe de entrega a la propietaria.
+- **Migraciones:** 19 nuevas. Orden, efecto sobre los datos existentes y precauciones de aplicación y de reversión en [`MIGRACIONES-FASE-CONTABLE.md`](MIGRACIONES-FASE-CONTABLE.md); detalle por rama en [`MIGRACIONES-PROFORMAS.md`](MIGRACIONES-PROFORMAS.md), [`MIGRACIONES-COMPRAS.md`](MIGRACIONES-COMPRAS.md) y [`MIGRACIONES-VENTAS.md`](MIGRACIONES-VENTAS.md).
+- **Norma:** la sección «Anulación» de [`NORMA-RETENCIONES-2026-10.md`](NORMA-RETENCIONES-2026-10.md) se corrigió contra las Res. NAC-DGERCGC25-00000014 y 25-00000017 (prórroga al día hábil, aceptación del receptor y excepciones).
+
+## Pendiente — fase contable integrada (Claude, 29/10/2026)
+
+- [ ] **Publicar**, solo con la autorización de la propietaria y siguiendo las precauciones de `MIGRACIONES-FASE-CONTABLE.md` (volcado, ensayo sobre una copia, ventana con el servicio y el temporizador detenidos). La regularización histórica sigue solo en modo ensayo.
+- [ ] **Decisiones de la propietaria** (ninguna cambia campos ni pantallas de los contratos):
+  - Proformas: si los envíos fallidos cuentan para el límite de 60 por hora;
+  - Compras: si `retenciones_autorizadas` y `liquidacion_vigente` cuentan solo comprobantes de PRODUCCIÓN, y el IVA sobre base + ICE (D7, con el contador);
+  - Ventas: si el aviso del día 7 de «Anulado en el SRI» cuenta la prórroga al siguiente día hábil (hoy pide confirmación pasado el día 7; si se decide, cambia el texto del aviso);
+  - D0-b a D0-f (escenarios del 310 y el 332E desde el 01/08/2026), antes del 15/12/2026;
+  - D9: precio del complemento (sigue «Precio por anunciar»).
+- [ ] **Hallazgo X-R1 (backend, sin efecto hoy en datos: nada de esto está publicado):** «Completar datos» acepta cambiar a nota de crédito del proveedor (04) una compra antigua sin tipo que ya tiene una retención vigente; la retención queda sobre una 04, que `compras.admite_retencion` no admite. Arreglo mínimo propuesto: en `compras._plan_completar`, rechazar un tipo de `TIPOS_SIN_RETENCION` si `retenciones.retencion_vigente(compra)` existe, con su prueba, y la misma guardia dentro de `retenciones.crear()`. Cambia una regla del contrato de Compras (pantalla «Completar datos»): lo decide la propietaria.
+- [ ] **Backend, para una próxima entrega:** `liquidaciones.calcular` deja en cero el descuento de la línea; la ficha de una retención recibida no sabe si el plan está vencido (contrato de Ventas, apartado B, punto 5); unificar el formato de importes en los mensajes (punto 6); los RIDE A4 con `alt="Logotipo del emisor"` (ver «Pendiente — tras las correcciones del ticket»).
+
+## Pendiente para Codex — diseño de la fase contable (Claude, 29/10/2026)
+
+- [ ] **Diseño de las pantallas de Proformas, Compras y Ventas** sobre sus contratos, en una rama que parta de la base indicada abajo:
+  - [`CONTRATO-PANTALLAS-PROFORMAS.md`](CONTRATO-PANTALLAS-PROFORMAS.md)
+  - [`CONTRATO-PANTALLAS-COMPRAS.md`](CONTRATO-PANTALLAS-COMPRAS.md)
+  - [`CONTRATO-PANTALLAS-VENTAS.md`](CONTRATO-PANTALLAS-VENTAS.md)
+- [ ] Lo que cada contrato deja para Codex en su lista de pendientes (Proformas: apartado E; Compras y Ventas: apartado B), en particular:
+  - mensajes de éxito que hoy salen en la ventana titulada «Error» de `hzt_body.html`/`vtc_body.html` (coordinarlo conmigo: es del marco común);
+  - autocompletado de productos por línea en «Crear compra desde el XML»;
+  - mostrar la clave `aviso` de cada línea en «Liquidación de compra» y enlazar «Retenciones recibidas» con «Registrar retención recibida» desde un 07;
+  - las revisiones de ancho, teclado y movimiento reducido que pide cada contrato, y texto seguro en columnas y modales.
+- [ ] Bancos, Contabilidad y Tributario siguen como maquetas: su backend es de la Etapa 3 en adelante, que no empezó.
+
+## Notas entre agentes — fase contable integrada (Claude → Codex)
+
+- **Base exacta para integrar el diseño:** el commit de `plataforma` en GitHub que trae esta sección (su código es el de `f109d4d`). Parte de él y entrega tu rama fusionando `plataforma`, como hasta ahora.
+- **Contratos definitivos:** los tres. Cada uno empieza con la nota «Estado en `plataforma` tras la integración», que manda sobre lo que el resto del documento dice de la rama (por ejemplo, la pantalla 14 de Compras ya funciona y «Retención sobre una compra» ya rechaza la 04). Campos, acciones, permisos, estados, mensajes e identificadores no cambian; si una decisión pendiente cambiara un texto, lo anotaré aquí.
+- **No cambies** modelos, migraciones, vistas Python, rutas ni nombres de URL, ni los `name=`, valores de `action`, identificadores, `data-*` y fragmentos que comprueban las pruebas (cada contrato los lista). Si un diseño los necesita distintos, pídelo aquí y lo cambio con su prueba.
+- Datos ficticios únicamente; no despliegues. Los textos comerciales siguen las reglas de la nota de la fase contable del 28/10 (sin «homologado», sin «declaramos por ti», sin logos del SRI, la Supercias ni los bancos).
+
 ## Estado actual — ticket térmico corregido tras la revisión, sin publicar (Claude, 28/10/2026)
 
-Rama `fase/ticket-correcciones` sobre `8d2eead` (entrega `165fbc7` de Codex): `dc274d4` y el commit de la segunda revisión. Solo cambian `core/pos/templates/sale/format/ticket.html`, sus pruebas y esta documentación. `@page`, `alto_pagina`, `create_pdf_continuo`, la vista y la URL siguen como en `165fbc7`. **No integrado en `plataforma` ni publicado.**
+Rama `fase/ticket-correcciones` sobre `8d2eead` (entrega `165fbc7` de Codex): `dc274d4` y el commit de la segunda revisión. Solo cambian `core/pos/templates/sale/format/ticket.html`, sus pruebas y esta documentación. `@page`, `alto_pagina`, `create_pdf_continuo`, la vista y la URL siguen como en `165fbc7`. **Integrado en `plataforma` (`a6f5db3`); sin publicar.**
 
 - **Cabecera con los datos del XML:** «Dirección matriz» sale de `company.main_address` (dirMatriz). «Establecimiento» sale de `sale.receipt.establishment_address`, con respaldo a `company.establishment_address` (dirEstablecimiento): es el local de la numeración de la venta, aunque después la empresa cambie de punto de emisión. Sustituye a la nota de la entrega del ticket B que lo daba como el mismo `establishment_address`.
 - **Fecha de emisión:** `emission_date` (fechaEmision), con respaldo a `get_date_joined` mientras la venta no se haya preparado para firmar.

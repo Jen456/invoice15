@@ -82,11 +82,22 @@ La lista completa (84 códigos para residentes) está en la migración. Reglas d
 
 - **Plazo de entrega:** cinco días desde que se recibe el comprobante de venta (LRTI art. 50; RCV art. 8). La multa por no entregarlo es el 5 % de la retención.
 - **Transmisión al SRI:** desde el 01/01/2026 se transmite al generarlo; se eliminó el plazo de 4 días (Res. 25-00000014, vigente según la 25-00000017).
-- **Anulación:**
-  - Solo en SRI en línea, hasta el día 7 del mes siguiente.
-  - El receptor debe aceptarla en 5 días hábiles.
-  - No se anulan las que sustentan devoluciones de impuestos.
-  - Por eso el sistema no borra retenciones enviadas.
+- **Anulación** (Res. NAC-DGERCGC25-00000014, 3.er Supl. del RO 70 de 30/06/2025, reformada por la
+  Res. NAC-DGERCGC25-00000017; revisado el 29/10/2026 contra los PDF del SRI):
+  - Solo en línea: en el portal del SRI, o en el Facturador SRI si se emitió allí (art. 2).
+  - Plazo: hasta el día 7 del mes siguiente al de su emisión; si ese día es de descanso obligatorio o feriado nacional
+    o local, hasta el siguiente día hábil (art. 3, con el día 7 que fijó la Res. 25-00000017 para lo emitido desde el
+    01/08/2025).
+  - El receptor debe aceptarla en 5 días hábiles desde la solicitud; si no responde, la solicitud queda sin efecto y la
+    retención sigue válida (art. 4). Si el receptor tiene identificación o pasaporte del exterior, o consta como
+    fallecido en el Registro Civil, basta la solicitud del emisor (inciso de la Res. 25-00000017).
+  - El plazo no aplica a las retenciones de los casos del art. 26 del Reglamento del ISD (Res. 25-00000017).
+  - No se anulan las que sustentan devoluciones de impuestos (disposición general tercera). Más de 1.000 comprobantes
+    del mismo mes: anulación masiva por trámite, en los mismos plazos (disposición general cuarta).
+  - Pasado el plazo, la resolución no da otra vía para las retenciones (la nota de crédito es solo para los comprobantes
+    de venta): la retención sigue válida y el tratamiento de un error lo decide el contador.
+  - Por eso el sistema no borra retenciones enviadas. La marca «Anulado en el SRI» se registra después de anular en el
+    portal; pasado el día 7 pide confirmación (todavía no cuenta la prórroga al día hábil: decisión pendiente).
 
 ## Liquidación de compra (03) — para la siguiente etapa
 
