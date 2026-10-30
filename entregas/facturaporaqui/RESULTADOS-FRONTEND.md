@@ -1471,3 +1471,5 @@ No se ejecutó PostgreSQL ni la suite completa en esta intervención. El móvil 
 El backend aún exige `birthdate` y lo precarga con la fecha actual incluso para un cliente empresa. Se conserva el contrato, sin ocultarlo o inventar una fecha para guardar. Se deja a Claude la necesidad de revisar ese requisito, independiente del trabajo prioritario de cobros.
 
 [Capturas y pasos para revisar](capturas/cliente-en-factura/README.md).
+
+**Trazabilidad de entrega:** código, capturas e informe en `0fd594ddb55a08c290478a85ec281a7bbe6551a1`, subido a `frontend/etapa3` y confirmado con `git ls-remote`. Este registro posterior solo añade la referencia del commit publicado en GitHub; no cambia código ni publica en el dominio.

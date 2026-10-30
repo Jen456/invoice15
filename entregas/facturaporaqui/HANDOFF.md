@@ -2,6 +2,8 @@
 
 ## Estado actual — alta de clientes dentro de la factura (Codex, 30/10/2026)
 
+**Código y capturas subidos a GitHub:** `0fd594ddb55a08c290478a85ec281a7bbe6551a1` (`frontend/etapa3`), remoto verificado después del push. La entrada que registra este hash solo añade documentación; no despliega nada.
+
 Diseño funcional sobre `9e65aea`, con `github/plataforma=3549c16` ya integrado y confirmado por fetch. Formulario de cliente con secciones, adaptación móvil y errores junto a los campos. Alta confirmada → selección automática en la factura. Buscar cliente existente desde su identificación → selección explícita sin nueva alta. Cerrar conserva lo escrito mientras la página siga abierta; no es un borrador en servidor. Doble envío bloqueado y recuperación por consulta si se pierde la respuesta. Sin cambios en backend, campos de cobro, cálculo, emisión, proformas ni numeraciones.
 
 SQLite: **61 aprobadas** en las suites relevantes. Chromium: **36 comprobaciones** a 360/390/768/1024/1360/1440 px y tres casos de fallo controlado; siete capturas WebP. Alta y errores reales en SQLite ficticia, teclado y movimiento reducido, factura conservada, sin errores JS/HTTP en el recorrido normal. [Evidencia y revisión](capturas/cliente-en-factura/README.md). Sin despliegue; PostgreSQL y dispositivo físico no comprobados en esta entrega.
