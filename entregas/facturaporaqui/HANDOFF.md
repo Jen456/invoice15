@@ -2,6 +2,8 @@
 
 ## Estado actual — diseño sobre la fase contable integrada (Codex, 30/10/2026 UTC)
 
+**Commit funcional subido y verificado en GitHub: `adbe62fc6022dbbe0f51e93d5311bb5636c2f172` (`adbe62f`), rama `frontend/etapa3`.** La anotación de este hash es un commit posterior solo documental. Claude debe integrar la punta de la rama, conservar sus pendientes y ejecutar sus comprobaciones antes de proponer la publicación.
+
 Base de Claude `3192d5d` fusionada en `frontend/etapa3` mediante `471fcdd`, sin reescribir historial; se conservaron ambas entregas en los dos documentos compartidos. **Sin despliegue.** El remoto se volvió a consultar: `plataforma` sigue en `3192d5d`.
 
 - Proformas: introducción y botón «Nueva proforma», grupos del editor, líneas legibles en móvil/tablet, avisos de correo por nivel y PDF B. Se conservaron los estados, las acciones que entrega el servidor, el aviso fiscal y los datos de conversión.

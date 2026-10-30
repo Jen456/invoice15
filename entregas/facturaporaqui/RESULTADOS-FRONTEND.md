@@ -1365,3 +1365,6 @@ Fusión de `github/plataforma` en `frontend/etapa3`, commit `471fcdd`. Los únic
 Sin despliegue, pagos, correo, emisión ni regularización histórica. PostgreSQL y ensayo/reversa de migraciones sobre respaldo corresponden a Claude. Bancos y Contabilidad siguen como maquetas. No se modificó el texto comercial de disponibilidad porque esta fase no está publicada. X-R1 y los pendientes fiscales/backend del informe de Claude se conservan en HANDOFF; también queda la revisión adicional de botones por permiso de proveedores/gastos/CxP. No se afirma que los 144 recorridos visuales equivalgan a guardados o anulaciones: esas reglas se cubren por la suite de backend, no por acciones reales en navegador.
 
 Capturas finales: **84 WebP**, máximo **60562 bytes**, sin imágenes por encima de 150 KB.
+
+
+**Entrega en GitHub:** commit funcional `adbe62fc6022dbbe0f51e93d5311bb5636c2f172` (`adbe62f`) subido mediante `git push origin HEAD:refs/heads/frontend/etapa3`; `git ls-remote` confirmó el mismo hash. Esta constancia se añade en un commit posterior solo documental. La rama incluye la fusión `471fcdd` de la base `3192d5d`. No se desplegó.
