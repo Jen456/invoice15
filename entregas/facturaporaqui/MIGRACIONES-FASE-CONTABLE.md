@@ -1,6 +1,7 @@
 # Migraciones de la fase contable (D0, Etapa 1 y Etapa 2) — resumen integrado
 
-29/10/2026 · `plataforma` con D0 Fase A, Proformas, Compras y Ventas fusionadas, más el commit final de integración. El
+29/10/2026 · `plataforma` con D0 Fase A, Proformas, Compras y Ventas fusionadas, más el commit final de integración.
+Actualizado el 30/10/2026 con el ensayo sobre una copia del respaldo y la vuelta de `pos/0031` corregida (`1c4973d`). El
 detalle de cada migración está en `MIGRACIONES-PROFORMAS.md`, `MIGRACIONES-COMPRAS.md`, `MIGRACIONES-VENTAS.md` y, para
 D0, en `D0-CATALOGO-RETENCIONES-2026-10.md`.
 
@@ -42,14 +43,27 @@ quedaron aplicadas.
 
 Dependencias cambiadas al integrar: `pos/0030` depende de `pos/0024` (antes de `pos/0019`) y `comprobantes/0020` de
 `comprobantes/0015` (antes de `comprobantes/0013`). La vuelta de `comprobantes/0023` quita su módulo y sus permisos por ids
-en las tablas intermedias, como `proformas/0003`, para poder deshacerla junto con las de D0.
+en las tablas intermedias, como `proformas/0003`, para poder deshacerla junto con las de D0. Desde `1c4973d` (30/10) la
+vuelta de `pos/0031` hace lo mismo: el ensayo mostró que `migrate pos 0019_orden_de_las_lineas` fallaba con ValueError
+«Must be "Permission" instance» (al deshacer varias migraciones en un mismo plan, los modelos históricos de `Permission`
+quedan desfasados respecto de `Module` y `Group`). Desde `a5e92a4`, `comprobantes/0023` y `proformas/0003` pasan sus modelos
+históricos a `organizar_menu`, que solo crea el módulo de una app migrada en ese estado; desde `22ff73d`, también
+`importacion/0003` y `0004` (ya publicadas), para una vuelta que bajara de ellas. En la base publicada eso no cambia nada: Django no vuelve a
+ejecutar una migración aplicada.
 
-## Precauciones de aplicación (cuando la propietaria autorice publicar; nada de esto se ejecutó)
+## Precauciones de aplicación (cuando la propietaria autorice publicar; en la base real no se ejecutó nada)
 
 1. **Volcado previo** de la base publicada (lo hace `deploy/scripts/desplegar.sh`). Es el camino de vuelta si después
    de publicar se registran datos nuevos.
-2. **Ensayo sobre una copia temporal de ese volcado**, con el código nuevo y el rol de la aplicación, antes de tocar la
-   base real: `migrate`, `showmigrations` sin pendientes, `manage.py check` y `makemigrations --check --dry-run`.
+2. **Ensayo sobre una copia temporal de un volcado reciente de la base publicada** (el último respaldo diario o uno hecho
+   aparte; no el del punto 1, que `desplegar.sh` hace en la misma corrida, justo antes de `migrate`), con el código nuevo
+   y el rol de la aplicación, antes de tocar la base real: `migrate`, `showmigrations` sin pendientes, `manage.py check` y `makemigrations --check --dry-run`. En
+   VM101 lo hace `verif-firma/ensayo-fase/ensayo_migraciones_fase.sh <checkout> [volcado]`, con el último respaldo diario
+   o con el volcado que se le pase: ida, esas comprobaciones, huellas de los datos, vuelta documentada, esquema comparado
+   con una copia intacta y otra ida. Las copias se borran al terminar, aunque falle. No imprime credenciales ni datos de
+   clientes: solo filas del catálogo de retenciones, del menú y de los roles, y los errores de un `migrate` que falle. Los
+   del 30/10 están en «Lo que se probó», abajo. Hay que repetirlo con datos del día de la publicación, con un volcado
+   hecho aparte ese día.
 3. **Guardia de `comprobantes/0015`:** aborta si el 310 o el 332E se editaron en `/plataforma/`. Si salta, no se fuerza:
    se revisa el catálogo con la propietaria y se decide antes de reintentar. Como las de `pos` y `comprobantes/0014` ya
    quedaron aplicadas, el ensayo del punto 2 es donde debe aparecer; si apareciera en la base real, se restaura el volcado.
@@ -90,18 +104,53 @@ en las tablas intermedias, como `proformas/0003`, para poder deshacerla junto co
   columna. Las de seguridad por filas
   (`proformas/0002`, `importacion/0006`, `comprobantes/0022`) quitan la política antes de que se borren sus tablas.
 - **Lo que se probó y lo que no:**
-  - en las suites completas de SQLite y PostgreSQL del commit entregado: ida y vuelta de `comprobantes` 0013↔0015 con
-    sus guardias (`tests/test_zzz_vigencias_migraciones.py`), que también deshace y rehace las cuatro de Ventas en
-    `comprobantes`; ida y vuelta de `proformas/0003` sobre un menú real (`tests/test_migracion_proformas.py`); datos
-    «de antes» de Compras y de Ventas migrados sin cambios y, en Ventas, revertidos y migrados otra vez (SQLite, por
-    subproceso);
-  - en las ramas: reversa de Compras hasta `pos 0019` en una base SQLite vacía;
-  - **no probado:** la reversa completa de Compras y de Ventas en PostgreSQL y cualquier `migrate` sobre una copia del
-    volcado de producción. El ensayo del punto 2 de la aplicación cubre la ida; si se quiere tener la vuelta ensayada,
-    se hace en la misma copia antes de publicar.
+  - **Ensayo sobre una copia del respaldo diario (30/10/2026)**, con el guion del punto 2 de la aplicación: PostgreSQL 16,
+    rol de la aplicación y respaldo `diario-20261029-231633` (base de lo publicado, `98cfa20`, con las 19 pendientes).
+    Se restaura dos veces en bases temporales: una se migra y la otra queda intacta para comparar. Se repitió con cada
+    cambio de código; el último, con `22ff73d` (código final de la fase), da lo mismo que los anteriores.
+    - **Ida:** las 19 en un solo `migrate`, entre 40 y 58 s en total, con una o dos suites de pruebas corriendo en la
+      misma máquina. Ninguna pasó de 11 s; las más lentas son `proformas/0001` (de 6,5 a 10,7 s), `comprobantes/0021`
+      (de 2,9 a 7,9 s) y `pos/0021` (de 5,4 a 6,5 s). Después,
+      `showmigrations` sin pendientes, `check` sin avisos y `makemigrations --check` sin cambios. El 310 y el 332E
+      quedan en dos vigencias (hasta el 31/07/2026 y desde el 01/08/2026) con los mismos porcentajes, 1 % y 0 %.
+    - **Datos que ya existían:** de las 68 tablas, 59 quedan idénticas en sus columnas anteriores (filas y valores).
+      Las otras 9 son las de permisos, módulos, tipos de módulo, permisos de los módulos, módulos y permisos de los
+      roles, tipos de contenido, `django_migrations` y el catálogo de retenciones. En menú, roles y permisos solo se
+      añaden filas: por claves naturales (rol, URL del módulo, código del permiso), 81 nuevas, y ninguna existente cambia
+      ni desaparece; el nombre, el grupo y el orden de los módulos publicados quedan como están. El catálogo gana las 2
+      filas nuevas del 310 y el 332E y, como manda `comprobantes/0015`, cambia dos existentes: la del 310 hasta el
+      31/07/2026 deja de tener porcentaje editable (el DIMM lo da fijo) y la «fuente» del 3440 anota el bloque del
+      06/08/2026.
+    - **Vuelta documentada** (destinos y orden de arriba): se deshacen las 19 (de 62 a 69 s, cinco órdenes `migrate`) y
+      el esquema queda idéntico al publicado. Los datos quedan idénticos a la copia intacta en 64 de 68 tablas. Por claves
+      naturales, solo sobran los 6 tipos de contenido y las 14 filas de `Permission` de la fase, que Django no borra, y
+      `pos.change_purchase`, que sigue en el módulo de Compras y en Propietario y Administrador porque la vuelta de
+      `pos/0024` no hace nada.
+    - **Otra ida:** las 19 se aplican de nuevo sin pendientes. Menú, permisos, roles, catálogo y migraciones quedan
+      idénticos a la primera ida por claves naturales (972 filas); solo cambian los ids de las filas que se vuelven a
+      crear y la hora de aplicación en `django_migrations`.
+    - La primera vez, la vuelta falló en `migrate pos 0019` (`pos/0031`, ver «Dependencias cambiadas al integrar»).
+      Desde `1c4973d`, `tests/test_migracion_vuelta_fase.py` recorre la misma vuelta y otra ida por subproceso sobre una
+      instalación SQLite con menú. Desde `a5e92a4` y `22ff73d` recorre vuelta, ida completa (las 19 en un solo plan, como
+      `desplegar.sh`), otra vuelta, dos idas parciales (`migrate proformas` y `migrate comprobantes`) e ida completa.
+      Antes, `organizar_menu` tomaba como migrada una app solo porque la vuelta deja sus `Permission`, y creaba el módulo
+      de la otra sin sus tablas.
+  - En las suites completas de SQLite y PostgreSQL: ida y vuelta de `comprobantes` 0013↔0015 con sus guardias
+    (`tests/test_zzz_vigencias_migraciones.py`), que también deshace y rehace las cuatro de Ventas en `comprobantes`; ida
+    y vuelta de `proformas/0003` sobre un menú real (`tests/test_migracion_proformas.py`); la vuelta documentada completa
+    (`tests/test_migracion_vuelta_fase.py`); y datos «de antes» de Compras y de Ventas migrados sin cambios y, en Ventas,
+    revertidos y migrados otra vez (SQLite, por subproceso).
+  - **No probado:**
+    - la vuelta con datos registrados con la versión nueva: ahí no se deshace, se restaura el volcado, y las cuatro
+      reversas de arriba se niegan a propósito;
+    - la base real;
+    - el ensayo con el volcado del día de la publicación: repetirlo entonces con el mismo guion.
 
 ## Costo esperado
 
 Columnas nulas o con valor constante, tablas nuevas vacías, políticas RLS y filas de permisos: en PostgreSQL 16 son
-cambios de catálogo con bloqueos exclusivos breves. Con el volumen actual (decenas de filas por tabla) se espera que todo
-tarde segundos. Las cifras por migración están en el documento de cada rama.
+cambios de catálogo con bloqueos exclusivos breves. En los ensayos del 30/10, con una o dos suites de pruebas corriendo a la
+vez, la ida tardó entre 40 y 58 s y la vuelta entre 62 y 69 s; ninguna migración pasó de 11 s. Los tiempos de las más
+lentas están en «Lo que se probó», arriba. Los documentos de cada rama traen estimaciones previas al ensayo, que en esas se
+quedaron cortas: «menos de un segundo» para `proformas/0001` (medido: de 6,5 a 10,7 s), «instantáneo» para
+`comprobantes/0021` (de 2,9 a 7,9 s) y «milisegundos con miles de filas» para `pos/0021` (de 5,4 a 6,5 s).

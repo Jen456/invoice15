@@ -7,7 +7,8 @@ fallaba con ValueError «Must be "Permission" instance»). Llamar a forwards/bac
 
 Después, otra vuelta y dos idas parciales: la vuelta deja las filas de Permission y ContentType, y organizar_menu solo
 debe crear el módulo de una app que esté migrada (antes, `migrate proformas` creaba «Retenciones recibidas» sin sus tablas
-y `migrate comprobantes` creaba «Proformas»). Cada ida completa aplica las 19 en un solo plan, como desplegar.sh."""
+y `migrate comprobantes` creaba «Proformas»). La primera ida completa aplica las 19 en un solo plan, como desplegar.sh;
+la última, lo que dejan pendiente las idas parciales."""
 import json
 import os
 import subprocess
@@ -68,7 +69,7 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)
             assert not any(c.startswith('change_anulado_sri_') for m in sin_fase['modulos'] for c in m[4])
 
-        def ida_completa():   # las 19 en un solo plan: el camino de una nueva publicación
+        def ida_completa():   # migrate sin destino, como desplegar.sh (justo tras la vuelta: las 19 en un solo plan)
             manage(env, 'migrate', '--noinput', '-v', '0')
             assert pendientes(env) == []
             assert estado(env) == instalado

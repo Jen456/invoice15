@@ -153,7 +153,7 @@
 **Costo esperado:** decenas de filas en las tablas de seguridad (unas decenas de módulos y algunos grupos). Milisegundos.
 
 **Orden respecto a otras migraciones de menú** (por ejemplo, `comprobantes/0023_modulo_retenciones_recibidas` de la rama de Ventas):
-- `organizar_menu` es idempotente y solo crea un módulo de `MODULOS_NUEVOS` si su app ya tiene sus permisos. Por eso la 0003 **no depende** de las migraciones de menú de otras ramas.
+- `organizar_menu` es idempotente y solo crea un módulo de `MODULOS_NUEVOS` si su app ya tiene sus permisos y, desde el 30/10/2026 (`a5e92a4`), si sus modelos existen en el estado de la migración (la 0003 le pasa `apps`): una vuelta deja las filas de `Permission`, que solas ya no bastan. Por eso la 0003 **no depende** de las migraciones de menú de otras ramas.
 - Si la otra corre antes, crea el grupo «Cotizaciones» vacío y omite `/proformas/`. El menú no muestra grupos sin módulos, y la 0003 lo completa después.
 - Si corre después, vuelve a ordenar todo sin duplicar. Cualquiera que corra última deja el menú completo.
 
