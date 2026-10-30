@@ -157,11 +157,13 @@
         const select = filters.elements.bandeja, q = filters.elements.q, pagination = document.getElementById('fp-import-pagination');
         const status = document.getElementById('fp-import-filter-status');
         let page = 1, pages = 1, sequence = 0;
+        const codDoc = new URLSearchParams(location.search).get('cod_doc') || '';   // p. ej. ?cod_doc=07 desde Retenciones recibidas
         select.value = filters.dataset.bandeja;
         async function load(target = 1) {
             const current = ++sequence;
             try {
                 const params = new URLSearchParams({bandeja: select.value, q: q.value, pagina: target});
+                if (codDoc) params.set('cod_doc', codDoc);
                 const data = await request('documentos/?' + params);
                 if (current !== sequence) return;
                 page = data.pagina; pages = data.paginas;

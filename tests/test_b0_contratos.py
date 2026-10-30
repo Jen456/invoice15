@@ -407,13 +407,18 @@ class TestBorrarVenta:
 class TestMensajesEnPantalla:
     TEXTO = 'Línea con \'comillas\' y "dobles" </script><script>alert(1)</script> & \\ barra\nsegunda línea'
 
-    @pytest.mark.parametrize('layout, plantilla', [(1, 'vtc_body.html'), (2, 'hzt_body.html')])
-    def test_mensaje_escapado_en_html_sin_ejecutar_javascript(self, web, layout, plantilla):
+    # hzt_dashboard.html reemplaza section_content (con su propio include): /pos/product/ prueba el de hzt_body.html
+    @pytest.mark.parametrize('layout, plantilla, ruta', [(1, 'vtc_body.html', '/dashboard/'), (2, 'hzt_body.html', '/dashboard/'),
+                                                         (1, 'vtc_body.html', '/pos/product/'),
+                                                         (2, 'hzt_body.html', '/pos/product/')])
+    def test_mensaje_escapado_en_html_sin_ejecutar_javascript(self, web, layout, plantilla, ruta):
         Dashboard.objects.update(layout=layout)
         web.cookies['messages'] = CookieStorage(None)._encode([Message(constants.ERROR, self.TEXTO)])
-        respuesta = web.get('/dashboard/')
+        respuesta = web.get(ruta)
         html = respuesta.content.decode()
-        assert respuesta.status_code == 200 and plantilla in [t.name for t in respuesta.templates]
+        nombres = [t.name for t in respuesta.templates]
+        assert respuesta.status_code == 200 and plantilla in nombres
+        assert ruta == '/dashboard/' or not {'hzt_dashboard.html', 'vtc_dashboard.html'} & set(nombres)
         assert html.count(str(escape(self.TEXTO))) == 1
         assert 'alert(1)</script>' not in html
         assert 'alert-danger' in html and 'No se pudo completar' in html

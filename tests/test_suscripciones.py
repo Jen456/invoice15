@@ -103,7 +103,7 @@ class TestAcceso:
         entrar(client, dueno_gratuita, gratuita)
         html = client.get('/pos/sale/admin/', follow=True).content.decode()
         assert 'fpa-alerta-plan' in html and 'se activan con un plan anual' in html
-        assert 'message_error(errors)' not in html and 'No se pudo completar' not in html   # aviso del plan, sin diálogo de error
+        assert 'fp-message' not in html and 'No se pudo completar' not in html   # aviso del plan solo en «Plan y pagos»
 
     def test_rol_sin_gestion_del_plan_vuelve_al_panel(self, client, gratuita):
         vendedor = helpers.crear_usuario('vendedor.gratuita', gratuita, ROLE_SELLER)

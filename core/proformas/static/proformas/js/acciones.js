@@ -112,7 +112,7 @@ var fpAcciones = {
                         var avisos = (respuesta.avisos || []).join(' ');
                         fpAcciones.avisar(respuesta.mensaje + (avisos ? ' ' + avisos : ''), function () {
                             location.href = respuesta.url_editar;
-                        });
+                        }, avisos !== '');
                         return;
                     }
                     fpAcciones.avisar(respuesta.mensaje, fpAcciones.despues, respuesta.aviso);

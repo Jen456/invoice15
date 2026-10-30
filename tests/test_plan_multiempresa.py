@@ -136,7 +136,7 @@ class TestPantallas:
         assert "RUC en tu plan: <strong>1 de 10</strong>" in client.get("/suscripcion/").content.decode()
         respuesta = client.post("/suscripcion/empresas/", {"accion": "nueva", **datos(RUCS[6])}, follow=True)
         html = respuesta.content.decode()
-        assert "ya está incluida en tu plan" in html and "RUC en tu plan: 2 de 10" in html
+        assert html.count("ya está incluida en tu plan") == 1 and "RUC en tu plan: 2 de 10" in html   # una sola vez
         nueva = Company.objects.get(ruc=RUCS[6])
         assert EmpresaAdicional.objects.filter(titular=titular, company=nueva).exists()
         # En la empresa nueva: incluida, sin botones de pago, y puede entrar a ventas (ruta de pago).

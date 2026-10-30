@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}"><link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
 <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script><script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script><script src="{% static 'importacion/js/compra.js' %}" defer></script>{% endblock %}
 {% block content %}
-<div class="fp-comprobantes fp-importacion fp-importacion-compra" data-documento="{{ documento.id }}" data-productos-url="{% url 'purchase_create' %}">
+<div class="fp-comprobantes fp-importacion fp-importacion-compra" data-documento="{{ documento.id }}">
     <header class="fp-welcome"><span class="fp-eyebrow">Crear compra desde el XML</span><h1>{{ documento.tipo_documento }} {{ documento.numero }}</h1>
         <p>{{ documento.emisor.razon_social }} ({{ documento.emisor.ruc }}) · Emitida el {{ propuesta.fecha_emision|default:"—" }}</p></header>
     {% include 'importacion/_mensajes.html' %}
