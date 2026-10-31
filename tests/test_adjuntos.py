@@ -384,7 +384,7 @@ class TestMes:
             en_efectivo = Expenses.objects.create(type_expense=gasto.type_expense, description='Parqueo', valor=Decimal('1.00'), medio_pago='efectivo')
         # core/cobros: la venta al contado con nota (sin archivo) sí está respaldada; el cobro con archivo también; otro cobro sin nada falta
         nota = respaldo_de_cobros(empresa, admin, venta_contado, nota='El cliente envió la transferencia; pendiente de ver el banco')
-        venta_credito = cobro.ctas_collect.sale
+        venta_credito = leer(empresa, lambda: cobro.ctas_collect.sale)   # en PostgreSQL la RLS oculta la venta fuera del contexto
         con_archivo = respaldo_de_cobros(empresa, admin, venta_credito, importe='3.00', archivo=subido('transf.png', imagen('PNG')), clave='clave-archivo-01')
         with company_context(empresa):
             sin_respaldo = cxc.registrar_cobro(empresa, admin, cxc_de(venta_credito).pk, HOY, '2.00', 'deposito', 'DEP-9', 'Depósito')
