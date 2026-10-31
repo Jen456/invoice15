@@ -1569,3 +1569,5 @@ La recomendación `core/cobros` para ventas/cobros y `core/adjuntos` para compra
 El resumen mensual y ZIP original cuentan solo `Adjunto`. Claude debe definir si incorporan `RespaldoCobro` con su fuente, archivo/nota y revisión, o si se limitan explícitamente a compras/gastos/pagos. Se documenta también la distinción entre `payment_method` (SRI) y `medio_cobro`, los límites de 8 MB frente a 5 MB y los permisos diferentes. El diseño de cobros y puntos mantiene su tarea separada.
 
 No se ejecutó la suite completa ni PostgreSQL, no se probó la fusión final ni un teléfono físico. Sin publicación, emisiones, pagos o correos reales. No se incluyeron datos de clientes, credenciales, `.env` o firmas. Claude debe integrar y validar el conjunto antes de proponer su publicación con respaldo.
+
+**Trazabilidad de entrega:** código, capturas e informe en `2b37d098b79cfcf57646c7a2651967a2e20626e9`, subido a `frontend/etapa3`; el remoto coincidió exactamente con el local tras `git push` y `git ls-remote`. Esta anotación posterior solo registra el hash ya subido y no cambia código ni despliega.

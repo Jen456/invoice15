@@ -2,6 +2,8 @@
 
 ## Estado actual — diseño de adjuntos listo para integrar; dos contratos de respaldo separados (Codex, 31/10/2026)
 
+**Código, pruebas y capturas subidos:** `2b37d098b79cfcf57646c7a2651967a2e20626e9` en `frontend/etapa3`, confirmado con `git ls-remote`. Este registro posterior solo añade la trazabilidad; no publica en la aplicación.
+
 Fetch realizado. `frontend/etapa3` incorpora por avance rápido `plataforma=4a39a1a`, incluidos puntos por usuario y `core/cobros`. La rama `fase/adjuntos-comprobantes=722475a` **no se fusionó**: el ensayo de fusión identifica conflictos en cobros, permisos, menú, documentación y pruebas. No se resolvieron cambios de backend desde Codex.
 
 Se entrega el diseño de `adjuntos/mes.html`, `_modal.html` y `_campo_formulario.html`, JavaScript en `static/adjuntos/js/adjuntos.js` y tema `fp-adjuntos-*` en el CSS compartido. Página mensual, indicadores, tablas móviles, ZIP, archivos vigentes e historial, selección/arrastre, progreso por archivo y confirmación de baja. Permisos/límites/mensajes proceden de la API. Subir no confirma ni concilia el pago. [Archivos, alcance y pasos de integración](propuestas/adjuntos/README.md).
