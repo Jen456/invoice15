@@ -154,3 +154,10 @@ vez, la ida tardó entre 40 y 58 s y la vuelta entre 62 y 69 s; ninguna migraci�
 lentas están en «Lo que se probó», arriba. Los documentos de cada rama traen estimaciones previas al ensayo, que en esas se
 quedaron cortas: «menos de un segundo» para `proformas/0001` (medido: de 6,5 a 10,7 s), «instantáneo» para
 `comprobantes/0021` (de 2,9 a 7,9 s) y «milisegundos con miles de filas» para `pos/0021` (de 5,4 a 6,5 s).
+
+## Nota (30/10/2026) — migraciones de locales y puntos de emisión (`91ddccc`)
+
+Se agregan `configuracion/0001_puntos_por_usuario`, `0002_rls_puntos` y `0003_modulo_puntos` (dependen de `pos/0019`, anterior a la
+fase: la vuelta documentada arriba **no** las deshace ni toca sus tablas) y `tenancy/0008_acciones_puntos` (depende de `tenancy/0007`:
+la vuelta a `tenancy 0006` también la deshace, así que tras la vuelta quedan 20 pendientes en vez de 19; `tests/test_migracion_vuelta_fase.py`
+lo comprueba). Al publicar, el mismo `migrate` las aplica todas.

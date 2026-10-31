@@ -257,6 +257,81 @@ Sustituido por «Pendiente — antes y después de publicar (Claude, 30/10/2026)
 - **No cambies** modelos, migraciones, vistas Python, rutas ni nombres de URL, ni los `name=`, valores de `action`, identificadores, `data-*` y fragmentos que comprueban las pruebas (cada contrato los lista). Si un diseño los necesita distintos, pídelo aquí y lo cambio con su prueba.
 - Datos ficticios únicamente; no despliegues. Los textos comerciales siguen las reglas de la nota de la fase contable del 28/10 (sin «homologado», sin «declaramos por ti», sin logos del SRI, la Supercias ni los bancos).
 
+## Estado actual — locales y puntos de emisión por usuario, en `plataforma` sin publicar (Claude, 30/10/2026)
+
+- **Qué resuelve:** dos locales del mismo RUC facturan a la vez sin cambiarse el punto ni mezclar numeraciones. Cada usuario elige su punto de emisión (preferencia por usuario y empresa); cada formulario de emisión lleva el punto con el que se abrió y el servidor lo vuelve a validar al emitir (empresa, activo, autorizado, numeración confirmada en el ambiente actual); la numeración sigue en `Receipt` (una secuencia por empresa, ambiente, punto y tipo, reservada con bloqueo de fila), así que dos emisiones simultáneas sobre un mismo punto no repiten número y dos puntos no se mezclan.
+- **Reutiliza:** `Establishment`, `EmissionPoint`, `Receipt` y los servicios del asistente (`configurar_secuencia`, `secuencia_configurada`, `requisitos_de_emision`, `receipt_para_emitir`, ahora con `punto=`). El asistente (`/configuracion/facturacion/`), el punto predeterminado (`is_default`) y los datos de «Compañía» no cambian: siguen siendo la configuración inicial y el punto de quien no elige.
+- **Nuevo (commit `91ddccc`):** modelos `PuntoAutorizado` y `PuntoSeleccionado` en `core/configuracion/models.py`; reglas en `core/configuracion/puntos.py`; pantalla funcional `/configuracion/puntos/` (módulo «Locales y puntos de emisión», menú Configuración, Propietario y Administrador; plantilla `configuracion/puntos.html`); selector del punto en la cabecera (`configuracion/_selector_punto.html`, junto al selector de empresa); bloque `configuracion/_punto_emision.html` en los seis formularios de emisión (factura/ticket, nota de crédito, retención, liquidación, nota de débito, guía); filtro `punto` en los listados de facturas y notas de crédito; `receipt.punto` en el JSON de los comprobantes.
+- **Migraciones:** configuracion 0001 (tablas), 0002 (seguridad por filas), 0003 (módulo, permisos y roles); tenancy 0008 (acciones de auditoría). Sin cambios en tablas existentes; numeraciones, documentos, auditoría y configuración anteriores intactos. Empresas existentes: sin autorizaciones todos los usuarios ven todos los puntos activos; sin selección se usa el punto predeterminado; con un solo punto nada cambia para nadie.
+- **Pruebas:** `tests/test_puntos_por_usuario.py` (15: dos vendedores en dos locales, dos pestañas, rechazos, cambio de empresa, autorizaciones, permisos por rol, numeración por punto, NC desde el punto del formulario y desde el listado, listados y filtro, catálogo, módulo y migración reversible) y `tests/test_zz_puntos_concurrencia_pg.py` (8 emisiones simultáneas en dos puntos, PostgreSQL). Suites completas: SQLite 1411 aprobadas y 45 omitidas; PostgreSQL 1455 aprobadas y 1 fallo preexistente de la prueba de Codex test_alta_producto_en_factura (duplicado de producto dentro de la transacción; falla igual en e4c48c6 sin esta rama y se anota como pendiente).
+- **No publicado** (la orden lo prohibía). Al publicar, `desplegar.sh` aplica las migraciones; no hace falta ninguna acción manual.
+
+## Pendiente para Codex — locales y puntos (Claude, 30/10/2026)
+
+- [ ] Pantalla «Locales y puntos de emisión» (`/configuracion/puntos/`, `core/configuracion/templates/configuracion/puntos.html`): tarjetas de local con puntos anidados, estados «Listo para emitir» / «Falta configurar» con explicación, ficha de numeración por documento y ambiente, usuarios autorizados. Los nombres de campos, acciones y mensajes del contrato no cambian.
+- [ ] Selector del punto en la cabecera (`configuracion/_selector_punto.html`) y bloque «Emites desde…» de los formularios (`configuracion/_punto_emision.html`): hoy funcionales y sin diseño.
+- [ ] Listados de facturas y notas de crédito: nombre corto del local bajo el número (`receipt.punto.local`) y filtro por punto (`punto` en la acción `search`).
+- Decisiones de la propietaria pendientes (no bloquean): (1) si un usuario sin autorizaciones debe ver todos los puntos (hoy sí, por compatibilidad con lo que había) o ninguno; (2) si se habilita editar nombre y dirección de un local (hoy solo alta y activar/desactivar; ver «Histórico»).
+
+## Notas entre agentes — contrato de locales y puntos (Claude → Codex)
+
+**Datos (sin cambios en lo existente).**
+- Local = `Establishment`: `id`, `code` (3 dígitos), `name`, `address`, `is_active`. Punto = `EmissionPoint`: `id`, `establishment`, `code`, `description`, `is_default` (predeterminado de la empresa, solo uno), `is_active`; `full_code` = `002-001`. Numeración = `Receipt` por (empresa, `environment_type`, `establishment_code`, `issuing_point_code`, `voucher_type`): `sequence` = último usado, `next_number_full()`, `confirmed_at`.
+- `PuntoAutorizado(user, emission_point)`: sin filas para un usuario en la empresa, puede usar todos los puntos activos; Propietario y Administrador siempre todos; rol Cliente, ninguno.
+- `PuntoSeleccionado(user, company, emission_point)`: preferencia por usuario y empresa. **Punto activo** del usuario = el elegido si sigue elegible; si no, el único elegible; si no, el predeterminado de la empresa si es elegible; si no, debe elegir.
+- La identificación de matriz no se infiere del código (`001` no significa matriz); no hay campo de matriz: si la propietaria lo pide, se agrega aparte.
+
+**Rutas.**
+
+| Ruta | Método | Quién | Respuesta |
+|---|---|---|---|
+| `/configuracion/puntos/` | GET | Propietario, Administrador | pantalla (`estado` en el contexto, igual a `estado.json`) |
+| `/configuracion/puntos/` | POST `action=…` | Propietario, Administrador | redirección con aviso; con `Accept: application/json`, `X-Requested-With: XMLHttpRequest` o `formato=json`: `{ok, mensaje, estado}`; error HTTP 400 `{ok: false, mensaje, errores?}` (`errores` = errores del formulario por campo) |
+| `/configuracion/puntos/estado.json` | GET | Propietario, Administrador | catálogo completo (abajo) |
+| `/configuracion/puntos/seleccion.json` | GET | cualquier usuario con rol de personal | `{seleccionado, elegido_por_el_usuario, elegibles[], puede_administrar, ambiente, url_seleccionar}` |
+| `/configuracion/puntos/seleccionar/` | POST `punto=<id>` [`next=<ruta>`] | cualquier usuario con rol de personal | redirección a `next` (solo rutas de este sitio) o JSON `{ok, seleccion}`; error 400 `{error}` |
+
+**Acciones del POST a `/configuracion/puntos/`** (nombres exactos):
+- `agregar_establecimiento`: `code`, `name`, `address`, `point_code` (obligatorio en el primer local), `point_description`.
+- `agregar_punto`: `establishment` (id), `code`, `description`.
+- `activar_punto` / `desactivar_punto`: `point` (id). No se desactiva el predeterminado ni un punto con numeración usada (`punto_en_uso`).
+- `numeracion`: `n-point` (id), `n-tipo` (`01`, `04`, `07`, `03`, `05`, `06`), `n-ambiente` (`1` PRUEBAS, `2` PRODUCCIÓN), `n-mode` (`nuevo` | `otro_sistema` | `mantener`), `n-last_number` (`125`, `000000125` o `002-001-000000125`), `n-confirm=on`. Configura y confirma en un paso para cualquier punto; con `01` deja confirmado también el ticket `08`. Mismas reglas y mensajes del asistente (`servicios.MENSAJES`: `ultimo_formato`, `ultimo_rango`, `ultimo_otro_punto`, `retroceso`, `reinicio_usada`, `reinicio_existente`); exige el asistente confirmado (`setup_pendiente`). Abrir la ficha o consultar no consume números.
+- `autorizar` / `quitar_autorizacion`: `a-user` (id de un usuario con rol de personal en la empresa), `a-point` (id). A Propietario y Administrador no se les autoriza (`usuario_administra`). Al quitar la última autorización el usuario vuelve a ver todos los puntos.
+
+**Punto en los formularios de emisión.** Contexto (`puntos.contexto_formulario`): `punto` (EmissionPoint o None), `puntos_elegibles`, `punto_proximo` («002-001-000000041», sin reservar), `punto_ambiente`, `punto_aviso` (texto si no se puede emitir desde ese punto). `_punto_emision.html` pone `<select name="punto" id="id_punto">` si hay más de un elegible (o `<input type="hidden" name="punto">` con uno) y el resumen «Emites desde Local / Punto · 002-001 · PRODUCCIÓN · Próximo número: … (se confirma al emitir)». **El POST de emisión lleva `punto`**: factura y ticket (`action=add`), nota de crédito (`add`), retención, liquidación, nota de débito y guía (`action=emitir`); la NC total desde el listado de facturas (`create_credit_note`) acepta `punto` opcional. Sin `punto`, el servidor usa el punto activo del usuario. `search_voucher_number` (venta) acepta `punto` y devuelve `voucher_number`, `voucher_number_full` y `punto`, o `pending` = `{codigo: 'punto' | 'secuencia' | 'configuracion' | 'firma', mensaje, url}`. El JS de la venta ya envía `punto` y vuelve a pedir el número al cambiar el `select`.
+
+**Comportamientos.**
+- Otra pestaña cambia la selección: el formulario abierto conserva su `punto` y emite desde él; la preferencia queda en lo último elegido. Cambiar el `select` del formulario es explícito y actualiza el próximo número.
+- Cambia la empresa activa: la selección es por empresa; un `punto` de la empresa anterior enviado desde un formulario viejo se rechaza (`punto_desconocido`) y no se crea nada.
+- Rechazos del servidor (texto exacto en `puntos.MENSAJES`): `punto_desconocido` (otra empresa o id inválido), `punto_inactivo`, `punto_no_autorizado`, `elige_punto` (varios elegibles y ninguno elegido ni predeterminado), `sin_membresia`; y los de numeración, configuración y firma de `servicios.requisitos_de_emision` (para un punto distinto del predeterminado: «Configura y confirma la numeración de {documento} del punto {punto} para el ambiente {ambiente} en «Locales y puntos de emisión».», `url: /configuracion/puntos/`). Un POST manipulado nunca crea el documento ni consume número.
+- Documentos relacionados: nota de crédito, nota de débito, guía, retención y liquidación salen del punto del formulario (o del activo); no heredan el punto de la factura o compra de sustento, que el XML referencia por su número. Las proformas no tienen punto: al facturarlas se usa el punto del formulario de venta (mostrado antes de emitir). El ticket (`08`) usa el mismo punto que la factura; en Producción sigue sin ticket.
+- Histórico: cada comprobante conserva `receipt` → punto → local; RIDE, ticket y XML usan `receipt.establishment_address()`. No se editan dirección ni códigos de un local (solo alta y activar/desactivar) y el XML autorizado es el registro fiscal, así que hoy no hace falta instantánea; si se habilita editar direcciones, habrá que guardar la dirección en el comprobante (`regenerar_ride` ya rechaza un PDF que no coincida con el XML).
+- Listados: `receipt.punto` = `{id, codigo_completo, descripcion, local, local_id}` (None en secuencias anteriores al asistente) en el JSON de facturas y notas de crédito; `search` de ambos acepta `punto` (id).
+- Auditoría: `punto_seleccionado` {punto, anterior}, `punto_autorizado` {usuario, punto, accion: autorizar | quitar}, `billing_point_change` {punto | establecimiento, accion: agregar | activar | desactivar}, `billing_sequence_change` y `billing_setup_confirm` {tipo, punto, ambiente, proximo}.
+- Permisos: el módulo `/configuracion/puntos/` lo tienen Propietario y Administrador (`sync_roles`); Vendedor, Contador y Consulta no, pero todos eligen su punto (`seleccion.json`, `seleccionar/`). El selector de la cabecera solo aparece con puntos elegibles.
+
+**`estado.json`** (y `estado` en el contexto de la pantalla):
+
+```json
+{"setup_completo": true, "ambiente": {"codigo": 2, "nombre": "PRODUCCIÓN"},
+ "locales": [{"id": 2, "codigo": "002", "nombre": "Local Norte", "direccion": "Av. Local Norte 1", "activo": true,
+   "puntos": [{"id": 5, "codigo": "001", "codigo_completo": "002-001", "descripcion": "Caja principal",
+     "etiqueta": "Local Norte · Caja principal · 002-001", "activo": true, "predeterminado": false, "listo": true,
+     "documentos": ["01", "04", "08"], "usada": false,
+     "numeracion": {"1": [], "2": [{"tipo": "01", "nombre": "Factura", "existe": true, "ultimo": 0, "ultimo_completo": "",
+        "proximo": 1, "proximo_completo": "002-001-000000001", "confirmado": true, "utilizada": false, "origen": "nuevo"}]},
+     "usuarios_autorizados": [{"id": 7, "username": "caja.norte", "nombre": "…", "rol": "Vendedor"}]}]}],
+ "usuarios": [{"id": 7, "username": "caja.norte", "nombre": "…", "rol": "Vendedor", "administra": false,
+   "autorizados": [5], "todos": false, "seleccionado": 5}],
+ "seleccion": {"…": "igual que seleccion.json"},
+ "tipos": [{"tipo": "01", "nombre": "Factura", "configurable": true}],
+ "mensajes": {"…": "puntos.MENSAJES"}}
+```
+
+`listo` = factura confirmada en el ambiente actual; `documentos` = tipos confirmados en el ambiente actual; `numeracion` por ambiente (`"1"`, `"2"`) con los siete tipos en orden `01`, `04`, `08`, `07`, `03`, `05`, `06`; `usada` = tiene comprobantes; nunca reserva números. Cada punto de `elegibles` y `seleccionado` lleva `{id, codigo, codigo_completo, descripcion, activo, predeterminado, local {id, codigo, nombre, direccion, activo}, etiqueta, listo, bloqueo}`; `bloqueo` es el motivo por el que no se puede emitir desde él («Punto inactivo.» o el mensaje de numeración pendiente) y `null` si está listo: con él el selector muestra los puntos pendientes sin dejar elegirlos.
+
+**No cambiar desde el frontend:** nombres de campos, acciones y mensajes (las pruebas los comprueban); la regla de que el servidor valida el punto en cada emisión; no simular independencia en el cliente ni elegir un punto sin enviarlo en `punto`.
+
 ## Estado actual — ticket térmico corregido tras la revisión, sin publicar (Claude, 28/10/2026)
 
 Rama `fase/ticket-correcciones` sobre `8d2eead` (entrega `165fbc7` de Codex): `dc274d4` y el commit de la segunda revisión. Solo cambian `core/pos/templates/sale/format/ticket.html`, sus pruebas y esta documentación. `@page`, `alto_pagina`, `create_pdf_continuo`, la vista y la URL siguen como en `165fbc7`. **Integrado en `plataforma` (`a6f5db3`); sin publicar.**

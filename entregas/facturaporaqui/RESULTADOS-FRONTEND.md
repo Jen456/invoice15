@@ -1473,3 +1473,17 @@ El backend aún exige `birthdate` y lo precarga con la fecha actual incluso para
 [Capturas y pasos para revisar](capturas/cliente-en-factura/README.md).
 
 **Trazabilidad de entrega:** código, capturas e informe en `0fd594ddb55a08c290478a85ec281a7bbe6551a1`, subido a `frontend/etapa3` y confirmado con `git ls-remote`. Este registro posterior solo añade la referencia del commit publicado en GitHub; no cambia código ni publica en el dominio.
+
+## 30/10/2026 — locales y puntos de emisión por usuario (backend, Claude) — sin publicar
+
+Petición: que dos locales del mismo RUC facturen a la vez sin cambiarse el punto ni mezclar numeraciones, sobre la [propuesta de Codex](propuestas/establecimientos/PROPUESTA.md) (`e94c3a9`, en `frontend/etapa3`).
+
+**Hecho (commit `91ddccc` en `plataforma`):**
+- Selección de punto por usuario y empresa (`PuntoSeleccionado`), puntos autorizados por usuario (`PuntoAutorizado`; sin autorizaciones, todos los activos; Propietario y Administrador, todos), punto fijado a cada formulario de emisión (`punto` en el POST) y revalidado en el servidor al emitir: empresa, activo, autorizado y numeración confirmada en el ambiente actual. Reglas en `core/configuracion/puntos.py`.
+- Reutiliza `Establishment`, `EmissionPoint` y `Receipt`; el asistente y el punto predeterminado no cambian. Numeración por punto, tipo y ambiente configurable para cualquier punto desde `/configuracion/puntos/` (acción `numeracion`), con las mismas reglas del asistente.
+- Pantalla funcional `/configuracion/puntos/` (módulo «Locales y puntos de emisión», Configuración, Propietario y Administrador), selector del punto en la cabecera, bloque «Emites desde…» en los seis formularios de emisión, filtro por punto en los listados de facturas y NC, `receipt.punto` en el JSON. Contrato completo en HANDOFF.
+- Migraciones configuracion 0001–0003 y tenancy 0008; sin cambios en tablas existentes. Documentos, numeraciones y configuración anteriores intactos.
+
+**Pruebas:** `tests/test_puntos_por_usuario.py` (15) y `tests/test_zz_puntos_concurrencia_pg.py` (8 emisiones simultáneas en dos puntos, PostgreSQL), con empresas ficticias y SRI simulado: dos vendedores facturando a la vez desde locales distintos (001-002-000000271/272 y 002-001-000000001/002, XML con el establecimiento y la dirección de cada punto), dos pestañas (el formulario conserva su punto aunque la preferencia cambie), rechazos (otra empresa, inactivo, no autorizado, sin numeración, numeración solo en otro ambiente, POST manipulado, cambio de empresa: nada se crea ni consume número), autorizaciones, permisos por rol, módulo y migración reversible. Suites completas: SQLite 1411 aprobadas y 45 omitidas; PostgreSQL 1455 aprobadas y 1 fallo preexistente de la prueba de Codex test_alta_producto_en_factura (duplicado de producto dentro de la transacción; falla igual en e4c48c6 sin esta rama y se anota como pendiente).
+
+**Pendiente:** diseño de la pantalla, del selector y del bloque de los formularios (Codex, sobre el contrato); dos decisiones de la propietaria anotadas en HANDOFF. No se desplegó; sin emisiones, pagos ni correos reales.
