@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from core.pos.forms import CompanyForm
 from core.pos.models import Product, Provider, Purchase, Sale
+from core.security.models import Dashboard
 from core.suscripciones import payphone
 from core.suscripciones.cupo import PlanRequerido, emitir_con_cupo
 from core.suscripciones.models import IvaRate, Payment, Plan, QuotaReservation, SubscriptionPeriod
@@ -343,18 +344,50 @@ class TestPagos:
         pago.refresh_from_db()
         assert pago.status == 'expirado'
 
-    def test_solicitar_factura(self, client, empresa, admin, django_capture_on_commit_callbacks):
+    @pytest.mark.parametrize('layout', [1, 2])
+    def test_solicitar_factura(self, client, empresa, admin, django_capture_on_commit_callbacks, layout):
+        Dashboard.objects.update(layout=layout)
         pago = nuevo_pago(empresa, plan('plan-1000'), admin, 'programado')
         Payment.objects.filter(pk=pago.pk).update(status='aprobado')
         entrar(client, admin, empresa)
         with django_capture_on_commit_callbacks(execute=True):
             respuesta = client.post(f'/suscripcion/pago/{pago.uuid}/', {
                 'razon_social': 'EMPRESA A S.A.', 'identificacion': '0912345675', 'direccion': 'Guayaquil',
-                'correo': 'conta@example.com'})
-        assert respuesta.status_code == 302
+                'correo': 'conta@example.com'}, follow=True)
+        assert respuesta.status_code == 200
+        assert respuesta.redirect_chain == [(f'/suscripcion/pago/{pago.uuid}/', 302)]
         pago.refresh_from_db()
         assert pago.invoice_requested and pago.invoice_data['correo'] == 'conta@example.com'
+        assert pago.status == 'aprobado' and pago.amount_cents == 5000
+        assert not pago.invoice_number  # Solicitud registrada; todavía no es una factura emitida.
         assert any('Factura solicitada' in m.subject for m in mail.outbox)
+        html = respuesta.content.decode()
+        assert html.count('Solicitud recibida. Te enviaremos la factura al correo indicado.') == 1
+        assert 'alert-success' in html and 'Operación completada' in html
+        assert 'Ya la solicitaste' in html and 'conta@example.com' in html
+        assert 'message_error(errors)' not in html and 'No se pudo completar' not in html
+        assert ('vtc_body.html' if layout == 1 else 'hzt_body.html') in [t.name for t in respuesta.templates]
+
+    @pytest.mark.parametrize('layout', [1, 2])
+    def test_solicitud_factura_invalida_no_muestra_exito(self, client, empresa, admin,
+                                                       django_capture_on_commit_callbacks, layout):
+        Dashboard.objects.update(layout=layout)
+        pago = nuevo_pago(empresa, plan('plan-1000'), admin, 'programado')
+        Payment.objects.filter(pk=pago.pk).update(status='aprobado')
+        entrar(client, admin, empresa)
+        with django_capture_on_commit_callbacks(execute=True):
+            respuesta = client.post(f'/suscripcion/pago/{pago.uuid}/', {
+                'razon_social': 'EMPRESA A S.A.', 'identificacion': '0912345675', 'direccion': 'Guayaquil',
+                'correo': 'correo-invalido'})
+        assert respuesta.status_code == 200
+        assert 'correo' in respuesta.context['form'].errors
+        html = respuesta.content.decode()
+        assert 'invalid-feedback' in html and 'correo-invalido' in html
+        assert 'Solicitud recibida' not in html and 'Ya la solicitaste' not in html
+        assert not any('Factura solicitada' in m.subject for m in mail.outbox)
+        pago.refresh_from_db()
+        assert not pago.invoice_requested and not pago.invoice_number
+        assert pago.status == 'aprobado' and pago.amount_cents == 5000
 
     def test_detalle_de_pago_de_otra_empresa_no_se_ve(self, client, empresa, empresa_b, admin):
         pago = nuevo_pago(empresa_b, plan('plan-1000'), None, 'inmediato')

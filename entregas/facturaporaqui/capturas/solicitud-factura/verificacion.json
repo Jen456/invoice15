@@ -1,0 +1,68 @@
+{
+  "data": "Ficticios",
+  "source": "HTML de respuesta POST/redirect probado con las plantillas de 98cfa20 más el parche y su CSS de marca; resto del backend actual. Vista de navegador de solo lectura.",
+  "checks": [
+    {
+      "layout": 1,
+      "width": 360,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    },
+    {
+      "layout": 1,
+      "width": 390,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    },
+    {
+      "layout": 1,
+      "width": 768,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    },
+    {
+      "layout": 1,
+      "width": 1024,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    },
+    {
+      "layout": 1,
+      "width": 1360,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    },
+    {
+      "layout": 1,
+      "width": 1440,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    },
+    {
+      "layout": 2,
+      "width": 360,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    },
+    {
+      "layout": 2,
+      "width": 390,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    },
+    {
+      "layout": 2,
+      "width": 768,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    },
+    {
+      "layout": 2,
+      "width": 1024,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    },
+    {
+      "layout": 2,
+      "width": 1360,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    },
+    {
+      "layout": 2,
+      "width": 1440,
+      "result": "Mensaje de éxito único y sin modal de error; sin desborde"
+    }
+  ],
+  "jsErrors": [],
+  "httpErrors": []
+}

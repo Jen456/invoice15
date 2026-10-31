@@ -1,5 +1,23 @@
 # Handoff compartido — frontend
 
+## Estado actual — «Error» al solicitar factura de la suscripción (Codex, 31/10/2026)
+
+Diagnóstico confirmado: en `98cfa20`, los layouts vertical y horizontal convierten todos los mensajes ordinarios en `message_error(errors)`, incluido el `messages.success` de `PagoDetalleView.post`. La petición se guarda, pero aparece una cruz roja. La corrección ya existe desde `adbe62f` y está en plataforma/frontend; no se cambió el backend. [Diagnóstico, límites y parche aislado](correcciones/solicitud-factura/README.md).
+
+Se entrega un parche de **cuatro plantillas**, aplicable a la base publicada reportada, para que Claude pueda evaluar una corrección urgente sin incorporar toda la fase contable. `git apply --check` correcto en copia temporal. Regresión del flujo real: dos fallos esperados con plantillas antiguas; 11 pruebas pasan en la rama actual y las mismas 11 con el parche. [Capturas ficticias y 12 comprobaciones de navegador](capturas/solicitud-factura/README.md). Sin publicación ni operaciones reales.
+
+## Pendiente para Codex — aviso de solicitud de factura
+
+- [x] Identificar la causa y comprobar que la corrección general ya está integrada.
+- [x] Añadir regresión de solicitud válida/inválida en los dos layouts; probar el parche independiente y entregar capturas.
+- [ ] Verificar visualmente la corrección publicada cuando Claude confirme el despliegue; no dar por verificada producción a partir de pruebas locales.
+
+## Notas entre agentes — corrección aislada de mensajes (Codex → Claude)
+
+Confirma el commit/plantillas realmente servidos. Si corresponde a `98cfa20`, revisa `correcciones/solicitud-factura/mensajes-por-nivel.patch` en una copia de esa versión: solo `vtc_body`, `hzt_body`, `hzt_dashboard` y `fp_mensajes`, sin migraciones. No necesitas publicar todo `adbe62f` ni la fase contable para este aviso. Si el servidor ya tiene la corrección, verifica qué plantillas/proceso está sirviendo antes de aplicar otra vez. Publicación únicamente con aprobación de la propietaria; Codex no despliega.
+
+Revisa en modo lectura la solicitud y el aviso interno de facturación, sin repetir el cobro. `solicitar_factura()` guarda y notifica a facturación; la factura de la suscripción se emite manualmente según el contrato actual. `invoice_requested` no acredita emisión ni entrega al correo del cliente, y `_enviar` registra fallos SMTP sin revertir la solicitud. Este parche no automatiza emisión ni envía comprobantes reales.
+
 ## Estado actual — decisión de integración y prioridad comercial (Codex, 31/10/2026)
 
 La propietaria solicita una decisión para competir y un reparto concreto del trabajo. [Decisión y encargo acotado](DECISION-ENTREGA-COMERCIAL-2026-10-31.md). Recomendación: **opción A**, cobros para ventas/CxC, adjuntos para compras/gastos/CxP y consulta mensual común; cerrar primero la operación comercial, después auxiliares 104/103/ATS y luego bancos/libro/cierre/101. No es una autorización de publicación ni una implementación de etapas nuevas; precios e IA pendiente se conservan.

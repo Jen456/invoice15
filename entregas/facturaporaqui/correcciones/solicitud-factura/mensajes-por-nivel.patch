@@ -1,0 +1,84 @@
+diff --git a/templates/fp_mensajes.html b/templates/fp_mensajes.html
+new file mode 100644
+index 0000000..8c8266f
+--- /dev/null
++++ b/templates/fp_mensajes.html
+@@ -0,0 +1,4 @@
++{% for message in messages %}{% if 'plan' not in message.tags and 'configuracion' not in message.tags %}
++<div class="alert fp-message {% if message.level_tag == 'error' %}alert-danger{% elif message.level_tag == 'warning' %}alert-warning{% elif message.level_tag == 'success' %}alert-success{% else %}alert-info{% endif %}" role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}">
++<strong>{% if message.level_tag == 'error' %}No se pudo completar{% elif message.level_tag == 'warning' %}Revisa este aviso{% elif message.level_tag == 'success' %}Operación completada{% else %}Información{% endif %}</strong><div>{{ message }}</div>
++</div>{% endif %}{% endfor %}
+diff --git a/templates/hzt_body.html b/templates/hzt_body.html
+index 750f60b..1cdadaa 100644
+--- a/templates/hzt_body.html
++++ b/templates/hzt_body.html
+@@ -45,6 +45,7 @@
+                     <div class="container">
+                         {% include 'suscripciones/_aviso.html' %}
+                         {% include 'configuracion/_aviso.html' %}
++                        {% include 'fp_mensajes.html' %}
+                         {% block content %}
+
+                         {% endblock %}
+@@ -55,15 +56,6 @@
+         <!--Include template footer-->
+         {% include 'footer.html' %}
+     </div>
+-    <script>
+-        {% if messages %}
+-            var errors = '';
+-            {% for message in messages %}{% if 'plan' not in message.tags and 'configuracion' not in message.tags %}
+-                errors += '{{ message }}\n';
+-            {% endif %}{% endfor %}
+-            // Los avisos del plan se muestran dentro de «Plan y pagos».
+-            if (errors) { message_error(errors); }
+-        {% endif %}
+-    </script>
++
+     </body>
+-{% endblock %}
+\ No newline at end of file
++{% endblock %}
+diff --git a/templates/hzt_dashboard.html b/templates/hzt_dashboard.html
+index 327d4e5..166f652 100644
+--- a/templates/hzt_dashboard.html
++++ b/templates/hzt_dashboard.html
+@@ -8,6 +8,7 @@
+         <div class="container">
+             <div class="row">
+                 <div class="col-md-12 mt-5">
++                    {% include 'fp_mensajes.html' %}
+                     <div class="card {{ dashboard.card }}">
+                         <div class="card-header">
+                             <h3 class="card-title">
+diff --git a/templates/vtc_body.html b/templates/vtc_body.html
+index 23b8e66..915d65d 100644
+--- a/templates/vtc_body.html
++++ b/templates/vtc_body.html
+@@ -44,6 +44,7 @@
+                 <div class="container-fluid">
+                     {% include 'suscripciones/_aviso.html' %}
+                     {% include 'configuracion/_aviso.html' %}
++                    {% include 'fp_mensajes.html' %}
+                     {% block content %}
+
+                     {% endblock %}
+@@ -53,15 +54,6 @@
+         <!--Include template footer-->
+         {% include 'footer.html' %}
+     </div>
+-    <script>
+-        {% if messages %}
+-            var errors = '';
+-            {% for message in messages %}{% if 'plan' not in message.tags and 'configuracion' not in message.tags %}
+-                errors += '{{ message }}\n';
+-            {% endif %}{% endfor %}
+-            // Los avisos del plan se muestran dentro de «Plan y pagos».
+-            if (errors) { message_error(errors); }
+-        {% endif %}
+-    </script>
++
+     </body>
+-{% endblock %}
+\ No newline at end of file
++{% endblock %}

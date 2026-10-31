@@ -1581,3 +1581,22 @@ Recomendación documentada: opción A con responsabilidades separadas y consulta
 Se corrigieron dos afirmaciones del resumen: X-R1 ya consta resuelto en los commits del HANDOFF y `core/adjuntos/archivos.py` sí verifica imágenes con Pillow. Lectura de `ComprobanteListView.post` confirma que el borrado sigue usando un estado leído sin bloqueo, riesgo ya documentado que se prioriza para backend. La fecha de nacimiento precargada y las reglas de puntos se contrastaron con formulario/contrato. No se reprodujeron ni ejecutaron operaciones fiscales.
 
 Archivos: `entregas/facturaporaqui/DECISION-ENTREGA-COMERCIAL-2026-10-31.md`, `HANDOFF.md` y este informe. Solo documentación: sin cambios de plantillas, CSS/JS, backend, permisos o precios. Verificación de referencias a archivos y commits, ancestro de plataforma, enlaces relativos y `git diff --check`. No corresponde ejecutar pytest ni generar capturas nuevas para estos cambios; no se atribuyen nuevas pruebas operativas a esta intervención. Sin datos privados del adjunto, pagos, correos, documentos reales ni despliegue.
+
+## 31/10/2026 — solicitud de factura mostrada como error: diagnóstico y parche aislado
+
+La propietaria muestra «Error» junto al mensaje «Solicitud recibida». Se revisaron AGENTS, HANDOFF, `PagoDetalleView`, `solicitar_factura`, notificaciones, layouts y pruebas. Fetch: plataforma `4a39a1a`, frontend `e0399db`. En la base reportada como publicada (`98cfa20`), los layouts pasan todos los mensajes a `message_error()` sin considerar su nivel. El backend usa correctamente `messages.success` después de guardar; la página muestra «Ya la solicitaste». No se consultó el pago real ni se guardó la captura con sus datos.
+
+La corrección ya existe desde `adbe62f` en las ramas actuales. Se preparó un parche únicamente de cuatro plantillas respecto a `98cfa20`, sin modificar las plantillas activas de frontend, para que Claude pueda evaluar una publicación aislada sin arrastrar la fase contable. `message_error()` conserva su función para los errores reales.
+
+Archivos:
+
+- `tests/test_suscripciones.py`: solicitud válida siguiendo la redirección en ambos layouts, mensaje único de éxito, pago/importe intactos y solicitud separada de factura emitida; dos casos de correo inválido con error junto al campo y sin solicitud/aviso de éxito.
+- `entregas/facturaporaqui/correcciones/solicitud-factura/README.md` y `mensajes-por-nivel.patch`: causa, procedimiento acotado, alcance y límites.
+- `entregas/facturaporaqui/capturas/solicitud-factura/`: tres WebP, verificación JSON y README.
+- HANDOFF y este informe.
+
+Pruebas: los cuatro casos de solicitud y `tests/test_b0_contratos.py::TestMensajesEnPantalla`, **11 aprobadas** en 16,30 s. Con las plantillas de `98cfa20` priorizadas en una copia temporal, los dos casos de solicitud válida fallan por ausencia de aviso de éxito (reproducción intencionada); aplicando allí el parche, las mismas **11 pasan** en 14,38 s. `git apply --check` correcto. Backend actual, SQLite ficticia y correo en memoria; no se atribuye a esta prueba una ejecución del backend entero de `98cfa20` ni de producción.
+
+Chromium sobre el HTML resultante y CSS de marca de `98cfa20`: 12 combinaciones de los dos layouts a 360/390/768/1024/1360/1440 px, movimiento reducido, sin modal de error, mensaje de éxito único y sin desbordes/errores JS/HTTP. Tres capturas revisadas, 23–67 KB. Enlaces y `git diff --check` comprobados. No se ejecutó PostgreSQL ni una suite completa: no cambia código de pagos ni esquema.
+
+La solicitud de factura se guarda y avisa a facturación; su emisión sigue siendo manual según el backend. Claude debe verificar recepción/atención del aviso por separado. El parche no demuestra entrega de correo y no emite XML/PDF. Sin publicación, pagos, correos reales, acceso a secretos ni cambios en modelos, vistas o servicios.
