@@ -1,5 +1,50 @@
 # Handoff compartido — frontend
 
+## Estado actual — comprobantes de pago adjuntos, sin publicar (Claude, 30/10/2026)
+
+Pedido de la propietaria del 30/10 (tras emitir la primera factura de NEXALLTI S.A.S, de contado por transferencia): poder **adjuntar
+comprobantes o recibos** a lo que se factura, compra, cobra y paga, para las declaraciones del mes y la conciliación bancaria, con
+erpnext como referencia de procesos. Rama `fase/adjuntos-comprobantes` sobre `plataforma` `3549c16`; app nueva `core/adjuntos`.
+Contrato completo en [`CONTRATO-PANTALLAS-ADJUNTOS.md`](CONTRATO-PANTALLAS-ADJUNTOS.md); migraciones en [`MIGRACIONES-ADJUNTOS.md`](MIGRACIONES-ADJUNTOS.md).
+
+- **Qué hay:** modal compartido «Comprobantes de pago» en Facturas emitidas (Opciones), Compras, Gastos, abonos de Cuentas por cobrar y
+  pagos de Cuentas por pagar; campo opcional «Comprobante de pago» al registrar un cobro, un pago o un gasto (misma transacción: con un
+  archivo inválido no se registra nada); página **/adjuntos/** «Comprobantes de pago» (menú Administrativo) con los documentos del mes, los
+  pagados por banco sin comprobante y el **ZIP del mes con `indice.csv`** para el contador.
+- **Reglas:** PDF/JPG/PNG/WEBP por su contenido, 8 MB, 10 por documento, sin duplicados por SHA-256 en el mismo documento (aviso si el mismo
+  archivo está en otro); archivo bajo `privado/` servido solo con el permiso de ver el documento (CSP sandbox); quitar = baja lógica con
+  motivo. Permisos: ver = ver el documento; subir = `add_adjunto` o escritura del documento; quitar = `delete_adjunto` o eliminar el
+  documento. El Contador recibe `add_adjunto` y `delete_adjunto` (`ACCOUNTANT_WRITE`), su única escritura. Plan: heredado del módulo del
+  documento (gratuito no ve ventas/cobros/gastos; vencido solo consulta).
+- **erpnext → aquí:** adjuntos por documento (`File`) → `Adjunto` por (tipo, id) con hash; `Payment Entry.reference_no/reference_date` →
+  referencia, fecha e importe del comprobante (y el medio y referencia del cobro de la Etapa 2); `Bank Transaction`/`Bank Clearance` →
+  Etapa 3, que usará estos datos para sugerir emparejamientos. Solo conceptos: erpnext es GPL-3.0.
+- **Pruebas:** `tests/test_adjuntos.py` (36: archivo, servicio, API por rol y por plan, aislamiento entre empresas, formularios, mes y ZIP,
+  menú y roles); `test_b0_contratos` y `test_migracion_vuelta_fase` actualizadas (22 pendientes tras la vuelta). Suites completas: ver
+  «Resultados» abajo. Verificación en Chromium sobre una vista previa local (SQLite, datos ficticios): `/root/capturas/fpa-adjuntos-previa.mjs`
+  → `/root/capturas/adjuntos/informe.json` y capturas 00–08 (modal apilado sobre el de abonos, subida, quitar, gasto con archivo, página
+  del mes, ZIP, móvil 390 px sin desplazamiento horizontal; 0 errores de JS, 0 respuestas ≥ 400).
+- **Toca archivos compartidos** (cada uno una o dos líneas): `config/settings.py`, `config/urls.py`, `core/security/menu.py`,
+  `core/tenancy/roles.py`, los listados y formularios de cobros, pagos, gastos, compras y facturas, y sus `list.js`. El worktree
+  `fase/puntos-por-usuario` modifica también `settings.py`, `urls.py`, `menu.py` y `roles.py`: fusionar con cuidado (líneas contiguas).
+
+## Pendiente para Codex — comprobantes de pago (Claude, 30/10/2026)
+
+- [ ] Diseño del modal (`templates/adjuntos/_modal.html`, `static/adjuntos/css/adjuntos.css`, prefijo `fp-adjuntos`) y del campo del
+  formulario (`templates/adjuntos/_campo_formulario.html`); vista previa de la imagen o del PDF si la ves útil (la URL se sirve en línea).
+- [ ] Página del mes (`templates/adjuntos/mes.html`) a 360/390/768/1024/1440 px; hoy las tablas se apilan en móvil con `data-label`.
+- [ ] Botón con clip en los listados (`btn-outline-secondary btn-xs`, `title` y `aria-label`) y la opción «Comprobantes de pago» del menú de
+  Facturas emitidas.
+- [ ] Manual de clientes: adjuntar al cobrar y desde la página del mes; formatos; quitar deja historial.
+
+## Notas entre agentes — comprobantes de pago (Claude → Codex)
+
+- El servidor decide permisos y plan: el modal pide `GET /adjuntos/api/<tipo>/<id>/` y dibuja según `permisos` y `bloqueo`; no ocultes
+  botones por tu cuenta sin ese dato. Todo texto de terceros va como texto (`textContent`), nunca como HTML.
+- El modal se apila sobre el de abonos y el de pagos (`z-index` y fondo los ajusta `adjuntos.js`); al cerrarlo, el de abajo sigue abierto.
+- No cambies los nombres de los campos del formulario de subida (`archivo`, `clase`, `referencia`, `fecha`, `importe`, `descripcion`) ni los
+  del campo opcional (`comprobante`, `comprobante_clase`): los leen las vistas y las pruebas.
+
 ## Estado actual — fase contable lista para proponer su publicación, sin publicar (Claude, 30/10/2026)
 
 La entrega de diseño de Codex (`adbe62f`, anotada en `d2bed3d`) queda integrada en `plataforma` sin reescribir historial, con los commits de abajo encima. **Código probado: `22ff73d`.** Lo posterior es un solo commit de documentación: cambia `entregas/facturaporaqui/`, que ninguna prueba lee, y el docstring y un comentario de `tests/test_migracion_vuelta_fase.py`; esa prueba se repitió sobre el commit final. **No se publicó nada**: la app sigue en lo publicado el 28/10 (`98cfa20`) y la base publicada no tiene ninguna de las 19 migraciones.

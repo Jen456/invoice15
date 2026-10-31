@@ -226,7 +226,7 @@ class TestApi:
         assert archivo['Cache-Control'] == 'private, no-store' and 'attachment' not in archivo.get('Content-Disposition', '')
         descarga = client.get(adjunto['url_descarga'])
         assert descarga['Content-Disposition'].startswith('attachment') and 't.pdf' in descarga['Content-Disposition']
-        guardado = Adjunto.all_companies.get(pk=adjunto['id'])
+        guardado = leer(empresa, lambda: Adjunto.objects.get(pk=adjunto['id']))   # en PostgreSQL rige la RLS: dentro del contexto
         assert client.get('/media/' + guardado.archivo.name).status_code == 404   # privado/: nunca por /media/
         quitado = client.post(f'/adjuntos/api/quitar/{adjunto["id"]}/', {'motivo': 'Equivocado'})
         assert quitado.status_code == 200 and quitado.json()['adjunto']['eliminado'] is True

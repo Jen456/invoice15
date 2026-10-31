@@ -144,6 +144,10 @@ Este documento es la **Etapa 0 (análisis y plan)**. No se escribe código hasta
 - **"Anulado en SRI"**: marca manual con fecha y motivo, después de anular en SRI en línea. Lo excluye de los formularios.
 - **Empresa**: tipo de contribuyente (sociedad / persona natural obligada / no obligada) y periodicidad (mensual/semestral). Calendario de vencimientos según el 9.º dígito.
 - **Reportes actuales**: pasan a filtrar por `emission_date`, producción y autorizados.
+- **Comprobantes de pago adjuntos (hecho el 30/10/2026, app `core/adjuntos`, sin publicar):** transferencias, depósitos, cheques,
+  vouchers y recibos adjuntos a facturas emitidas, compras, gastos, cobros y pagos; página «Comprobantes de pago» del mes con los pagados
+  por banco sin comprobante y ZIP con índice; referencia, fecha e importe del comprobante quedan para las sugerencias de conciliación de
+  la Etapa 3. Contrato en `CONTRATO-PANTALLAS-ADJUNTOS.md`. Adelanta la parte de «respaldo» de §3.3 sin crear cuentas ni movimientos.
 
 ### 3.3 Bancos y conciliación — app `core/bancos`
 - **Catálogos y cuentas**:
@@ -370,6 +374,8 @@ Orden **decidido**: **1 ∥ 2 → 3 → 4 → 5 → 6 → 7 → 8**. Nómina, RD
 ## 8. Estado
 - **Etapa 0 cerrada el 28/10/2026**: plan aprobado, documento vivo publicado, norma con fuentes en `NORMA-CONTABLE-TRIBUTARIA-2026-10.md` y nota para Codex en `HANDOFF.md`.
 - Siguiente: Etapas 1 (Proformas) y 2 (Datos de origen), cuando la propietaria dé la orden. D9 hace falta antes de la Etapa 3.
+- **30/10/2026:** Etapas 1 y 2 integradas en `plataforma` (`3549c16`) sin publicar. Añadidos los **comprobantes de pago adjuntos**
+  (`core/adjuntos`, rama `fase/adjuntos-comprobantes`) a pedido de la propietaria; la Etapa 3 los usará para la conciliación.
 
 ## 9. Anexo — prompt para Codex (comercial de la landing + diseño gráfico de la app)
 

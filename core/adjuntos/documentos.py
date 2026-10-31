@@ -71,7 +71,9 @@ def describir(tipo, obj):
                      titulo=f'Compra {numero}')
     elif tipo == 'gasto':
         numero = f'#{obj.pk}'
-        datos = dict(numero=numero, tercero=obj.type_expense.name, identificacion='', fecha=obj.date_joined, importe=_decimal(obj.valor),
+        detalle = (obj.description or '').strip()
+        datos = dict(numero=numero, tercero=detalle if detalle and detalle != 's/n' else obj.type_expense.name, identificacion='',
+                     fecha=obj.date_joined, importe=_decimal(obj.valor),
                      medio_id=obj.medio_pago, medio=obj.get_medio_pago_display() if obj.medio_pago else 'Sin dato', contado=True,
                      titulo=f'Gasto {numero} · {obj.type_expense.name}')
     elif tipo == 'cobro':
