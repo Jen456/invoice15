@@ -1571,3 +1571,13 @@ El resumen mensual y ZIP original cuentan solo `Adjunto`. Claude debe definir si
 No se ejecutó la suite completa ni PostgreSQL, no se probó la fusión final ni un teléfono físico. Sin publicación, emisiones, pagos o correos reales. No se incluyeron datos de clientes, credenciales, `.env` o firmas. Claude debe integrar y validar el conjunto antes de proponer su publicación con respaldo.
 
 **Trazabilidad de entrega:** código, capturas e informe en `2b37d098b79cfcf57646c7a2651967a2e20626e9`, subido a `frontend/etapa3`; el remoto coincidió exactamente con el local tras `git push` y `git ls-remote`. Esta anotación posterior solo registra el hash ya subido y no cambia código ni despliega.
+
+## 31/10/2026 — decisión comercial y reparto de trabajo con Claude
+
+Se revisó el resumen adjunto de la propietaria como información por contrastar, AGENTS, HANDOFF, contratos de puntos/cobros, plan contable, análisis ERPNext y migraciones. Fetch confirmó `plataforma=4a39a1a`, frontend `ebac423` y adjuntos `722475a`; plataforma ya está integrada en frontend. No se volvió a fusionar ni se reescribió historial.
+
+Recomendación documentada: opción A con responsabilidades separadas y consulta mensual común; una primera versión candidata de operación comercial completa, seguida de auxiliares tributarios y contabilidad/cierre. Se detallan las pantallas de cada app, trabajo concreto de Claude y Codex, decisiones menores, condiciones de publicación y métricas de un futuro piloto. IA permanece pendiente y el complemento sigue sin precio. No se afirma equivalencia funcional ni ahorro frente a competidores: sus sitios no están habilitados en la política de red de este entorno.
+
+Se corrigieron dos afirmaciones del resumen: X-R1 ya consta resuelto en los commits del HANDOFF y `core/adjuntos/archivos.py` sí verifica imágenes con Pillow. Lectura de `ComprobanteListView.post` confirma que el borrado sigue usando un estado leído sin bloqueo, riesgo ya documentado que se prioriza para backend. La fecha de nacimiento precargada y las reglas de puntos se contrastaron con formulario/contrato. No se reprodujeron ni ejecutaron operaciones fiscales.
+
+Archivos: `entregas/facturaporaqui/DECISION-ENTREGA-COMERCIAL-2026-10-31.md`, `HANDOFF.md` y este informe. Solo documentación: sin cambios de plantillas, CSS/JS, backend, permisos o precios. Verificación de referencias a archivos y commits, ancestro de plataforma, enlaces relativos y `git diff --check`. No corresponde ejecutar pytest ni generar capturas nuevas para estos cambios; no se atribuyen nuevas pruebas operativas a esta intervención. Sin datos privados del adjunto, pagos, correos, documentos reales ni despliegue.

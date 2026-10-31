@@ -1,5 +1,27 @@
 # Handoff compartido — frontend
 
+## Estado actual — decisión de integración y prioridad comercial (Codex, 31/10/2026)
+
+La propietaria solicita una decisión para competir y un reparto concreto del trabajo. [Decisión y encargo acotado](DECISION-ENTREGA-COMERCIAL-2026-10-31.md). Recomendación: **opción A**, cobros para ventas/CxC, adjuntos para compras/gastos/CxP y consulta mensual común; cerrar primero la operación comercial, después auxiliares 104/103/ATS y luego bancos/libro/cierre/101. No es una autorización de publicación ni una implementación de etapas nuevas; precios e IA pendiente se conservan.
+
+Fetch: `plataforma=4a39a1a`, `frontend/etapa3=ebac423`, adjuntos `722475a`. Dos correcciones al resumen recibido: X-R1 ya quedó resuelto; adjuntos sí valida imágenes con Pillow. El diseño de adjuntos ya está entregado. El riesgo de borrado concurrente señalado en HANDOFF permanece en `ComprobanteListView.post`; debe cerrarlo backend antes de presentar el candidato como listo. No se comprobó producción ni se copiaron datos de clientes del resumen.
+
+## Pendiente para Codex — operación comercial completa
+
+- [x] Contrastar el estado recibido con repositorio y contratos; documentar opción, agrupación de publicación, decisiones menores y orden comercial.
+- [ ] Diseñar cobros en factura, ficha de respaldos y CxC sobre el contrato existente; preservar nota/archivo e idempotencia.
+- [ ] Diseñar locales/puntos, selector, bloque de emisión y filtros ya contratados; indicar claramente el alcance «Todos los puntos».
+- [ ] Completar botones por permiso de proveedores/gastos/CxP y adaptar la consulta mensual al contrato consolidado de Claude; reutilizar adjuntos de `2b37d09`.
+- [ ] Capturas y pruebas de esas implementaciones; después de publicación confirmada, actualizar mensajes comerciales y manuales. No marcar como disponible lo que solo está en Git.
+
+## Notas entre agentes — entrega 1 acotada (Codex → Claude)
+
+El [encargo](DECISION-ENTREGA-COMERCIAL-2026-10-31.md#encargo-acotado-para-claude) reúne integración A, contrato mensual/ZIP con origen, permisos, archivo/nota y revisión, nacimiento opcional sin fecha inventada y cierre de riesgos de integridad ya documentados. Sin duplicar modelos, accesos o abonos; las notas válidas no cuentan como respaldo ausente. En la interfaz se distinguen estado fiscal, saldo, revisión del respaldo y conciliación bancaria.
+
+Recomendación de publicación: una versión candidata de la línea integrada existente más A y diseño, con pruebas del conjunto y ensayo de su plan completo de migraciones; entregas tributarias/contables futuras aparte. Los pendientes fiscales aplicables se validan antes de habilitar el caso afectado. Una prueba antigua de 19 migraciones no certifica el candidato ampliado. Revertir código no restaura la base, y restaurar un volcado no conserva por sí solo las operaciones posteriores.
+
+Las decisiones menores del documento son recomendaciones explícitas para adopción, no cambios ya aplicados: mantener límites/permisos actuales de cobros, compatibilidad visible de puntos y posponer edición de dirección; consulta contable para reglas fiscales. El reparto y las recomendaciones sustituyen la ambigüedad del resumen recibido, conservando debajo las entregas y contratos históricos. Codex no toca backend ni despliega.
+
 ## Estado actual — diseño de adjuntos listo para integrar; dos contratos de respaldo separados (Codex, 31/10/2026)
 
 **Código, pruebas y capturas subidos:** `2b37d098b79cfcf57646c7a2651967a2e20626e9` en `frontend/etapa3`, confirmado con `git ls-remote`. Este registro posterior solo añade la trazabilidad; no publica en la aplicación.
