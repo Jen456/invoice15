@@ -1512,3 +1512,16 @@ Archivos cambiados, relativos a `entregas/facturaporaqui/`:
 - Este informe.
 
 Verificación: lectura estática y contraste de referencias con ambos checkouts, hashes, enlaces locales y a fuentes del fork en el commit exacto; aritmética del ejemplo ficticio de costo/margen; revisión de cambios y `git diff --check`. Sin pytest ni nuevas capturas: no se cambian plantillas, estáticos ni backend. No se ejecutó ERPNext ni se verificó producción; el estado publicado procede del HANDOFF de Claude. Sin pagos, emisiones, correos, acceso a secretos o despliegue. La entrega se registra mediante commit de documentación en `frontend/etapa3`.
+
+## 31/10/2026 — respaldo del cobro y condición/medio de pago (backend, Claude) — sin publicar
+
+Integrado `frontend/etapa3` de Codex (`e4c48c6` por avance rápido; `00c07fc`, solo documentación, por merge `2ae12fa`) conservando ambas entregas; no se rehízo el formulario por secciones ni las altas de producto y cliente.
+
+**Hecho (commit `9eef6d5` en `plataforma`):**
+- Condición de pago (`payment_type`: contado/crédito, valores históricos) separada del medio de cobro (`Sale.medio_cobro`, `MEDIOS_DE_PAGO`). «Efectivo recibido» y «Cambio» solo con efectivo: el servidor exige efectivo ≥ total y calcula el cambio; otros medios en 0,00. Ventas anteriores sin reclasificar.
+- App `core/cobros`: `RespaldoCobro` + `RespaldoCobroCambio`; registro con comprobante (PDF/JPG/PNG ≤ 5 MB, contenido validado, almacenamiento privado por empresa), nota interna o ambos; autor, empresa y fecha del servidor; revisión pendiente/revisado/rechazado con responsable, fecha y motivo, sin tocar el saldo; historial de cambios; idempotencia por `clave`. Rutas `/cobros/factura/<id>/`, `…/registrar/`, `/cobros/respaldo/<id>/`, `…/editar/`, `…/revisar/`, `…/archivo/`. La pantalla de CxC exige nota o comprobante y acepta archivo. Contrato completo en HANDOFF, incluida la relación entre revisión y saldo.
+- Hallazgo ajeno corregido: alta de producto con código repetido → mensaje claro y transacción sana (la prueba de Codex fallaba en PostgreSQL).
+
+**Pruebas:** `tests/test_respaldo_cobros.py` (28) y `tests/test_zz_cobros_concurrencia_pg.py` (1): permisos por rol, aislamiento entre empresas (404), archivo ajeno, autor/estado/empresa falsificados, formatos y tamaños inválidos (incluidos SVG y HTML renombrados), nota sin archivo, archivo sin nota, ninguno, crédito sin abono, doble envío con la misma clave (también concurrente en PostgreSQL), conservación de saldos y documentos, privacidad (JSON, XML, RIDE, additional_info, correo). Suites completas: SQLite 1438 aprobadas y 46 omitidas; PostgreSQL 1483 aprobadas. En ambas falló solo el recuento de la vuelta de migraciones (20 → 23), corregido y repetido después; en PostgreSQL falló además test_zz_mejora_concurrencia_pg (mejora de plan, ajeno a esta rama), que pasó aislado y en la corrida anterior: sensible a la carga de la VM. Repetidas en PostgreSQL tras el ajuste: cobros, RLS, concurrencia y mejora de plan, 31 aprobadas.
+
+**Pendiente:** diseño y conexión del frontend (Codex); decisiones de la propietaria anotadas en HANDOFF; `birthdate` obligatorio en el alta de cliente (hallazgo de Codex). No se desplegó; sin emisiones, pagos ni correos reales.
