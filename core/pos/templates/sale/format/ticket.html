@@ -149,7 +149,9 @@
         <p class="fp-ticket-total-value">{{ sale.total|floatformat:2 }}</p>
     </div>
     <div class="fp-ticket-payment">
-        {% if sale.payment_type == 'efectivo' %}
+        {% if sale.payment_type == 'efectivo' and sale.medio_cobro and sale.medio_cobro != 'efectivo' %}
+            <p><strong>Pago:</strong> {{ sale.get_medio_cobro_display }}</p>
+        {% elif sale.payment_type == 'efectivo' %}
             <p><strong>Efectivo:</strong> ${{ sale.cash|floatformat:2 }}</p>
             <p><strong>Cambio:</strong> ${{ sale.change|floatformat:2 }}</p>
         {% else %}

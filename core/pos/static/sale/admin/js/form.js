@@ -1,5 +1,5 @@
 var fvSale, fvClient;
-var select_client, select_payment_type, select_receipt;
+var select_client, select_payment_type, select_receipt, select_medio_cobro;
 var input_birthdate, input_cash, input_change, input_search_product, input_end_credit, input_sale, input_time_limit, input_date_joined;
 var tblSearchProducts, tblProducts;
 
@@ -458,7 +458,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
 document.addEventListener('DOMContentLoaded', function (e) {
     function validateChange() {
         var cash = parseFloat(input_cash.val());
-        if (select_payment_type.val() === 'efectivo') {
+        if (select_payment_type.val() === 'efectivo' && select_medio_cobro.val() === 'efectivo') {
             if (cash < sale.detail.total) {
                 input_change.val('0.00');
                 return {valid: false, message: 'El efectivo debe ser mayor o igual al total a pagar'};
@@ -647,6 +647,7 @@ $(function () {
     input_date_joined = $('input[name="date_joined"]');
     input_end_credit = $('input[name="end_credit"]');
     select_payment_type = $('select[name="payment_type"]');
+    select_medio_cobro = $('select[name="medio_cobro"]');
     input_cash = $('input[name="cash"]');
     input_change = $('input[name="change"]');
     input_sale = $('.input_sale');
@@ -886,24 +887,28 @@ $(function () {
         sale.searchVoucherNumber();
     });
 
-    select_payment_type
-        .on('change', function () {
-            var id = $(this).val();
-            switch (id) {
-                case "efectivo":
-                    sale.setOptionsFields([{'index': 0, 'enable': true}, {'index': 1, 'enable': true}, {'index': 2, 'enable': false}]);
-                    fvSale.enableValidator('cash');
-                    fvSale.enableValidator('change');
-                    fvSale.disableValidator('end_credit');
-                    break;
-                case "credito":
-                    fvSale.disableValidator('cash');
-                    fvSale.disableValidator('change');
-                    fvSale.enableValidator('end_credit');
-                    sale.setOptionsFields([{'index': 0, 'enable': false}, {'index': 1, 'enable': false}, {'index': 2, 'enable': true}]);
-                    break;
-            }
-        });
+    // Condición de pago (contado / crédito) y medio de cobro (core/cobros): «Efectivo recibido» y «Cambio» solo con
+    // efectivo; con otro medio van en 0 y el servidor exige comprobante o nota. A crédito no hay cobro al emitir.
+    function aplicarCondicionYMedio() {
+        var contado = select_payment_type.val() === 'efectivo';
+        var efectivo = contado && select_medio_cobro.val() === 'efectivo';
+        sale.setOptionsFields([{'index': 0, 'enable': efectivo}, {'index': 1, 'enable': efectivo}, {'index': 2, 'enable': !contado}]);
+        $('.fp-cobro').toggle(contado);
+        $('.fp-cobro-efectivo-aviso').toggle(efectivo);
+        if (efectivo) {
+            fvSale.enableValidator('cash');
+            fvSale.enableValidator('change');
+        } else {
+            input_cash.val('0.00');
+            input_change.val('0.00');
+            fvSale.disableValidator('cash');
+            fvSale.disableValidator('change');
+        }
+        if (contado) { fvSale.disableValidator('end_credit'); } else { fvSale.enableValidator('end_credit'); }
+    }
+
+    select_payment_type.on('change', aplicarCondicionYMedio);
+    select_medio_cobro.on('change', aplicarCondicionYMedio);
 
     input_cash
         .TouchSpin({

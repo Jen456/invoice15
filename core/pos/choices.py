@@ -1,9 +1,11 @@
 from datetime import date
 from decimal import Decimal
 
+# Condición de pago de la venta. El valor 'efectivo' significa CONTADO (histórico): el medio real con que se cobró va en
+# Sale.medio_cobro (MEDIOS_DE_PAGO); «Efectivo recibido» y «Cambio» solo aplican cuando ese medio es efectivo.
 PAYMENT_TYPE = (
-    ('efectivo', 'Efectivo'),
-    ('credito', 'Credito'),
+    ('efectivo', 'Contado'),
+    ('credito', 'Crédito'),
 )
 
 ENVIRONMENT_TYPE = (

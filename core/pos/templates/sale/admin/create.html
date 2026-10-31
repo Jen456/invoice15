@@ -82,6 +82,7 @@
                     <div class="form-group input_sale"><label for="{{ form.change.id_for_label }}">{{ form.change.label }}</label>{{ form.change }}</div>
                     <div class="form-group input_sale" style="display:none"><label for="{{ form.end_credit.id_for_label }}">{{ form.end_credit.label }}</label>{{ form.end_credit }}</div>
                 </div>
+                {% include 'sale/admin/_cobro.html' %}
             </div>
             <div class="fp-sale-summary"><h2>Resumen de tu factura</h2>
                 <table class="table table-sm"><tbody>

@@ -302,7 +302,7 @@ class TestVistas:
         pagina = client.get(NUEVO)
         assert pagina.status_code == 200
         form = pagina.context['form']
-        assert list(form.fields) == ['ctas_collect', 'date_joined', 'valor', 'medio_pago', 'referencia', 'description']
+        assert list(form.fields) == ['ctas_collect', 'date_joined', 'valor', 'medio_pago', 'referencia', 'description', 'archivo']
         assert form['medio_pago'].value() in ('', None) and form.fields['medio_pago'].required
         datos = {'action': 'add', 'ctas_collect': cuenta.pk, 'date_joined': HOY.isoformat(), 'valor': '5.25',
                  'medio_pago': '', 'referencia': '', 'description': 'Abono en ventanilla'}

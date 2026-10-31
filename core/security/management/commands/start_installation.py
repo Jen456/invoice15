@@ -193,6 +193,7 @@ class Command(BaseCommand):
                 'description': 'Permite administrar las cuentas por cobrar de los clientes',
                 'moduletype': moduletype,
                 'permissions': list(Permission.objects.filter(content_type__model=CtasCollect._meta.label.split('.')[1].lower()))
+                + list(Permission.objects.filter(content_type__app_label='cobros', content_type__model='respaldocobro'))
             },
             {
                 'name': 'Cuentas por pagar',
@@ -231,6 +232,7 @@ class Command(BaseCommand):
                 'description': 'Permite administrar las ventas de los productos',
                 'moduletype': moduletype,
                 'permissions': list(Permission.objects.filter(content_type__model=Sale._meta.label.split('.')[1].lower()).exclude(codename='view_sale_client'))
+                + list(Permission.objects.filter(content_type__app_label='cobros', content_type__model='respaldocobro'))
             },
             {
                 'name': 'Notas de Credito',

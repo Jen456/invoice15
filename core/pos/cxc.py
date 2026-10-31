@@ -208,6 +208,8 @@ def eliminar_cobro(request, abono_id):
             raise ErrorCxC('no_es_cobro')
         datos = {'cxc': int(cxc.pk), 'valor': _texto(abono.valor), 'fecha': abono.date_joined.isoformat(),
                  'medio_pago': abono.medio_pago, 'referencia': abono.referencia, 'descripcion': abono.description or ''}
+        from core.cobros.servicios import al_eliminar_cobro
+        al_eliminar_cobro(abono, request)   # sus respaldos quedan sin abono y con la fila «cobro eliminado»
         abono.delete()
         recalcular(cxc)
         aplicados = aplicar_excedentes(cxc, getattr(request, 'user', None))

@@ -55,6 +55,7 @@ LOCAL_APPS = [
     'core.reports',
     'core.suscripciones',
     'core.configuracion',
+    'core.cobros',
     'core.comprobantes',
     'core.importacion',
     'core.proformas',

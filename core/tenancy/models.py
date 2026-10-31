@@ -103,6 +103,10 @@ class AuditLog(models.Model):
         # Locales y puntos de emisión por usuario (core/configuracion/puntos.py)
         ('punto_seleccionado', 'Punto de emisión elegido por el usuario'),
         ('punto_autorizado', 'Punto de emisión autorizado o retirado a un usuario'),
+        # Respaldo del cobro (core/cobros)
+        ('cobro_respaldo_registro', 'Cobro: respaldo registrado'),
+        ('cobro_respaldo_cambio', 'Cobro: respaldo modificado'),
+        ('cobro_respaldo_revision', 'Cobro: respaldo revisado'),
     )
     created_at = models.DateTimeField(default=timezone.now, db_index=True, verbose_name='Fecha')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,

@@ -23,7 +23,8 @@ ACCOUNTANT_URLS = REPORT_URLS | {'/pos/sale/admin/', '/pos/credit/note/admin/', 
                                  '/proformas/', '/comprobantes/retenciones-recibidas/'} | PROFILE_URLS
 # Permisos que un rol de solo lectura nunca recibe aunque el módulo esté en su menú.
 WRITE_PREFIXES = ('add_', 'change_', 'delete_', 'adjust_')
-SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note', 'add_proforma', 'change_proforma'}
+SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note', 'add_proforma', 'change_proforma',
+                'add_respaldocobro'}   # registra el respaldo del cobro; revisarlo (change_revision_) es de Propietario/Administrador
 
 
 def role_modules(role, modules):
