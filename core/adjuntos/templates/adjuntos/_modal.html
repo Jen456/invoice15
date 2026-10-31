@@ -1,0 +1,58 @@
+{% load static %}
+{# Contrato core/adjuntos: campos y permisos proceden de la API. No registra ni revisa cobros. #}
+<div class="modal fade fp-adjuntos-modal" id="fpAdjuntosModal" tabindex="-1" role="dialog" aria-labelledby="fpAdjuntosTitulo" aria-describedby="fpAdjuntosIntro" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="fp-adjuntos-heading"><img src="{% static 'img/brand/isotipo-pie.png' %}" alt="" width="44" height="44"><div><span class="fp-eyebrow">Respaldo del documento</span><h2 class="modal-title" id="fpAdjuntosTitulo">Comprobantes de pago</h2></div></div>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar comprobantes de pago"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <p id="fpAdjuntosIntro" class="fp-adjuntos-muted">Guarda aquí tus transferencias, recibos y vouchers. Adjuntar un archivo no confirma ni concilia el pago.</p>
+        <div class="fp-adjuntos-documento" id="fpAdjuntosDocumento"></div>
+        <div class="alert alert-warning" id="fpAdjuntosBloqueo" role="status" hidden></div>
+        <div class="alert alert-danger" id="fpAdjuntosError" role="alert" tabindex="-1" hidden></div>
+        <div class="alert alert-success" id="fpAdjuntosAviso" role="status" hidden></div>
+        <button type="button" class="btn btn-outline-secondary" id="fpAdjuntosRecargar" hidden><i class="fas fa-rotate" aria-hidden="true"></i> Volver a consultar</button>
+        <section class="fp-adjuntos-archivos" aria-labelledby="fpAdjuntosArchivosTitulo">
+          <div class="fp-adjuntos-section-heading"><h3 id="fpAdjuntosArchivosTitulo">Archivos del documento</h3><span class="fp-adjuntos-tag" id="fpAdjuntosCuenta"></span></div>
+          <div id="fpAdjuntosLista" class="fp-adjuntos-files" aria-live="polite"><p class="fp-adjuntos-empty">Cargando comprobantes…</p></div>
+        </section>
+        <details class="fp-adjuntos-historial" id="fpAdjuntosHistorial" hidden>
+          <summary>Historial de archivos quitados <span id="fpAdjuntosCuentaHistorial"></span></summary>
+          <p class="fp-adjuntos-muted">Se conserva el archivo original, quién lo quitó y cuándo.</p>
+          <div id="fpAdjuntosListaHistorial" class="fp-adjuntos-files"></div>
+        </details>
+        <form id="fpAdjuntosQuitar" class="fp-adjuntos-remove" hidden>
+          <h3>Quitar comprobante</h3><p id="fpAdjuntosQuitarNombre"></p><p>Dejará de estar vigente y seguirá disponible en el historial.</p>
+          <label for="fpAdjMotivo">Motivo (opcional)</label><textarea id="fpAdjMotivo" name="motivo" class="form-control" maxlength="300" rows="2"></textarea>
+          <div class="fp-adjuntos-actions"><button type="submit" class="btn btn-danger">Confirmar que quiero quitarlo</button><button type="button" class="btn btn-outline-secondary" id="fpAdjuntosCancelarQuitar">Conservar archivo</button></div>
+        </form>
+        <form id="fpAdjuntosForm" class="fp-adjuntos-form" enctype="multipart/form-data" hidden>
+          {% csrf_token %}
+          <fieldset id="fpAdjuntosCampos">
+            <legend>Adjuntar un comprobante</legend>
+            <div class="fp-adjuntos-drop" id="fpAdjuntosDrop">
+              <i class="fas fa-cloud-arrow-up" aria-hidden="true"></i><label for="fpAdjArchivo">Elige tus archivos o arrástralos aquí</label>
+              <input type="file" id="fpAdjArchivo" name="archivo" class="form-control-file" required multiple aria-describedby="fpAdjLimites fpAdjuntosLoteAyuda" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
+              <small id="fpAdjLimites"></small>
+            </div>
+            <ul id="fpAdjuntosCola" class="fp-adjuntos-cola" aria-live="polite"></ul>
+            <p id="fpAdjuntosLoteAyuda" class="fp-adjuntos-muted">Si eliges varios archivos, estos datos se aplicarán a cada uno. Se subirán uno por uno.</p>
+            <div class="form-row">
+              <div class="form-group col-md-6"><label for="fpAdjClase">Clase de comprobante</label><select id="fpAdjClase" name="clase" class="form-control"></select></div>
+              <div class="form-group col-md-6"><label for="fpAdjReferencia">Referencia (opcional)</label><input id="fpAdjReferencia" name="referencia" class="form-control" maxlength="100" autocomplete="off" placeholder="N.º de transferencia o comprobante"></div>
+              <div class="form-group col-md-6"><label for="fpAdjFecha">Fecha del comprobante (opcional)</label><input type="date" id="fpAdjFecha" name="fecha" class="form-control"></div>
+              <div class="form-group col-md-6"><label for="fpAdjImporte">Importe del comprobante (opcional)</label><input type="number" step="0.01" min="0.01" id="fpAdjImporte" name="importe" class="form-control" inputmode="decimal"></div>
+              <div class="form-group col-12"><label for="fpAdjDescripcion">Descripción (opcional)</label><input id="fpAdjDescripcion" name="descripcion" class="form-control" maxlength="300" autocomplete="off" placeholder="Una breve explicación para encontrarlo después"></div>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-upload" aria-hidden="true"></i> Subir comprobante</button>
+          </fieldset>
+          <div id="fpAdjuntosProgreso" class="fp-adjuntos-progreso" role="status" aria-live="polite"></div>
+          <progress id="fpAdjuntosBarra" max="1" value="0" aria-label="Archivos procesados" hidden></progress>
+        </form>
+      </div>
+      <div class="modal-footer"><span class="fp-adjuntos-muted"><i class="fas fa-lock" aria-hidden="true"></i> Acceso según permisos de la empresa</span><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cerrar</button></div>
+    </div>
+  </div>
+</div>

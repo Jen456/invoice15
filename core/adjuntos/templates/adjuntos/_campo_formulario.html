@@ -1,0 +1,18 @@
+{# Contrato de adjuntos genéricos; la integración con CxC debe resolverla Claude frente a core/cobros. #}
+{% if action == 'add' %}
+<fieldset class="fp-adjuntos-campo">
+  <legend><i class="fas fa-paperclip" aria-hidden="true"></i> Comprobante de pago (opcional)</legend>
+  <p>Conserva el respaldo junto a este registro. Adjuntar el archivo no confirma el pago en el banco.</p>
+  <div class="form-row">
+    <div class="form-group col-md-7">
+      <label for="id_comprobante">Archivo (PDF o foto)</label>
+      <input type="file" name="comprobante" id="id_comprobante" class="form-control-file" aria-describedby="fpAdjuntosCampoAyuda" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
+      <small class="form-text" id="fpAdjuntosCampoAyuda">{{ comprobante_formatos }}, hasta {{ comprobante_max_mb }} MB. Usa la referencia, fecha e importe de este formulario. Después puedes adjuntar más archivos desde el listado.</small>
+    </div>
+    <div class="form-group col-md-5">
+      <label for="id_comprobante_clase">Clase de comprobante</label>
+      <select name="comprobante_clase" id="id_comprobante_clase" class="form-control"><option value="">Según el medio de pago</option>{% for codigo, nombre in clases_comprobante %}<option value="{{ codigo }}">{{ nombre }}</option>{% endfor %}</select>
+    </div>
+  </div>
+</fieldset>
+{% endif %}

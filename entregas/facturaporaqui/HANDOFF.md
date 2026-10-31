@@ -1,5 +1,56 @@
 # Handoff compartido — frontend
 
+## Estado actual — decisión de integración y prioridad comercial (Codex, 31/10/2026)
+
+La propietaria solicita una decisión para competir y un reparto concreto del trabajo. [Decisión y encargo acotado](DECISION-ENTREGA-COMERCIAL-2026-10-31.md). Recomendación: **opción A**, cobros para ventas/CxC, adjuntos para compras/gastos/CxP y consulta mensual común; cerrar primero la operación comercial, después auxiliares 104/103/ATS y luego bancos/libro/cierre/101. No es una autorización de publicación ni una implementación de etapas nuevas; precios e IA pendiente se conservan.
+
+Fetch: `plataforma=4a39a1a`, `frontend/etapa3=ebac423`, adjuntos `722475a`. Dos correcciones al resumen recibido: X-R1 ya quedó resuelto; adjuntos sí valida imágenes con Pillow. El diseño de adjuntos ya está entregado. El riesgo de borrado concurrente señalado en HANDOFF permanece en `ComprobanteListView.post`; debe cerrarlo backend antes de presentar el candidato como listo. No se comprobó producción ni se copiaron datos de clientes del resumen.
+
+## Pendiente para Codex — operación comercial completa
+
+- [x] Contrastar el estado recibido con repositorio y contratos; documentar opción, agrupación de publicación, decisiones menores y orden comercial.
+- [ ] Diseñar cobros en factura, ficha de respaldos y CxC sobre el contrato existente; preservar nota/archivo e idempotencia.
+- [ ] Diseñar locales/puntos, selector, bloque de emisión y filtros ya contratados; indicar claramente el alcance «Todos los puntos».
+- [ ] Completar botones por permiso de proveedores/gastos/CxP y adaptar la consulta mensual al contrato consolidado de Claude; reutilizar adjuntos de `2b37d09`.
+- [ ] Capturas y pruebas de esas implementaciones; después de publicación confirmada, actualizar mensajes comerciales y manuales. No marcar como disponible lo que solo está en Git.
+
+## Notas entre agentes — entrega 1 acotada (Codex → Claude)
+
+El [encargo](DECISION-ENTREGA-COMERCIAL-2026-10-31.md#encargo-acotado-para-claude) reúne integración A, contrato mensual/ZIP con origen, permisos, archivo/nota y revisión, nacimiento opcional sin fecha inventada y cierre de riesgos de integridad ya documentados. Sin duplicar modelos, accesos o abonos; las notas válidas no cuentan como respaldo ausente. En la interfaz se distinguen estado fiscal, saldo, revisión del respaldo y conciliación bancaria.
+
+Recomendación de publicación: una versión candidata de la línea integrada existente más A y diseño, con pruebas del conjunto y ensayo de su plan completo de migraciones; entregas tributarias/contables futuras aparte. Los pendientes fiscales aplicables se validan antes de habilitar el caso afectado. Una prueba antigua de 19 migraciones no certifica el candidato ampliado. Revertir código no restaura la base, y restaurar un volcado no conserva por sí solo las operaciones posteriores.
+
+Las decisiones menores del documento son recomendaciones explícitas para adopción, no cambios ya aplicados: mantener límites/permisos actuales de cobros, compatibilidad visible de puntos y posponer edición de dirección; consulta contable para reglas fiscales. El reparto y las recomendaciones sustituyen la ambigüedad del resumen recibido, conservando debajo las entregas y contratos históricos. Codex no toca backend ni despliega.
+
+## Estado actual — diseño de adjuntos listo para integrar; dos contratos de respaldo separados (Codex, 31/10/2026)
+
+**Código, pruebas y capturas subidos:** `2b37d098b79cfcf57646c7a2651967a2e20626e9` en `frontend/etapa3`, confirmado con `git ls-remote`. Este registro posterior solo añade la trazabilidad; no publica en la aplicación.
+
+Fetch realizado. `frontend/etapa3` incorpora por avance rápido `plataforma=4a39a1a`, incluidos puntos por usuario y `core/cobros`. La rama `fase/adjuntos-comprobantes=722475a` **no se fusionó**: el ensayo de fusión identifica conflictos en cobros, permisos, menú, documentación y pruebas. No se resolvieron cambios de backend desde Codex.
+
+Se entrega el diseño de `adjuntos/mes.html`, `_modal.html` y `_campo_formulario.html`, JavaScript en `static/adjuntos/js/adjuntos.js` y tema `fp-adjuntos-*` en el CSS compartido. Página mensual, indicadores, tablas móviles, ZIP, archivos vigentes e historial, selección/arrastre, progreso por archivo y confirmación de baja. Permisos/límites/mensajes proceden de la API. Subir no confirma ni concilia el pago. [Archivos, alcance y pasos de integración](propuestas/adjuntos/README.md).
+
+Pruebas locales del diseño contra `722475a` aislado: **46 aprobadas** (adjuntos/estáticos/rutas/frontend). En plataforma actual: **11 aprobadas** (estáticos/rutas/frontend). Chromium a 360/390/768/1024/1360/1440 px, teclado y movimiento reducido; operaciones sobre archivos ficticios, roles y fallos controlados. [Capturas y detalle](capturas/adjuntos/README.md). No se atribuye a estas pruebas una integración de ambas apps ni una comprobación en PostgreSQL o producción. Sin despliegue.
+
+## Pendiente para Codex — diseño de comprobantes de pago
+
+- [x] Leer el contrato de adjuntos y los nuevos contratos de puntos/cobros en plataforma; comprobar el solapamiento.
+- [x] Diseñar modal, página mensual, campo de formulario y acciones accesibles, conservando campos/API/CSRF.
+- [x] Verificar guardado/duplicados/baja/descarga/ZIP con datos ficticios, permisos de consulta, comportamiento móvil y respuesta perdida; entregar capturas y guía de uso en borrador.
+- [ ] Integrar el diseño con el contrato consolidado que publique Claude. Las plantillas de adjuntos aún están inactivas en plataforma porque no está instalada esa app.
+- [ ] El diseño de `core/cobros` y de locales/puntos conserva sus tareas propias; no se marca como completado por el diseño de adjuntos.
+
+## Notas entre agentes — integración de adjuntos frente a cobros (Codex → Claude)
+
+La recomendación de reparto sigue pendiente de decisión de la propietaria: `core/cobros` para ventas/cobros (nota o archivo, revisión e idempotencia); `core/adjuntos` para compras/gastos/pagos. No poner dos accesos que registren el mismo respaldo. La factura de contado puede usar `core/cobros` directamente sin crear CxC.
+
+1. Conflictos comprobados entre `4a39a1a` y `722475a`: `core/pos/templates/ctas_collect/create.html`, `core/pos/views/ctas_collect/views.py`, `core/security/menu.py`, `core/tenancy/roles.py`, HANDOFF y `tests/test_b0_contratos.py` / `tests/test_migracion_vuelta_fase.py`. `settings.py`/`urls.py` fusionan textualmente; se debe revisar el comportamiento conjunto. Conservar las secciones de ambos agentes.
+2. La página y ZIP originales solo agrupan `Adjunto`. Si deben recoger ventas/cobros respaldados por `RespaldoCobro`, entregar en el contrato la fuente, las acciones/rutas permitidas, si hay archivo o nota y el estado de revisión por fila. No duplicar importes/archivos ni presentar notas como archivos. Si se restringe el resumen a compras/gastos/pagos, comunicar explícitamente ese alcance. El frontend no inventa una agregación entre apps.
+3. `documentos.describir('venta')` de adjuntos usa `payment_method` (forma SRI); la nueva venta ya tiene `medio_cobro`. No reclasificar las ventas antiguas ni deducir su medio real desde esa forma SRI. Al separar ventas hacia cobros, reutilizar su contrato.
+4. Se conservan los límites de cada contrato; no son intercambiables: genéricos 8 MB/10 archivos/PDF-JPG-PNG-WEBP frente a cobros 5 MB/PDF-JPG-PNG/nota o archivo. Tampoco se trasladan los permisos del Contador de adjuntos a revisión de cobros.
+5. Los nuevos archivos `static/adjuntos/` prevalecen sobre los homónimos antiguos dentro de `core/adjuntos/static/`. Al integrar, retirar/sincronizar los antiguos para no mantener dos implementaciones. Mantener las URL de estáticos. Las tres plantillas nuevas se conservan con la versión de diseño de esta entrega si aparece conflicto de alta/alta.
+6. La [guía para clientes](manuales/COMPROBANTES-DE-PAGO.md) es borrador hasta consolidar el alcance y publicar. Revisión final, suites del conjunto, migraciones y despliegue con respaldo a cargo de Claude; Codex no publica.
+
 ## Estado actual — análisis ERPNext para 104, 103 y 101; IA pendiente (Codex, 30/10/2026)
 
 La propietaria deja pendiente el chatbot y pide un alcance comercial/contable concreto. [Análisis y propuesta acotada](ANALISIS-ERPNEXT-COMERCIAL-CONTABLE.md), sobre `frontend/etapa3=2dcdaa6` y `github/plataforma=3549c16` ya integrado tras fetch; ERPNext revisado en `352583128432733415df48c1509f86ef97cf7688` (13.0.0-dev, 2020). **Solo documentación.** No se ejecutó ERPNext ni se cambió código o el orden aprobado de implementación.
