@@ -168,3 +168,14 @@ lo comprueba). Al publicar, el mismo `migrate` las aplica todas.
 las deshace también, y con ella se pierde la columna `medio_cobro` (vacía en todo lo anterior a esta regla). `cobros/0001_respaldo_cobro`,
 `0002_rls_cobros` y `0003_permisos_cobros` cuelgan de `pos/0019` y **no** se deshacen con la fase (los respaldos y sus archivos se conservan);
 `tenancy/0009_acciones_cobros` sí (sobre `tenancy/0007`). Tras la vuelta quedan 23 pendientes (`tests/test_migracion_vuelta_fase.py`).
+
+## Nota (31/10/2026) — candidato de la entrega 1 (`c103bb4`): 33 migraciones y vuelta ampliada
+
+Frente a lo publicado (`98cfa20`) quedan pendientes 33 (ensayo corrido sobre `e4be758`, mismas migraciones que el candidato): las 19 de la fase más configuracion 0001–0003, tenancy 0008–0009, pos
+0032–0034, cobros 0001–0003 y adjuntos 0001–0003 (pos 0034 = nacimiento opcional; adjuntos 0001 cuelga de pos 0031). Ensayo con
+`ensayo_migraciones_candidato.sh` sobre copia del respaldo diario: ida 54,5 s en un solo `migrate`; vuelta en este orden: `adjuntos
+zero`, `cobros zero`, `configuracion zero`, `proformas zero`, `comprobantes 0013`, `pos 0019`, `importacion 0004`, `tenancy 0006`
+(94,6 s), esquema IDÉNTICO al publicado; segunda ida idéntica a la primera. Residuos de la vuelta, inocuos: filas nuevas de
+`Permission` y `ContentType` (como en la fase) y el orden de «Reglas de importación» (3→4) y «Numeraciones registradas» (4→5) en
+el menú, que `organizar_menu` reordena en la ida y la vuelta no deshace. `tests/test_migracion_vuelta_fase.py` espera 27 pendientes
+tras la vuelta documentada de la fase (que no deshace configuracion ni cobros).
