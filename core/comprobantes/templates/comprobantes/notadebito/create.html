@@ -16,6 +16,7 @@
     {% else %}
     <form method="post" class="fp-retencion-form" novalidate>{% csrf_token %}
         {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+        {% include 'configuracion/_punto_emision.html' %}
         <section class="card fp-retencion-panel mb-3"><div class="card-body">
             <span class="fp-eyebrow">Paso 1 · Motivos</span><h2 class="h5">Qué cobras</h2><p class="text-muted">Escribe cada cargo con su valor sin IVA. Las líneas vacías no se usan.</p>
             {{ motivos.management_form }}{% for error in motivos.non_form_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}

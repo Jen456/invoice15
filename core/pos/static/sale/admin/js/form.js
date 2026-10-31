@@ -1,5 +1,5 @@
 var fvSale, fvClient;
-var select_client, select_payment_type, select_receipt;
+var select_client, select_payment_type, select_receipt, select_medio_cobro;
 var input_birthdate, input_cash, input_change, input_search_product, input_end_credit, input_sale, input_time_limit, input_date_joined;
 var tblSearchProducts, tblProducts;
 
@@ -68,6 +68,7 @@ var sale = {
                 {data: "total"},
             ],
             columnDefs: [
+                {targets: [1], render: $.fn.dataTable.render.text()},
                 {
                     targets: [-5],
                     class: 'text-center',
@@ -78,7 +79,7 @@ var sale = {
                             }
                             return '<span class="badge badge-danger badge-pill">' + row.stock + '</span>';
                         }
-                        return '<span class="badge badge-secondary badge-pill">Sin stock</span>';
+                        return '<span class="badge badge-secondary badge-pill">No inventariado</span>';
                     }
                 },
                 {
@@ -144,7 +145,7 @@ var sale = {
                     });
             },
             initComplete: function (settings, json) {
-                $(this).wrap('<div class="dataTables_scroll"><div/>');
+                if (!$(this).parent().hasClass('dataTables_scroll')) { $(this).wrap('<div class="dataTables_scroll"></div>'); }
             }
         });
     },
@@ -201,7 +202,8 @@ var sale = {
             url: pathname,
             data: {
                 'action': 'search_voucher_number',
-                'receipt': select_receipt.val()
+                'receipt': select_receipt.val(),
+                'punto': $('[name="punto"]').val() || ''   // punto de emisión fijado al formulario (configuracion/_punto_emision.html)
             },
             type: 'POST',
             headers: {
@@ -357,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
                                     action: 'validate_client'
                                 };
                             },
-                            message: 'El número de cédula ya se encuentra registrado',
+                            message: 'Ya existe un cliente con esta identificación. Puedes buscarlo aquí.',
                             method: 'POST',
                             headers: {
                                 'X-CSRFToken': csrftoken
@@ -449,24 +451,14 @@ document.addEventListener('DOMContentLoaded', function (e) {
             }
         })
         .on('core.form.valid', function () {
-            var params = new FormData(fvClient.form);
-            params.append('action', 'create_client');
-            var args = {
-                'params': params,
-                'success': function (request) {
-                    select_client.select2('trigger', 'select', {data: request});
-                    fvSale.revalidateField('client');
-                    $('#myModalClient').modal('hide');
-                }
-            };
-            submit_with_formdata(args);
+            fpClienteRapido.guardar();
         });
 });
 
 document.addEventListener('DOMContentLoaded', function (e) {
     function validateChange() {
         var cash = parseFloat(input_cash.val());
-        if (select_payment_type.val() === 'efectivo') {
+        if (select_payment_type.val() === 'efectivo' && select_medio_cobro.val() === 'efectivo') {
             if (cash < sale.detail.total) {
                 input_change.val('0.00');
                 return {valid: false, message: 'El efectivo debe ser mayor o igual al total a pagar'};
@@ -655,6 +647,7 @@ $(function () {
     input_date_joined = $('input[name="date_joined"]');
     input_end_credit = $('input[name="end_credit"]');
     select_payment_type = $('select[name="payment_type"]');
+    select_medio_cobro = $('select[name="medio_cobro"]');
     input_cash = $('input[name="cash"]');
     input_change = $('input[name="change"]');
     input_sale = $('.input_sale');
@@ -843,7 +836,7 @@ $(function () {
                 };
             },
         },
-        placeholder: 'Ingrese un nombre o número de cedula de un cliente',
+        placeholder: 'Busca por nombre o identificación',
         minimumInputLength: 1,
     })
         .on('select2:select', function (e) {
@@ -854,12 +847,7 @@ $(function () {
         });
 
     $('.btnAddClient').on('click', function () {
-        input_birthdate.datetimepicker('date', new Date());
         $('#myModalClient').modal('show');
-    });
-
-    $('#myModalClient').on('hidden.bs.modal', function () {
-        fvClient.resetForm(true);
     });
 
     $('#frmClient input[name="dni"]').on('keypress', function (e) {
@@ -894,24 +882,33 @@ $(function () {
         sale.searchVoucherNumber();
     });
 
-    select_payment_type
-        .on('change', function () {
-            var id = $(this).val();
-            switch (id) {
-                case "efectivo":
-                    sale.setOptionsFields([{'index': 0, 'enable': true}, {'index': 1, 'enable': true}, {'index': 2, 'enable': false}]);
-                    fvSale.enableValidator('cash');
-                    fvSale.enableValidator('change');
-                    fvSale.disableValidator('end_credit');
-                    break;
-                case "credito":
-                    fvSale.disableValidator('cash');
-                    fvSale.disableValidator('change');
-                    fvSale.enableValidator('end_credit');
-                    sale.setOptionsFields([{'index': 0, 'enable': false}, {'index': 1, 'enable': false}, {'index': 2, 'enable': true}]);
-                    break;
-            }
-        });
+    // Cambio explícito del punto de emisión dentro del formulario: se vuelve a pedir el próximo número de ese punto.
+    $('select[name="punto"]').on('change', function () {
+        sale.searchVoucherNumber();
+    });
+
+    // Condición de pago (contado / crédito) y medio de cobro (core/cobros): «Efectivo recibido» y «Cambio» solo con
+    // efectivo; con otro medio van en 0 y el servidor exige comprobante o nota. A crédito no hay cobro al emitir.
+    function aplicarCondicionYMedio() {
+        var contado = select_payment_type.val() === 'efectivo';
+        var efectivo = contado && select_medio_cobro.val() === 'efectivo';
+        sale.setOptionsFields([{'index': 0, 'enable': efectivo}, {'index': 1, 'enable': efectivo}, {'index': 2, 'enable': !contado}]);
+        $('.fp-cobro').toggle(contado);
+        $('.fp-cobro-efectivo-aviso').toggle(efectivo);
+        if (efectivo) {
+            fvSale.enableValidator('cash');
+            fvSale.enableValidator('change');
+        } else {
+            input_cash.val('0.00');
+            input_change.val('0.00');
+            fvSale.disableValidator('cash');
+            fvSale.disableValidator('change');
+        }
+        if (contado) { fvSale.disableValidator('end_credit'); } else { fvSale.enableValidator('end_credit'); }
+    }
+
+    select_payment_type.on('change', aplicarCondicionYMedio);
+    select_medio_cobro.on('change', aplicarCondicionYMedio);
 
     input_cash
         .TouchSpin({

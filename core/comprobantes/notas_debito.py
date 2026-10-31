@@ -82,8 +82,9 @@ def calcular(venta, datos, motivos):
     return doc, limpios, {'total_sin_impuestos': base, 'valor_iva': iva, 'valor_total': redondear(base + iva)}
 
 
-def crear(company, usuario, venta, datos, motivos):
-    """Nota de débito guardada (aún sin firmar). Llamar dentro de una transacción; la vista firma después."""
+def crear(company, usuario, venta, datos, motivos, punto=None):
+    """Nota de débito guardada (aún sin firmar). Llamar dentro de una transacción; la vista firma después.
+    `punto`: punto de emisión ya validado para el usuario (core/configuracion/puntos.py); sin punto, el predeterminado."""
     from core.configuracion.servicios import receipt_para_emitir
     from core.pos.models import Sale
     # Bloquea solo la venta (no su cliente ni su secuencia) y lee lo relacionado en otra consulta, sin bloqueo.
@@ -92,7 +93,7 @@ def crear(company, usuario, venta, datos, motivos):
     validar_factura(venta, company)
     doc, limpios, totales = calcular(venta, datos, motivos)
     cliente = venta.client
-    receipt = receipt_para_emitir(company, TIPO_NOTA_DEBITO, electronica=True)
+    receipt = receipt_para_emitir(company, TIPO_NOTA_DEBITO, electronica=True, punto=punto)
     numero = receipt.reservar_numero()
     correo = unir_correos(cliente.correos(), 254)
     nota = NotaDebito(

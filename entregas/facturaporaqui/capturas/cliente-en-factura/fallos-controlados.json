@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "POST guardado con respuesta perdida: recuperación sin repetir el alta",
+    "Doble intento y Escape durante guardado: un solo POST y cierre tras confirmación",
+    "Búsqueda anterior descartada al cambiar la identificación"
+  ],
+  "createRequests": 2,
+  "invoiceWrites": 0,
+  "jsErrors": [],
+  "expectedNetworkFailures": 1
+}

@@ -178,12 +178,10 @@ $(function () {
                             if (row.anulado) {
                                 return '<span class="badge badge-secondary">Anulado</span>';
                             }
-                            // Comprobantes de pago del cobro (core/adjuntos): permisos y plan los decide el servidor.
-                            var botones = row.tipo.id === 'cobro' ? '<button type="button" class="btn btn-outline-secondary btn-xs btn-flat mr-1" data-adjuntos-tipo="cobro" data-adjuntos-id="' + parseInt(row.id, 10) + '" title="Comprobantes de pago" aria-label="Comprobantes de pago"><i class="fas fa-paperclip" aria-hidden="true"></i></button>' : '';
                             if (row.tipo.id !== 'cobro' || !fpPuedeEliminarCobro()) {
-                                return botones;
+                                return '';
                             }
-                            return botones + '<a rel="delete" class="btn btn-danger btn-xs btn-flat" title="Eliminar cobro"><i class="fas fa-times"></i></a>';
+                            return '<a rel="delete" class="btn btn-danger btn-xs btn-flat" title="Eliminar cobro"><i class="fas fa-times"></i></a>';
                         }
                     }
                 ],

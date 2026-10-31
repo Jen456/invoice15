@@ -52,8 +52,9 @@ def validar_factura(venta, company):
                                f'en {company.get_environment_type_display()}.')
 
 
-def crear(company, venta_id, lineas, motivo):
+def crear(company, venta_id, lineas, motivo, punto=None):
     """Nota de crédito guardada y aún sin firmar. lineas: [(id de detalle de la venta, cantidad)] o None = todo lo pendiente.
+    `punto`: punto de emisión ya validado para el usuario (core/configuracion/puntos.py); sin punto, el predeterminado.
 
     Debe llamarse dentro de una transacción (la vista firma a continuación con emision.preparar).
     """
@@ -87,7 +88,7 @@ def crear(company, venta_id, lineas, motivo):
                                else 'Indica al menos una cantidad mayor que cero.')
     nota = CreditNote(sale=venta, motive=motivo[:300], company=company, environment_type=venta.environment_type,
                       iva=venta.iva, create_electronic_invoice=True, date_joined=timezone.localdate())
-    nota.receipt = receipt_para_emitir(company, VOUCHER_TYPE[1][0], electronica=True)
+    nota.receipt = receipt_para_emitir(company, VOUCHER_TYPE[1][0], electronica=True, punto=punto)
     nota.voucher_number = nota.generate_voucher_number()
     nota.voucher_number_full = nota.get_voucher_number_full()
     nota.save()

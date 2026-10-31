@@ -19,6 +19,7 @@
     {% endif %}
     <form method="post" class="fp-retencion-form" novalidate>{% csrf_token %}
         {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+        {% include 'configuracion/_punto_emision.html' %}
         {% if aviso %}<div class="alert alert-warning" role="alert">{{ aviso }}</div>{% endif %}
         {% for a in avisos_sustento %}<div class="alert alert-warning" role="alert" data-advertencia="{{ a.codigo }}">{{ a.texto }}</div>{% endfor %}
         <section class="card fp-retencion-panel mb-3"><div class="card-body">

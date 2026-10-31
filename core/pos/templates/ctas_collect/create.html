@@ -37,6 +37,12 @@
     <div class="form-group">
         <label>{{ form.description.label }}:</label>
         {{ form.description }}
+        <small class="form-text text-muted">Nota interna del cobro: obligatoria si no adjuntas comprobante. No se imprime ni se envía al SRI.</small>
     </div>
-    {% include 'adjuntos/_campo_formulario.html' %}
+    <div class="form-group fp-cobro-respaldo">
+        <label for="{{ form.archivo.id_for_label }}">{{ form.archivo.label }}:</label>
+        {{ form.archivo }}
+        <small class="form-text text-muted">Adjuntar el comprobante no confirma el pago: queda pendiente de revisión.</small>
+    </div>
+    <input type="hidden" name="clave" value="{{ clave_envio }}">
 {% endblock %}

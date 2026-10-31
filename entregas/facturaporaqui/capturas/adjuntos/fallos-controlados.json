@@ -1,0 +1,12 @@
+{
+  "backend": "722475a aislado",
+  "data": "Ficticios",
+  "checks": [
+    "Una consulta antigua no sustituye el documento nuevo",
+    "POST confirmado por servidor con respuesta perdida: consulta sin reenvío, aviso en español",
+    "La lista mensual se refresca al confirmar el archivo por consulta",
+    "El límite anunciado por servidor evita enviar el archivo de 9 MB"
+  ],
+  "expectedNetworkAbort": 1,
+  "unexpectedWrites": 0
+}

@@ -382,10 +382,23 @@ class ClientUserForm(forms.ModelForm):
 
 
 class SaleForm(forms.ModelForm):
+    # Respaldo del cobro al contado (core/cobros): no son campos de Sale; los lee SaleCreateView.
+    referencia_cobro = forms.CharField(required=False, max_length=100, label='Referencia del cobro',
+                                       widget=forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'off',
+                                                                     'placeholder': 'N.º de transferencia, cheque, voucher o autorización'}))
+    nota_cobro = forms.CharField(required=False, max_length=500, label='Nota interna del cobro',
+                                 widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2,
+                                                              'placeholder': 'Ejemplo: el cliente entregó el comprobante; pendiente de verificar el abono.'}))
+    respaldo = forms.FileField(required=False, label='Comprobante (PDF, JPG o PNG, hasta 5 MB)',
+                               widget=forms.ClearableFileInput(attrs={'class': 'form-control-file',
+                                                                      'accept': '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'}))
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['client'].queryset = Client.objects.none()
         self.fields['receipt'].choices = tuple((code, label) for code, label in VOUCHER_TYPE if code in ('01', '08'))
+        self.fields['medio_cobro'].choices = [('', 'Elige el medio de cobro')] + [c for c in self.fields['medio_cobro'].choices if c[0]]
+        self.fields['medio_cobro'].initial = 'efectivo'
 
     class Meta:
         model = Sale
@@ -395,6 +408,7 @@ class SaleForm(forms.ModelForm):
             'receipt': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
             'voucher_number': forms.TextInput(attrs={'class': 'form-control', 'disabled': True}),
             'payment_type': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
+            'medio_cobro': forms.Select(attrs={'class': 'form-control'}),
             'payment_method': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
             'date_joined': forms.DateInput(format='%Y-%m-%d', attrs={
                 'class': 'form-control datetimepicker-input',
@@ -452,6 +466,11 @@ class SaleForm(forms.ModelForm):
 
 
 class PaymentsCtaCollectForm(forms.ModelForm):
+    # Respaldo del cobro (core/cobros): comprobante opcional; el cobro exige comprobante o nota («Detalles»).
+    archivo = forms.FileField(required=False, label='Comprobante del cobro (PDF, JPG o PNG, hasta 5 MB)',
+                              widget=forms.ClearableFileInput(attrs={'class': 'form-control-file',
+                                                                     'accept': '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'}))
+
     # Etapa 2 (O2): campos explícitos (con '__all__' se mostrarían los internos: tipo, registrado_*, anulado_*) y medio
     # de pago obligatorio sin valor inicial. El cobro lo valida y guarda core/pos/cxc.registrar_cobro.
     def __init__(self, *args, **kwargs):

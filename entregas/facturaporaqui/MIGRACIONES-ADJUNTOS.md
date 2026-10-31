@@ -13,8 +13,9 @@ Dependencias: `0001` de `pos/0031`; `0003` de `security/0003` e `importacion/000
 deshacer la fase contable no arrastra a esta (ni al revés).
 
 - Vuelta documentada completa: `migrate adjuntos zero` antes de las cinco de la fase contable. `tests/test_migracion_vuelta_fase.py` recorre
-  vuelta (22 pendientes), ida completa en un solo plan, otra vuelta, idas parciales e ida completa, y comprueba menú, módulos y roles.
+  vuelta (26 pendientes), ida completa en un solo plan, otra vuelta, idas parciales e ida completa, y comprueba menú, módulos y roles.
 - `roles.py` cambia para todos los roles al ejecutar `sync_roles`: el Contador suma exactamente dos permisos (`add_adjunto`, `delete_adjunto`);
   `tests/test_adjuntos.py::test_modulo_del_menu_y_roles` lo fija.
 - Ensayo sobre una copia del respaldo: `verif-firma/ensayo-fase/ensayo_migraciones_fase.sh <checkout> [volcado]` también aplica estas tres
-  (toma el checkout entero); el conteo de pendientes tras la vuelta pasa de 19 a 22.
+  (toma el checkout entero); el conteo de pendientes tras la vuelta pasa de 23 a 26 (31/10: plataforma ya suma tenancy 0008-0009 y pos 0032-0033; las de cobros y
+  configuracion cuelgan de pos 0019 y no se deshacen). `0001` sigue en `pos/0031`: `cobros` y `adjuntos` no dependen entre sí.

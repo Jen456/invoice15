@@ -748,6 +748,12 @@ class Receipt(TenantModel):
         item['environment_type'] = {'id': self.environment_type, 'name': self.get_environment_type_display()}
         item['last_number_full'] = self.last_number_full()
         item['next_number_full'] = self.next_number_full()
+        # Local y punto de la secuencia (listados y filtros por local); None en secuencias anteriores al asistente.
+        item['punto'] = None
+        if self.emission_point_id:
+            est = self.emission_point.establishment
+            item['punto'] = {'id': self.emission_point_id, 'codigo_completo': f'{self.establishment_code}-{self.issuing_point_code}',
+                             'descripcion': self.emission_point.description, 'local': est.name or est.address, 'local_id': est.pk}
         item['confirmed'] = self.confirmed_at is not None
         item['confirmed_at'] = self.confirmed_at.strftime('%Y-%m-%d') if self.confirmed_at else None
         return item
@@ -873,7 +879,9 @@ class Sale(TenantModel):
     voucher_number = models.CharField(max_length=9, verbose_name='Número de comprobante')
     voucher_number_full = models.CharField(max_length=20, verbose_name='Número de comprobante completo')
     employee = models.ForeignKey(User, on_delete=models.PROTECT, verbose_name='Empleado')
-    payment_type = models.CharField(choices=PAYMENT_TYPE, max_length=50, default=PAYMENT_TYPE[0][0], verbose_name='Tipo de pago')
+    payment_type = models.CharField(choices=PAYMENT_TYPE, max_length=50, default=PAYMENT_TYPE[0][0], verbose_name='Condición de pago')
+    # Medio con que se cobró una venta al contado (core/cobros); '' en las anteriores a la regla y en las de crédito.
+    medio_cobro = models.CharField(max_length=15, choices=MEDIOS_DE_PAGO, blank=True, default='', verbose_name='Medio de cobro')
     payment_method = models.CharField(choices=PAYMENT_METHOD, max_length=50, default='20', verbose_name='Método de pago')
     time_limit = models.IntegerField(default=31, verbose_name='Plazo')
     creation_date = models.DateTimeField(default=datetime.now, verbose_name='Fecha y hora de registro')
@@ -1053,6 +1061,8 @@ class Sale(TenantModel):
         item['receipt'] = self.receipt.toJSON()
         item['employee'] = self.employee.toJSON()
         item['payment_type'] = {'id': self.payment_type, 'name': self.get_payment_type_display()}
+        item['condicion_pago'] = item['payment_type']   # contado / crédito (alias legible; el valor histórico no cambia)
+        item['medio_cobro'] = {'id': self.medio_cobro, 'name': self.get_medio_cobro_display()} if self.medio_cobro else None
         item['payment_method'] = {'id': self.payment_method, 'name': self.get_payment_method_display()}
         item['creation_date'] = self.creation_date.strftime('%Y-%m-%d %H:%M:%S')
         item['date_joined'] = self.date_joined.strftime('%Y-%m-%d')

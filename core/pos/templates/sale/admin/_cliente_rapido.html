@@ -1,0 +1,84 @@
+{% load widget_tweaks %}
+<div id="myModalClient" tabindex="-1" class="modal fade fp-client-modal" role="dialog" aria-labelledby="fp-client-title" aria-describedby="fp-client-intro">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+        <form class="modal-content" id="frmClient" method="POST" enctype="multipart/form-data" autocomplete="off" novalidate>
+            {% csrf_token %}
+            <div class="modal-header">
+                <div>
+                    <p class="fp-client-eyebrow">Sin salir de tu factura</p>
+                    <h2 id="fp-client-title" class="modal-title">Nuevo cliente</h2>
+                </div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar y volver a la factura"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <p id="fp-client-intro">Al guardar, el cliente quedará seleccionado en esta factura y disponible en tu lista de clientes.</p>
+                <p class="fp-client-required">Los campos con * son obligatorios.</p>
+                <div id="fp-client-alert" class="alert alert-danger" role="alert" tabindex="-1" hidden></div>
+                <fieldset>
+                    <legend>Datos del cliente</legend>
+                    <div class="fp-client-grid">
+                        <div class="form-group">
+                            <label for="{{ frmClient.identification_type.id_for_label }}">Tipo de identificación *</label>
+                            {% render_field frmClient.identification_type class="form-control" aria-required="true" %}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ frmClient.dni.id_for_label }}">Identificación *</label>
+                            {% render_field frmClient.dni aria-describedby="fp-client-id-help" placeholder="Escribe la identificación" %}
+                            <small id="fp-client-id-help" class="form-text"></small>
+                            <button id="fp-client-lookup" type="button" class="btn btn-link fp-inline-action">Buscar cliente con esta identificación</button>
+                        </div>
+                        <div id="fp-client-matches" class="fp-client-matches fp-client-wide" role="status" hidden></div>
+                        <div class="form-group fp-client-wide">
+                            <label for="{{ frmUser.names.id_for_label }}">Nombres o razón social *</label>
+                            {% render_field frmUser.names|remove_attr:"autofocus" aria-required="true" placeholder="Nombre completo de la persona o empresa" %}
+                        </div>
+                        <div class="form-group fp-client-wide">
+                            <label for="{{ frmClient.address.id_for_label }}">Dirección *</label>
+                            {{ frmClient.address }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ frmClient.birthdate.id_for_label }}">{{ frmClient.birthdate.label }} *</label>
+                            {% render_field frmClient.birthdate aria-describedby="fp-client-date-help" %}
+                            <small id="fp-client-date-help" class="form-text">Formato: año-mes-día.</small>
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend>Contacto</legend>
+                    <div class="fp-client-grid">
+                        <div class="form-group">
+                            <label for="{{ frmUser.email.id_for_label }}">Correo electrónico <span>(opcional)</span></label>
+                            {% render_field frmUser.email inputmode="email" autocomplete="email" %}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ frmClient.mobile.id_for_label }}">Teléfono <span>(opcional)</span></label>
+                            {% render_field frmClient.mobile inputmode="tel" autocomplete="tel" %}
+                        </div>
+                    </div>
+                    <div class="form-group fp-client-check">
+                        {{ frmClient.send_email_invoice }}
+                        <label for="{{ frmClient.send_email_invoice.id_for_label }}">Enviar las facturas al correo del cliente</label>
+                    </div>
+                </fieldset>
+                <details id="fp-client-more">
+                    <summary>Correos adicionales e imagen <span>(opcional)</span></summary>
+                    <div class="form-group">
+                        <label for="{{ frmClient.extra_emails.id_for_label }}">Correos adicionales</label>
+                        {% render_field frmClient.extra_emails aria-describedby="fp-client-emails-help" %}
+                        <small id="fp-client-emails-help" class="form-text">Separa las direcciones con coma o punto y coma.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ frmUser.image.id_for_label }}">Imagen del cliente</label>
+                        {% render_field frmUser.image accept="image/jpeg,image/png" %}
+                        <small class="form-text">JPG o PNG.</small>
+                    </div>
+                </details>
+                <p class="fp-client-draft-note">Si cierras este formulario, lo escrito se conserva mientras permanezcas en esta página. Aún no estará guardado.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Volver a la factura</button>
+                <button id="fp-client-save" type="submit" class="btn btn-primary">Guardar y usar cliente</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,4 +1,6 @@
-"""Comprobantes de pago adjuntos a los documentos de tesorería: facturas emitidas, compras, gastos, cobros y pagos.
+"""Comprobantes de pago adjuntos a los compras, gastos y pagos a proveedores.
+
+Las facturas emitidas y sus cobros llevan su respaldo en core/cobros (RespaldoCobro); aquí no se registran.
 
 Conceptos tomados de erpnext (solo el diseño; erpnext es GPL-3.0 y no se copia código): cualquier documento lleva
 archivos adjuntos privados con la huella de su contenido (doctype `File`), y el pago (`Payment Entry`) guarda la
@@ -19,10 +21,8 @@ from core.importacion.models import RutaPrivada
 from core.tenancy.models_base import TenantModel
 
 TIPOS_DOCUMENTO = (
-    ('venta', 'Factura emitida'),
     ('compra', 'Compra'),
     ('gasto', 'Gasto'),
-    ('cobro', 'Cobro de cuenta por cobrar'),
     ('pago', 'Pago de cuenta por pagar'),
 )
 CLASES = (

@@ -127,8 +127,9 @@ def calcular(venta, datos, cantidades):
     return doc, lineas
 
 
-def crear(company, usuario, venta, datos, cantidades):
-    """Guía guardada (aún sin firmar). Llamar dentro de una transacción; la vista firma después."""
+def crear(company, usuario, venta, datos, cantidades, punto=None):
+    """Guía guardada (aún sin firmar). Llamar dentro de una transacción; la vista firma después.
+    `punto`: punto de emisión ya validado para el usuario (core/configuracion/puntos.py); sin punto, el predeterminado."""
     from core.configuracion.servicios import receipt_para_emitir
     from core.pos.models import Sale
     # Una guía a la vez: bloquea solo la venta (no su cliente ni su secuencia) y lee lo relacionado aparte, sin bloqueo.
@@ -137,7 +138,7 @@ def crear(company, usuario, venta, datos, cantidades):
     validar_factura(venta, company)
     doc, lineas = calcular(venta, datos, cantidades)
     cliente = venta.client
-    receipt = receipt_para_emitir(company, TIPO_GUIA, electronica=True)
+    receipt = receipt_para_emitir(company, TIPO_GUIA, electronica=True, punto=punto)
     numero = receipt.reservar_numero()
     correo = unir_correos(cliente.correos(), 254)
     guia = GuiaRemision(

@@ -1,22 +1,18 @@
-{# Comprobante de pago opcional al registrar un cobro, un pago o un gasto (campo `comprobante`): core/adjuntos/registro.py. #}
+{# Solo en «nuevo gasto» y «nuevo pago a proveedor». El cobro de CxC lleva su respaldo en core/cobros (campo archivo). #}
 {% if action == 'add' %}
 <fieldset class="fp-adjuntos-campo">
-    <legend class="h6 font-weight-bold">Comprobante de pago (opcional)</legend>
-    <div class="form-row">
-        <div class="form-group col-md-7">
-            <label for="id_comprobante">Archivo (PDF o foto)</label>
-            <input type="file" name="comprobante" id="id_comprobante" class="form-control-file"
-                   accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
-            <small class="form-text text-muted">{{ comprobante_formatos }}, hasta {{ comprobante_max_mb }} MB. Toma la referencia, la fecha y el valor de este
-                formulario; después puedes adjuntar más desde el listado.</small>
-        </div>
-        <div class="form-group col-md-5">
-            <label for="id_comprobante_clase">Clase de comprobante</label>
-            <select name="comprobante_clase" id="id_comprobante_clase" class="form-control">
-                <option value="">Según el medio de pago</option>
-                {% for codigo, nombre in clases_comprobante %}<option value="{{ codigo }}">{{ nombre }}</option>{% endfor %}
-            </select>
-        </div>
+  <legend><i class="fas fa-paperclip" aria-hidden="true"></i> Comprobante de pago (opcional)</legend>
+  <p>Conserva el respaldo junto a este registro. Adjuntar el archivo no confirma el pago en el banco.</p>
+  <div class="form-row">
+    <div class="form-group col-md-7">
+      <label for="id_comprobante">Archivo (PDF o foto)</label>
+      <input type="file" name="comprobante" id="id_comprobante" class="form-control-file" aria-describedby="fpAdjuntosCampoAyuda" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
+      <small class="form-text" id="fpAdjuntosCampoAyuda">{{ comprobante_formatos }}, hasta {{ comprobante_max_mb }} MB. Usa la referencia, fecha e importe de este formulario. Después puedes adjuntar más archivos desde el listado.</small>
     </div>
+    <div class="form-group col-md-5">
+      <label for="id_comprobante_clase">Clase de comprobante</label>
+      <select name="comprobante_clase" id="id_comprobante_clase" class="form-control"><option value="">Según el medio de pago</option>{% for codigo, nombre in clases_comprobante %}<option value="{{ codigo }}">{{ nombre }}</option>{% endfor %}</select>
+    </div>
+  </div>
 </fieldset>
 {% endif %}

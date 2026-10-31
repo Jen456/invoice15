@@ -118,8 +118,9 @@ def calcular(compra, datos, elegidas):
     return doc, detalle, totales
 
 
-def crear(company, usuario, compra, datos, elegidas):
-    """Liquidación guardada (aún sin firmar) para `compra`. Llamar dentro de una transacción; la vista firma después."""
+def crear(company, usuario, compra, datos, elegidas, punto=None):
+    """Liquidación guardada (aún sin firmar) para `compra`. Llamar dentro de una transacción; la vista firma después.
+    `punto`: punto de emisión ya validado para el usuario (core/configuracion/puntos.py); sin punto, el predeterminado."""
     from core.configuracion.servicios import receipt_para_emitir
     from core.pos.models import Purchase
     compra = Purchase.objects.select_for_update().select_related('provider').get(pk=compra.pk)   # una liquidación a la vez
@@ -128,7 +129,7 @@ def crear(company, usuario, compra, datos, elegidas):
         raise ErrorLiquidacion(f'Esta compra ya tiene la liquidación {vigente.voucher_number_full} ({vigente.get_status_display()}).')
     doc, detalle, totales = calcular(compra, datos, elegidas)
     proveedor = compra.provider
-    receipt = receipt_para_emitir(company, TIPO_LIQUIDACION, electronica=True)
+    receipt = receipt_para_emitir(company, TIPO_LIQUIDACION, electronica=True, punto=punto)
     numero = receipt.reservar_numero()
     liq = LiquidacionCompra(
         company=company, receipt=receipt, voucher_number=numero,

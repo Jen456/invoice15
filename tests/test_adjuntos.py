@@ -1,6 +1,7 @@
 """Comprobantes de pago adjuntos (core/adjuntos): validación del archivo por su contenido, alta y baja lógica, permisos por
-rol y por plan, aislamiento entre empresas, archivo protegido, comprobante enviado con el formulario de cobro, pago o
-gasto (misma transacción), resumen y ZIP del mes, y módulo del menú con sus roles."""
+rol y por plan, aislamiento entre empresas, archivo protegido, comprobante enviado con el formulario de pago o
+gasto (misma transacción), resumen y ZIP del mes, y módulo del menú con sus roles. Solo compras, gastos y pagos a
+proveedores: las facturas emitidas y sus cobros llevan su respaldo en core/cobros y aquí no entran."""
 import io
 import zipfile
 from datetime import timedelta
@@ -14,7 +15,9 @@ from PIL import Image
 
 from core.adjuntos import archivos, servicios as sv
 from core.adjuntos.models import Adjunto
-from core.pos import cuentas_por_pagar, cxc
+from core.adjuntos.documentos import DOCUMENTOS
+from core.cobros.models import RespaldoCobro
+from core.pos import cuentas_por_pagar
 from core.pos.models import DebtsPay, Expenses, PaymentsCtaCollect, PaymentsDebtsPay
 from core.security.models import Module
 from core.tenancy.context import company_context
@@ -64,16 +67,9 @@ def venta_contado(empresa, comprador, admin, producto):
 
 
 @pytest.fixture
-def cobro(empresa, comprador, admin, producto):
-    venta = factura_autorizada(empresa, comprador, admin, producto, credito=True, fecha=HOY - timedelta(days=3))
-    with company_context(empresa):
-        return cxc.registrar_cobro(empresa, admin, cxc_de(venta).pk, HOY, '10.00', 'transferencia', 'TRX-77', 'Abono')
-
-
-@pytest.fixture
 def pago(empresa, admin):
     proveedor = ayuda_compras.crear_proveedor(empresa)
-    compra = ayuda_compras.compra_antigua(empresa, proveedor, '100.00', credito=True, fecha=HOY - timedelta(days=5))
+    compra = ayuda_compras.compra_antigua(empresa, proveedor, '100.00', credito=True, fecha=MES)   # dentro del mes
     with company_context(empresa):
         deuda = DebtsPay.objects.get(purchase=compra)
         return cuentas_por_pagar.registrar_pago(deuda.pk, admin, fecha=HOY, valor='40.00', medio_pago='cheque', referencia='CH-5')
@@ -128,29 +124,29 @@ class TestArchivos:
 
 class TestServicio:
 
-    def test_adjuntar_listar_y_quitar(self, empresa, admin, cobro):
+    def test_adjuntar_listar_y_quitar(self, empresa, admin, gasto):
         with company_context(empresa):
-            adjunto = sv.adjuntar(empresa, admin, 'cobro', cobro, subido('transf.pdf', PDF), referencia=' TRX  77 ', fecha=HOY.isoformat(),
-                                  importe='10', descripcion='  pago   cliente ')
+            adjunto = sv.adjuntar(empresa, admin, 'gasto', gasto, subido('transf.pdf', PDF), referencia=' TRX  77 ', fecha=HOY.isoformat(),
+                                  importe='10', descripcion='  pago   taxi ')
             assert adjunto.archivo.name.startswith(f'privado/empresas/{empresa.uuid}/comprobantes-pago/')
             assert (adjunto.clase, adjunto.referencia, adjunto.fecha, adjunto.importe, adjunto.descripcion, adjunto.tamano, adjunto.tipo_mime) == (
-                'transferencia', 'TRX 77', HOY, Decimal('10.00'), 'pago cliente', len(PDF), 'application/pdf')
+                'transferencia', 'TRX 77', HOY, Decimal('10.00'), 'pago taxi', len(PDF), 'application/pdf')
             assert adjunto.subido_por == admin and adjunto.vigente and adjunto.nombre == 'transf.pdf'
-            assert list(sv.listar('cobro', cobro.pk)) == [adjunto]
+            assert list(sv.listar('gasto', gasto.pk)) == [adjunto]
             with pytest.raises(sv.ErrorAdjunto) as error:
-                sv.adjuntar(empresa, admin, 'cobro', cobro, subido('otra-copia.pdf', PDF))
+                sv.adjuntar(empresa, admin, 'gasto', gasto, subido('otra-copia.pdf', PDF))
             assert (error.value.codigo, error.value.estado) == ('duplicado', 409)
-            otro = sv.adjuntar(empresa, admin, 'cobro', cobro, subido('foto.jpg', imagen('JPEG')), clase='bitcoin')
-            assert otro.clase == 'transferencia'   # clase desconocida: la sugerida por el medio de pago del cobro
+            otro = sv.adjuntar(empresa, admin, 'gasto', gasto, subido('foto.jpg', imagen('JPEG')), clase='bitcoin')
+            assert otro.clase == 'transferencia'   # clase desconocida: la sugerida por el medio de pago del gasto
             sv.quitar(admin, adjunto, '  Subí el  archivo equivocado ')
-            assert list(sv.listar('cobro', cobro.pk)) == [otro]
-            assert list(sv.listar('cobro', cobro.pk, eliminados=True)) == [adjunto, otro]
+            assert list(sv.listar('gasto', gasto.pk)) == [otro]
+            assert list(sv.listar('gasto', gasto.pk, eliminados=True)) == [adjunto, otro]
             adjunto.refresh_from_db()
             assert adjunto.eliminado_por == admin and adjunto.eliminado_motivo == 'Subí el archivo equivocado'
             assert adjunto.archivo.storage.exists(adjunto.archivo.name)   # el archivo se conserva (historial)
             with pytest.raises(sv.ErrorAdjunto, match='ya se había quitado'):
                 sv.quitar(admin, adjunto)
-            assert sv.adjuntar(empresa, admin, 'cobro', cobro, subido('de-nuevo.pdf', PDF)).sha256 == adjunto.sha256   # quitado: se puede volver a subir
+            assert sv.adjuntar(empresa, admin, 'gasto', gasto, subido('de-nuevo.pdf', PDF)).sha256 == adjunto.sha256   # quitado: se puede volver a subir
 
     @pytest.mark.parametrize('datos, codigo', [({'fecha': (HOY + timedelta(days=1)).isoformat()}, 'fecha'), ({'fecha': '31/10/2026'}, 'fecha'),
                                                ({'importe': 'abc'}, 'importe'), ({'importe': '0'}, 'importe'), ({'importe': '-3'}, 'importe')])
@@ -170,55 +166,43 @@ class TestServicio:
                 sv.adjuntar(empresa, admin, 'gasto', gasto, subido('3.jpg', imagen('JPEG')))
             assert error.value.codigo == 'limite'
 
-    def test_abonos_automaticos_y_cobros_anulados_no_admiten(self, empresa, admin, cobro):
-        with company_context(empresa):
-            nota = cxc.crear_abono(cobro.ctas_collect, 'nota_credito', '1.00', HOY, 'NC de prueba')
-            with pytest.raises(sv.ErrorAdjunto) as error:
-                sv.adjuntar(empresa, admin, 'cobro', nota, subido('t.pdf', PDF))
-            assert error.value.codigo == 'abono'
-            cobro.anulado_en = timezone.now()
-            cobro.save(update_fields=['anulado_en'])
-            with pytest.raises(sv.ErrorAdjunto) as error:
-                sv.adjuntar(empresa, admin, 'cobro', cobro, subido('t.pdf', PDF))
-            assert error.value.codigo == 'anulado'
+    def test_solo_compras_gastos_y_pagos(self):
+        assert set(DOCUMENTOS) == {'compra', 'gasto', 'pago'}   # ventas y cobros: core/cobros
 
-    def test_clase_sugerida_y_documento(self, empresa, venta_contado, pago, gasto, cobro):
+    def test_clase_sugerida_y_documento(self, empresa, pago, gasto):
         with company_context(empresa):
-            assert sv.clase_sugerida('venta', venta_contado) == 'transferencia'   # forma de pago 20 del SRI
             assert sv.clase_sugerida('pago', pago) == 'cheque'
-            assert sv.clase_sugerida('cobro', cobro) == 'transferencia'
+            assert sv.clase_sugerida('gasto', gasto) == 'transferencia'
             gasto.medio_pago = 'efectivo'
             assert sv.clase_sugerida('gasto', gasto) == 'recibo'
-            venta = sv.dict_documento('venta', venta_contado)
-            assert (venta['titulo'], venta['tercero'], venta['importe'], venta['requiere']) == (
-                f'Factura {venta_contado.voucher_number_full}', 'comprador.adj', '23.00', True)
-            assert sv.dict_documento('cobro', cobro)['titulo'] == f'Cobro de {cobro.ctas_collect.sale.voucher_number_full}'
-            assert sv.dict_documento('pago', pago)['requiere'] is True and sv.dict_documento('gasto', gasto)['requiere'] is False
+            documento = sv.dict_documento('pago', pago)
+            assert (documento['titulo'], documento['importe'], documento['requiere']) == (
+                f'Pago de {pago.debts_pay.purchase.numero_comprobante}', '40.00', True)
+            assert sv.dict_documento('gasto', gasto)['requiere'] is False
 
-    def test_tambien_en(self, empresa, admin, cobro, gasto):
+    def test_tambien_en(self, empresa, admin, pago, gasto):
         with company_context(empresa):
-            sv.adjuntar(empresa, admin, 'cobro', cobro, subido('t.pdf', PDF))
+            sv.adjuntar(empresa, admin, 'pago', pago, subido('t.pdf', PDF))
             del_gasto = sv.adjuntar(empresa, admin, 'gasto', gasto, subido('t.pdf', PDF))
-            assert sv.tambien_en(del_gasto) == [{'tipo': 'cobro', 'id': cobro.pk, 'titulo': f'Cobro de {cobro.ctas_collect.sale.voucher_number_full}'}]
-
+            assert sv.tambien_en(del_gasto) == [{'tipo': 'pago', 'id': pago.pk, 'titulo': f'Pago de {pago.debts_pay.purchase.numero_comprobante}'}]
 
 # ---------------------------------------------------------------- API y archivo
 
 class TestApi:
 
-    def test_propietario_sube_ve_y_quita(self, client, empresa, admin, venta_contado):
+    def test_propietario_sube_ve_y_quita(self, client, empresa, admin, gasto):
         helpers.iniciar_sesion(client, admin, empresa=empresa)
-        url = api('venta', venta_contado.pk)
+        url = api('gasto', gasto.pk)
         datos = client.get(url).json()
-        assert datos['documento']['titulo'] == f'Factura {venta_contado.voucher_number_full}' and datos['documento']['requiere'] is True
+        assert datos['documento']['titulo'] == f'Gasto #{gasto.pk} · MOVILIZACIÓN' and datos['documento']['requiere'] is True
         assert datos['permisos'] == {'subir': True, 'quitar': True} and datos['adjuntos'] == [] and datos['bloqueo'] is None
         assert datos['documento']['clase_sugerida'] == 'transferencia' and datos['limites']['max_por_documento'] == archivos.MAX_POR_DOCUMENTO
         respuesta = client.post(url, {'archivo': subido('t.pdf', PDF), 'clase': 'deposito', 'referencia': 'DEP-1', 'fecha': HOY.isoformat(),
-                                      'importe': '23.00', 'descripcion': 'Depósito en ventanilla'})
+                                      'importe': '8.50', 'descripcion': 'Depósito en ventanilla'})
         assert respuesta.status_code == 201, respuesta.content
         adjunto = respuesta.json()['adjunto']
         assert (adjunto['clase']['id'], adjunto['referencia'], adjunto['importe'], adjunto['fecha'], adjunto['subido_por']) == (
-            'deposito', 'DEP-1', '23.00', HOY.isoformat(), admin.username)
+            'deposito', 'DEP-1', '8.50', HOY.isoformat(), admin.username)
         assert adjunto['url'] == f'/adjuntos/{adjunto["id"]}/archivo/' and respuesta.json()['tambien_en'] == []
         archivo = client.get(adjunto['url'])
         assert archivo.status_code == 200 and archivo['Content-Type'] == 'application/pdf' and b''.join(archivo.streaming_content) == PDF
@@ -234,31 +218,35 @@ class TestApi:
         assert historial[0]['eliminado'] is True and historial[0]['eliminado_motivo'] == 'Equivocado' and historial[0]['eliminado_por'] == admin.username
         assert client.post(f'/adjuntos/api/quitar/{adjunto["id"]}/').status_code == 400
 
-    def test_errores(self, client, empresa, admin, venta_contado):
-        url = api('venta', venta_contado.pk)
+    def test_errores(self, client, empresa, admin, gasto, venta_contado):
+        url = api('gasto', gasto.pk)
         assert client.get(url).status_code == 403   # sin sesión: JSON, no redirección
         helpers.iniciar_sesion(client, admin, empresa=empresa)
         assert client.post(url, {}).json()['error'] == 'Elige el archivo del comprobante.'
         respuesta = client.post(url, {'archivo': subido('nota.txt', b'hola')})
         assert respuesta.status_code == 400 and 'Solo se admiten' in respuesta.json()['error'] and respuesta.json()['codigo'] == 'archivo'
         assert client.get(api('cheque', 1)).status_code == 404
-        assert client.get(api('venta', 999999)).status_code == 404
+        assert client.get(api('gasto', 999999)).status_code == 404
+        # Ventas y cobros no entran por aquí: su respaldo es de core/cobros.
+        assert client.get(api('venta', venta_contado.pk)).status_code == 404
+        assert client.post(api('venta', venta_contado.pk), {'archivo': subido('v.pdf', PDF)}).status_code == 404
+        assert client.get(api('cobro', 1)).status_code == 404 and not leer(empresa, lambda: Adjunto.objects.exists())
         assert client.post('/adjuntos/api/quitar/999999/').status_code == 404
         assert client.get('/adjuntos/999999/archivo/').status_code == 404
         assert client.get(url + '?x=1', HTTP_ACCEPT='text/html').status_code == 200
 
-    @pytest.mark.parametrize('rol, venta, cobro_', [
+    @pytest.mark.parametrize('rol, gasto_, pago_', [
         (ROLE_OWNER, (200, True, True), (200, True, True)),
         (ROLE_ADMIN, (200, True, True), (200, True, True)),
         (ROLE_ACCOUNTANT, (200, True, True), (200, True, True)),     # add_adjunto y delete_adjunto del módulo
-        (ROLE_SELLER, (200, True, False), (403, None, None)),        # add_sale; sin cuentas por cobrar
+        (ROLE_SELLER, (403, None, None), (403, None, None)),         # sin gastos ni cuentas por pagar
         (ROLE_READONLY, (200, False, False), (200, False, False)),
         (ROLE_CLIENT, (403, None, None), (403, None, None)),
     ])
-    def test_permisos_por_rol(self, client, empresa, admin, venta_contado, cobro, rol, venta, cobro_):
+    def test_permisos_por_rol(self, client, empresa, admin, gasto, pago, rol, gasto_, pago_):
         usuario = helpers.crear_usuario(f'rol.{rol.lower()}', empresa, rol)
         helpers.iniciar_sesion(client, usuario, empresa=empresa)
-        for tipo, documento, esperado in (('venta', venta_contado, venta), ('cobro', cobro, cobro_)):
+        for tipo, documento, esperado in (('gasto', gasto, gasto_), ('pago', pago, pago_)):
             respuesta = client.get(api(tipo, documento.pk))
             assert respuesta.status_code == esperado[0], (rol, tipo, respuesta.content)
             if esperado[0] == 200:
@@ -269,65 +257,59 @@ class TestApi:
                 quitar = client.post(f'/adjuntos/api/quitar/{subida.json()["adjunto"]["id"]}/')
                 assert quitar.status_code == (200 if esperado[2] else 403), (rol, tipo)
 
-    def test_aislamiento_entre_empresas(self, client, empresa, empresa_b, admin, cobro):
+    def test_aislamiento_entre_empresas(self, client, empresa, empresa_b, admin, pago):
         with company_context(empresa):
-            adjunto = sv.adjuntar(empresa, admin, 'cobro', cobro, subido('t.pdf', PDF))
+            adjunto = sv.adjuntar(empresa, admin, 'pago', pago, subido('t.pdf', PDF))
         dueno_b = helpers.crear_usuario('dueno.b', empresa_b, ROLE_OWNER)
         helpers.iniciar_sesion(client, dueno_b, empresa=empresa_b)
-        assert client.get(api('cobro', cobro.pk)).status_code == 404
-        assert client.post(api('cobro', cobro.pk), {'archivo': subido('t.pdf', PDF)}).status_code == 404
+        assert client.get(api('pago', pago.pk)).status_code == 404
+        assert client.post(api('pago', pago.pk), {'archivo': subido('t.pdf', PDF)}).status_code == 404
         assert client.get(f'/adjuntos/{adjunto.pk}/archivo/').status_code == 404
         assert client.post(f'/adjuntos/api/quitar/{adjunto.pk}/').status_code == 404
         assert client.get('/media/' + adjunto.archivo.name).status_code == 404
         assert leer(empresa, lambda: Adjunto.objects.get(pk=adjunto.pk)).vigente
 
     def test_plan_gratuito_y_vencido(self, client):
+        def gasto_de(empresa):
+            tipo = ayuda_compras.crear_tipo_gasto(empresa, 'VARIOS')
+            return leer(empresa, lambda: Expenses.objects.create(type_expense=tipo, description='Taxi', valor=Decimal('1.00'),
+                                                                 medio_pago='transferencia', date_joined=HOY))
         gratuita = helpers.crear_empresa('GRATIS', plan=None)
         dueno = helpers.crear_usuario('dueno.gratis', gratuita, ROLE_OWNER)
-        comprador = helpers.crear_cliente('comprador.gratis', gratuita, '0912345679', '0990000003')
-        venta = factura_autorizada(gratuita, comprador, dueno, helpers.crear_producto(gratuita, 'G1'))
+        gasto = gasto_de(gratuita)
         compra = ayuda_compras.compra_antigua(gratuita, ayuda_compras.crear_proveedor(gratuita), '50.00')
         helpers.iniciar_sesion(client, dueno, empresa=gratuita)
-        bloqueo = client.get(api('venta', venta.pk))
-        assert bloqueo.status_code == 403 and 'plan anual' in bloqueo.json()['error']   # el módulo de ventas exige plan
+        bloqueo = client.get(api('gasto', gasto.pk))
+        assert bloqueo.status_code == 403 and 'plan anual' in bloqueo.json()['error']   # el módulo de gastos exige plan
         assert client.get(api('compra', compra.pk)).json()['permisos'] == {'subir': True, 'quitar': True}   # Compras es gratis
         assert client.post(api('compra', compra.pk), {'archivo': subido('c.pdf', PDF)}).status_code == 201
         vencida = helpers.crear_empresa('VENCIDA', plan=None)
         helpers.dar_plan(vencida, inicio=timezone.now() - timedelta(days=400))
         dueno_v = helpers.crear_usuario('dueno.vencida', vencida, ROLE_OWNER)
-        venta_v = factura_autorizada(vencida, helpers.crear_cliente('comprador.v', vencida, '0912345680', '0990000004'), dueno_v,
-                                     helpers.crear_producto(vencida, 'V1'))
+        gasto_v = gasto_de(vencida)
         helpers.iniciar_sesion(client, dueno_v, empresa=vencida)
-        consulta = client.get(api('venta', venta_v.pk))
+        consulta = client.get(api('gasto', gasto_v.pk))
         assert consulta.status_code == 200 and consulta.json()['permisos'] == {'subir': False, 'quitar': False}
         assert 'venció' in consulta.json()['bloqueo']
-        assert client.post(api('venta', venta_v.pk), {'archivo': subido('v.pdf', PDF)}).status_code == 403
-
+        assert client.post(api('gasto', gasto_v.pk), {'archivo': subido('v.pdf', PDF)}).status_code == 403
 
 # ---------------------------------------------------------------- comprobante junto con el formulario
 
 class TestFormularios:
 
-    def test_cobro_con_comprobante(self, client, empresa, admin, comprador, producto):
-        venta = factura_autorizada(empresa, comprador, admin, producto, credito=True, fecha=HOY - timedelta(days=2))
+    def test_cobro_de_cxc_no_pasa_por_adjuntos(self, client, empresa, admin, comprador, producto):
+        """El cobro de CxC guarda su respaldo en core/cobros (campo `archivo`); el campo `comprobante` de adjuntos no existe
+        en esa pantalla y, si alguien lo envía, se ignora: un solo registro del respaldo."""
+        venta = factura_autorizada(empresa, comprador, admin, producto, credito=True, fecha=MES)
         cuenta = cxc_de(venta)
         helpers.iniciar_sesion(client, admin, empresa=empresa)
+        pagina = client.get('/pos/ctas/collect/add/').content
+        assert b'name="comprobante"' not in pagina and b'comprobante_clase' not in pagina and b'name="archivo"' in pagina
         datos = {'action': 'add', 'ctas_collect': cuenta.pk, 'date_joined': HOY.isoformat(), 'valor': '5.00', 'medio_pago': 'transferencia',
-                 'referencia': 'TRX-1', 'description': 'Abono', 'comprobante': subido('t.pdf', PDF), 'comprobante_clase': ''}
+                 'referencia': 'TRX-1', 'description': 'Abono', 'clave': 'clave-adjuntos-1', 'comprobante': subido('t.pdf', PDF)}
         assert client.post('/pos/ctas/collect/add/', datos).json() == {}
-        abono = leer(empresa, lambda: PaymentsCtaCollect.objects.get(tipo='cobro'))
-        adjunto = leer(empresa, lambda: Adjunto.objects.get())
-        assert (adjunto.documento_tipo, adjunto.documento_id, adjunto.clase, adjunto.referencia, adjunto.fecha, adjunto.importe) == (
-            'cobro', abono.pk, 'transferencia', 'TRX-1', HOY, Decimal('5.00'))
-        datos.update(comprobante=subido('nota.txt', b'hola'), comprobante_clase='deposito')
-        respuesta = client.post('/pos/ctas/collect/add/', datos).json()
-        assert 'Solo se admiten' in respuesta['error']
-        assert leer(empresa, lambda: (PaymentsCtaCollect.objects.filter(tipo='cobro').count(), Adjunto.objects.count())) == (1, 1)   # nada nuevo
-        datos.update(comprobante=subido('foto.jpg', imagen('JPEG')), comprobante_clase='deposito')
-        assert client.post('/pos/ctas/collect/add/', datos).json() == {}
-        assert leer(empresa, lambda: Adjunto.objects.order_by('id').last()).clase == 'deposito'
-        pagina = client.get('/pos/ctas/collect/add/')
-        assert b'name="comprobante"' in pagina.content and b'comprobante_clase' in pagina.content
+        assert leer(empresa, lambda: (PaymentsCtaCollect.objects.filter(tipo='cobro').count(), RespaldoCobro.objects.count(),
+                                      Adjunto.objects.count())) == (1, 1, 0)
 
     def test_pago_con_comprobante(self, client, empresa, admin):
         compra = ayuda_compras.compra_antigua(empresa, ayuda_compras.crear_proveedor(empresa), '100.00', credito=True, fecha=HOY - timedelta(days=5))
@@ -364,32 +346,31 @@ class TestFormularios:
 
 class TestMes:
 
-    def test_resumen_y_zip(self, empresa, admin, venta_contado, cobro, gasto, pago):
+    def test_resumen_y_zip(self, empresa, admin, venta_contado, gasto, pago):
         with company_context(empresa):
-            sv.adjuntar(empresa, admin, 'cobro', cobro, subido('c.pdf', PDF), referencia='TRX-77', importe='10')
+            sv.adjuntar(empresa, admin, 'pago', pago, subido('c.pdf', PDF), referencia='CH-5', importe='40')
             en_efectivo = Expenses.objects.create(type_expense=gasto.type_expense, description='Parqueo', valor=Decimal('1.00'), medio_pago='efectivo')
             resumen = sv.resumen_mes(MES)
             filas = {(f['tipo'], f['id']): f for f in resumen['filas']}
-            assert filas[('venta', venta_contado.pk)]['falta'] is True
-            assert filas[('cobro', cobro.pk)]['falta'] is False and filas[('cobro', cobro.pk)]['adjuntos'][0]['referencia'] == 'TRX-77'
-            assert filas[('gasto', gasto.pk)]['falta'] is True and filas[('pago', pago.pk)]['falta'] is True
+            assert {f['tipo'] for f in resumen['filas']} == {'compra', 'gasto', 'pago'}   # la factura del mes no entra (core/cobros)
+            assert filas[('pago', pago.pk)]['falta'] is False and filas[('pago', pago.pk)]['adjuntos'][0]['referencia'] == 'CH-5'
+            assert filas[('gasto', gasto.pk)]['falta'] is True
             assert filas[('gasto', en_efectivo.pk)]['requiere'] is False and filas[('gasto', en_efectivo.pk)]['falta'] is False
-            venta_credito = cobro.ctas_collect.sale
-            assert filas[('venta', venta_credito.pk)]['requiere'] is False   # a crédito: el comprobante va en el cobro
             compra = pago.debts_pay.purchase
             assert filas[('compra', compra.pk)]['requiere'] is False   # compra antigua a crédito sin forma de pago: no se exige
             assert {k: v for k, v in resumen['totales'].items() if k != 'bytes_texto'} == {
-                'documentos': 7, 'con_comprobante': 1, 'sin_comprobante': 3, 'adjuntos': 1, 'bytes': len(PDF)}
-            assert [f['id'] for f in resumen['faltantes']] == [venta_contado.pk, gasto.pk, pago.pk]
+                'documentos': 4, 'con_comprobante': 1, 'sin_comprobante': 1, 'adjuntos': 1, 'bytes': len(PDF)}
+            assert [f['id'] for f in resumen['faltantes']] == [gasto.pk]
             contenido = sv.zip_mes(MES)
         with zipfile.ZipFile(io.BytesIO(contenido)) as zf:
             nombres = zf.namelist()
             [archivo] = [n for n in nombres if n.endswith('.pdf')]
-            assert archivo.startswith(f'{MES:%Y-%m}/cobros/') and archivo.endswith('_1.pdf') and zf.read(archivo) == PDF
+            assert archivo.startswith(f'{MES:%Y-%m}/pagos/') and archivo.endswith('_1.pdf') and zf.read(archivo) == PDF
             indice = zf.read(f'{MES:%Y-%m}/indice.csv').decode('utf-8-sig').splitlines()
         assert indice[0].startswith('tipo;documento;tercero;')
-        assert sum('SIN COMPROBANTE' in linea for linea in indice) == 3
-        assert any('TRX-77' in linea and archivo in linea for linea in indice)
+        assert sum('SIN COMPROBANTE' in linea for linea in indice) == 1
+        assert any('CH-5' in linea and archivo in linea for linea in indice)
+        assert not any(venta_contado.voucher_number_full in linea for linea in indice)
 
     def test_mes_sin_nada_y_mes_invalido(self, empresa):
         with company_context(empresa):
@@ -401,14 +382,15 @@ class TestMes:
             sv.primer_dia('2026-13-01')
         assert sv.primer_dia(' 2026-02 ') == MES.replace(year=2026, month=2)
 
-    def test_pagina_y_zip_por_la_web(self, client, empresa, admin, venta_contado):
+    def test_pagina_y_zip_por_la_web(self, client, empresa, admin, venta_contado, gasto):
         helpers.iniciar_sesion(client, admin, empresa=empresa)
         pagina = client.get('/adjuntos/')
         assert pagina.status_code == 200
         html = pagina.content.decode()
-        assert 'Pendientes de comprobante' in html and venta_contado.voucher_number_full in html and 'fpAdjuntosModal' in html
-        assert f'data-adjuntos-tipo="venta" data-adjuntos-id="{venta_contado.pk}"' in html
-        assert 'No hay facturas, compras, gastos' in client.get('/adjuntos/?mes=2020-01').content.decode()
+        assert 'Pendientes de comprobante' in html and 'fpAdjuntosModal' in html and 'se registran y revisan en cada factura' in html
+        assert f'data-adjuntos-tipo="gasto" data-adjuntos-id="{gasto.pk}"' in html
+        assert 'data-adjuntos-tipo="venta"' not in html and venta_contado.voucher_number_full not in html
+        assert 'No hay compras, gastos ni pagos a proveedores' in client.get('/adjuntos/?mes=2020-01').content.decode()
         assert client.get('/adjuntos/?mes=2026-13').status_code == 200   # mes inválido: el actual
         zip_ = client.get(f'/adjuntos/zip/?mes={MES:%Y-%m}')
         assert zip_.status_code == 200 and zip_['Content-Type'] == 'application/zip' and f'comprobantes-de-pago-{MES:%Y-%m}.zip' in zip_['Content-Disposition']

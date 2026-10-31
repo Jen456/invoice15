@@ -63,7 +63,11 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
         def vuelta():
             for app, destino in VUELTA:
                 manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
-            assert len(pendientes(env)) == 22   # 19 de la fase contable + 3 de adjuntos (comprobantes de pago)
+            # 19 de la fase + tenancy 0008/0009 (acciones de locales/puntos y de cobros, sobre tenancy 0007) + pos 0032/0033
+            # (medio de cobro y etiquetas de condición de pago, sobre pos 0031: una app tiene una sola hoja). Las tablas
+            # de locales y puntos (configuracion 0001-0003) y de respaldos (cobros 0001-0003) cuelgan de pos 0019 y no se
+            # deshacen con la fase. Más adjuntos 0001-0003 (comprobantes de pago, sobre pos 0031).
+            assert len(pendientes(env)) == 26
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)

@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-30",
+  "viewports": [
+    360,
+    390,
+    768,
+    1024,
+    1360,
+    1440
+  ],
+  "views": 48,
+  "errors": [],
+  "tests": [
+    "Errores obligatorios y códigos duplicados/000",
+    "Alta ficticia de local en tres pasos",
+    "Alta de punto y rechazo de duplicado local",
+    "Puntos pendientes no seleccionables",
+    "Preferencia independiente del borrador abierto",
+    "Cambio explícito de punto del borrador",
+    "Nuevo borrador usa preferencia",
+    "Búsqueda sin resultados",
+    "Consulta de numeración sin incrementos",
+    "Escape devuelve foco y Tab visible",
+    "Movimiento reducido",
+    "Recarga elimina datos temporales"
+  ],
+  "scope": "Maqueta estática con estado en memoria. No valida backend ni emisión."
+}

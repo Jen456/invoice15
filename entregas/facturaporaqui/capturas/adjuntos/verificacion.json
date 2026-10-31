@@ -1,0 +1,270 @@
+{
+  "backend": "722475a (copia aislada, sin fusionar con plataforma)",
+  "browser": "Chromium",
+  "data": "Ficticios, SQLite local",
+  "checks": [
+    {
+      "name": "Página mensual sin desbordes",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "Modal y pie dentro de la pantalla",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "Archivos e historial separados, subida autorizada",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "Historial conserva acceso al archivo quitado",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "Foco dentro del modal con teclado",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "Escape y foco devuelto al documento",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "Campo integrado del gasto sin desbordes",
+      "width": 360,
+      "result": "ok"
+    },
+    {
+      "name": "Página mensual sin desbordes",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Modal y pie dentro de la pantalla",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Archivos e historial separados, subida autorizada",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Historial conserva acceso al archivo quitado",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Foco dentro del modal con teclado",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Escape y foco devuelto al documento",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Campo integrado del gasto sin desbordes",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Página mensual sin desbordes",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "Modal y pie dentro de la pantalla",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "Archivos e historial separados, subida autorizada",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "Historial conserva acceso al archivo quitado",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "Foco dentro del modal con teclado",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "Escape y foco devuelto al documento",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "Campo integrado del gasto sin desbordes",
+      "width": 768,
+      "result": "ok"
+    },
+    {
+      "name": "Página mensual sin desbordes",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "Modal y pie dentro de la pantalla",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "Archivos e historial separados, subida autorizada",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "Historial conserva acceso al archivo quitado",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "Foco dentro del modal con teclado",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "Escape y foco devuelto al documento",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "Campo integrado del gasto sin desbordes",
+      "width": 1024,
+      "result": "ok"
+    },
+    {
+      "name": "Página mensual sin desbordes",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "Modal y pie dentro de la pantalla",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "Archivos e historial separados, subida autorizada",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "Historial conserva acceso al archivo quitado",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "Foco dentro del modal con teclado",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "Escape y foco devuelto al documento",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "Campo integrado del gasto sin desbordes",
+      "width": 1360,
+      "result": "ok"
+    },
+    {
+      "name": "Página mensual sin desbordes",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "Modal y pie dentro de la pantalla",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "Archivos e historial separados, subida autorizada",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "Historial conserva acceso al archivo quitado",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "Foco dentro del modal con teclado",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "Escape y foco devuelto al documento",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "Campo integrado del gasto sin desbordes",
+      "width": 1440,
+      "result": "ok"
+    },
+    {
+      "name": "Documento y metadatos inmóviles durante la subida; segundo envío bloqueado",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Subida real y texto tratado como texto",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Archivo disponible mediante ruta privada",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Duplicado rechazado sin segunda copia",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Quitar requiere confirmación y conserva el historial",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Modal de abonos sigue abierto y recupera foco",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "ZIP mensual real descargable",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Mes vacío sin descarga engañosa",
+      "width": 390,
+      "result": "ok"
+    },
+    {
+      "name": "Consulta sin subida ni quitar",
+      "width": 390,
+      "result": "ok"
+    }
+  ],
+  "jsErrors": [],
+  "expectedHttpErrors": [
+    {
+      "status": 409,
+      "url": "/adjuntos/api/gasto/2/"
+    }
+  ],
+  "unexpectedWrites": 0
+}

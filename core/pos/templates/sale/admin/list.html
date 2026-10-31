@@ -1,8 +1,6 @@
 {% extends 'list.html' %}
 {% load static permisos %}
 {% block assets_list %}
-    <link rel="stylesheet" href="{% static 'adjuntos/css/adjuntos.css' %}">
-    <script src="{% static 'adjuntos/js/adjuntos.js' %}" defer></script>
     <script src="{% static 'lib/bootstrap-daterangepicker-3.1/js/spanish.js' %}"></script>
     <script src="{% static 'lib/bootstrap-daterangepicker-3.1/js/daterangepicker.js' %}"></script>
     <link rel="stylesheet" href="{% static 'lib/bootstrap-daterangepicker-3.1/css/daterangepicker.css' %}"/>
@@ -72,7 +70,6 @@
             </div>
         </div>
     </div>
-    {% include 'adjuntos/_modal.html' %}
 {% endblock %}
 
 {% block javascript_list %}

@@ -183,6 +183,7 @@ class TestMenu:
             ('importacion', '/importacion/pendientes/'), ('importacion', '/importacion/reglas/'),
             ('proformas', '/proformas/'),   # Proformas (Etapa 1) declara su módulo
             ('comprobantes', '/comprobantes/retenciones-recibidas/'),   # Etapa 2 (O2)
+            ('configuracion', '/configuracion/puntos/'),   # Locales y puntos de emisión por usuario
             ('adjuntos', '/adjuntos/')]   # comprobantes de pago adjuntos
 
     def test_importacion_queda_igual_y_se_recrea_igual(self):

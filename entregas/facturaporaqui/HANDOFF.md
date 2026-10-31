@@ -1,6 +1,140 @@
 # Handoff compartido — frontend
 
-## Estado actual — comprobantes de pago adjuntos, sin publicar (Claude, 30/10/2026)
+## Estado actual — comprobantes de pago integrados con cobros y con el diseño de Codex, sin publicar (Claude, 31/10/2026)
+
+- **Reparto decidido por la propietaria:** facturas emitidas y sus cobros → `core/cobros` (sin cambios); compras, gastos y pagos a proveedores → `core/adjuntos`. Un solo acceso y un solo registro por respaldo.
+- **Integrado** `frontend/etapa3=ebac423` (incluye `plataforma=4a39a1a`) sobre `fase/adjuntos-comprobantes=722475a` por merge. Conflictos resueltos conservando ambas entregas: menú (módulo de puntos y de adjuntos), roles (`SELLER_WRITE` con `add_respaldocobro` y `ACCOUNTANT_WRITE` de adjuntos), contratos de módulos y vuelta de migraciones (23 → 26 pendientes). Vista y plantilla del cobro de CxC: las de `core/cobros`, sin el campo de adjuntos.
+- **core/adjuntos reducido a tres tipos:** `compra`, `gasto`, `pago`. La API responde 404 a `venta` y `cobro`; se retiraron sus accesos en Facturas emitidas y Cuentas por cobrar, el campo en «nuevo cobro» y las reglas de abonos. La migración `adjuntos 0001` (sin publicar) se ajustó a las tres opciones; `makemigrations --check` sin cambios.
+- **Página del mes y ZIP:** compras, gastos y pagos a proveedores, con el alcance dicho en el encabezado («Los respaldos de las facturas emitidas y de sus cobros se registran y revisan en cada factura, en Cobros»). No agregan `RespaldoCobro`.
+- **Diseño de Codex integrado tal cual:** las tres plantillas y `static/adjuntos/` (JS y CSS) más el bloque `fp-adjuntos-*` del CSS compartido. Se retiraron los estáticos antiguos de `core/adjuntos/static/` (una sola implementación; mismas URL). Solo cambian dos textos de alcance en `mes.html` y un comentario en `_campo_formulario.html`.
+- **Sin cambios de comportamiento** en permisos, privacidad (`privado/`, descarga con CSP sandbox), historial (baja lógica con motivo) ni saldos: adjuntar o quitar no toca abonos ni pagos. La idempotencia del cobro sigue en `core/cobros` (`clave`); en adjuntos, el duplicado por huella responde 409.
+- **Pruebas:** SQLite completa: 1474 aprobadas, 46 omitidas, 0 fallos. PostgreSQL completa: 1519 aprobadas y 1 fallo ajeno (`test_zz_mejora_concurrencia_pg`, `Plan.DoesNotExist`, ya señalado como sensible a la carga de la VM); repetida aislada junto con adjuntos, respaldo de cobros y concurrencia de cobros: 65 aprobadas. Navegador (Chromium, vista previa local con datos ficticios, 1366 y 390 px): Facturas emitidas y «nuevo cobro» sin acceso de adjuntos y API `venta` 404; compra con subida, archivo privado (CSP sandbox, `no-store`) y duplicado 409; pago en modal apilado sobre «Pagos y abonos», baja con motivo al historial y el modal padre sigue abierto; gasto con comprobante desde el formulario; página del mes solo con compras, gastos y pagos y su texto de alcance; ZIP 200; móvil sin desplazamiento horizontal; 0 errores de JS y 0 respuestas fallidas. Capturas en VM101: `/root/capturas/adjuntos-integrado/`.
+- **Sin publicar.** Publicar exige la fase contable y `cobros` antes (adjuntos 0001 depende de `pos 0031`), con respaldo y ensayo de migraciones.
+
+## Pendiente para Codex — comprobantes de pago
+
+- [ ] Marcar como hecho «Integrar el diseño con el contrato consolidado»: el contrato vigente es `CONTRATO-PANTALLAS-ADJUNTOS.md` con el reparto del 31/10. El filtro de tipos del JS admite aún los cinco tipos; el servidor responde 404 a `venta` y `cobro`. Puede reducirse a tres cuando convenga.
+- [ ] La guía `manuales/COMPROBANTES-DE-PAGO.md` sigue en borrador: ajustarla al alcance (compras, gastos y pagos; ventas y cobros en Cobros).
+
+## Notas entre agentes — reparto de respaldos (Claude → Codex)
+
+- No añadir accesos de `core/adjuntos` en ventas ni en cobros. El respaldo de la venta y del cobro es `core/cobros` (contrato del 31/10 más abajo).
+- Pendientes de decisión, no hechos: (1) si la página del mes y el ZIP deben recoger también `RespaldoCobro` (con archivo, nota y estado de revisión por fila, sin duplicar); (2) las tres decisiones abiertas del contrato de cobros.
+- Hallazgos ajenos, sin tocar: (a) `test_zz_mejora_concurrencia_pg` falla de forma intermitente en la suite completa de PostgreSQL y pasa aislada; (b) `frontend/etapa3` avanzó después de `ebac423` (`e0399db`, `dbf7374`: decisión comercial, solicitud de factura, `test_suscripciones`) y no se integró aquí; su recomendación de consulta mensual común con `RespaldoCobro` y el riesgo de borrado concurrente en `ComprobanteListView.post` quedan para su propio encargo.
+
+## Estado actual — diseño de adjuntos listo para integrar; dos contratos de respaldo separados (Codex, 31/10/2026)
+
+**Código, pruebas y capturas subidos:** `2b37d098b79cfcf57646c7a2651967a2e20626e9` en `frontend/etapa3`, confirmado con `git ls-remote`. Este registro posterior solo añade la trazabilidad; no publica en la aplicación.
+
+Fetch realizado. `frontend/etapa3` incorpora por avance rápido `plataforma=4a39a1a`, incluidos puntos por usuario y `core/cobros`. La rama `fase/adjuntos-comprobantes=722475a` **no se fusionó**: el ensayo de fusión identifica conflictos en cobros, permisos, menú, documentación y pruebas. No se resolvieron cambios de backend desde Codex.
+
+Se entrega el diseño de `adjuntos/mes.html`, `_modal.html` y `_campo_formulario.html`, JavaScript en `static/adjuntos/js/adjuntos.js` y tema `fp-adjuntos-*` en el CSS compartido. Página mensual, indicadores, tablas móviles, ZIP, archivos vigentes e historial, selección/arrastre, progreso por archivo y confirmación de baja. Permisos/límites/mensajes proceden de la API. Subir no confirma ni concilia el pago. [Archivos, alcance y pasos de integración](propuestas/adjuntos/README.md).
+
+Pruebas locales del diseño contra `722475a` aislado: **46 aprobadas** (adjuntos/estáticos/rutas/frontend). En plataforma actual: **11 aprobadas** (estáticos/rutas/frontend). Chromium a 360/390/768/1024/1360/1440 px, teclado y movimiento reducido; operaciones sobre archivos ficticios, roles y fallos controlados. [Capturas y detalle](capturas/adjuntos/README.md). No se atribuye a estas pruebas una integración de ambas apps ni una comprobación en PostgreSQL o producción. Sin despliegue.
+
+## Pendiente para Codex — diseño de comprobantes de pago
+
+- [x] Leer el contrato de adjuntos y los nuevos contratos de puntos/cobros en plataforma; comprobar el solapamiento.
+- [x] Diseñar modal, página mensual, campo de formulario y acciones accesibles, conservando campos/API/CSRF.
+- [x] Verificar guardado/duplicados/baja/descarga/ZIP con datos ficticios, permisos de consulta, comportamiento móvil y respuesta perdida; entregar capturas y guía de uso en borrador.
+- [ ] Integrar el diseño con el contrato consolidado que publique Claude. Las plantillas de adjuntos aún están inactivas en plataforma porque no está instalada esa app.
+- [ ] El diseño de `core/cobros` y de locales/puntos conserva sus tareas propias; no se marca como completado por el diseño de adjuntos.
+
+## Notas entre agentes — integración de adjuntos frente a cobros (Codex → Claude)
+
+La recomendación de reparto sigue pendiente de decisión de la propietaria: `core/cobros` para ventas/cobros (nota o archivo, revisión e idempotencia); `core/adjuntos` para compras/gastos/pagos. No poner dos accesos que registren el mismo respaldo. La factura de contado puede usar `core/cobros` directamente sin crear CxC.
+
+1. Conflictos comprobados entre `4a39a1a` y `722475a`: `core/pos/templates/ctas_collect/create.html`, `core/pos/views/ctas_collect/views.py`, `core/security/menu.py`, `core/tenancy/roles.py`, HANDOFF y `tests/test_b0_contratos.py` / `tests/test_migracion_vuelta_fase.py`. `settings.py`/`urls.py` fusionan textualmente; se debe revisar el comportamiento conjunto. Conservar las secciones de ambos agentes.
+2. La página y ZIP originales solo agrupan `Adjunto`. Si deben recoger ventas/cobros respaldados por `RespaldoCobro`, entregar en el contrato la fuente, las acciones/rutas permitidas, si hay archivo o nota y el estado de revisión por fila. No duplicar importes/archivos ni presentar notas como archivos. Si se restringe el resumen a compras/gastos/pagos, comunicar explícitamente ese alcance. El frontend no inventa una agregación entre apps.
+3. `documentos.describir('venta')` de adjuntos usa `payment_method` (forma SRI); la nueva venta ya tiene `medio_cobro`. No reclasificar las ventas antiguas ni deducir su medio real desde esa forma SRI. Al separar ventas hacia cobros, reutilizar su contrato.
+4. Se conservan los límites de cada contrato; no son intercambiables: genéricos 8 MB/10 archivos/PDF-JPG-PNG-WEBP frente a cobros 5 MB/PDF-JPG-PNG/nota o archivo. Tampoco se trasladan los permisos del Contador de adjuntos a revisión de cobros.
+5. Los nuevos archivos `static/adjuntos/` prevalecen sobre los homónimos antiguos dentro de `core/adjuntos/static/`. Al integrar, retirar/sincronizar los antiguos para no mantener dos implementaciones. Mantener las URL de estáticos. Las tres plantillas nuevas se conservan con la versión de diseño de esta entrega si aparece conflicto de alta/alta.
+6. La [guía para clientes](manuales/COMPROBANTES-DE-PAGO.md) es borrador hasta consolidar el alcance y publicar. Revisión final, suites del conjunto, migraciones y despliegue con respaldo a cargo de Claude; Codex no publica.
+
+## Estado actual — análisis ERPNext para 104, 103 y 101; IA pendiente (Codex, 30/10/2026)
+
+La propietaria deja pendiente el chatbot y pide un alcance comercial/contable concreto. [Análisis y propuesta acotada](ANALISIS-ERPNEXT-COMERCIAL-CONTABLE.md), sobre `frontend/etapa3=2dcdaa6` y `github/plataforma=3549c16` ya integrado tras fetch; ERPNext revisado en `352583128432733415df48c1509f86ef97cf7688` (13.0.0-dev, 2020). **Solo documentación.** No se ejecutó ERPNext ni se cambió código o el orden aprobado de implementación.
+
+Hallazgo principal: Proformas/Compras/Ventas aportan fuentes reutilizables, pero no existe todavía el libro mayor. La importación genera propuestas, no asientos registrados; «Reporte de Resultados» es una comparación operativa. Recomendación para el objetivo actual: validar fuentes y casilleros → hojas 104/103 → libro mínimo, caja/bancos y costos → cierre/101. Detalles, evidencia y criterios de aceptación en el análisis. No equivale a que el complemento Contable esté disponible ni desplegado.
+
+## Pendiente para Codex — análisis contable acotado
+
+- [x] Revisar los procesos comerciales/contables del fork ERPNext y contrastarlos con el código actual de FacturaPorAquí.
+- [x] Distinguir lo ya implementado de lo necesario para 104/103/101 y registrar una propuesta por entregas.
+- [x] Dejar la IA expresamente pendiente, conservando su documento de propuesta.
+- [ ] Reutilizar las maquetas existentes de cierre, 104/103 y contabilidad cuando Claude publique el contrato de la entrega elegida; no conectar datos o endpoints supuestos.
+
+## Notas entre agentes — prioridad 104/103/101 (Codex → Claude)
+
+Próximo trabajo recomendado, acotado: contrato de cierre tributario y mapa de datos/casilleros por versión y período, usando Compras/Ventas/Retenciones existentes. Separar IVA, retenciones de renta efectuadas y recibidas; identificar datos desconocidos y saldos anteriores. No rehacer la Etapa 2 ni iniciar CRM, nómina, todos los conectores bancarios o IA. Para 101 sí hacen falta apertura, partida doble, costo histórico, ajustes, estados y conciliación tributaria; no derivarlo del reporte operativo.
+
+**Corrección de especificación por revisar antes de programar:** el plan y el informe normativo describen «casillero +50», pero sus propios ejemplos incluyen `3030→3530` y `3480→3980`. Usar mapa explícito de casillero de base y de valor con código/concepto/vigencia; no una operación genérica. También separar la elegibilidad de un comprobante electrónico para el formulario del reconocimiento de asientos sin XML (apertura, depreciación, etc.). No se modificaron aquí esos documentos históricos ni las reglas fiscales.
+
+Se necesitan el contrato real de período/RUC, fuentes y faltantes por casillero, saldos arrastrados, estados de revisión, permisos y exportación antes de integrar las pantallas. Los endpoints quedan por definir por backend. Las fuentes oficiales SRI no pudieron consultarse desde este entorno; Claude debe contrastarlas y dejar su versión/fecha y revisión contable. El análisis no certifica casilleros actuales ni autoriza declaraciones automáticas o despliegues. Precio del complemento sigue pendiente.
+
+## Estado actual — propuesta de asistente IA prepago (Codex, 30/10/2026)
+
+La propietaria pide evaluar antes de programar. [Propuesta Ingenioso IA](propuestas/ASISTENTE-IA.md): alcance gradual, comparación de proveedores, costos ilustrativos, complemento anual con cupo mensual y recargas prepagadas, permisos por empresa y diseño previsto. **Solo documentación; implementación, precio y contratación de API pendientes de decisión.** No cambiar planes, activar cobros ni anunciar disponibilidad a partir de esta propuesta.
+
+## Pendiente para Codex — propuesta de IA
+
+- [x] Presentar una propuesta de producto, cobro, costos y reparto con Claude antes de tocar código.
+- [ ] **En pausa por decisión posterior de la propietaria (30/10):** no iniciar las maquetas, el piloto ni la integración del chat. Retomar únicamente cuando lo solicite expresamente, con contrato backend publicado.
+
+## Notas entre agentes — propuesta de IA (Codex → Claude)
+
+La renovación actual es anual y manual. Reutilizar PayPhone exige una orden/entitlement de IA separado: no consumir cupos fiscales ni suponer que existe débito recurrente. Activación únicamente tras confirmación válida del pago en servidor; reserva atómica de uso antes de cada llamada a la API, consumo y conciliación después. Sin acceso SQL arbitrario, sin permisos elevados y sin mezclar RUC. El MVP propuesto es ayuda/redacción; consultas de negocio y borradores son etapas posteriores. No implementar todavía: la propietaria solicitó primero la propuesta.
+
+No hay tarifas oficiales verificadas en esta sesión: el entorno no permite consultar las páginas de precios de los proveedores. Los USD 0,005 por tarea del documento son una simulación, no una cotización ni el precio que cobrará FacturaPorAquí. La elección entre OpenAI y Anthropic y la tarifa comercial requieren contrastar precios y medir tareas ficticias tras autorizar ese piloto. Sin llamadas a APIs de IA, pagos o acceso a credenciales.
+
+## Estado actual — alta de clientes dentro de la factura (Codex, 30/10/2026)
+
+**Código y capturas subidos a GitHub:** `0fd594ddb55a08c290478a85ec281a7bbe6551a1` (`frontend/etapa3`), remoto verificado después del push. La entrada que registra este hash solo añade documentación; no despliega nada.
+
+Diseño funcional sobre `9e65aea`, con `github/plataforma=3549c16` ya integrado y confirmado por fetch. Formulario de cliente con secciones, adaptación móvil y errores junto a los campos. Alta confirmada → selección automática en la factura. Buscar cliente existente desde su identificación → selección explícita sin nueva alta. Cerrar conserva lo escrito mientras la página siga abierta; no es un borrador en servidor. Doble envío bloqueado y recuperación por consulta si se pierde la respuesta. Sin cambios en backend, campos de cobro, cálculo, emisión, proformas ni numeraciones.
+
+SQLite: **61 aprobadas** en las suites relevantes. Chromium: **36 comprobaciones** a 360/390/768/1024/1360/1440 px y tres casos de fallo controlado; siete capturas WebP. Alta y errores reales en SQLite ficticia, teclado y movimiento reducido, factura conservada, sin errores JS/HTTP en el recorrido normal. [Evidencia y revisión](capturas/cliente-en-factura/README.md). Sin despliegue; PostgreSQL y dispositivo físico no comprobados en esta entrega.
+
+## Pendiente para Codex — cliente en la factura
+
+- [x] Diseñar el formulario de alta, facilitar la búsqueda de duplicados y seleccionar el cliente sin salir.
+- [x] Conservar lo escrito al cerrar; mostrar errores accesibles y recuperar una respuesta de guardado perdida.
+- [x] Probar el flujo con datos ficticios y registrar capturas/pruebas.
+- [ ] Integrar el respaldo de cobro cuando Claude entregue su contrato; sigue siendo una tarea distinta.
+
+## Notas entre agentes — cliente en la factura (Codex → Claude)
+
+- Revisar `sale/admin/_cliente_rapido.html`, `sale/admin/js/cliente_rapido.js`, el cambio acotado en `form.js`, el include en `create.html` y CSS `fp-client-*`. Al integrar tu trabajo de cobros, conserva estos includes y el guardado delegado del cliente; no cambié los campos de pago que estás trabajando.
+- Se reutiliza POST a la ruta actual de creación de la factura (`/pos/sale/admin/add/`): `action=create_client` con `names`, `email`, `image`, `dni`, `identification_type`, `mobile`, `birthdate`, `address`, `send_email_invoice`, `extra_emails` y CSRF. Éxito: JSON del cliente con `id`, `text` e `identification_type`; rechazo: `error` como texto o diccionario por campo. Validación existente `action=validate_client`, `pattern=dni`, `parameter`; búsqueda `action=search_client`, `term`, devuelve la lista vigente de la empresa. No se inventaron endpoints, acciones ni datos.
+- La búsqueda es una consulta y sus resultados requieren elegir «Usar este cliente». Si un POST queda incierto, no se repite: se consulta. Si no aparece el registro, se pide comprobarlo con el administrador, sin afirmar que no se guardó. Esto no reemplaza una futura idempotencia de servidor.
+- **Dato existente por revisar, sin mezclarlo con el cobro:** `ClientForm.birthdate` es obligatorio y el widget trae la fecha de hoy, también para RUC de empresas. En frontend se conserva el campo y se deja de sobrescribirlo al reabrir. Para omitirlo en el alta empresarial necesito que el contrato permita guardarlo vacío, sin crear una fecha ficticia; revisa el requisito cuando corresponda.
+- No se alteraron vistas, formularios Python, modelos, servicios, migraciones, permisos, firma, SRI ni archivos de entorno. No se publica desde Codex.
+
+## Estado actual — llenado ágil de factura y propuesta de respaldo del cobro (Codex, 30/10/2026)
+
+Se fusionó `plataforma=3549c16` mediante `46da1c8`, conservando las secciones de ambos agentes. Revisado el fork `Jen456/erpnext` en `352583128432733415df48c1509f86ef97cf7688` (declara 13.0.0-dev): [comparación de procesos](propuestas/venta-agil/FLUJOS-ERPNEXT.md). No se importó código ni se sustituyó Django/Frappe.
+
+**Implementado en las plantillas reales:** factura en tres secciones; creación de cliente visible; botón «Crear producto aquí», con alta real usando el formulario y endpoints existentes; conserva cliente, líneas e información adicional. Servicio/no inventariado se añade a las líneas; inventariado sin stock se crea, pero no se añade a la venta. Errores por campo, duplicados, permiso `add_product`, no doble POST y consulta después de respuesta perdida. Adaptación móvil y corrección del wrapper de tabla acumulado. Mismos campos, acciones, CSRF y cálculo fiscal. El ticket 08 conserva su opción y su etiqueta de acción propia.
+
+**Propuesta, aún sin backend:** [respaldo del cobro](propuestas/venta-agil/respaldo-cobro.html): comprobante PDF/JPG/PNG o nota interna del vendedor/administrador, referencia, importe, autor y estado de revisión. Selección de archivo en memoria, sin carga real. Los campos operativos `cash`/`change` siguen intactos hasta que el backend separe contado de efectivo.
+
+Pruebas SQLite: **73 aprobadas** en 24,90 s (estáticos, rutas, frontend, alta contextual, tarifas y conversión de proformas). Se actualizó la prueba que esperaba «Generar Venta» para exigir «Emitir factura», conservando sus verificaciones fiscales. Chromium: 36 comprobaciones de vistas de factura a 360/390/768/1024/1360/1440; alta real de producto en base ficticia, cantidades, pago crédito/efectivo, duplicados, stock, Escape/foco, movimiento reducido, sin desbordes ni errores JS/HTTP. Fallos controlados: respuesta de alta perdida, doble submit y formulario de empresa inesperado. Respaldo probado a los mismos seis anchos. Nueve capturas WebP (<150 KB cada una) y resultados JSON en `capturas/venta-agil/`. No se desplegó ni se realizaron emisiones, pagos o correos reales. PostgreSQL y teléfono físico pendientes.
+
+## Pendiente para Codex — factura y cobro
+
+- [x] Revisar procesos de ERPNext y documentar qué se adapta a nuestro flujo.
+- [x] Llenado por secciones, alta de producto sin salir y pruebas reales de la integración existente.
+- [x] Diseñar comprobante o nota de cobro con autoría y revisión; documentación y capturas.
+- [ ] Conectar el respaldo al backend cuando Claude publique su contrato. No simular guardado ni verificación.
+
+## Notas entre agentes — alta de producto y respaldo (Codex → Claude)
+
+1. Revisar `sale/admin/create.html`, `_producto_rapido.html`, `sale/admin/js/llenado.js`, el cambio acotado de `form.js` y `facturaporaqui.css`. `templates/form.html` solo añade un bloque de título con el valor anterior por defecto. `product/create.html` expone un marcador de empresa mediante el contexto existente. No se cambió backend.
+2. Alta: GET `/pos/product/add/` para campos/CSRF; POST mismo endpoint `action=validate_data` (`pattern=code` y `pattern=pattern` para nombre/categoría), después `action=add`. Éxito `{}` → POST `/pos/sale/admin/add/`, `action=search_product_code`, `code`. Es un producto persistido aun si se cancela luego la factura. Deseable devolver el JSON del producto en el alta para evitar la segunda consulta. No introducir inventario inicial sin su transacción/permiso.
+3. Dos límites existentes: el GET de alta cambia el módulo de la sesión; la validación de nombre de Bodega envía `pattern=name` pero la vista comprueba `pattern=pattern`. La nueva interfaz usa el valor que la vista entiende. La unicidad concurrente sigue protegida por la base, pero puede devolver un error SQL poco claro. Documentado, sin alterar tu backend.
+4. **Pedido nuevo de la propietaria:** reemplazar el uso indiscriminado de efectivo/cambio por respaldo de transacción o nota del vendedor/administrador. Revisar `Sale.payment_type` (`efectivo`/`credito`) frente al medio real y la forma SRI. No ocultar campos y mandar importes inventados. Reutilizar `PaymentsCtaCollect` donde aplique. Contrato detallado, campos, privacidad, autoría, permisos y criterios en [README de la entrega](propuestas/venta-agil/README.md#contrato-solicitado-a-claude--siguiente-entrega-de-backend). Publica rutas/actions reales y tratamiento del saldo pendiente; no están inventados en frontend. Archivo o nota al registrar un cobro; no exigirlo a una factura a crédito sin abono. Nota y archivo fuera de XML/RIDE y de `additional_info`.
+5. Autor/fecha/revisor desde servidor; archivo privado por empresa; subida no equivale a pago confirmado. Auditar revisión/correcciones y evitar abonos duplicados. La selección individual de puntos y la persistencia de borradores siguen con sus contratos pendientes, sin mezclar su implementación con esta entrega.
+## Histórico — comprobantes de pago adjuntos (Claude, 30/10/2026; sustituido por la sección del 31/10)
 
 Pedido de la propietaria del 30/10 (tras emitir la primera factura de NEXALLTI S.A.S, de contado por transferencia): poder **adjuntar
 comprobantes o recibos** a lo que se factura, compra, cobra y paga, para las declaraciones del mes y la conciliación bancaria, con
@@ -28,7 +162,7 @@ Contrato completo en [`CONTRATO-PANTALLAS-ADJUNTOS.md`](CONTRATO-PANTALLAS-ADJUN
   `core/tenancy/roles.py`, los listados y formularios de cobros, pagos, gastos, compras y facturas, y sus `list.js`. El worktree
   `fase/puntos-por-usuario` modifica también `settings.py`, `urls.py`, `menu.py` y `roles.py`: fusionar con cuidado (líneas contiguas).
 
-## Pendiente para Codex — comprobantes de pago (Claude, 30/10/2026)
+## Histórico — pendiente para Codex, comprobantes de pago (Claude, 30/10/2026; sustituido)
 
 - [ ] Diseño del modal (`templates/adjuntos/_modal.html`, `static/adjuntos/css/adjuntos.css`, prefijo `fp-adjuntos`) y del campo del
   formulario (`templates/adjuntos/_campo_formulario.html`); vista previa de la imagen o del PDF si la ves útil (la URL se sirve en línea).
@@ -37,7 +171,7 @@ Contrato completo en [`CONTRATO-PANTALLAS-ADJUNTOS.md`](CONTRATO-PANTALLAS-ADJUN
   Facturas emitidas.
 - [ ] Manual de clientes: adjuntar al cobrar y desde la página del mes; formatos; quitar deja historial.
 
-## Notas entre agentes — comprobantes de pago (Claude → Codex)
+## Histórico — notas entre agentes, comprobantes de pago (Claude → Codex, 30/10/2026; sustituido)
 
 - El servidor decide permisos y plan: el modal pide `GET /adjuntos/api/<tipo>/<id>/` y dibuja según `permisos` y `bloqueo`; no ocultes
   botones por tu cuenta sin ese dato. Todo texto de terceros va como texto (`textContent`), nunca como HTML.
@@ -135,6 +269,57 @@ El resto de la entrega quedó como lo entregaste:
 
 **Base para tu próxima entrega:** la punta de `plataforma` en GitHub tras esta integración.
 
+## Estado actual — maqueta navegable de locales y puntos (Codex, 30/10/2026)
+
+Entrega enfocada en establecimientos: [abrir maqueta y capturas](propuestas/establecimientos/README.md). Catálogo con búsqueda, puntos agrupados por local, alta guiada en tres pasos, errores por campo, confirmación, alta de puntos y numeraciones de consulta. Selector de punto preferido y vista ilustrativa de factura que conserva el punto del borrador al cambiar la preferencia. Los puntos pendientes no son seleccionables.
+
+Estado solo en memoria con datos ficticios, sin conexión al sistema. Colibrí, paleta y adaptación móvil. Chromium: 48 comprobaciones de vistas a 360/390/768/1024/1360/1440 px; flujos, teclado, Escape y movimiento reducido. Siete capturas WebP en `capturas/establecimientos/`; evidencia en `verificacion.json`. Sin modificaciones al backend, plantillas operativas, numeraciones, despliegue ni peticiones externas.
+
+## Pendiente para Codex — integración del diseño de locales
+
+- [x] Catálogo, registro guiado y selector como maqueta navegable con datos ficticios.
+- [x] Comprobar pantallas, errores y conservación del punto de un borrador; registrar capturas.
+- [ ] Trasladar el diseño a las plantillas reales cuando Claude publique el contrato. La maqueta no acredita aislamiento o persistencia del servidor.
+
+## Notas entre agentes — contrato pendiente de locales (Codex → Claude)
+
+El diseño se puede revisar sin servidor Django en `propuestas/establecimientos/index.html`. No se proponen endpoints ficticios. Faltan las rutas, acciones y nombres de campos reales para listar/crear establecimientos y puntos, guardar preferencia por usuario/empresa y fijar el punto del formulario/documento. Datos requeridos: identificador, código, nombre, dirección, matriz explícita si está disponible, activo, permisos para agregar/seleccionar y motivo de bloqueo; por documento y ambiente, estado de configuración, último utilizado y próximo número de referencia. La selección no debe cambiar el punto de otros operadores ni de borradores abiertos. El servidor debe comprobar permisos, vigencia y unicidad; conservar la numeración atómica existente. Ver [propuesta técnica previa](propuestas/establecimientos/PROPUESTA.md).
+
+## Estado actual — ticket B revalidado y muestras actualizadas (Codex, 30/10/2026)
+
+La solicitud recibida vuelve a citar `4ce7888`. Tras fetch, el remoto real es `plataforma=3192d5d` y `frontend/etapa3=e94c3a9` al empezar esta revisión. La rama ya contiene `4ce7888`, el rediseño `165fbc7` y la integración `a6f5db3` de las correcciones de Claude. **No se retrocedió ni reimplementó el ticket**; no se tocó código operativo, regla @page, vista, URL ni decisiones fiscales.
+
+- Pruebas locales del ticket continuo, diseño e impresos: **20 aprobadas en 26,50 s**, SQLite.
+- Doce renderizados (1/5/40 líneas, normales/largas, con/sin petición): una hoja de 58 mm, texto dentro de 48 mm, tipografía mínima 8 pt, descripción mínima 9 pt, contenido y orden conservados. Blanco final **6,58–6,70 mm**; pie cursivo sin solapamiento.
+- Seis PDF actuales y ocho capturas WebP: [muestras actualizadas](propuestas/ticket-b/revalidacion-20261030/README.md). Incluyen las correcciones de matriz, local de la numeración y fecha de emisión. Muestras originales conservadas.
+- No se verificó producción ni se desplegó. Impresión y escáner físicos siguen pendientes. Los pendientes fiscales del RIDE quedan intactos.
+
+## Pendiente para Codex — solicitud repetida del ticket
+
+- [x] Confirmar el historial y conservar el rediseño/correcciones existentes.
+- [x] Revalidar las pruebas y actualizar muestras de 1/5/40 líneas normales y largas.
+- [x] Registrar evidencia actual y enlace de entrega para Claude.
+
+## Notas entre agentes — ticket actual (Codex → Claude)
+
+La plantilla vigente ya incorpora tu revisión; esta entrega solo actualiza muestras y documentación sobre la rama actual. No necesita endpoints ni cambios del backend. Para revisar el ticket, usar los PDF de `propuestas/ticket-b/revalidacion-20261030/`, no los de la carpeta superior. La publicación sigue a tu cargo y requiere la autorización de la propietaria; el estado del dominio no se dedujo del historial de Git.
+
+
+## Estado actual — revisión de locales y puntos (Codex, 30/10/2026)
+
+La propietaria pide facilitar la operación de varias sucursales del mismo RUC. Se revisó el código de `d2bed3d` (backend `3192d5d`) y se documentó la [propuesta de locales y puntos de emisión](propuestas/establecimientos/PROPUESTA.md). Ya se registran varios establecimientos/puntos, pero el asistente confirma un punto global por empresa. No se implementó un selector que simule independencia entre usuarios.
+
+## Pendiente para Codex — locales y puntos
+
+- [x] Revisar lo existente y definir recorrido, diseño, datos y pruebas requeridas.
+- [x] Maquetas de tarjetas de locales, puntos y selector: entrega navegable del 30/10 enlazada arriba.
+- [ ] Integración real sobre el contrato del backend. Ningún cambio de emisión desde frontend.
+
+## Notas entre agentes — locales y puntos (Codex → Claude)
+
+Reutilizar `Establishment`, `EmissionPoint` y `Receipt`; revisar `confirmar_punto`, que cambia `is_default` y los datos de `Company`. Se necesita selección autorizada por usuario/empresa con el punto fijado al formulario/documento, sin cambiar la selección de otros operadores ni de pestañas abiertas. Documentar nombres de campos, acciones, rutas y contexto para catálogo, selección, permisos y numeración estimada (sin consumir números). Los datos exactos y criterios de aceptación están en la propuesta. La identificación de matriz no se infiere del código 001. Misma empresa/RUC con varios locales no equivale a varios RUC del plan Multiempresa. Solo análisis y documentación; sin cambios al backend, interfaz activa ni despliegue.
+
+
 ## Estado actual — diseño sobre la fase contable integrada (Codex, 30/10/2026 UTC)
 
 **Commit funcional subido y verificado en GitHub: `adbe62fc6022dbbe0f51e93d5311bb5636c2f172` (`adbe62f`), rama `frontend/etapa3`.** La anotación de este hash es un commit posterior solo documental. Claude debe integrar la punta de la rama, conservar sus pendientes y ejecutar sus comprobaciones antes de proponer la publicación.
@@ -203,6 +388,132 @@ Sustituido por «Pendiente — antes y después de publicar (Claude, 30/10/2026)
 - **No cambies** modelos, migraciones, vistas Python, rutas ni nombres de URL, ni los `name=`, valores de `action`, identificadores, `data-*` y fragmentos que comprueban las pruebas (cada contrato los lista). Si un diseño los necesita distintos, pídelo aquí y lo cambio con su prueba.
 - Datos ficticios únicamente; no despliegues. Los textos comerciales siguen las reglas de la nota de la fase contable del 28/10 (sin «homologado», sin «declaramos por ti», sin logos del SRI, la Supercias ni los bancos).
 
+## Estado actual — locales y puntos de emisión por usuario, en `plataforma` sin publicar (Claude, 30/10/2026)
+
+- **Qué resuelve:** dos locales del mismo RUC facturan a la vez sin cambiarse el punto ni mezclar numeraciones. Cada usuario elige su punto de emisión (preferencia por usuario y empresa); cada formulario de emisión lleva el punto con el que se abrió y el servidor lo vuelve a validar al emitir (empresa, activo, autorizado, numeración confirmada en el ambiente actual); la numeración sigue en `Receipt` (una secuencia por empresa, ambiente, punto y tipo, reservada con bloqueo de fila), así que dos emisiones simultáneas sobre un mismo punto no repiten número y dos puntos no se mezclan.
+- **Reutiliza:** `Establishment`, `EmissionPoint`, `Receipt` y los servicios del asistente (`configurar_secuencia`, `secuencia_configurada`, `requisitos_de_emision`, `receipt_para_emitir`, ahora con `punto=`). El asistente (`/configuracion/facturacion/`), el punto predeterminado (`is_default`) y los datos de «Compañía» no cambian: siguen siendo la configuración inicial y el punto de quien no elige.
+- **Nuevo (commit `91ddccc`):** modelos `PuntoAutorizado` y `PuntoSeleccionado` en `core/configuracion/models.py`; reglas en `core/configuracion/puntos.py`; pantalla funcional `/configuracion/puntos/` (módulo «Locales y puntos de emisión», menú Configuración, Propietario y Administrador; plantilla `configuracion/puntos.html`); selector del punto en la cabecera (`configuracion/_selector_punto.html`, junto al selector de empresa); bloque `configuracion/_punto_emision.html` en los seis formularios de emisión (factura/ticket, nota de crédito, retención, liquidación, nota de débito, guía); filtro `punto` en los listados de facturas y notas de crédito; `receipt.punto` en el JSON de los comprobantes.
+- **Migraciones:** configuracion 0001 (tablas), 0002 (seguridad por filas), 0003 (módulo, permisos y roles); tenancy 0008 (acciones de auditoría). Sin cambios en tablas existentes; numeraciones, documentos, auditoría y configuración anteriores intactos. Empresas existentes: sin autorizaciones todos los usuarios ven todos los puntos activos; sin selección se usa el punto predeterminado; con un solo punto nada cambia para nadie.
+- **Pruebas:** `tests/test_puntos_por_usuario.py` (15: dos vendedores en dos locales, dos pestañas, rechazos, cambio de empresa, autorizaciones, permisos por rol, numeración por punto, NC desde el punto del formulario y desde el listado, listados y filtro, catálogo, módulo y migración reversible) y `tests/test_zz_puntos_concurrencia_pg.py` (8 emisiones simultáneas en dos puntos, PostgreSQL). Suites completas: SQLite 1411 aprobadas y 45 omitidas; PostgreSQL 1455 aprobadas y 1 fallo preexistente de la prueba de Codex test_alta_producto_en_factura (duplicado de producto dentro de la transacción; falla igual en e4c48c6 sin esta rama y se anota como pendiente).
+- **No publicado** (la orden lo prohibía). Al publicar, `desplegar.sh` aplica las migraciones; no hace falta ninguna acción manual.
+
+## Pendiente para Codex — locales y puntos (Claude, 30/10/2026)
+
+- [ ] Pantalla «Locales y puntos de emisión» (`/configuracion/puntos/`, `core/configuracion/templates/configuracion/puntos.html`): tarjetas de local con puntos anidados, estados «Listo para emitir» / «Falta configurar» con explicación, ficha de numeración por documento y ambiente, usuarios autorizados. Los nombres de campos, acciones y mensajes del contrato no cambian.
+- [ ] Selector del punto en la cabecera (`configuracion/_selector_punto.html`) y bloque «Emites desde…» de los formularios (`configuracion/_punto_emision.html`): hoy funcionales y sin diseño.
+- [ ] Listados de facturas y notas de crédito: nombre corto del local bajo el número (`receipt.punto.local`) y filtro por punto (`punto` en la acción `search`).
+- Decisiones de la propietaria pendientes (no bloquean): (1) si un usuario sin autorizaciones debe ver todos los puntos (hoy sí, por compatibilidad con lo que había) o ninguno; (2) si se habilita editar nombre y dirección de un local (hoy solo alta y activar/desactivar; ver «Histórico»).
+
+## Notas entre agentes — contrato de locales y puntos (Claude → Codex)
+
+**Datos (sin cambios en lo existente).**
+- Local = `Establishment`: `id`, `code` (3 dígitos), `name`, `address`, `is_active`. Punto = `EmissionPoint`: `id`, `establishment`, `code`, `description`, `is_default` (predeterminado de la empresa, solo uno), `is_active`; `full_code` = `002-001`. Numeración = `Receipt` por (empresa, `environment_type`, `establishment_code`, `issuing_point_code`, `voucher_type`): `sequence` = último usado, `next_number_full()`, `confirmed_at`.
+- `PuntoAutorizado(user, emission_point)`: sin filas para un usuario en la empresa, puede usar todos los puntos activos; Propietario y Administrador siempre todos; rol Cliente, ninguno.
+- `PuntoSeleccionado(user, company, emission_point)`: preferencia por usuario y empresa. **Punto activo** del usuario = el elegido si sigue elegible; si no, el único elegible; si no, el predeterminado de la empresa si es elegible; si no, debe elegir.
+- La identificación de matriz no se infiere del código (`001` no significa matriz); no hay campo de matriz: si la propietaria lo pide, se agrega aparte.
+
+**Rutas.**
+
+| Ruta | Método | Quién | Respuesta |
+|---|---|---|---|
+| `/configuracion/puntos/` | GET | Propietario, Administrador | pantalla (`estado` en el contexto, igual a `estado.json`) |
+| `/configuracion/puntos/` | POST `action=…` | Propietario, Administrador | redirección con aviso; con `Accept: application/json`, `X-Requested-With: XMLHttpRequest` o `formato=json`: `{ok, mensaje, estado}`; error HTTP 400 `{ok: false, mensaje, errores?}` (`errores` = errores del formulario por campo) |
+| `/configuracion/puntos/estado.json` | GET | Propietario, Administrador | catálogo completo (abajo) |
+| `/configuracion/puntos/seleccion.json` | GET | cualquier usuario con rol de personal | `{seleccionado, elegido_por_el_usuario, elegibles[], puede_administrar, ambiente, url_seleccionar}` |
+| `/configuracion/puntos/seleccionar/` | POST `punto=<id>` [`next=<ruta>`] | cualquier usuario con rol de personal | redirección a `next` (solo rutas de este sitio) o JSON `{ok, seleccion}`; error 400 `{error}` |
+
+**Acciones del POST a `/configuracion/puntos/`** (nombres exactos):
+- `agregar_establecimiento`: `code`, `name`, `address`, `point_code` (obligatorio en el primer local), `point_description`.
+- `agregar_punto`: `establishment` (id), `code`, `description`.
+- `activar_punto` / `desactivar_punto`: `point` (id). No se desactiva el predeterminado ni un punto con numeración usada (`punto_en_uso`).
+- `numeracion`: `n-point` (id), `n-tipo` (`01`, `04`, `07`, `03`, `05`, `06`), `n-ambiente` (`1` PRUEBAS, `2` PRODUCCIÓN), `n-mode` (`nuevo` | `otro_sistema` | `mantener`), `n-last_number` (`125`, `000000125` o `002-001-000000125`), `n-confirm=on`. Configura y confirma en un paso para cualquier punto; con `01` deja confirmado también el ticket `08`. Mismas reglas y mensajes del asistente (`servicios.MENSAJES`: `ultimo_formato`, `ultimo_rango`, `ultimo_otro_punto`, `retroceso`, `reinicio_usada`, `reinicio_existente`); exige el asistente confirmado (`setup_pendiente`). Abrir la ficha o consultar no consume números.
+- `autorizar` / `quitar_autorizacion`: `a-user` (id de un usuario con rol de personal en la empresa), `a-point` (id). A Propietario y Administrador no se les autoriza (`usuario_administra`). Al quitar la última autorización el usuario vuelve a ver todos los puntos.
+
+**Punto en los formularios de emisión.** Contexto (`puntos.contexto_formulario`): `punto` (EmissionPoint o None), `puntos_elegibles`, `punto_proximo` («002-001-000000041», sin reservar), `punto_ambiente`, `punto_aviso` (texto si no se puede emitir desde ese punto). `_punto_emision.html` pone `<select name="punto" id="id_punto">` si hay más de un elegible (o `<input type="hidden" name="punto">` con uno) y el resumen «Emites desde Local / Punto · 002-001 · PRODUCCIÓN · Próximo número: … (se confirma al emitir)». **El POST de emisión lleva `punto`**: factura y ticket (`action=add`), nota de crédito (`add`), retención, liquidación, nota de débito y guía (`action=emitir`); la NC total desde el listado de facturas (`create_credit_note`) acepta `punto` opcional. Sin `punto`, el servidor usa el punto activo del usuario. `search_voucher_number` (venta) acepta `punto` y devuelve `voucher_number`, `voucher_number_full` y `punto`, o `pending` = `{codigo: 'punto' | 'secuencia' | 'configuracion' | 'firma', mensaje, url}`. El JS de la venta ya envía `punto` y vuelve a pedir el número al cambiar el `select`.
+
+**Comportamientos.**
+- Otra pestaña cambia la selección: el formulario abierto conserva su `punto` y emite desde él; la preferencia queda en lo último elegido. Cambiar el `select` del formulario es explícito y actualiza el próximo número.
+- Cambia la empresa activa: la selección es por empresa; un `punto` de la empresa anterior enviado desde un formulario viejo se rechaza (`punto_desconocido`) y no se crea nada.
+- Rechazos del servidor (texto exacto en `puntos.MENSAJES`): `punto_desconocido` (otra empresa o id inválido), `punto_inactivo`, `punto_no_autorizado`, `elige_punto` (varios elegibles y ninguno elegido ni predeterminado), `sin_membresia`; y los de numeración, configuración y firma de `servicios.requisitos_de_emision` (para un punto distinto del predeterminado: «Configura y confirma la numeración de {documento} del punto {punto} para el ambiente {ambiente} en «Locales y puntos de emisión».», `url: /configuracion/puntos/`). Un POST manipulado nunca crea el documento ni consume número.
+- Documentos relacionados: nota de crédito, nota de débito, guía, retención y liquidación salen del punto del formulario (o del activo); no heredan el punto de la factura o compra de sustento, que el XML referencia por su número. Las proformas no tienen punto: al facturarlas se usa el punto del formulario de venta (mostrado antes de emitir). El ticket (`08`) usa el mismo punto que la factura; en Producción sigue sin ticket.
+- Histórico: cada comprobante conserva `receipt` → punto → local; RIDE, ticket y XML usan `receipt.establishment_address()`. No se editan dirección ni códigos de un local (solo alta y activar/desactivar) y el XML autorizado es el registro fiscal, así que hoy no hace falta instantánea; si se habilita editar direcciones, habrá que guardar la dirección en el comprobante (`regenerar_ride` ya rechaza un PDF que no coincida con el XML).
+- Listados: `receipt.punto` = `{id, codigo_completo, descripcion, local, local_id}` (None en secuencias anteriores al asistente) en el JSON de facturas y notas de crédito; `search` de ambos acepta `punto` (id).
+- Auditoría: `punto_seleccionado` {punto, anterior}, `punto_autorizado` {usuario, punto, accion: autorizar | quitar}, `billing_point_change` {punto | establecimiento, accion: agregar | activar | desactivar}, `billing_sequence_change` y `billing_setup_confirm` {tipo, punto, ambiente, proximo}.
+- Permisos: el módulo `/configuracion/puntos/` lo tienen Propietario y Administrador (`sync_roles`); Vendedor, Contador y Consulta no, pero todos eligen su punto (`seleccion.json`, `seleccionar/`). El selector de la cabecera solo aparece con puntos elegibles.
+
+**`estado.json`** (y `estado` en el contexto de la pantalla):
+
+```json
+{"setup_completo": true, "ambiente": {"codigo": 2, "nombre": "PRODUCCIÓN"},
+ "locales": [{"id": 2, "codigo": "002", "nombre": "Local Norte", "direccion": "Av. Local Norte 1", "activo": true,
+   "puntos": [{"id": 5, "codigo": "001", "codigo_completo": "002-001", "descripcion": "Caja principal",
+     "etiqueta": "Local Norte · Caja principal · 002-001", "activo": true, "predeterminado": false, "listo": true,
+     "documentos": ["01", "04", "08"], "usada": false,
+     "numeracion": {"1": [], "2": [{"tipo": "01", "nombre": "Factura", "existe": true, "ultimo": 0, "ultimo_completo": "",
+        "proximo": 1, "proximo_completo": "002-001-000000001", "confirmado": true, "utilizada": false, "origen": "nuevo"}]},
+     "usuarios_autorizados": [{"id": 7, "username": "caja.norte", "nombre": "…", "rol": "Vendedor"}]}]}],
+ "usuarios": [{"id": 7, "username": "caja.norte", "nombre": "…", "rol": "Vendedor", "administra": false,
+   "autorizados": [5], "todos": false, "seleccionado": 5}],
+ "seleccion": {"…": "igual que seleccion.json"},
+ "tipos": [{"tipo": "01", "nombre": "Factura", "configurable": true}],
+ "mensajes": {"…": "puntos.MENSAJES"}}
+```
+
+`listo` = factura confirmada en el ambiente actual; `documentos` = tipos confirmados en el ambiente actual; `numeracion` por ambiente (`"1"`, `"2"`) con los siete tipos en orden `01`, `04`, `08`, `07`, `03`, `05`, `06`; `usada` = tiene comprobantes; nunca reserva números. Cada punto de `elegibles` y `seleccionado` lleva `{id, codigo, codigo_completo, descripcion, activo, predeterminado, local {id, codigo, nombre, direccion, activo}, etiqueta, listo, bloqueo}`; `bloqueo` es el motivo por el que no se puede emitir desde él («Punto inactivo.» o el mensaje de numeración pendiente) y `null` si está listo: con él el selector muestra los puntos pendientes sin dejar elegirlos.
+
+**No cambiar desde el frontend:** nombres de campos, acciones y mensajes (las pruebas los comprueban); la regla de que el servidor valida el punto en cada emisión; no simular independencia en el cliente ni elegir un punto sin enviarlo en `punto`.
+
+## Estado actual — respaldo del cobro y condición/medio de pago, en `plataforma` sin publicar (Claude, 31/10/2026)
+
+- **Integrado** `frontend/etapa3` de Codex hasta `e4c48c6` por avance rápido (llenado por secciones, alta de producto y de cliente sin salir) y su documentación posterior `00c07fc` por merge (`2ae12fa`), conservando ambas entregas. No se rehízo ese diseño.
+- **Condición de pago ≠ medio de cobro.** `Sale.payment_type` sigue siendo la condición (valores históricos `efectivo` = contado, `credito`; etiquetas «Contado» / «Crédito», migración `pos 0033`). El medio con que se cobró va en el campo nuevo `Sale.medio_cobro` (`MEDIOS_DE_PAGO`: efectivo, transferencia, deposito, cheque, tarjeta_debito, tarjeta_credito, compensacion, otro; migración `pos 0032`). «Efectivo recibido» y «Cambio» solo existen cuando el medio es efectivo: el servidor exige efectivo ≥ total y calcula el cambio; con otro medio quedan en 0,00 sin inventar importes. `payment_method` (forma de pago del SRI) no se remapea. Las ventas anteriores quedan con `medio_cobro = ''` («sin dato»): no se reclasifican; el ticket las imprime como antes.
+- **Respaldo del cobro** (app nueva `core/cobros`, commit `9eef6d5`): `RespaldoCobro` (factura, abono si es a crédito, origen, importe, medio, referencia, nota interna, archivo privado, autor y fecha del servidor, revisión) y `RespaldoCobroCambio` (historial). Se registra con comprobante (PDF/JPG/PNG ≤ 5 MB, contenido validado), nota interna o ambos: al menos uno. Una factura a crédito sin abono no lleva respaldo; al emitirla se rechaza un adjunto (`credito_sin_abono`). Revisión aparte: pendiente / revisado / rechazado con responsable, fecha y motivo; **no mueve el saldo** (abajo). `clave` por envío hace idempotente el registro (doble clic, reintento, respuesta perdida). Nota y archivo no entran en `additional_info`, XML, RIDE, ticket ni correos. Migraciones `cobros 0001–0003` (tablas, RLS, permisos en «Facturas emitidas» y «Cuentas por cobrar» y roles) y `tenancy 0009` (acciones de auditoría).
+- **Pantalla «Cuentas por cobrar → nuevo cobro»**: ahora exige nota («Detalles») o comprobante (campo `archivo`) y acepta `clave`; registra el abono y su respaldo por el mismo servicio.
+- **Hallazgos ajenos corregidos de paso:** el alta de producto desde la factura devolvía un error SQL ilegible ante un código repetido por otra pestaña y, en PostgreSQL, dejaba rota la transacción (la prueba de Codex `test_alta_producto_en_factura` fallaba en PostgreSQL, también sin esta rama): ahora responde «Ya existe un producto con ese código o nombre en esta empresa…» con un punto de guardado. La respuesta de éxito sigue siendo `{}` (no se cambió el contrato que ya usa el frontend).
+- **Pruebas:** `tests/test_respaldo_cobros.py` (28: crédito con archivo / nota / ninguno, doble envío, autor y estado falsificados, validaciones, emisión al contado por medio, crédito sin abono, ventas anteriores, formatos y tamaños inválidos, descarga privada por empresa y permiso, roles, revisión y saldo, eliminar cobro, edición con historial, privacidad, pantalla de CxC, factura anulada) y `tests/test_zz_cobros_concurrencia_pg.py` (misma clave en paralelo: un solo abono). Suites completas: SQLite 1438 aprobadas y 46 omitidas; PostgreSQL 1483 aprobadas. En ambas falló solo el recuento de la vuelta de migraciones (20 → 23), corregido y repetido después; en PostgreSQL falló además test_zz_mejora_concurrencia_pg (mejora de plan, ajeno a esta rama), que pasó aislado y en la corrida anterior: sensible a la carga de la VM. Repetidas en PostgreSQL tras el ajuste: cobros, RLS, concurrencia y mejora de plan, 31 aprobadas.
+- **Sin publicar.** Al publicar, `desplegar.sh` aplica `pos 0032–0033`, `cobros 0001–0003` y `tenancy 0009`; no hace falta acción manual. Los archivos quedan bajo `privado/empresas/<uuid>/cobros/` dentro de `FPA_ARCHIVOS`, que ya está en el respaldo diario.
+
+## Pendiente para Codex — respaldo del cobro
+
+- [ ] Conectar la maqueta `propuestas/venta-agil/respaldo-cobro.html` al contrato de abajo: en la factura (sección 3, bloque `sale/admin/_cobro.html`, hoy funcional y sin diseño) y en una ficha de cobros de la factura (`GET /cobros/factura/<id>/`) con registrar, ver archivo, editar y revisar. Nombres de campos, acciones y mensajes no cambian.
+- [ ] En la factura: mostrar «Efectivo recibido» y «Cambio» solo con medio efectivo (el JS ya lo hace); la referencia y el respaldo con los demás medios; a crédito, ocultar el bloque.
+- [ ] En «Cuentas por cobrar → nuevo cobro»: el campo `archivo` y el aviso de nota o comprobante (hoy funcionales).
+- Decisiones de la propietaria pendientes (no bloquean): (1) si en efectivo la nota debe ser obligatoria (hoy opcional); (2) quién revisa además de Propietario y Administrador (hoy solo ellos: permiso `change_revision_respaldocobro`); (3) si un respaldo rechazado debe bloquear algo (hoy solo informa; el cobro se elimina aparte).
+- Hallazgo ajeno anotado, sin cambiar: `ClientForm.birthdate` obligatorio con la fecha de hoy también para RUC de empresas (lo señaló Codex); revisarlo en su propia tarea.
+- **Decisión de la propietaria — dos ramas que se solapan:** la rama aparte `fase/adjuntos-comprobantes` (`722475a`, 30/10, en GitHub, sin fusionar en `plataforma`) añade `core/adjuntos` (archivos adjuntos genéricos a facturas, compras, gastos, cobros y pagos, con página mensual y ZIP) y también un campo de comprobante en el cobro de CxC. Este respaldo (`core/cobros`) cubre el cobro de ventas con revisión, historial, idempotencia y condición/medio, que aquélla no tiene. Propuesta: fusionar `adjuntos` solo para compras, gastos y pagos a proveedores (donde no hay revisión), y en ventas y cobros usar `core/cobros`; antes de fusionar, resolver los archivos comunes (`settings`, `urls`, `menu.py`, `roles.py`, vista y plantilla del cobro de CxC, `test_b0_contratos`, `test_migracion_vuelta_fase`). No se tocó esa rama en esta tarea.
+
+## Notas entre agentes — contrato del respaldo del cobro (Claude → Codex)
+
+**Condición y medio en el formulario de la factura** (`POST /pos/sale/admin/add/`, `action=add`, multipart, además de lo que ya envía):
+- `payment_type`: `efectivo` (= **contado**) o `credito`. Etiquetas nuevas «Contado» / «Crédito»; el valor no cambia.
+- `medio_cobro` (contado): uno de `MEDIOS_DE_PAGO` (`efectivo`, `transferencia`, `deposito`, `cheque`, `tarjeta_debito`, `tarjeta_credito`, `compensacion`, `otro`). Vacío o inválido → error «Elige el medio de cobro.». Si el formulario no envía el campo (formularios anteriores) se asume efectivo.
+- `cash` (solo con `medio_cobro=efectivo`): efectivo recibido; el servidor rechaza «El efectivo recibido (X) es menor que el total a pagar (Y).» y calcula `change`; lo que envíe el navegador en `change` se ignora. Con otro medio, `cash` y `change` quedan en 0,00.
+- `referencia_cobro` (≤ 100; rechaza 13–19 dígitos seguidos: `referencia_tarjeta`), `nota_cobro` (≤ 500), `respaldo` (archivo). Con medio distinto de efectivo es obligatorio `respaldo` o `nota_cobro` (`respaldo_requerido`); en efectivo son opcionales. A crédito no se admiten (`credito_sin_abono`): el respaldo se registra con cada cobro. Si falla cualquiera de estas reglas, la venta no se crea ni consume número.
+- JSON de la factura (`toJSON`): `payment_type` y su alias `condicion_pago` `{id, name}`; `medio_cobro` `{id, name}` o `null` (ventas anteriores); `cash` / `change`. El respaldo no viaja en ese JSON.
+
+**Rutas del respaldo** (`/cobros/…`, JSON; requieren plan pagado como las ventas). Permisos del rol en la empresa activa: `view_respaldocobro` (ver, descargar), `add_respaldocobro` (registrar y corregir lo propio), `change_respaldocobro` (corregir cualquiera), `change_revision_respaldocobro` (revisar). Propietario y Administrador tienen todos; Vendedor ve y registra; Contador y Consulta solo ven. Sin permiso: GET redirige al panel con aviso (302), POST responde 403. Un respaldo o factura de otra empresa responde 404.
+
+| Ruta | Método | Permiso | Campos | Respuesta |
+|---|---|---|---|---|
+| `/cobros/factura/<venta>/` | GET | ver | — | `{factura {id, numero, total, condicion {id, nombre}, medio_cobro, efectivo, cambio, anulada_sri}, cuenta_por_cobrar {id, deuda, saldo, estado} o null (contado), abonos [abono JSON + respaldo], respaldos [], capacidades {puede_ver, puede_registrar, puede_revisar, puede_eliminar_cobros}, medios [], clave_sugerida}` |
+| `/cobros/factura/<venta>/registrar/` | POST multipart | registrar | `clave` (8–40 caracteres, única por empresa; usar `clave_sugerida` por formulario), `medio`, `importe` (crédito: obligatorio, ≤ saldo; contado: total si falta), `referencia`, `nota`, `archivo`, `fecha` (crédito, AAAA-MM-DD, no futura ni anterior a la venta) | **201** = la respuesta del GET + `respaldo` + `repetido: false`; **200** con `repetido: true` si la `clave` ya se registró (no crea nada); **400** `{error, codigo}` |
+| `/cobros/respaldo/<id>/` | GET | ver | — | respaldo con `historial` |
+| `/cobros/respaldo/<id>/editar/` | POST multipart | registrar (propio y pendiente) o cambiar | `nota`, `referencia`, `archivo` (solo los enviados) | respaldo con `historial`; 403 `sin_permiso_editar`; 400 `nada_que_cambiar`, `respaldo_requerido` |
+| `/cobros/respaldo/<id>/revisar/` | POST | revisar | `estado` (`pendiente` \| `revisado` \| `rechazado`), `motivo` (obligatorio al rechazar) | respaldo con `historial`; 400 `estado`, `motivo_rechazo`, `nada_que_cambiar` |
+| `/cobros/respaldo/<id>/archivo/` | GET | ver | `?descargar=1` para adjuntar | el archivo (inline o adjunto) con `Cache-Control: private, no-store`, `nosniff` y CSP `sandbox`; nunca por `/media/` |
+
+Respaldo JSON: `{id, factura_id, abono_id, origen ('contado' | 'abono'), importe, medio {id, nombre}, referencia, nota, archivo {nombre, tipo, bytes, sha256, url} o null, registrado_por {id, username, nombre}, registrado_en, actualizado_en, estado {id, nombre}, revisado_por, revisado_en, motivo_revision, puede_editar, historial [{fecha, usuario, accion, accion_nombre, detalle}]}`. Autor, fecha, empresa y estado salen del servidor: lo que mande el navegador en esos nombres se ignora.
+
+Códigos de error (`codigo` y texto exacto en `core/cobros/servicios.MENSAJES`): `sin_permiso`, `sin_permiso_editar`, `sin_permiso_revisar`, `respaldo_requerido`, `clave`, `importe`, `medio`, `nota_larga`, `referencia_larga`, `referencia_tarjeta`, `archivo_grande`, `archivo_vacio`, `archivo_tipo`, `archivo_contenido`, `credito_sin_abono`, `estado`, `motivo_rechazo`, `nada_que_cambiar`, `factura_anulada`; a crédito, además los de `core/pos/cxc.MENSAJES` («Elige el medio de pago.», «El valor (…) supera el saldo…», «Escribe el número del cheque…», fechas). Archivo: extensiones .pdf/.jpg/.jpeg/.png, ≤ 5 MB, cabecera del contenido comprobada y, en imágenes, abiertas con Pillow (un SVG o HTML renombrado se rechaza).
+
+**Revisión y saldo de la factura.** El saldo lo mueven solo los abonos (`PaymentsCtaCollect`, `core/pos/cxc.py`): registrar un cobro con respaldo en una factura a crédito crea el abono en ese momento y el saldo baja, igual que en «Cuentas por cobrar»; el respaldo nace **pendiente**. Marcarlo revisado o rechazado no cambia el saldo ni el abono; si el cobro era falso, quien tiene `delete_ctas_collect` elimina el cobro (acción `delete_pay` del listado de CxC): el saldo vuelve y el respaldo queda sin abono (`abono_id: null`) con la fila «cobro eliminado» en su historial. Un respaldo pendiente no retiene ni condiciona el saldo. Al contado no hay cuenta por cobrar: el respaldo documenta el cobro de la factura y no toca nada del comprobante. Adjuntar un archivo nunca confirma un pago ni genera otro abono.
+
+**Edición e historial.** Quien registró corrige nota, referencia o archivo mientras el respaldo está pendiente; con `change_respaldocobro`, cualquiera; uno revisado solo lo cambia quien revisa y vuelve a pendiente. Cada cambio deja fila en `RespaldoCobroCambio` (`detalle` con antes y después; el archivo anterior se conserva en disco y su ruta queda en el historial). Auditoría: `cobro_respaldo_registro`, `cobro_respaldo_cambio`, `cobro_respaldo_revision` (y `cxc_cobro_eliminado` del cobro).
+
+**Pantalla actual de cobros** (`/pos/ctas/collect/add/`, `action=add`): además de `ctas_collect`, `date_joined`, `valor`, `medio_pago`, `referencia`, `description`, acepta `archivo` y `clave` (la plantilla trae `clave_envio`); exige `description` o `archivo`; éxito `{}`, error `{error}` como antes.
+
+**Ticket y RIDE.** El ticket imprime «Efectivo» y «Cambio» solo cuando el medio es efectivo (o sin dato, ventas anteriores); con otro medio imprime «Pago: Transferencia». El RIDE y el XML no cambian (forma de pago del SRI de siempre).
+
 ## Estado actual — ticket térmico corregido tras la revisión, sin publicar (Claude, 28/10/2026)
 
 Rama `fase/ticket-correcciones` sobre `8d2eead` (entrega `165fbc7` de Codex): `dc274d4` y el commit de la segunda revisión. Solo cambian `core/pos/templates/sale/format/ticket.html`, sus pruebas y esta documentación. `@page`, `alto_pagina`, `create_pdf_continuo`, la vista y la URL siguen como en `165fbc7`. **Integrado en `plataforma` (`a6f5db3`); sin publicar.**
@@ -219,7 +530,7 @@ Rama `fase/ticket-correcciones` sobre `8d2eead` (entrega `165fbc7` de Codex): `d
 
 - [ ] Publicar `fase/ticket-correcciones` (integrada en `plataforma` en `a6f5db3`) con la aprobación de la propietaria. Después, revisar en papel de 58 mm real: impresora, controlador y escáner siguen sin verificar.
 - [ ] Tarea aparte: los RIDE A4 de factura (`sale/format/invoice.html:16`) y de nota de crédito (`credit_note/format/invoice.html:16`) siguen con `alt="Logotipo del emisor"`. Con un logo registrado que ya no está, los dos imprimen esa frase (comprobado con `create_pdf` y datos ficticios). Corregir con `alt=""` y una prueba de logo inexistente como la del ticket.
-- [ ] Las muestras de `propuestas/ticket-b/` son del diseño de `165fbc7`, sin la línea de matriz ni el aviso de pendiente.
+- [x] Muestras actualizadas el 30/10 en `propuestas/ticket-b/revalidacion-20261030/`; los originales de `165fbc7` en la carpeta superior se conservan como históricos.
 
 ## Estado actual — README técnico y manual de clientes PDF (Codex, 28/10/2026)
 

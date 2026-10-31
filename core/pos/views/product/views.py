@@ -5,7 +5,7 @@ from io import BytesIO
 
 import xlsxwriter
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse_lazy
@@ -100,7 +100,14 @@ class ProductCreateView(GroupPermissionMixin, CreateView):
         action = request.POST['action']
         try:
             if action == 'add':
-                data = self.get_form().save()
+                # Alta desde la factura (Codex, 9e65aea): un código o nombre repetido por otra pestaña u otro usuario llega
+                # hasta la restricción única; con un punto de guardado la respuesta es un mensaje claro y la transacción
+                # sigue sana (en PostgreSQL, sin él, las consultas siguientes de la misma transacción fallaban).
+                try:
+                    with transaction.atomic():
+                        data = self.get_form().save()
+                except IntegrityError:
+                    data = {'error': 'Ya existe un producto con ese código o nombre en esta empresa: búscalo en el catálogo.'}
             elif action == 'validate_data':
                 data = {'valid': True}
                 queryset = Product.objects.all()

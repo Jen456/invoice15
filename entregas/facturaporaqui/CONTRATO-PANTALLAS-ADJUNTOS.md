@@ -6,8 +6,13 @@ Las pantallas funcionan con el estilo base; el diseño definitivo es de Codex, c
 ## 0. Qué es y de dónde viene
 
 Un **comprobante de pago** (transferencia, papeleta de depósito, cheque, voucher de tarjeta, recibo, estado de cuenta) se adjunta al
-documento que respalda: **factura emitida** (cobro de contado), **compra**, **gasto**, **cobro** de una cuenta por cobrar o **pago** de una
-cuenta por pagar. Sirve de respaldo para las declaraciones del mes y, en la Etapa 3 (Bancos), para conciliar contra el extracto.
+documento que respalda: **compra**, **gasto** o **pago** de una cuenta por pagar.
+
+> **Reparto vigente (decisión de la propietaria, 31/10/2026).** Las **facturas emitidas y sus cobros** llevan su respaldo en `core/cobros`
+> (`RespaldoCobro`: nota o archivo, revisión, historial e idempotencia; contrato en HANDOFF, sección del 31/10). `core/adjuntos` queda
+> **solo para compras, gastos y pagos a proveedores**: la API responde 404 a `venta` y `cobro`, y ni Facturas emitidas ni Cuentas por cobrar
+> tienen acceso de adjuntos. Un mismo respaldo nunca se registra por las dos apps.
+ Sirve de respaldo para las declaraciones del mes y, en la Etapa 3 (Bancos), para conciliar contra el extracto.
 
 Referencia de diseño (erpnext, solo conceptos; es GPL-3.0 y no se copia código):
 
@@ -29,7 +34,6 @@ Referencia de diseño (erpnext, solo conceptos; es GPL-3.0 y no se copia código
 - **Clase:** si no se envía o no vale, se toma la sugerida por el medio de pago del documento (`clase_sugerida` en `documento`).
 - **Fecha** del comprobante: ISO `AAAA-MM-DD`, no futura. **Importe:** mayor que cero, dos decimales. Ambos opcionales; el formulario los
   precarga con la fecha y el importe del documento.
-- **Cobros:** solo los abonos de tipo `cobro` vigentes admiten comprobantes (los de nota de crédito, retención o anulación, no).
 - **Quitar** es una baja lógica: `eliminado` pasa a `true` con `eliminado_en`, `eliminado_por` y `eliminado_motivo`; el archivo sigue
   descargable desde el historial; el mismo archivo se puede volver a subir.
 
@@ -42,13 +46,13 @@ Referencia de diseño (erpnext, solo conceptos; es GPL-3.0 y no se copia código
 | Quitar | ver, y además `delete_adjunto` **o** el permiso de eliminar el documento |
 
 Reparto por rol (`core/tenancy/roles.py`, módulo `/adjuntos/` en «Administrativo»): **Propietario y Administrador** todo; **Contador** todo
-(`ACCOUNTANT_WRITE = {add_adjunto, delete_adjunto}`: es la única escritura que tiene); **Consulta** solo ve; **Vendedor** sube a sus facturas
-(`add_sale`) y no quita; no ve cuentas por cobrar ni la página del mes. **Cliente** nada.
+(`ACCOUNTANT_WRITE = {add_adjunto, delete_adjunto}`: es la única escritura que tiene); **Consulta** solo ve; **Vendedor** no entra (no ve
+compras, gastos ni cuentas por pagar, ni la página del mes). **Cliente** nada.
 
 ### Plan
 
-La regla de plan se hereda del **módulo del documento**: con el plan gratuito no se accede a los adjuntos de facturas, cobros ni gastos
-(módulos de pago), sí a los de compras y pagos a proveedores; con el plan vencido se consulta, pero no se sube ni se quita (`permisos.subir`
+La regla de plan se hereda del **módulo del documento**: con el plan gratuito no se accede a los adjuntos de gastos
+(módulo de pago), sí a los de compras y pagos a proveedores; con el plan vencido se consulta, pero no se sube ni se quita (`permisos.subir`
 y `permisos.quitar` en `false`, y `bloqueo` con el mensaje de siempre). La página `/adjuntos/` y la API no están en `RUTAS_DE_PAGO`.
 
 ## 2. API JSON (`core/adjuntos/views.py`)
@@ -62,11 +66,11 @@ Sin sesión o sin empresa activa: 403 JSON. Siempre `{"error": "…"}` en los fa
 | `POST /adjuntos/api/quitar/<id>/` | `adjunto` ya quitado. Campo `motivo` (opcional, 300) |
 | `GET /adjuntos/<id>/archivo/` | el archivo: imágenes y PDF en línea dentro de un documento aislado (`Content-Security-Policy: sandbox`, `nosniff`, `no-store`); con `?descargar=1`, como descarga con su nombre original |
 
-`tipo` ∈ `venta`, `compra`, `gasto`, `cobro`, `pago`. 404 si el tipo no existe o el documento no es de la empresa activa.
+`tipo` ∈ `compra`, `gasto`, `pago` (`venta` y `cobro` → 404: son de `core/cobros`). 404 si el tipo no existe o el documento no es de la empresa activa.
 
-`documento`: `tipo`, `tipo_nombre`, `id`, `numero`, `titulo` («Factura 001-002-000000305», «Cobro de 001-002-…», «Gasto #3 · MOVILIZACIÓN»,
+`documento`: `tipo`, `tipo_nombre`, `id`, `numero`, `titulo` («Gasto #3 · MOVILIZACIÓN»,
 «Compra 001-002-000000123», «Pago de …»), `tercero`, `identificacion`, `fecha` (ISO), `importe` (texto con dos decimales), `medio_id`, `medio`,
-`contado`, `requiere` (se espera un comprobante: pagado por un medio distinto del efectivo), `clase_sugerida`; en cobros además `abono` y `anulado`.
+`contado`, `requiere` (se espera un comprobante: pagado por un medio distinto del efectivo), `clase_sugerida`.
 
 `adjunto`: `id`, `clase {id, name}`, `nombre`, `tipo_mime`, `extension`, `tamano`, `tamano_texto`, `sha256`, `referencia`, `fecha`, `importe`,
 `descripcion`, `subido_por`, `subido_en`, `url`, `url_descarga`, `eliminado`, `eliminado_en`, `eliminado_por`, `eliminado_motivo`.
@@ -85,13 +89,13 @@ Todo texto de terceros (nombre del archivo, descripción, razón social) **se di
   tachada con «Quitado el … por …: motivo».
 - **Apilado:** se abre encima del modal de abonos (Cuentas por cobrar) y del de pagos (Cuentas por pagar); al cerrarse, el modal de abajo sigue
   abierto (`z-index` y fondo los ajusta el JS). Al cerrar dispara `fp-adjuntos:cerrado` con `{tipo, id, cambios}`: la página del mes recarga si hubo cambios.
-- Dónde se abre hoy: Facturas emitidas → Opciones → «Comprobantes de pago»; Compras (botón con clip, antes de Eliminar); Gastos (clip, antes de
-  Editar); Cuentas por cobrar → Abonos → clip en cada cobro vigente; Cuentas por pagar → Pagos y abonos → clip en cada pago.
+- Dónde se abre: Compras (botón con clip, antes de Eliminar); Gastos (clip, antes de Editar); Cuentas por pagar → Pagos y abonos → clip en
+  cada pago; y desde la página del mes. Facturas emitidas y Cuentas por cobrar no lo incluyen (su respaldo: `core/cobros`).
 
-### 3.2 Campo «Comprobante de pago (opcional)» en los formularios de cobro, pago y gasto (`templates/adjuntos/_campo_formulario.html`)
+### 3.2 Campo «Comprobante de pago (opcional)» en los formularios de pago y gasto (`templates/adjuntos/_campo_formulario.html`)
 
 - Solo al crear (`action == 'add'`): `comprobante` (archivo) y `comprobante_clase` (vacío = según el medio de pago). Toma `referencia`,
-  `date_joined` y `valor` del propio formulario. Si el archivo no vale, **no se registra el cobro, el pago ni el gasto** (misma transacción) y el
+  `date_joined` y `valor` del propio formulario. Si el archivo no vale, **no se registra el pago ni el gasto** (misma transacción) y el
   error vuelve como en los demás campos («Solo se admiten comprobantes en PDF, JPG, PNG o WEBP.», «El archivo pesa más de 8 MB…»).
 
 ### 3.3 Página «Comprobantes de pago» (`/adjuntos/`, menú Administrativo, permiso `view_adjunto`; `templates/adjuntos/mes.html`)
@@ -100,10 +104,10 @@ Todo texto de terceros (nombre del archivo, descripción, razón social) **se di
 - Tarjetas: documentos del mes, con comprobante, **pagados por banco sin comprobante**, archivos adjuntos.
 - Tabla «Pendientes de comprobante» (documentos con `requiere` y sin adjuntos, con botón «Adjuntar» que abre el modal) y tabla «Documentos del mes y
   sus comprobantes» (todos, con sus adjuntos enlazados y botón «Comprobantes»).
-- Qué cuenta como «del mes»: facturas emitidas autorizadas y no anuladas por fecha de registro; compras por fecha de emisión (o de registro) sin
-  notas de crédito ni de débito del proveedor; gastos, cobros vigentes y pagos por su fecha. A crédito, el comprobante va en el cobro o el pago,
-  no en la factura o la compra.
-- ZIP: `AAAA-MM/<facturas-emitidas|compras|gastos|cobros|pagos>/<numero>_<n>.<ext>` más `AAAA-MM/indice.csv` (`;`, UTF-8 con BOM: tipo,
+- Qué cuenta como «del mes»: compras por fecha de emisión (o de registro) sin notas de crédito ni de débito del proveedor; gastos y pagos a
+  proveedores por su fecha. A crédito, el comprobante va en el pago, no en la compra. **Alcance explícito:** ni la página ni el ZIP agregan
+  facturas emitidas ni cobros (`RespaldoCobro`); la página lo dice en su encabezado. Incluirlos sería un contrato nuevo (pendiente).
+- ZIP: `AAAA-MM/<compras|gastos|pagos>/<numero>_<n>.<ext>` más `AAAA-MM/indice.csv` (`;`, UTF-8 con BOM: tipo,
   documento, tercero, identificación, fecha e importe del documento, medio, clase, referencia, fecha e importe del comprobante, descripción,
   archivo, sha256, subido por, subido el; los pendientes salen con «SIN COMPROBANTE»). Más de 250 MB: HTTP 413 con el aviso.
 
@@ -112,14 +116,14 @@ Todo texto de terceros (nombre del archivo, descripción, razón social) **se di
 - [ ] Estilo del modal y del campo del formulario (marca, `fp-adjuntos-*`), vista previa de la imagen o del PDF dentro del modal si lo ves útil
   (la URL ya se sirve en línea con CSP sandbox).
 - [ ] Página del mes: tarjetas, tablas a 360/390/768/1024/1440 px (hoy la tabla se apila en móvil con `data-label`).
-- [ ] Botón con clip en los listados: hoy es `btn-outline-secondary btn-xs` con `title` y `aria-label`; en Facturas emitidas es una opción del menú.
+- [ ] Botón con clip en los listados: hoy es `btn-outline-secondary btn-xs` con `title` y `aria-label`.
 - [ ] Manual de clientes: cómo adjuntar al cobrar y desde la página del mes; qué formatos; que quitar deja historial.
 
 ## 5. Decisiones tomadas por defecto (la propietaria puede cambiarlas)
 
 - **DA-1** El Contador sube y quita comprobantes (es su respaldo contable); no gana ninguna otra escritura.
-- **DA-2** El Vendedor adjunta a sus facturas y no quita; no ve cuentas por cobrar ni la página del mes.
+- **DA-2** ~~El Vendedor adjunta a sus facturas~~ Sustituida por el reparto del 31/10: las facturas van por `core/cobros`.
 - **DA-3** Formatos PDF/JPG/PNG/WEBP, 8 MB, 10 por documento. Sin HEIC (los iPhone exportan JPG al compartir).
 - **DA-4** Quitar = baja lógica con motivo opcional; sin borrado físico (una orden de limpieza puede llegar después).
 - **DA-5** Se espera comprobante cuando el medio no es efectivo; con medio sin dato (compras y cobros anteriores a la Etapa 2) no se exige.
-- **DA-6** La factura **a crédito** no pide comprobante: lo piden sus cobros. La de contado, sí.
+- **DA-6** ~~Factura de contado y cobros~~ Sustituida por el reparto del 31/10 (`core/cobros`). En compras: a crédito lo pide el pago.

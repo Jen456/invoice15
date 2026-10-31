@@ -16,6 +16,7 @@
     {% else %}
     <form method="post" class="fp-retencion-form" novalidate>{% csrf_token %}
         {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
+        {% include 'configuracion/_punto_emision.html' %}
         <section class="card fp-retencion-panel mb-3"><div class="card-body">
             <span class="fp-eyebrow">Paso 1 · Transporte</span><h2 class="h5">Transportista, vehículo y trayecto</h2>
             <p class="text-muted">Indica quién transporta la mercadería y por dónde se traslada. Puedes repartir una factura en varias entregas.</p>

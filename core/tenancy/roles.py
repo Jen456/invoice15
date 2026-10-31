@@ -23,7 +23,8 @@ ACCOUNTANT_URLS = REPORT_URLS | {'/pos/sale/admin/', '/pos/credit/note/admin/', 
                                  '/proformas/', '/comprobantes/retenciones-recibidas/', '/adjuntos/'} | PROFILE_URLS
 # Permisos que un rol de solo lectura nunca recibe aunque el módulo esté en su menú.
 WRITE_PREFIXES = ('add_', 'change_', 'delete_', 'adjust_')
-SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note', 'add_proforma', 'change_proforma'}
+SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note', 'add_proforma', 'change_proforma',
+                'add_respaldocobro'}   # registra el respaldo del cobro; revisarlo (change_revision_) es de Propietario/Administrador
 # Escritura que sí recibe el Contador: adjuntar y quitar comprobantes de pago (respaldo contable), nunca documentos.
 ACCOUNTANT_WRITE = {'add_adjunto', 'delete_adjunto'}
 
@@ -35,7 +36,8 @@ def role_modules(role, modules):
         return staff, True
     if role == ROLE_READONLY:
         return [m for m in staff if m.url not in {'/pos/product/stock/adjustment/', '/user/', '/pos/company/update/',
-                                                  '/suscripcion/', '/configuracion/facturacion/', '/importacion/nueva/'}], False
+                                                  '/suscripcion/', '/configuracion/facturacion/', '/configuracion/puntos/',
+                                                  '/importacion/nueva/'}], False
     if role == ROLE_ACCOUNTANT:
         return [m for m in staff if m.url in ACCOUNTANT_URLS], 'accountant'
     if role == ROLE_SELLER:

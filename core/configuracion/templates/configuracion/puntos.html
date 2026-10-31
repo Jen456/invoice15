@@ -1,0 +1,105 @@
+{% extends 'skin.html' %}
+{# Pantalla funcional de «Locales y puntos de emisión». El diseño (tarjetas, selector, estados) lo hace Codex sobre el contrato de HANDOFF; los nombres de campos y acciones no cambian. #}
+{% block breadcrumb_li %}
+    <li class="breadcrumb-item active" aria-current="page"><i class="fas fa-store"></i> Locales y puntos de emisión</li>
+{% endblock %}
+{% block content %}
+<div class="fp-config fp-puntos" data-estado-url="{{ url_estado }}" data-seleccionar-url="{{ url_seleccionar }}">
+    <header class="fp-config-header">
+        <p class="fp-eyebrow">Configuración</p>
+        <h1 class="h3">Locales y puntos de emisión</h1>
+        <p class="text-muted">Un establecimiento es un local registrado para tu RUC. Dentro de él puedes tener varios puntos de emisión, por ejemplo Caja principal o Ventas web. Cada punto tiene su propia numeración por documento y ambiente, y cada usuario elige desde cuál emite. Registrar un local aquí no lo da de alta en el SRI.</p>
+        <p>Ambiente actual: <strong>{{ estado.ambiente.nombre }}</strong>. {% if estado.seleccion.seleccionado %}Tú emites desde <strong>{{ estado.seleccion.seleccionado.etiqueta }}</strong>.{% else %}Aún no eliges tu punto de emisión.{% endif %}</p>
+    </header>
+    {% for message in messages %}{% if 'configuracion' in message.tags %}
+        <div class="alert {% if message.level_tag == 'error' %}alert-danger{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
+    {% endif %}{% endfor %}
+    {% if not estado.setup_completo %}
+        <div class="alert alert-warning">Primero completa y confirma la <a href="{{ url_asistente }}">configuración de facturación</a> (pasos 1 a 5). Aquí podrás después agregar más locales y puntos y configurar su numeración.</div>
+    {% endif %}
+
+    <section class="fp-puntos-locales" aria-labelledby="fp-locales-titulo">
+        <h2 id="fp-locales-titulo" class="h5">Tus locales</h2>
+        {% for local in estado.locales %}
+            <article class="card fp-config-panel mb-3 fp-local{% if not local.activo %} fp-local-inactivo{% endif %}" data-local="{{ local.id }}"><div class="card-body">
+                <span class="fp-eyebrow">Establecimiento {{ local.codigo }}</span>
+                <h3 class="h5">{{ local.nombre|default:local.direccion }}{% if not local.activo %} <span class="badge badge-secondary">Inactivo</span>{% endif %}</h3>
+                <p class="text-muted mb-2">{{ local.direccion }}</p>
+                <ul class="fp-puntos-lista list-unstyled mb-0">
+                    {% for p in local.puntos %}
+                        <li class="fp-punto{% if not p.activo %} fp-punto-inactivo{% endif %}" data-punto="{{ p.id }}">
+                            <p class="mb-1"><strong>{{ p.codigo_completo }}</strong> · {{ p.descripcion|default:"Punto" }}
+                                {% if p.predeterminado %}<span class="badge fpa-badge">Predeterminado de la empresa</span>{% endif %}
+                                {% if not p.activo %}<span class="badge badge-secondary">Inactivo</span>{% elif p.listo %}<span class="badge badge-success">Listo para emitir</span>{% else %}<span class="badge badge-warning">Falta configurar la numeración de facturas en {{ estado.ambiente.nombre }}</span>{% endif %}
+                            </p>
+                            <dl class="fp-config-secuencia mb-1">
+                                {% for amb, filas in p.numeracion.items %}{% if amb == estado.ambiente.codigo %}{% for f in filas %}
+                                    <dt>{{ f.nombre }}</dt><dd>{% if f.existe %}último {{ f.ultimo_completo|default:"ninguno" }} · próximo <strong>{{ f.proximo_completo }}</strong> · {% if f.confirmado %}confirmada{% else %}pendiente de confirmar{% endif %}{% if f.utilizada %} · con comprobantes{% endif %}{% else %}sin numeración{% endif %}</dd>
+                                {% endfor %}{% endif %}{% endfor %}
+                            </dl>
+                            <p class="mb-1 small">Usuarios autorizados: {% for u in p.usuarios_autorizados %}{{ u.nombre|default:u.username }} ({{ u.rol }}){% if not forloop.last %}, {% endif %}{% empty %}<span class="text-muted">sin autorizaciones explícitas (lo usan Propietario, Administrador y quienes no tienen restricción)</span>{% endfor %}</p>
+                            {% if estado.setup_completo %}
+                                <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="{% if p.activo %}desactivar_punto{% else %}activar_punto{% endif %}"><input type="hidden" name="point" value="{{ p.id }}"><button type="submit" class="btn btn-link btn-sm p-0">{% if p.activo %}Desactivar{% else %}Activar{% endif %}</button></form>
+                            {% endif %}
+                        </li>
+                    {% empty %}<li class="text-muted">Sin puntos de emisión.</li>{% endfor %}
+                </ul>
+            </div></article>
+        {% empty %}
+            <p class="text-muted">Aún no registras ningún establecimiento.</p>
+        {% endfor %}
+    </section>
+
+    <div class="row">
+        <section class="col-12 col-lg-6 fp-config-add" aria-labelledby="fp-agregar-local">
+            <h2 id="fp-agregar-local" class="h6">Agregar local</h2>
+            <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="agregar_establecimiento">
+                {% include 'configuracion/_campos.html' with form=form_establecimiento grupo="-establecimiento" %}
+                <button type="submit" class="btn btn-outline-secondary">Agregar local</button>
+            </form>
+        </section>
+        <section class="col-12 col-lg-6 fp-config-add" aria-labelledby="fp-agregar-punto">
+            <h2 id="fp-agregar-punto" class="h6">Agregar punto de emisión</h2>
+            {% if form_punto.fields.establishment.queryset.exists %}
+                <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="agregar_punto">
+                    {% include 'configuracion/_campos.html' with form=form_punto grupo="-punto" %}
+                    <button type="submit" class="btn btn-outline-secondary">Agregar punto</button>
+                </form>
+            {% else %}<p class="text-muted">Primero agrega un local.</p>{% endif %}
+        </section>
+    </div>
+
+    {% if estado.setup_completo %}
+    <section class="card fp-config-panel mb-3 fp-puntos-numeracion" aria-labelledby="fp-numeracion-titulo"><div class="card-body">
+        <h2 id="fp-numeracion-titulo" class="h5">Numeración por punto</h2>
+        <p class="text-muted">Por cada documento y ambiente: si vienes de otro sistema indica el último número usado; el próximo se confirma al emitir. Abrir esta ficha no consume números. Las numeraciones con comprobantes no retroceden ni se reinician.</p>
+        <form method="post" novalidate class="fp-numeracion-form">{% csrf_token %}<input type="hidden" name="action" value="numeracion">
+            {% include 'configuracion/_campos.html' with form=form_numeracion %}
+            <button type="submit" class="btn fpa-btn-pagar">Guardar y confirmar numeración</button>
+        </form>
+    </div></section>
+
+    <section class="card fp-config-panel mb-3 fp-puntos-usuarios" aria-labelledby="fp-usuarios-titulo"><div class="card-body">
+        <h2 id="fp-usuarios-titulo" class="h5">Usuarios y puntos autorizados</h2>
+        <p class="text-muted">Sin autorizaciones, un usuario puede emitir desde cualquier punto activo. Al autorizarle puntos, solo verá esos. Propietario y Administrador usan todos.</p>
+        <div class="table-responsive"><table class="table table-sm fp-tabla-usuarios">
+            <thead><tr><th scope="col">Usuario</th><th scope="col">Rol</th><th scope="col">Puntos autorizados</th><th scope="col">Emite desde</th></tr></thead>
+            <tbody>
+            {% for u in estado.usuarios %}
+                <tr data-usuario="{{ u.id }}">
+                    <td>{{ u.nombre|default:u.username }}</td><td>{{ u.rol }}</td>
+                    <td>{% if u.administra %}Todos (administra){% elif u.todos %}Todos (sin restricción){% else %}{% for local in estado.locales %}{% for p in local.puntos %}{% if p.id in u.autorizados %}{{ p.codigo_completo }} {% endif %}{% endfor %}{% endfor %}{% endif %}</td>
+                    <td>{% if u.seleccionado %}{% for local in estado.locales %}{% for p in local.puntos %}{% if p.id == u.seleccionado %}{{ p.codigo_completo }}{% endif %}{% endfor %}{% endfor %}{% else %}<span class="text-muted">sin elegir</span>{% endif %}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+        <form method="post" novalidate class="fp-autorizacion-form">{% csrf_token %}
+            {% include 'configuracion/_campos.html' with form=form_autorizacion %}
+            <button type="submit" name="action" value="autorizar" class="btn btn-outline-secondary">Autorizar punto</button>
+            <button type="submit" name="action" value="quitar_autorizacion" class="btn btn-outline-secondary">Quitar autorización</button>
+        </form>
+    </div></section>
+    {% endif %}
+</div>
+{% endblock %}

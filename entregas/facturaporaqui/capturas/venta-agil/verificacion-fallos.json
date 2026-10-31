@@ -1,0 +1,7 @@
+{
+  "fecha": "2026-10-30",
+  "perdidaRespuesta": "POST de alta ejecutado una vez; consulta posterior sin repetirlo ni agregar un producto sin confirmar",
+  "dobleEnvio": "Dos submit simultáneos producen un solo POST de alta",
+  "formularioInesperado": "Se rechaza formulario sin marcador de empresa; factura conservada",
+  "emisiones": 0
+}

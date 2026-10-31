@@ -15,7 +15,10 @@ from django.views.generic import CreateView, DeleteView, FormView
 
 from config import settings
 from core.pos.forms import SaleForm, ClientForm, ClientUserForm, Sale, SaleDetail, Client, Product, Company, Receipt, CreditNote, CreditNoteDetail, CtasCollect, INVOICE_STATUS, PAYMENT_TYPE, VOUCHER_TYPE
-from core.configuracion.servicios import receipt_para_emitir, requisitos_de_emision, secuencia_configurada
+from core.pos.choices import MEDIOS_DE_PAGO
+from core.cobros import servicios as cobros
+from core.configuracion import puntos as pt
+from core.configuracion.servicios import requisitos_de_emision, secuencia_configurada
 from core.pos import emision
 from core.pos.clientes import consumidor_final, unir_correos, usuario_de_cliente
 from core.pos.notas_credito import crear as crear_nota_credito, es_consumidor_final
@@ -43,9 +46,11 @@ class SaleListView(GroupPermissionMixin, FormView):
                 data = []
                 start_date = request.POST['start_date']
                 end_date = request.POST['end_date']
-                queryset = Sale.objects.filter()
+                queryset = Sale.objects.select_related('receipt__emission_point__establishment')
                 if len(start_date) and len(end_date):
                     queryset = queryset.filter(date_joined__range=[start_date, end_date])
+                if request.POST.get('punto'):   # filtro por punto de emisión (id de EmissionPoint)
+                    queryset = queryset.filter(receipt__emission_point_id=request.POST['punto'])
                 for i in queryset:
                     data.append(i.toJSON())
             elif action == 'search_detail_products':
@@ -62,9 +67,11 @@ class SaleListView(GroupPermissionMixin, FormView):
                     data['error'] = 'Tu perfil no puede emitir notas de crédito.'
                 else:
                     sale = Sale.objects.get(pk=request.POST['id'])
+                    # Sin formulario: la nota sale del punto activo del usuario (o del `punto` enviado, validado).
+                    punto = pt.punto_del_formulario(request.user, request.company, request.POST.get('punto'))
                     with transaction.atomic():
                         credit_note = crear_nota_credito(request.company, sale.pk, None,
-                                                         f'DEVOLUCIÓN TOTAL DE LA FACTURA {sale.voucher_number_full}')
+                                                         f'DEVOLUCIÓN TOTAL DE LA FACTURA {sale.voucher_number_full}', punto=punto)
                         emision.preparar(credit_note)
                     data = credit_note.generate_electronic_invoice()
             elif action == 'send_invoice_by_email':
@@ -146,7 +153,8 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     sale.environment_type = sale.company.environment_type
                     # Toda factura es electrónica y se transmite al emitirla (Res. NAC-DGERCGC25-00000014).
                     electronica = request.POST['receipt'] == VOUCHER_TYPE[0][0]
-                    sale.receipt = receipt_para_emitir(sale.company, request.POST['receipt'], electronica)
+                    # Punto de emisión fijado al formulario (`punto`), validado otra vez para este usuario; sin él, su punto activo.
+                    sale.receipt = pt.receipt_para_emitir(request, request.POST['receipt'], electronica, request.POST.get('punto'))
                     sale.voucher_number = sale.generate_voucher_number()
                     sale.voucher_number_full = sale.get_voucher_number_full()
                     sale.employee_id = request.user.id
@@ -167,13 +175,24 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                         sale.time_limit = int(request.POST['time_limit'])
                         sale.payment_method = request.POST['payment_method']
                         sale.create_electronic_invoice = True
-                    if sale.payment_type == PAYMENT_TYPE[0][0]:
-                        sale.cash = float(request.POST['cash'])
-                        sale.change = float(request.POST['change'])
+                    # Condición de pago (contado 'efectivo' / crédito) aparte del medio de cobro (core/cobros). Sin el campo
+                    # medio_cobro (formularios anteriores) se asume efectivo; con él vacío o inválido, se rechaza.
+                    contado = sale.payment_type == PAYMENT_TYPE[0][0]
+                    medio_cobro = request.POST['medio_cobro'] if 'medio_cobro' in request.POST else 'efectivo'
+                    nota_cobro = ' '.join((request.POST.get('nota_cobro') or '').split())
+                    referencia_cobro = request.POST.get('referencia_cobro', '')
+                    respaldo = request.FILES.get('respaldo')
+                    sale.cash, sale.change = Decimal('0.00'), Decimal('0.00')
+                    if contado:
+                        if medio_cobro not in dict(MEDIOS_DE_PAGO):
+                            raise ValueError('Elige el medio de cobro.')
+                        sale.medio_cobro = medio_cobro
+                        if medio_cobro == 'efectivo':
+                            sale.cash = cobros.efectivo_recibido(request.POST.get('cash'))   # el cambio se calcula abajo
                     elif sale.payment_type == PAYMENT_TYPE[1][0]:
+                        if nota_cobro or respaldo is not None:
+                            raise ValueError(cobros.MENSAJES['credito_sin_abono'])
                         sale.end_credit = request.POST['end_credit']
-                        sale.cash = 0.00
-                        sale.change = 0.00
                     sale.save()
                     for i in json.loads(request.POST['products']):
                         product = Product.objects.get(pk=i['id'])
@@ -191,6 +210,14 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     sale.calculate_invoice()
                     if sale.create_electronic_invoice:
                         self.validar_consumidor_final(sale)
+                    if contado:
+                        if sale.medio_cobro == 'efectivo':
+                            # «Efectivo recibido» y «Cambio» solo para efectivo, y el cambio lo calcula el servidor.
+                            sale.change = cobros.cambio(sale.cash, sale.total)
+                            sale.save(update_fields=['cash', 'change'])
+                        if sale.medio_cobro != 'efectivo' or nota_cobro or respaldo is not None:
+                            # Respaldo del cobro al contado: obligatorio salvo en efectivo (comprobante, nota o ambos).
+                            cobros.registrar_al_emitir(request, sale, sale.medio_cobro, referencia_cobro, nota_cobro, respaldo)
                     if sale.payment_type == PAYMENT_TYPE[1][0]:
                         ctas_collect = CtasCollect()
                         ctas_collect.sale_id = sale.id
@@ -239,16 +266,22 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                 for i in Client.objects.filter(Q(user__names__icontains=term) | Q(dni__icontains=term)).order_by('user__names')[0:10]:
                     data.append(i.toJSON())
             elif action == 'search_voucher_number':
-                # Número del próximo documento (sin reservarlo) o lo que falta configurar.
+                # Número del próximo documento del punto fijado al formulario (sin reservarlo) o lo que falta configurar.
                 company = request.company
                 data['voucher_number'] = ''
-                receipt = secuencia_configurada(company, request.POST['receipt'])
-                if receipt:
-                    data['voucher_number'] = f'{receipt.next_number:09d}'
-                    data['voucher_number_full'] = receipt.next_number_full()
+                try:
+                    punto = pt.punto_del_formulario(request.user, company, request.POST.get('punto'))
+                except pt.ErrorPunto as e:
+                    data['pending'] = {'codigo': 'punto', 'mensaje': str(e), 'url': pt.URL}
                 else:
-                    faltan = requisitos_de_emision(company, request.POST['receipt'], electronica=False)
-                    data['pending'] = faltan[0] if faltan else None
+                    receipt = secuencia_configurada(company, request.POST['receipt'], punto=punto)
+                    if receipt:
+                        data['voucher_number'] = f'{receipt.next_number:09d}'
+                        data['voucher_number_full'] = receipt.next_number_full()
+                        data['punto'] = pt.punto_json(punto)
+                    else:
+                        faltan = requisitos_de_emision(company, request.POST['receipt'], electronica=False, punto=punto)
+                        data['pending'] = faltan[0] if faltan else None
             elif action == 'validate_client':
                 data = {'valid': True}
                 pattern = request.POST['pattern']
@@ -289,6 +322,8 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
         context['action'] = 'add'
         context['frmUser'] = ClientUserForm()
         context['final_consumer'] = json.dumps(self.get_first_final_consumer())
+        # Punto de emisión fijado a este formulario (configuracion/_punto_emision.html); el servidor lo revalida al emitir.
+        context.update(pt.contexto_formulario(self.request, VOUCHER_TYPE[0][0]))
         precarga = getattr(self, 'precarga', None)
         if precarga:
             context['title'] = f"Facturar la proforma {precarga['proforma']['numero']}"

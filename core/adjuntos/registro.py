@@ -1,7 +1,7 @@
-"""Comprobante enviado junto con el formulario de cobro, pago o gasto (campo opcional `comprobante`).
+"""Comprobante enviado junto con el formulario de pago o gasto (campo opcional `comprobante`).
 
 La vista que registra el documento llama a adjuntar_al_registrar dentro de su misma transacción: si el archivo no vale,
-no se registra el cobro, el pago ni el gasto. Referencia, fecha y valor salen del propio formulario.
+no se registra el pago ni el gasto. Referencia, fecha y valor salen del propio formulario.
 """
 from core.adjuntos import archivos, servicios as sv
 from core.adjuntos.models import CLASES

@@ -1368,3 +1368,206 @@ Capturas finales: **84 WebP**, máximo **60562 bytes**, sin imágenes por encima
 
 
 **Entrega en GitHub:** commit funcional `adbe62fc6022dbbe0f51e93d5311bb5636c2f172` (`adbe62f`) subido mediante `git push origin HEAD:refs/heads/frontend/etapa3`; `git ls-remote` confirmó el mismo hash. Esta constancia se añade en un commit posterior solo documental. La rama incluye la fusión `471fcdd` de la base `3192d5d`. No se desplegó.
+
+
+## 30/10/2026 — revisión de establecimientos y puntos de emisión
+
+Petición: facilitar el registro y uso de varios locales del mismo RUC. Revisados `core/pos/models.py` (Establishment, EmissionPoint, Receipt), `core/configuracion/{forms,views,servicios}.py` y `configuracion/asistente.html`. Se confirmó que el alta múltiple ya existe y que la selección del asistente es global por empresa. Se propone un catálogo de locales con puntos anidados, selección autorizada por usuario/empresa y punto fijado al documento para evitar cambios entre operadores y pestañas.
+
+Archivos cambiados: `propuestas/establecimientos/PROPUESTA.md`, HANDOFF y este informe. Propuesta con recorrido, nombres amigables, esquema, requisitos de datos y pruebas de concurrencia, permisos, histórico y numeración para Claude. No se modificó código operativo ni se implementaron rutas o campos nuevos.
+
+Verificación: lectura del código y restricciones de base, consulta de referencias remotas (`plataforma` 3192d5d, frontend d2bed3d al comenzar), enlaces relativos y `git diff --check`. No se ejecutaron suites ni se tomaron capturas nuevas: esta entrega solo documenta el diagnóstico y la propuesta, no una interfaz implementada. Sin despliegue ni acceso a datos de producción.
+
+
+## 30/10/2026 — ticket B: solicitud repetida, revalidación y muestras vigentes
+
+**Diagnóstico:** la petición cita `4ce7888`, pero fetch devuelve plataforma `3192d5d` y frontend `e94c3a9`. Se comprobó por ascendencia que el rediseño `165fbc7` y las correcciones integradas por Claude en `a6f5db3` ya están en nuestra rama. Leídos AGENTS, las secciones del 28/10 y el contrato del ticket. No se rehízo ni degradó la plantilla existente.
+
+**Trabajo:** seis PDF ficticios de 1/5/40 líneas normales y largas actualizados mediante el generador real `create_pdf_continuo`, con las correcciones de dirección matriz, local de la numeración y fecha de emisión. Ocho capturas WebP (máximo 145244 bytes), sin reemplazar las muestras históricas. El pie conserva colibrí y datos ficticios del proveedor en cursiva.
+
+**Archivos cambiados:** `propuestas/ticket-b/README.md`, `propuestas/ticket-b/revalidacion-20261030/{README.md,verificacion.json,ticket-01-normal.pdf,ticket-01-largo.pdf,ticket-05-normal.pdf,ticket-05-largo.pdf,ticket-40-normal.pdf,ticket-40-largo.pdf}`, `capturas/ticket-b-20261030/*.webp`, HANDOFF y este informe. Ningún cambio de plantillas, pruebas, backend, URLs ni datos fiscales.
+
+**Pruebas:** `python -m pytest tests/test_ticket_continuo.py tests/test_ticket_diseno.py tests/test_impresos.py -q -o addopts=` con la venv local y settings de pruebas: **20 aprobadas, 26,50 s, SQLite**. Se usaron los contextos ficticios en memoria de `test_ticket_diseno.py` para doce renderizados con/sin petición: una hoja de 58 mm, área útil de 48 mm, 6,58–6,70 mm blancos al final, tipografía mínima 8 pt/9 pt para descripción, contenido/orden/importes conservados y pie sin solapamiento. Capturas rasterizadas con PDFium a 203 dpi; en 40 líneas se muestra inicio/final y se entrega el PDF completo. Revisión visual del cierre largo y `git diff --check` correctos. No se repitió la suite completa por ser una entrega exclusiva de muestras y documentación.
+
+**Límites:** no se comprobó el dominio publicado ni impresora/escáner físicos; no se desplegó, emitió, pagó ni envió correo. Los pendientes fiscales del RIDE y el A4 quedan fuera de esta tarea. La rama avanza sobre la entrega actual, preservando la ascendencia de `4ce7888`.
+
+
+## 2026-10-30 — Maqueta navegable: locales y puntos de emisión
+
+**Hecho:** diseño concreto para distinguir establecimientos de puntos de emisión. Catálogo con búsqueda y tarjetas, alta de local en tres pasos con revisión, alta de puntos, numeración ilustrativa de factura/NC y selector. Un cambio de preferencia no altera el borrador abierto; cambiar el punto del borrador es una acción explícita. Puntos pendientes bloqueados en el selector. Marca colibrí, coral y azul; código completo sin partir en la cabecera móvil.
+
+**Archivos:** `propuestas/establecimientos/index.html`, `locales.css`, `locales.js`, `README.md`; `capturas/establecimientos/` (siete WebP y `verificacion.json`); este informe y `HANDOFF.md`. Rutas relativas a `entregas/facturaporaqui/`. Sin cambios en plantillas operativas, backend ni datos. JavaScript sin dependencias, estado solo en memoria; texto introducido se presenta con `textContent`.
+
+**Pruebas realizadas:** `node --check` correcto. Chromium local: 48 comprobaciones de vistas a 360, 390, 768, 1024, 1360 y 1440 px, sin desbordes del documento ni diálogos fuera de pantalla, sin errores JS ni respuestas HTTP >=400. En cada ancho: campos obligatorios, código 000, duplicado de establecimiento, alta en tres pasos, confirmación obligatoria, duplicado de punto dentro de local, punto nuevo pendiente, selección, independencia de preferencia/borrador, búsqueda vacía, consulta de numeración sin incrementos, Escape/restauración de foco, foco visible y recarga que elimina el estado ficticio. Recorridos con movimiento reducido. Revisión visual de capturas de escritorio, móvil y revisión del formulario. WebP de 19–57 KB.
+
+**Alcance:** maqueta local, no interfaz publicada. No se declara persistencia, autorización de usuarios, aislamiento entre empresas, validación fiscal ni emisión comprobados. No se ejecutó pytest porque no se modificó código de la aplicación; las pruebas corresponden al HTML/CSS/JS de la propuesta. Teléfono físico e integración siguen pendientes. No se desplegó, pagó ni envió correo. Claude dispone de la lista exacta de datos y contrato requerido en HANDOFF; esta tarea no abre cambios en módulos ajenos.
+
+[Ver propuesta y capturas](propuestas/establecimientos/README.md).
+
+
+## 2026-10-30 — Llenado de factura, alta contextual y respaldo del cobro
+
+### Alcance y decisiones
+
+Se fusionó `github/plataforma` (`3549c16`) en `frontend/etapa3` con `46da1c8`; único conflicto documental en HANDOFF resuelto conservando ambas entregas. Revisado por lectura de código el fork ERPNext indicado (`352583128432733415df48c1509f86ef97cf7688`, versión declarada 13.0.0-dev). Se compararon alta rápida, cotización/pedido/factura, entrega, cobro, devoluciones y compras con los contratos existentes. Informe en `propuestas/venta-agil/FLUJOS-ERPNEXT.md`: no implica ejecutar ERPNext ni copiar código GPL, cambiar de plataforma o adoptar su fiscalidad.
+
+### Cambios implementados
+
+- Factura real: tres secciones y campos originales, botón visible de crear cliente, búsqueda/alta de producto, líneas legibles en móvil/tablet y pago/resumen. Acciones al final sin tapar los campos. Etiquetas «Nueva factura»/«Emitir factura» y equivalentes para el ticket 08.
+- Alta contextual: carga el formulario Django existente en un diálogo, conserva los nombres y CSRF, muestra campos esenciales y opciones plegables. Verifica empresa de la página recibida y permiso de alta; no ejecuta sus scripts. FormData al endpoint actual y consulta posterior por código. Conserva cliente, cantidades, líneas e información adicional. No inventa ids, stock ni tarifas.
+- Servicios/no inventariados se incorporan; producto inventariado sin stock se crea, con aviso de registrar existencias antes de vender. Error por campo, duplicado, validación orientativa de código/nombre y cantidades; respuesta perdida se consulta sin repetir automáticamente la escritura. No se afirma persistencia de borradores al recargar ni protección completa contra cambios de empresa en otras pestañas (requiere contrato de backend).
+- Tabla: evita wrappers de scroll acumulados al reconstruirla, escapa el código como texto y diferencia «No inventariado» de cero existencias. Se conserva cálculo/orden/eventos originales.
+- Respaldo del cobro: maqueta separada con comprobante o nota, medio, referencia, importe, autor y estado pendiente. Selección de archivo local únicamente; no sube nada, no confirma un pago ni altera saldos. Contrato para Claude: condición contado/crédito separada del medio real, archivos privados, nota interna, autoría, revisión y abono sin duplicados. Los campos operativos efectivo/cambio se conservan mientras no exista ese contrato.
+
+### Archivos
+
+`templates/form.html` (bloque de título compatible); `core/pos/templates/product/create.html` (marcador de contexto); `core/pos/templates/sale/admin/create.html` y `_producto_rapido.html`; `core/pos/static/sale/admin/js/form.js` y `llenado.js`; `static/css/facturaporaqui.css`; `tests/test_alta_producto_en_factura.py`; `tests/test_proformas_conversion.py` (texto del botón, sin quitar verificaciones); `propuestas/venta-agil/{README.md,FLUJOS-ERPNEXT.md,respaldo-cobro.html,respaldo-cobro.css,respaldo-cobro.js}`; nueve capturas y tres JSON en `capturas/venta-agil/`; HANDOFF y este informe. Rutas de propuestas/capturas relativas a `entregas/facturaporaqui/`. No se cambió código de backend, nombres de campos, servicios, modelos, migraciones, firma, `.env` ni lógica SRI. Sin nuevas dependencias o CDN.
+
+### Pruebas y capturas
+
+- SQLite: `pytest tests/test_estaticos.py tests/test_rutas.py tests/test_frontend_integracion.py tests/test_alta_producto_en_factura.py tests/test_iva_tarifas.py tests/test_proformas_conversion.py -q -o addopts=` → **73 aprobadas, 24,90 s**. Incluye permisos de alta, aislamiento por empresa, duplicados y ninguna factura ni incremento de numeración al dar de alta un producto. Tarifas/conversión prueban el backend con SRI simulado. El primer pase detectó la expectativa antigua «Generar Venta»; se actualizó a «Emitir factura» manteniendo el resto de la prueba. El test de duplicado usa un savepoint por petición para aislar el rechazo SQL dentro de la transacción de pytest.
+- Chromium, datos ficticios SQLite: **36 comprobaciones de vistas** a 360/390/768/1024/1360/1440 px. Alta y recuperación reales, conservación del cliente/información, cantidad y totales, cambio crédito/efectivo, duplicado, producto inventariado sin stock, cierre/Escape con restauración de foco, movimiento reducido, sin scroll horizontal del documento ni errores JS/HTTP. Repetidas reconstrucciones sin wrappers acumulados.
+- Tras ajustar las etiquetas según factura/ticket, cuatro pruebas de alta y regresión se repitieron: **4 aprobadas, 14,29 s**.
+- Fallos simulados: POST confirmado por servidor con respuesta perdida (se consulta sin repetir alta ni añadir datos no confirmados), doble submit (un solo alta), rechazo de HTML sin marcador de empresa. No se interceptaron respuestas de éxito en el recorrido normal de alta.
+- Respaldo: seis anchos, archivo solo/nota sola/ambos, requisito de uno, contenido mostrado como texto y efectivo contextual. Documento ficticio seleccionado en memoria, nunca enviado. No valida la seguridad de una futura carga de archivos del backend.
+- Nueve capturas WebP, cada una menor de 150 KB: factura, producto y respaldo a 360/768/1360. Revisión visual de escritorio y móvil. `node --check` de los tres JS y `git diff --check` correctos.
+
+No se ejecutó la suite completa en esta entrega ni PostgreSQL; sí las suites relevantes arriba. No se realizaron emisiones, pagos ni correos reales, ni despliegue. Pendientes: contrato de respaldo y separación de medio/condición, prueba en teléfono físico y revisión de Claude para integrar/publicar.
+
+[Ver capturas, propuesta y contrato de backend](propuestas/venta-agil/README.md).
+
+## 2026-10-30 — Clientes sin salir de la factura
+
+### Entrega acotada
+
+Mientras Claude prepara el respaldo de cobros, se mejora el alta de clientes de la factura real, sobre `9e65aea`. Fetch realizado; `github/plataforma` sigue en `3549c16`, ya integrado en la rama. Sin cambios en pagos, backend ni reglas fiscales.
+
+- Formulario de marca en un diálogo adaptable: identificación y datos del cliente, contacto y opciones de correos adicionales/imagen. Etiquetas asociadas, indicación de campos obligatorios, teclado numérico o de texto según identificación y botones cómodos en móvil. Usa los campos Django originales, incluidos los tipos de identificación del exterior.
+- «Guardar y usar cliente» crea el registro mediante el endpoint existente y lo selecciona en la factura. Se mantienen productos, cantidades, importes, forma/condición de pago e información adicional. No se emite nada al crear al cliente.
+- Cerrar o pulsar Escape conserva lo escrito mientras se permanezca en la página. El formulario solo se limpia tras el alta confirmada o la selección explícita de un cliente existente. No es un borrador persistido: recargar o salir pierde esos datos aún no guardados.
+- Errores del servidor junto al campo, con su texto escapado, foco y apertura automática de las opciones plegadas. El desplazamiento ocurre dentro del diálogo para mostrar campo y error, sin desplazar intencionalmente la factura. La búsqueda permite recuperar clientes ya registrados sin crear otro.
+- Mientras se guarda, se bloquea el segundo envío. Si se pierde la respuesta del POST, se conserva el formulario, se bloquea el reenvío y se ofrece consultar el cliente. Un resultado incierto no se presenta como éxito ni se vuelve a enviar automáticamente. Los resultados antiguos de una búsqueda se descartan al cambiar de identificación.
+
+### Archivos
+
+- `core/pos/templates/sale/admin/create.html`: incluye el diálogo, su script y la confirmación visible en la factura.
+- `core/pos/templates/sale/admin/_cliente_rapido.html`: formulario con campos/CSRF y acciones conservados.
+- `core/pos/static/sale/admin/js/cliente_rapido.js`: envío contextual, errores, selección, búsqueda, foco y conservación temporal.
+- `core/pos/static/sale/admin/js/form.js`: delega únicamente el guardado del cliente; elimina el borrado al cerrar y la sustitución de su fecha al reabrir; aclara los textos de búsqueda/duplicado. No cambia cálculos, emisión ni precarga de proformas.
+- `static/css/facturaporaqui.css`: estilos `fp-client-*`, foco, opciones plegadas y adaptación móvil, sin dependencias nuevas.
+- `capturas/cliente-en-factura/`: siete WebP, `verificacion.json`, `fallos-controlados.json` y guía de revisión. `HANDOFF.md` y este registro. Rutas de capturas/documentación relativas a `entregas/facturaporaqui/`.
+
+### Validación realizada
+
+- SQLite: `python -m pytest tests/test_estaticos.py tests/test_rutas.py tests/test_frontend_integracion.py tests/test_clientes_exterior_correos.py tests/test_alta_producto_en_factura.py tests/test_proformas_conversion.py -q -o addopts=` → **61 aprobadas, 23,29 s**. Incluye clientes del exterior, correos, conversión de proformas y alta de productos. El SRI/correo de las pruebas se simula; no son emisiones ni correos reales.
+- Chromium con servidor Django y SQLite locales, exclusivamente datos ficticios: **36 comprobaciones** a **360/390/768/1024/1360/1440 px**. Se probaron alta real, error real de correos adicionales, recuperación de duplicado sin nueva alta, selección, conservación de productos/importes/información adicional, cierre/Escape/foco y navegación con Tab. Sin desbordes de página, diálogo o formulario. Movimiento reducido a 390 y 1360 px. Sin errores JavaScript ni HTTP en el recorrido normal.
+- Tres escenarios adicionales: respuesta perdida después de guardar realmente (recuperada sin repetir POST); doble intento y Escape durante guardado (un solo POST); respuesta de búsqueda obsoleta tras cambiar identificación (descartada). Una interrupción de red inducida y esperada. Cero peticiones para emitir/editar facturas en los recorridos de navegador.
+- Se revisaron las capturas, incluido el error móvil completo. WebP de 24–55 KB, sin secretos. `node --check` y `git diff --check` correctos. No se añadieron librerías ni CDN.
+
+### Límites y siguiente paso
+
+No se ejecutó PostgreSQL ni la suite completa en esta intervención. El móvil se comprobó por emulación de navegador, no en teléfono físico. Sin despliegues, pagos, documentos reales o acceso a datos privados. Se reutiliza el contexto/permiso del endpoint actual; no se atribuye al frontend una nueva garantía de aislamiento entre pestañas.
+
+El backend aún exige `birthdate` y lo precarga con la fecha actual incluso para un cliente empresa. Se conserva el contrato, sin ocultarlo o inventar una fecha para guardar. Se deja a Claude la necesidad de revisar ese requisito, independiente del trabajo prioritario de cobros.
+
+[Capturas y pasos para revisar](capturas/cliente-en-factura/README.md).
+
+**Trazabilidad de entrega:** código, capturas e informe en `0fd594ddb55a08c290478a85ec281a7bbe6551a1`, subido a `frontend/etapa3` y confirmado con `git ls-remote`. Este registro posterior solo añade la referencia del commit publicado en GitHub; no cambia código ni publica en el dominio.
+
+## 30/10/2026 — locales y puntos de emisión por usuario (backend, Claude) — sin publicar
+
+Petición: que dos locales del mismo RUC facturen a la vez sin cambiarse el punto ni mezclar numeraciones, sobre la [propuesta de Codex](propuestas/establecimientos/PROPUESTA.md) (`e94c3a9`, en `frontend/etapa3`).
+
+**Hecho (commit `91ddccc` en `plataforma`):**
+- Selección de punto por usuario y empresa (`PuntoSeleccionado`), puntos autorizados por usuario (`PuntoAutorizado`; sin autorizaciones, todos los activos; Propietario y Administrador, todos), punto fijado a cada formulario de emisión (`punto` en el POST) y revalidado en el servidor al emitir: empresa, activo, autorizado y numeración confirmada en el ambiente actual. Reglas en `core/configuracion/puntos.py`.
+- Reutiliza `Establishment`, `EmissionPoint` y `Receipt`; el asistente y el punto predeterminado no cambian. Numeración por punto, tipo y ambiente configurable para cualquier punto desde `/configuracion/puntos/` (acción `numeracion`), con las mismas reglas del asistente.
+- Pantalla funcional `/configuracion/puntos/` (módulo «Locales y puntos de emisión», Configuración, Propietario y Administrador), selector del punto en la cabecera, bloque «Emites desde…» en los seis formularios de emisión, filtro por punto en los listados de facturas y NC, `receipt.punto` en el JSON. Contrato completo en HANDOFF.
+- Migraciones configuracion 0001–0003 y tenancy 0008; sin cambios en tablas existentes. Documentos, numeraciones y configuración anteriores intactos.
+
+**Pruebas:** `tests/test_puntos_por_usuario.py` (15) y `tests/test_zz_puntos_concurrencia_pg.py` (8 emisiones simultáneas en dos puntos, PostgreSQL), con empresas ficticias y SRI simulado: dos vendedores facturando a la vez desde locales distintos (001-002-000000271/272 y 002-001-000000001/002, XML con el establecimiento y la dirección de cada punto), dos pestañas (el formulario conserva su punto aunque la preferencia cambie), rechazos (otra empresa, inactivo, no autorizado, sin numeración, numeración solo en otro ambiente, POST manipulado, cambio de empresa: nada se crea ni consume número), autorizaciones, permisos por rol, módulo y migración reversible. Suites completas: SQLite 1411 aprobadas y 45 omitidas; PostgreSQL 1455 aprobadas y 1 fallo preexistente de la prueba de Codex test_alta_producto_en_factura (duplicado de producto dentro de la transacción; falla igual en e4c48c6 sin esta rama y se anota como pendiente).
+
+**Pendiente:** diseño de la pantalla, del selector y del bloque de los formularios (Codex, sobre el contrato); dos decisiones de la propietaria anotadas en HANDOFF. No se desplegó; sin emisiones, pagos ni correos reales.
+
+## 2026-10-30 — Propuesta comercial y técnica de asistente IA
+
+A petición de evaluar antes de programar, se documenta «Ingenioso IA» como complemento prepago: alcance por etapas, comparación de proveedores, fórmula/simulación de consumo, suscripción anual con bolsa mensual, diseño de chat y estados de cobro, permisos multiempresa y reparto entre Claude/backend y Codex/frontend. Precios, cupos y modelo de API no aprobados; no se presenta ninguna función como disponible.
+
+Se revisaron AGENTS y HANDOFF, la descripción de planes/pagos y la integración PayPhone mediante lecturas acotadas. La plantilla de suscripción declara renovación anual manual: no se prometió débito automático. Fetch confirma `plataforma=3549c16` ya incluido en la rama; base de esta propuesta `e4c48c6`. Las tarifas de OpenAI/Anthropic no pudieron verificarse desde este entorno restringido; el costo de USD 0,005 por tarea es expresamente hipotético y no identifica un proveedor.
+
+Archivos: `propuestas/ASISTENTE-IA.md`, `HANDOFF.md` y este informe. Validación: consistencia de las simulaciones y enlaces relativos, `git diff --check`; sin pytest ni capturas porque solo cambia documentación. No se modificó código, modelos, vistas, pagos, precios vigentes, permisos o configuración; no se solicitaron credenciales, llamaron APIs facturables ni desplegó nada. Siguiente paso sujeto a la decisión de la propietaria: alcance/cobro, comparación verificada y maquetas.
+
+## 2026-10-30 — ERPNext y alcance comercial/contable para 104, 103 y 101
+
+La propietaria deja pendiente el chatbot y prioriza revisar procesos comerciales y contables sin ampliar innecesariamente el producto. Se revisó el código de `Jen456/erpnext` en `352583128432733415df48c1509f86ef97cf7688` (24/11/2020, versión 13.0.0-dev) como referencia de procesos, sin instalarlo ni copiar código. En FacturaPorAquí, base `2dcdaa6`; fetch confirma `github/plataforma=3549c16` ya integrado. Se leyeron AGENTS, HANDOFF, el plan/informe normativo y contratos, además de modelos, servicios, consultas, reportes y puntos de integración contable relevantes.
+
+Hallazgos documentados: separar documento, saldo, stock y asiento; reutilizar Proformas/Compras/Ventas/CxC/CxP/Retenciones; la propuesta de importación no registra un libro mayor; el reporte operativo de Resultados no es una base para 101; hace falta costo histórico, apertura, libro y cierre. Se propone completar las fuentes y preparar 104/103 antes de ampliar bancos, y llegar al 101 con estados y conciliación tributaria. Se conservan el plan histórico y sus decisiones: la priorización es una propuesta, no una reordenación implementada.
+
+Se señala una inconsistencia de la especificación anterior (`+50` para casilleros frente a sus ejemplos de cuatro dígitos), a resolver con un mapa explícito versionado y validación oficial/contable. Se distingue autorización fiscal de reconocimiento contable y retenciones efectuadas de recibidas. No se modificaron reglas fiscales. Las páginas oficiales SRI no son accesibles con la política de red actual; no se presenta el informe normativo previo como comprobación independiente de vigencia.
+
+Archivos cambiados, relativos a `entregas/facturaporaqui/`:
+
+- `ANALISIS-ERPNEXT-COMERCIAL-CONTABLE.md`: comparación con evidencias, diagrama, matriz de capacidades/faltantes, dependencias de cada formulario, cuatro entregas acotadas, criterios de aceptación y fuentes.
+- `propuestas/ASISTENTE-IA.md`: estado pendiente/en pausa por indicación de la propietaria; propuesta conservada.
+- `HANDOFF.md`: Estado actual, tareas de Codex y notas para Claude; contrato de cierre/casilleros como próximo paso recomendado y pausa de IA.
+- Este informe.
+
+Verificación: lectura estática y contraste de referencias con ambos checkouts, hashes, enlaces locales y a fuentes del fork en el commit exacto; aritmética del ejemplo ficticio de costo/margen; revisión de cambios y `git diff --check`. Sin pytest ni nuevas capturas: no se cambian plantillas, estáticos ni backend. No se ejecutó ERPNext ni se verificó producción; el estado publicado procede del HANDOFF de Claude. Sin pagos, emisiones, correos, acceso a secretos o despliegue. La entrega se registra mediante commit de documentación en `frontend/etapa3`.
+
+## 31/10/2026 — respaldo del cobro y condición/medio de pago (backend, Claude) — sin publicar
+
+Integrado `frontend/etapa3` de Codex (`e4c48c6` por avance rápido; `00c07fc`, solo documentación, por merge `2ae12fa`) conservando ambas entregas; no se rehízo el formulario por secciones ni las altas de producto y cliente.
+
+**Hecho (commit `9eef6d5` en `plataforma`):**
+- Condición de pago (`payment_type`: contado/crédito, valores históricos) separada del medio de cobro (`Sale.medio_cobro`, `MEDIOS_DE_PAGO`). «Efectivo recibido» y «Cambio» solo con efectivo: el servidor exige efectivo ≥ total y calcula el cambio; otros medios en 0,00. Ventas anteriores sin reclasificar.
+- App `core/cobros`: `RespaldoCobro` + `RespaldoCobroCambio`; registro con comprobante (PDF/JPG/PNG ≤ 5 MB, contenido validado, almacenamiento privado por empresa), nota interna o ambos; autor, empresa y fecha del servidor; revisión pendiente/revisado/rechazado con responsable, fecha y motivo, sin tocar el saldo; historial de cambios; idempotencia por `clave`. Rutas `/cobros/factura/<id>/`, `…/registrar/`, `/cobros/respaldo/<id>/`, `…/editar/`, `…/revisar/`, `…/archivo/`. La pantalla de CxC exige nota o comprobante y acepta archivo. Contrato completo en HANDOFF, incluida la relación entre revisión y saldo.
+- Hallazgo ajeno corregido: alta de producto con código repetido → mensaje claro y transacción sana (la prueba de Codex fallaba en PostgreSQL).
+
+**Pruebas:** `tests/test_respaldo_cobros.py` (28) y `tests/test_zz_cobros_concurrencia_pg.py` (1): permisos por rol, aislamiento entre empresas (404), archivo ajeno, autor/estado/empresa falsificados, formatos y tamaños inválidos (incluidos SVG y HTML renombrados), nota sin archivo, archivo sin nota, ninguno, crédito sin abono, doble envío con la misma clave (también concurrente en PostgreSQL), conservación de saldos y documentos, privacidad (JSON, XML, RIDE, additional_info, correo). Suites completas: SQLite 1438 aprobadas y 46 omitidas; PostgreSQL 1483 aprobadas. En ambas falló solo el recuento de la vuelta de migraciones (20 → 23), corregido y repetido después; en PostgreSQL falló además test_zz_mejora_concurrencia_pg (mejora de plan, ajeno a esta rama), que pasó aislado y en la corrida anterior: sensible a la carga de la VM. Repetidas en PostgreSQL tras el ajuste: cobros, RLS, concurrencia y mejora de plan, 31 aprobadas.
+
+**Pendiente:** diseño y conexión del frontend (Codex); decisiones de la propietaria anotadas en HANDOFF; `birthdate` obligatorio en el alta de cliente (hallazgo de Codex). No se desplegó; sin emisiones, pagos ni correos reales.
+
+## 31/10/2026 — diseño de adjuntos y revisión del solapamiento con cobros (Codex)
+
+Fetch y avance rápido de `frontend/etapa3` a `plataforma=4a39a1a`. Se leyeron AGENTS, HANDOFF, los contratos nuevos de puntos/respaldo de cobro y el contrato de adjuntos en `fase/adjuntos-comprobantes=722475a`. La rama de adjuntos sigue sin fusionar: el ensayo con `git merge-tree --write-tree` encontró siete conflictos, incluidos vistas, permisos y pruebas. No se resolvieron desde frontend ni se inició una fusión en el árbol de trabajo.
+
+### Qué se hizo
+
+Página mensual de comprobantes de pago con identidad colibrí: selector de mes, ZIP e índice CSV, indicadores, pendientes, archivo mensual y estados vacíos. Tablas como fichas en móvil y desplazamiento contenido en tablet. Modal con documento origen, archivos vigentes e historial, selección/arrastre, metadatos, progreso por archivo, descarga y confirmación de baja dentro del mismo diálogo. Campo opcional integrado en los formularios que ya lo incluyen. Los datos, límites, roles, mensajes y rutas siguen siendo los del servidor.
+
+Se diferencia el archivo adjunto de la revisión del cobro: adjuntar no confirma ni concilia. El indicador dice «Pendientes de comprobante», porque un medio distinto de efectivo no necesariamente es una operación bancaria confirmada. Se conserva la interfaz `fpAdjuntos.abrir(tipo, id)`, campos, evento de cierre, atributos `data-adjuntos-*` y CSRF.
+
+El lote mantiene documento y metadatos durante la subida; bloquea doble envío y cierre hasta terminar. No reenvía automáticamente un POST tras error de red. Consulta los archivos y, si verifica un cambio, actualiza la página mensual al cerrar. Descarta consultas antiguas y muestra texto externo como texto. El modal sobre el de abonos devuelve el foco y conserva abierto el diálogo anterior; las acciones de listados también aceptan teclado.
+
+### Archivos
+
+- `core/adjuntos/templates/adjuntos/_modal.html`, `_campo_formulario.html`, `mes.html`: diseño real según el contrato de la rama de adjuntos, inactivo todavía en plataforma.
+- `static/adjuntos/js/adjuntos.js`: interacción, errores, consulta/cola e historial. `static/adjuntos/css/adjuntos.css`: compatibilidad con includes existentes.
+- `static/css/facturaporaqui.css`: bloque acotado `fp-adjuntos-*`, móvil, foco y movimiento reducido.
+- `entregas/facturaporaqui/propuestas/adjuntos/README.md`: entrega, bases, siete conflictos y necesidades concretas para integrar.
+- `entregas/facturaporaqui/manuales/COMPROBANTES-DE-PAGO.md`: guía en borrador, pendiente de contrato consolidado/publicación.
+- `entregas/facturaporaqui/capturas/adjuntos/`: diez capturas WebP, dos informes JSON y README.
+- `entregas/facturaporaqui/HANDOFF.md` y este informe: estado, tareas realizadas y coordinación con Claude.
+
+Los estáticos se entregan en la raíz `static/adjuntos/` para que también resuelvan antes de instalar la app. Al fusionar, Claude debe retirar/sincronizar los homónimos antiguos de `core/adjuntos/static/`, conservando las rutas públicas. No se cambiaron modelos, vistas, formularios Python, servicios, permisos, URLs, migraciones ni reglas de emisión/pago.
+
+### Cómo se probó
+
+Backend `722475a` en un checkout aislado y limpio, usando las plantillas/estáticos de esta entrega mediante las rutas de búsqueda de Django. Servidor local, SQLite ficticia, correo en memoria y acceso fiscal deshabilitado. Ningún archivo del backend de esa copia fue modificado.
+
+- `python -m pytest tests/test_adjuntos.py tests/test_estaticos.py tests/test_rutas.py tests/test_frontend_integracion.py`, con ajustes locales de prueba: **46 aprobadas** en 23,02 s.
+- Sobre plataforma `4a39a1a`, `tests/test_estaticos.py tests/test_rutas.py tests/test_frontend_integracion.py`: **11 aprobadas** en 17,14 s. Se corrigió la ubicación inicial de los estáticos, que no resolvían sin instalar todavía la app.
+- Chromium: **51 comprobaciones** a 360/390/768/1024/1360/1440 px, teclado y movimiento reducido. Subida/baja/descarga/ZIP reales exclusivamente de archivos ficticios; permisos de consulta, duplicado, doble envío, modal sobre abonos y ausencia de desbordes. Cero errores JavaScript; un 409 esperado por duplicado.
+- **Cuatro escenarios de fallo controlado**, incluida una respuesta perdida después de guardar y su recuperación por consulta sin repetir POST; una interrupción de red inducida. Se corrigió el refresco de la página mensual al recuperar un guardado incierto.
+- Se revisaron diez capturas, de 21–72 KB. Seis pares de contraste calculados, mínimo 4,75:1. `node --check` y `git diff --check` correctos. Sin nuevas librerías ni CDN.
+
+[Capturas, resultados y límites de la verificación](capturas/adjuntos/README.md).
+
+### Pendiente y alcance
+
+La recomendación `core/cobros` para ventas/cobros y `core/adjuntos` para compras/gastos/pagos sigue pendiente de decisión de la propietaria. El diseño se ha probado con los cinco tipos del contrato original; no se oculta la duplicación mediante filtros frontend. La factura de contado ya tiene acceso directo a `core/cobros`, sin necesidad de crear CxC.
+
+El resumen mensual y ZIP original cuentan solo `Adjunto`. Claude debe definir si incorporan `RespaldoCobro` con su fuente, archivo/nota y revisión, o si se limitan explícitamente a compras/gastos/pagos. Se documenta también la distinción entre `payment_method` (SRI) y `medio_cobro`, los límites de 8 MB frente a 5 MB y los permisos diferentes. El diseño de cobros y puntos mantiene su tarea separada.
+
+No se ejecutó la suite completa ni PostgreSQL, no se probó la fusión final ni un teléfono físico. Sin publicación, emisiones, pagos o correos reales. No se incluyeron datos de clientes, credenciales, `.env` o firmas. Claude debe integrar y validar el conjunto antes de proponer su publicación con respaldo.
+
+**Trazabilidad de entrega:** código, capturas e informe en `2b37d098b79cfcf57646c7a2651967a2e20626e9`, subido a `frontend/etapa3`; el remoto coincidió exactamente con el local tras `git push` y `git ls-remote`. Esta anotación posterior solo registra el hash ya subido y no cambia código ni despliega.

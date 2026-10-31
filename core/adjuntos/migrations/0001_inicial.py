@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
             name='Adjunto',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('documento_tipo', models.CharField(choices=[('venta', 'Factura emitida'), ('compra', 'Compra'), ('gasto', 'Gasto'), ('cobro', 'Cobro de cuenta por cobrar'), ('pago', 'Pago de cuenta por pagar')], max_length=10, verbose_name='Tipo de documento')),
+                ('documento_tipo', models.CharField(choices=[('compra', 'Compra'), ('gasto', 'Gasto'), ('pago', 'Pago de cuenta por pagar')], max_length=10, verbose_name='Tipo de documento')),
                 ('documento_id', models.PositiveBigIntegerField(verbose_name='Id del documento')),
                 ('clase', models.CharField(choices=[('transferencia', 'Comprobante de transferencia'), ('deposito', 'Papeleta de depósito'), ('cheque', 'Cheque'), ('voucher', 'Voucher de tarjeta'), ('recibo', 'Recibo'), ('estado_cuenta', 'Estado de cuenta'), ('otro', 'Otro')], default='transferencia', max_length=15, verbose_name='Clase de comprobante')),
                 ('archivo', models.FileField(max_length=255, upload_to=core.importacion.models.RutaPrivada('comprobantes-pago'), verbose_name='Archivo')),

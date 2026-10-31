@@ -154,3 +154,17 @@ vez, la ida tardó entre 40 y 58 s y la vuelta entre 62 y 69 s; ninguna migraci�
 lentas están en «Lo que se probó», arriba. Los documentos de cada rama traen estimaciones previas al ensayo, que en esas se
 quedaron cortas: «menos de un segundo» para `proformas/0001` (medido: de 6,5 a 10,7 s), «instantáneo» para
 `comprobantes/0021` (de 2,9 a 7,9 s) y «milisegundos con miles de filas» para `pos/0021` (de 5,4 a 6,5 s).
+
+## Nota (30/10/2026) — migraciones de locales y puntos de emisión (`91ddccc`)
+
+Se agregan `configuracion/0001_puntos_por_usuario`, `0002_rls_puntos` y `0003_modulo_puntos` (dependen de `pos/0019`, anterior a la
+fase: la vuelta documentada arriba **no** las deshace ni toca sus tablas) y `tenancy/0008_acciones_puntos` (depende de `tenancy/0007`:
+la vuelta a `tenancy 0006` también la deshace, así que tras la vuelta quedan 20 pendientes en vez de 19; `tests/test_migracion_vuelta_fase.py`
+lo comprueba). Al publicar, el mismo `migrate` las aplica todas.
+
+## Nota (31/10/2026) — migraciones del respaldo de cobros (`9eef6d5`)
+
+`pos/0032_sale_medio_cobro` y `pos/0033_condicion_de_pago` cuelgan de `pos/0031` (una app tiene una sola hoja): la vuelta documentada
+las deshace también, y con ella se pierde la columna `medio_cobro` (vacía en todo lo anterior a esta regla). `cobros/0001_respaldo_cobro`,
+`0002_rls_cobros` y `0003_permisos_cobros` cuelgan de `pos/0019` y **no** se deshacen con la fase (los respaldos y sus archivos se conservan);
+`tenancy/0009_acciones_cobros` sí (sobre `tenancy/0007`). Tras la vuelta quedan 23 pendientes (`tests/test_migracion_vuelta_fase.py`).

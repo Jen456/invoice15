@@ -15,13 +15,12 @@ from django.utils import timezone
 from core.adjuntos import archivos
 from core.adjuntos.documentos import DOCUMENTOS, describir
 from core.adjuntos.models import CLASES, CLASE_POR_MEDIO, Adjunto
-from core.pos.models import Expenses, PaymentsCtaCollect, PaymentsDebtsPay, Purchase, Sale
+from core.pos.models import Expenses, PaymentsDebtsPay, Purchase
 from core.security.session import get_group
 from core.suscripciones import reglas
 from core.suscripciones.servicios import estado_de_peticion
 
 MAX_ZIP_BYTES = 250 * archivos.MB
-VENTAS_CON_COMPROBANTE = ('authorized', 'authorized_and_sent_by_email')
 
 
 class ErrorAdjunto(Exception):
@@ -97,11 +96,6 @@ def _importe(valor):
 
 def adjuntar(company, usuario, tipo, documento, archivo, *, clase='', referencia='', fecha=None, importe=None, descripcion=''):
     """Guarda un comprobante del documento (ya comprobados los permisos). `archivo`: UploadedFile o bytes."""
-    if tipo == 'cobro':
-        if documento.tipo != 'cobro':
-            raise ErrorAdjunto('Solo los cobros registrados admiten comprobantes; los abonos automáticos no.', 'abono')
-        if documento.anulado_en is not None:
-            raise ErrorAdjunto('Este cobro está anulado: no admite comprobantes.', 'anulado')
     if hasattr(archivo, 'size') and archivo.size > archivos.MAX_BYTES:
         raise ErrorAdjunto(f'El archivo pesa más de {archivos.MAX_BYTES // archivos.MB} MB. Comprime el PDF o reduce la foto.', 'tamano')
     contenido = archivo.read() if hasattr(archivo, 'read') else bytes(archivo)
@@ -200,18 +194,14 @@ def _siguiente_mes(inicio):
 
 
 def _documentos_del_mes(inicio):
-    """Documentos de tesorería de la empresa activa cuya fecha cae en el mes, por tipo."""
+    """Compras, gastos y pagos a proveedores de la empresa activa cuya fecha cae en el mes, por tipo (ventas y cobros: core/cobros)."""
     fin = _siguiente_mes(inicio)
     en_mes = lambda campo: {f'{campo}__gte': inicio, f'{campo}__lt': fin}   # noqa: E731
     return {
-        'venta': list(Sale.objects.select_related('client__user').filter(status__in=VENTAS_CON_COMPROBANTE, anulado_sri_fecha__isnull=True,
-                                                                        **en_mes('date_joined')).order_by('date_joined', 'id')),
         'compra': list(Purchase.objects.select_related('provider')
                        .filter(Q(**en_mes('fecha_emision')) | Q(fecha_emision__isnull=True, **en_mes('date_joined')))
                        .exclude(tipo_comprobante__in=('04', '05')).order_by('date_joined', 'id')),
         'gasto': list(Expenses.objects.select_related('type_expense').filter(**en_mes('date_joined')).order_by('date_joined', 'id')),
-        'cobro': list(PaymentsCtaCollect.objects.select_related('ctas_collect__sale__client__user')
-                      .filter(tipo='cobro', anulado_en__isnull=True, **en_mes('date_joined')).order_by('date_joined', 'id')),
         'pago': list(PaymentsDebtsPay.objects.select_related('debts_pay__purchase__provider').filter(**en_mes('date_joined'))
                      .order_by('date_joined', 'id')),
     }

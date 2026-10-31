@@ -1,0 +1,23 @@
+{# Selector del punto de emisión del usuario (contexto fpa_punto / fpa_puntos de core/configuracion/context_processors.puntos). #}
+{% if fpa_puntos %}
+    <li class="nav-item dropdown fp-selector-punto">
+        <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
+            <i class="fas fa-store" aria-hidden="true"></i>
+            <span class="d-none d-md-inline">{% if fpa_punto %}{{ fpa_punto.establishment.name|default:fpa_punto.establishment.address }} · {{ fpa_punto.description|default:"Punto" }} · {{ fpa_punto.full_code }}{% else %}Elige tu punto de emisión{% endif %}</span>
+            <span class="sr-only">Punto de emisión: {% if fpa_punto %}{{ fpa_punto.full_code }}{% else %}sin elegir{% endif %}</span>
+            <i class="fas fa-caret-down" aria-hidden="true"></i>
+        </a>
+        <div class="dropdown-menu dropdown-menu-right" style="max-width: calc(100vw - 16px);">
+            <span class="dropdown-header text-wrap">Emites desde{% if fpa_punto %} {{ fpa_punto.full_code }}{% else %}: elige un punto{% endif %}</span>
+            <div class="dropdown-divider"></div>
+            {% for p in fpa_puntos %}
+                <form method="post" action="{% url 'configuracion_punto_seleccionar' %}" class="m-0">
+                    {% csrf_token %}
+                    <input type="hidden" name="punto" value="{{ p.pk }}">
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <button type="submit" class="dropdown-item{% if fpa_punto and p.pk == fpa_punto.pk %} active{% endif %}"{% if fpa_punto and p.pk == fpa_punto.pk %} aria-current="true"{% endif %}>{{ p.establishment.name|default:p.establishment.address }} · {{ p.description|default:"Punto" }} <small class="text-muted">{{ p.full_code }}</small></button>
+                </form>
+            {% endfor %}
+        </div>
+    </li>
+{% endif %}

@@ -33,6 +33,8 @@ urlpatterns = [
     path('user/', include('core.user.urls')),
     path('suscripcion/', include('core.suscripciones.urls')),
     path('configuracion/facturacion/', include('core.configuracion.urls')),
+    path('configuracion/puntos/', include('core.configuracion.urls_puntos')),
+    path('cobros/', include('core.cobros.urls')),
     path('comprobantes/', include('core.comprobantes.urls')),
     path('importacion/', include('core.importacion.urls')),
     path('proformas/', include('core.proformas.urls')),

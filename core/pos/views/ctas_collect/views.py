@@ -1,13 +1,12 @@
 import json
+import uuid
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import DeleteView, CreateView, FormView
 
-from core.adjuntos import registro as adjuntos
 from core.pos import cxc
 from core.pos.forms import PaymentsCtaCollectForm, CtasCollect
 from core.reports.forms import ReportForm
@@ -81,11 +80,14 @@ class CtasCollectCreateView(GroupPermissionMixin, CreateView):
                 cuenta = request.POST.get('ctas_collect', '')
                 if not str(cuenta).isdigit():
                     raise ValueError('Elige la cuenta por cobrar.')
-                with transaction.atomic():   # el comprobante adjunto (opcional) va en la misma transacción que el cobro
-                    abono = cxc.registrar_cobro(request.company, request.user, int(cuenta), request.POST.get('date_joined', ''),
-                                                request.POST.get('valor', ''), request.POST.get('medio_pago', ''),
-                                                request.POST.get('referencia', ''), request.POST.get('description', ''))
-                    adjuntos.adjuntar_al_registrar(request, 'cobro', abono)
+                # El cobro y su respaldo (comprobante o nota «Detalles», al menos uno) los registra core/cobros, que llama
+                # a cxc.registrar_cobro; `clave` evita duplicados por doble envío (sin ella se genera una por petición).
+                from core.cobros import servicios as cobros
+                venta = CtasCollect.objects.select_related('sale').get(pk=int(cuenta)).sale
+                cobros.registrar(request, venta, clave=request.POST.get('clave') or uuid.uuid4().hex,
+                                 medio=request.POST.get('medio_pago', ''), importe=request.POST.get('valor', ''),
+                                 referencia=request.POST.get('referencia', ''), nota=request.POST.get('description', ''),
+                                 archivo=request.FILES.get('archivo'), fecha=request.POST.get('date_joined', ''))
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
         except ObjectDoesNotExist:
@@ -99,7 +101,7 @@ class CtasCollectCreateView(GroupPermissionMixin, CreateView):
         context['title'] = 'Nuevo registro de un Pago'
         context['list_url'] = self.success_url
         context['action'] = 'add'
-        context.update(adjuntos.contexto())
+        context['clave_envio'] = uuid.uuid4().hex   # idempotencia del cobro (core/cobros)
         return context
 
 

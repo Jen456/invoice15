@@ -53,8 +53,9 @@ ESTRUCTURA = (
     ('Configuración', 'fas fa-cogs', 80, (
         ('/pos/company/update/', 'Empresa', 1),
         ('/configuracion/facturacion/', 'Facturación y numeración', 2),
-        ('/importacion/reglas/', 'Reglas de importación y contabilización', 3),
-        ('/pos/receipt/', 'Numeraciones registradas', 4),
+        ('/configuracion/puntos/', 'Locales y puntos de emisión', 3),
+        ('/importacion/reglas/', 'Reglas de importación y contabilización', 4),
+        ('/pos/receipt/', 'Numeraciones registradas', 5),
     )),
     ('Seguridad', 'fas fa-lock', 90, ()),
 )
@@ -80,8 +81,12 @@ MODULOS_NUEVOS = (
     ('comprobantes', '/comprobantes/retenciones-recibidas/', 'fas fa-hand-holding-usd',
      'Retenciones que te hicieron tus clientes sobre tus facturas',
      ('view_retencionrecibida', 'add_retencionrecibida', 'change_retencionrecibida')),
+    # Locales y puntos de emisión por usuario: lo crea configuracion 0003 en instalaciones existentes.
+    ('configuracion', '/configuracion/puntos/', 'fas fa-store',
+     'Locales (establecimientos), puntos de emisión, numeración por punto y puntos autorizados por usuario',
+     ('view_puntoautorizado', 'add_puntoautorizado', 'delete_puntoautorizado')),
     # Comprobantes de pago adjuntos (core/adjuntos): lo crea adjuntos 0003 en instalaciones existentes.
-    ('adjuntos', '/adjuntos/', 'fas fa-paperclip', 'Comprobantes de pago adjuntos a facturas, compras, gastos, cobros y pagos',
+    ('adjuntos', '/adjuntos/', 'fas fa-paperclip', 'Comprobantes de pago adjuntos a compras, gastos y pagos a proveedores',
      ('view_adjunto', 'add_adjunto', 'delete_adjunto')),
 )
 

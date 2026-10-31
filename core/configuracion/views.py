@@ -1,12 +1,19 @@
-"""Asistente de configuración de facturación: /configuracion/facturacion/ (Propietario y Administrador)."""
+"""Asistente de configuración de facturación: /configuracion/facturacion/ (Propietario y Administrador), y
+«Locales y puntos de emisión»: /configuracion/puntos/ (catálogo y autorizaciones para Propietario y Administrador;
+selección del punto para cualquier usuario con rol)."""
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.http import Http404, HttpResponseRedirect, JsonResponse
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views import View
 from django.views.generic import TemplateView
 
+from config import settings
+from core.configuracion import puntos as pt
 from core.configuracion import servicios as sv
-from core.configuracion.forms import (AmbienteFirmaForm, ConfirmacionForm, ConfirmarPuntoForm, EmpresaForm,
-                                      EstablecimientoForm, PuntoForm, SecuenciaForm)
+from core.configuracion.forms import (AmbienteFirmaForm, AutorizacionForm, ConfirmacionForm, ConfirmarPuntoForm,
+                                      EmpresaForm, EstablecimientoForm, NumeracionPuntoForm, PuntoForm, SecuenciaForm)
 from core.pos.models import EmissionPoint, Establishment
 from core.security.mixins import SessionGroupMixin
 from core.tenancy.models import audit
@@ -15,6 +22,22 @@ from core.tenancy.models import audit
 def avisar(request, nivel, texto):
     """Mensaje que el asistente muestra en la propia página (etiqueta «configuracion»)."""
     messages.add_message(request, nivel, texto, extra_tags='configuracion')
+
+
+def quiere_json(request):
+    """Petición del frontend (fetch/XHR) que espera JSON en vez de redirección."""
+    return (request.headers.get('x-requested-with') == 'XMLHttpRequest'
+            or request.headers.get('accept', '').startswith('application/json')
+            or request.POST.get('formato') == 'json')
+
+
+def destino_seguro(request, por_defecto=settings.LOGIN_REDIRECT_URL):
+    """`next` del POST solo si es una ruta de este mismo sitio."""
+    url = request.POST.get('next') or ''
+    if url.startswith('/') and url_has_allowed_host_and_scheme(url, allowed_hosts={request.get_host()},
+                                                               require_https=request.is_secure()):
+        return url
+    return por_defecto
 
 
 class ConfiguracionAccessMixin(SessionGroupMixin):
@@ -311,3 +334,136 @@ class OtrosComprobantesView(ConfiguracionAccessMixin, TemplateView):
                 form.add_error(None, str(e))
         return self.render_to_response(self.get_context_data(formularios={tipo: form}))
 
+
+
+# ---------------------------------------------------------------- locales y puntos de emisión
+
+class PuntosAccessMixin(SessionGroupMixin):
+    """Solo los roles con el módulo «Locales y puntos de emisión» (Propietario y Administrador)."""
+
+    def get_group_module(self, group):
+        return group.groupmodule_set.filter(module__url=pt.URL).first()
+
+    def has_access(self, group):
+        return self.get_group_module(group) is not None
+
+
+class PuntosView(PuntosAccessMixin, TemplateView):
+    """Catálogo de locales y puntos, numeración por punto y puntos autorizados por usuario."""
+    template_name = 'configuracion/puntos.html'
+
+    def get_context_data(self, **kwargs):
+        company = self.request.company
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'title': 'Locales y puntos de emisión',
+            'estado': pt.estado(self.request),
+            'form_establecimiento': kwargs.get('form_establecimiento') or EstablecimientoForm(company=company),
+            'form_punto': kwargs.get('form_punto') or PuntoForm(company=company),
+            'form_numeracion': kwargs.get('form_numeracion') or NumeracionPuntoForm(company=company),
+            'form_autorizacion': kwargs.get('form_autorizacion') or AutorizacionForm(company=company, activos=False),
+            'mensajes': {**sv.MENSAJES, **pt.MENSAJES},
+            'url_asistente': sv.URL, 'url_estado': pt.URL + 'estado.json', 'url_seleccionar': pt.URL_SELECCIONAR,
+        })
+        return context
+
+    def respuesta(self, request, mensaje, form=None, nombre_form=None, estado_http=200):
+        """Redirección con aviso (formularios normales) o JSON (fetch/XHR)."""
+        if quiere_json(request):
+            datos = {'ok': estado_http == 200, 'mensaje': mensaje}
+            if form is not None and form.errors:
+                datos['errores'] = form.errors.get_json_data()
+            if estado_http == 200:
+                datos['estado'] = pt.estado(request)
+            return JsonResponse(datos, status=estado_http)
+        if form is not None and form.errors:
+            avisar(request, messages.ERROR, mensaje)
+            return self.render_to_response(self.get_context_data(**{nombre_form: form}))
+        avisar(request, messages.SUCCESS if estado_http == 200 else messages.ERROR, mensaje)
+        return HttpResponseRedirect(pt.URL)
+
+    def post(self, request, *args, **kwargs):
+        company = request.company
+        accion = request.POST.get('action')
+        try:
+            if accion == 'agregar_establecimiento':
+                form = EstablecimientoForm(request.POST, company=company)
+                if not form.is_valid():
+                    return self.respuesta(request, 'Revisa los datos del establecimiento.', form, 'form_establecimiento', 400)
+                datos = form.cleaned_data
+                with transaction.atomic():
+                    est = Establishment(company=company, code=datos['code'], name=datos['name'], address=datos['address'])
+                    est.save()
+                    punto = None
+                    if datos['point_code']:
+                        punto = EmissionPoint(company=company, establishment=est, code=datos['point_code'],
+                                              description=datos['point_description'])
+                        punto.save()
+                audit(request, 'billing_point_change', company=company, establecimiento=est.code, accion='agregar')
+                if punto:
+                    audit(request, 'billing_point_change', company=company, punto=punto.full_code, accion='agregar')
+                    return self.respuesta(request, f'Establecimiento {est.code} y punto de emisión {punto.full_code} agregados.')
+                return self.respuesta(request, f'Establecimiento {est.code} agregado.')
+            if accion == 'agregar_punto':
+                form = PuntoForm(request.POST, company=company)
+                if not form.is_valid():
+                    return self.respuesta(request, 'Revisa los datos del punto de emisión.', form, 'form_punto', 400)
+                punto = EmissionPoint(company=company, **form.cleaned_data)
+                punto.save()
+                audit(request, 'billing_point_change', company=company, punto=punto.full_code, accion='agregar')
+                return self.respuesta(request, f'Punto de emisión {punto.full_code} agregado.')
+            if accion in ('activar_punto', 'desactivar_punto'):
+                punto = pt.activar_punto(request, request.POST.get('point'), accion == 'activar_punto')
+                clave = 'punto_activado' if accion == 'activar_punto' else 'punto_desactivado'
+                return self.respuesta(request, pt.MENSAJES[clave].format(punto=punto.full_code))
+            if accion == 'numeracion':
+                form = NumeracionPuntoForm(request.POST, company=company)
+                if not form.is_valid():
+                    return self.respuesta(request, 'Revisa los datos de la numeración.', form, 'form_numeracion', 400)
+                d = form.cleaned_data
+                r = pt.configurar_numeracion(request, d['point'].pk, d['tipo'], d['ambiente'], d['mode'], d['last_number'], d['confirm'])
+                return self.respuesta(request, (f'Numeración de {sv.NOMBRE_DOCUMENTO[d["tipo"]]} de {d["point"].full_code} en '
+                                                f'{sv.AMBIENTES[d["ambiente"]]} confirmada: próximo {r.next_number_full()}.'))
+            if accion in ('autorizar', 'quitar_autorizacion'):
+                form = AutorizacionForm(request.POST, company=company, activos=accion == 'autorizar')
+                if not form.is_valid():
+                    return self.respuesta(request, 'Elige un usuario de la empresa y un punto de emisión.', form, 'form_autorizacion', 400)
+                if accion == 'autorizar':
+                    usuario, punto = pt.autorizar(request, form.cleaned_data['user'].pk, form.cleaned_data['point'].pk)
+                    return self.respuesta(request, f'{usuario.names or usuario.username} puede emitir desde {punto.full_code}.')
+                usuario, punto = pt.quitar_autorizacion(request, form.cleaned_data['user'].pk, form.cleaned_data['point'].pk)
+                return self.respuesta(request, f'{usuario.names or usuario.username} ya no tiene autorizado {punto.full_code}.')
+        except (pt.ErrorPunto, sv.ErrorConfiguracion) as e:
+            return self.respuesta(request, str(e), estado_http=400)
+        raise Http404
+
+
+class PuntosEstadoView(PuntosAccessMixin, View):
+    """Catálogo en JSON para el frontend (Propietario y Administrador)."""
+
+    def get(self, request, *args, **kwargs):
+        return JsonResponse(pt.estado(request))
+
+
+class SeleccionView(LoginRequiredMixin, View):
+    """Punto activo y elegibles del usuario en la empresa activa (cualquier usuario con rol)."""
+
+    def get(self, request, *args, **kwargs):
+        return JsonResponse(pt.seleccion_json(request))
+
+
+class SeleccionarView(LoginRequiredMixin, View):
+    """POST punto=<id> [next=<ruta>]: fija el punto desde el que emite el usuario en la empresa activa. Solo cambia su
+    preferencia: ni el predeterminado de la empresa ni la selección de otros usuarios ni los formularios ya abiertos."""
+
+    def post(self, request, *args, **kwargs):
+        try:
+            pt.seleccionar(request, request.POST.get('punto'))
+        except pt.ErrorPunto as e:
+            if quiere_json(request):
+                return JsonResponse({'error': str(e)}, status=400)
+            messages.error(request, str(e))
+            return HttpResponseRedirect(destino_seguro(request))
+        if quiere_json(request):
+            return JsonResponse({'ok': True, 'seleccion': pt.seleccion_json(request)})
+        return HttpResponseRedirect(destino_seguro(request))
