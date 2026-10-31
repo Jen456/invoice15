@@ -61,6 +61,8 @@ MENSAJES = {
     'nd_sin_enviar': 'Elimina antes la nota de débito {numero}, que el SRI no autorizó o no se envió.',
     'retencion_recibida': 'Primero anula el registro de la retención {numero} que te hizo el cliente.',
     'retencion_sobre_liquidacion': 'Primero marca como anulada la retención {numero} emitida sobre esta liquidación.',
+    'retencion_sobre_liquidacion_en_proceso': 'La retención {numero} sobre esta liquidación está en proceso en el SRI: espera su respuesta.',
+    'retencion_sobre_liquidacion_sin_enviar': 'Elimina antes la retención {numero} sobre esta liquidación, que el SRI no autorizó o no se envió.',
     'cobros': 'La cuenta por cobrar tiene cobros por {valor}. Elimínalos o regístralos en el comprobante que la reemplace '
               'antes de marcarla como anulada.',
 }
@@ -283,9 +285,15 @@ def _plan(slug, doc, fecha=None):
         plan['efectos'].append('La compra podrá tener una nueva retención.')
     elif slug == 'liquidacion':
         numero = (doc.voucher_number_full or '').replace('-', '')
-        for ret in (Retencion.objects.filter(cod_doc_sustento='03', num_doc_sustento=numero, anulado_sri_fecha__isnull=True)
-                    .exclude(status__in=NO_CUENTAN).order_by('id')):
-            plan['impedimentos'].append(ErrorAnulacion('retencion_sobre_liquidacion', numero=ret.voucher_number_full))
+        # Toda retención no anulada sobre esta liquidación impide anularla: la vigente (se anula antes), la que está en proceso y
+        # la devuelta, no autorizada o sin enviar (se elimina antes; si no, podría reenviarse sobre un sustento anulado).
+        for ret in Retencion.objects.filter(cod_doc_sustento='03', num_doc_sustento=numero, anulado_sri_fecha__isnull=True).order_by('id'):
+            if ret.status in AUTORIZADOS:
+                plan['impedimentos'].append(ErrorAnulacion('retencion_sobre_liquidacion', numero=ret.voucher_number_full))
+            elif ret.status == EN_PROCESO:
+                plan['impedimentos'].append(ErrorAnulacion('retencion_sobre_liquidacion_en_proceso', numero=ret.voucher_number_full))
+            else:
+                plan['impedimentos'].append(ErrorAnulacion('retencion_sobre_liquidacion_sin_enviar', numero=ret.voucher_number_full))
         plan['efectos'].append('La compra volverá a necesitar una liquidación de compra.')
     elif slug == 'guia':
         plan['efectos'].append('Las cantidades de esta guía vuelven a quedar pendientes de traslado.')

@@ -123,8 +123,6 @@ var sale = {
                         buttons += '<button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fas fa-list"></i> Opciones</button>';
                         buttons += '<div class="dropdown-menu dropdown-menu-right">';
                         buttons += '<a class="dropdown-item" rel="detail"><i class="fas fa-folder-open"></i> Detalle de productos</a>';
-                        // Comprobantes de pago de la factura (core/adjuntos): transferencia, depósito o voucher del cobro de contado.
-                        buttons += '<a class="dropdown-item" data-adjuntos-tipo="venta" data-adjuntos-id="' + parseInt(row.id, 10) + '"><i class="fas fa-paperclip"></i> Comprobantes de pago</a>';
                         buttons += '<a target="_blank" href="' + pathname + 'print/invoice/' + row.id + '/" class="dropdown-item"><i class="fas fa-ticket-alt"></i> Imprimir factura ticket</a> ';
                         // RIDE A4 (versión completa): existe desde que el SRI autoriza la factura (también si luego se anuló).
                         if (row.receipt.voucher_type.id === '01') {

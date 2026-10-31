@@ -310,6 +310,10 @@ def _no_se_reenvia(comprobante):
     lee bloqueada, como en crear() y en compras.completar_datos(). Nada se anula ni se cambia.
     """
     modelo = comprobante._meta.model_name
+    if modelo == 'creditnote':
+        return _no_se_reenvia_nota_credito(comprobante)
+    if modelo == 'guiaremision':
+        return _no_se_reenvia_guia(comprobante)
     if modelo not in ('retencion', 'liquidacioncompra') or not comprobante.purchase_id:
         return ''
     from core.comprobantes import liquidaciones, retenciones
@@ -321,6 +325,21 @@ def _no_se_reenvia(comprobante):
     if modelo == 'retencion' and not admite_retencion(compra):
         return (f'La compra #{compra.pk} es una nota de crédito del proveedor (04): sobre ella no se emite comprobante de '
                 f'retención, así que {_la(comprobante)} no se reenvió al SRI. No se anuló ni se cambió nada.')
+    if modelo == 'liquidacioncompra' and compra.tipo_comprobante not in ('', '03'):
+        # «Completar datos» la tipificó mientras la liquidación estaba devuelta; autorizarla dejaría una liquidación sobre una 04
+        # (o sobre otro comprobante), porque al autorizar solo se pone 03 a las compras sin tipo.
+        return (f'La compra #{compra.pk} ya es un comprobante {compra.tipo_comprobante} ({compra.get_tipo_comprobante_display()}) y no '
+                f'una compra pendiente de liquidar, así que {_la(comprobante)} no se reenvió al SRI. No se anuló ni se cambió nada.')
+    if modelo == 'retencion' and comprobante.cod_doc_sustento == '03':
+        from core.comprobantes.models import LiquidacionCompra
+        numero = (comprobante.num_doc_sustento or '').replace('-', '')
+        anulada = next((l for l in LiquidacionCompra.all_companies.filter(company_id=comprobante.company_id, purchase_id=compra.pk,
+                                                                         anulado_sri_fecha__isnull=False)
+                        if (l.voucher_number_full or '').replace('-', '') == numero), None)
+        if anulada is not None:
+            return (f'La liquidación {anulada.voucher_number_full}, sustento de {_la(comprobante)}, está anulada en el SRI, así que '
+                    f'la retención no se reenvió. Elimínala y, si corresponde, emite otra sobre la liquidación vigente. No se anuló '
+                    'ni se cambió nada.')
     no_cuentan = retenciones.NO_CUENTAN if modelo == 'retencion' else liquidaciones.NO_CUENTAN
     # el filtro de retencion_vigente / liquidacion_vigente, con la empresa explícita como la compra
     otra = (type(comprobante).all_companies.filter(company_id=comprobante.company_id, purchase_id=compra.pk,
@@ -329,6 +348,58 @@ def _no_se_reenvia(comprobante):
     if otra is not None:
         return (f'La compra #{compra.pk} ya tiene {_la(otra)} vigente ({otra.get_status_display()}), así que '
                 f'{_la(comprobante)} no se reenvió al SRI. No se anuló ni se cambió nada.')
+    return ''
+
+
+def _venta_bloqueada(comprobante):
+    from core.pos.models import Sale
+    # NO KEY: como la compra en _no_se_reenvia; no frena los INSERT con FK a la venta.
+    return Sale.all_companies.select_for_update(no_key=True).get(pk=comprobante.sale_id, company_id=comprobante.company_id)
+
+
+def _no_se_reenvia_nota_credito(nota):
+    """Motivo para no reenviar una nota de crédito devuelta o no autorizada: su factura se anuló en el SRI, u otra nota
+    vigente ya acreditó esas líneas (la devuelta no cuenta como vigente, así que se pudo emitir otra; reenviarla acreditaría
+    dos veces). Nada se anula ni se cambia."""
+    from django.db.models import Sum
+    from core.pos.models import CreditNoteDetail
+    from core.pos.notas_credito import NO_CUENTAN
+    venta = _venta_bloqueada(nota)
+    if venta.anulado_sri_fecha is not None:
+        return (f'La factura {venta.voucher_number_full} está anulada en el SRI, así que la nota de crédito {nota.voucher_number_full} '
+                'no se reenvió. No se anuló ni se cambió nada.')
+    acreditado = {f['sale_detail_id']: f['cantidad'] or 0 for f in
+                  CreditNoteDetail.all_companies.filter(sale_detail__sale_id=venta.pk, credit_note__company_id=nota.company_id,
+                                                        credit_note__anulado_sri_fecha__isnull=True)
+                  .exclude(credit_note__status__in=NO_CUENTAN).exclude(credit_note_id=nota.pk)
+                  .values('sale_detail_id').annotate(cantidad=Sum('cant'))}
+    for d in CreditNoteDetail.all_companies.filter(credit_note_id=nota.pk).select_related('sale_detail__product'):
+        if acreditado.get(d.sale_detail_id, 0) + d.cant > d.sale_detail.cant:
+            return (f'Otra nota de crédito vigente ya acreditó «{d.sale_detail.product.name}» de la factura {venta.voucher_number_full}, '
+                    f'así que la nota de crédito {nota.voucher_number_full} no se reenvió al SRI: la acreditaría dos veces. '
+                    'No se anuló ni se cambió nada.')
+    return ''
+
+
+def _no_se_reenvia_guia(guia):
+    """Motivo para no reenviar una guía devuelta o no autorizada: su factura se anuló en el SRI, u otra guía vigente ya
+    trasladó esas cantidades. Nada se anula ni se cambia."""
+    from django.db.models import Sum
+    from core.comprobantes.guias import NO_CUENTAN
+    from core.comprobantes.models import GuiaDetalle
+    venta = _venta_bloqueada(guia)
+    if venta.anulado_sri_fecha is not None:
+        return (f'La factura {venta.voucher_number_full} está anulada en el SRI, así que la guía de remisión {guia.voucher_number_full} '
+                'no se reenvió. No se anuló ni se cambió nada.')
+    trasladado = {f['sale_detail_id']: f['cantidad'] or 0 for f in
+                  GuiaDetalle.all_companies.filter(sale_detail__sale_id=venta.pk, guia__company_id=guia.company_id,
+                                                   guia__anulado_sri_fecha__isnull=True)
+                  .exclude(guia__status__in=NO_CUENTAN).exclude(guia_id=guia.pk)
+                  .values('sale_detail_id').annotate(cantidad=Sum('cantidad'))}
+    for d in GuiaDetalle.all_companies.filter(guia_id=guia.pk).select_related('sale_detail__product'):
+        if trasladado.get(d.sale_detail_id, 0) + d.cantidad > d.sale_detail.cant:
+            return (f'Otra guía vigente ya trasladó «{d.sale_detail.product.name}» de la factura {venta.voucher_number_full}, así que '
+                    f'la guía {guia.voucher_number_full} no se reenvió al SRI: ampararía dos veces el traslado. No se anuló ni se cambió nada.')
     return ''
 
 

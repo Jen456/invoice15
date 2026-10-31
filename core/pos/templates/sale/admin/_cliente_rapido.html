@@ -37,9 +37,9 @@
                             {{ frmClient.address }}
                         </div>
                         <div class="form-group">
-                            <label for="{{ frmClient.birthdate.id_for_label }}">{{ frmClient.birthdate.label }} *</label>
+                            <label for="{{ frmClient.birthdate.id_for_label }}">{{ frmClient.birthdate.label }} (opcional)</label>
                             {% render_field frmClient.birthdate aria-describedby="fp-client-date-help" %}
-                            <small id="fp-client-date-help" class="form-text">Formato: año-mes-día.</small>
+                            <small id="fp-client-date-help" class="form-text">Formato: año-mes-día. Déjala vacía si no aplica (por ejemplo, una empresa).</small>
                         </div>
                     </div>
                 </fieldset>

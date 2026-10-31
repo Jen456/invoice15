@@ -1,4 +1,5 @@
-"""Comprobantes de pago adjuntos: API JSON por documento, archivo protegido y página «Comprobantes de pago» del mes."""
+"""Comprobantes de pago adjuntos (compras, gastos y pagos a proveedores): API JSON por documento, archivo protegido y página
+«Comprobantes de pago» del mes, que recoge también los respaldos de cobros de core/cobros (consulta común, opción A)."""
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -127,7 +128,7 @@ class ComprobantesDelMes(GroupPermissionMixin, TemplateView):
             inicio = sv.primer_dia(self.request.GET.get('mes') or f'{hoy:%Y-%m}')
         except ValueError:
             inicio = hoy.replace(day=1)
-        resumen = sv.resumen_mes(inicio)
+        resumen = sv.resumen_mes(inicio, self.request)   # filas de ambos orígenes según los permisos del rol
         anterior = (inicio.replace(day=1) - timezone.timedelta(days=1)).replace(day=1)
         siguiente = sv._siguiente_mes(inicio)
         context.update({'title': 'Comprobantes de pago', 'mes': inicio, 'mes_valor': f'{inicio:%Y-%m}', 'anterior': f'{anterior:%Y-%m}',
@@ -145,7 +146,7 @@ class ZipDelMes(GroupPermissionMixin, View):
         except ValueError:
             raise Http404
         try:
-            contenido = sv.zip_mes(inicio)
+            contenido = sv.zip_mes(inicio, request=request)
         except sv.ErrorAdjunto as e:
             return HttpResponse(str(e), status=413, content_type='text/plain; charset=utf-8')
         respuesta = HttpResponse(contenido, content_type='application/zip')

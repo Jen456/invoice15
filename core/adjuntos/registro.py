@@ -1,9 +1,11 @@
-"""Comprobante enviado junto con el formulario de cobro, pago o gasto (campo opcional `comprobante`).
+"""Comprobante enviado junto con el formulario de pago a proveedor o de gasto (campo opcional `comprobante`).
 
 La vista que registra el documento llama a adjuntar_al_registrar dentro de su misma transacción: si el archivo no vale,
-no se registra el cobro, el pago ni el gasto. Referencia, fecha y valor salen del propio formulario.
+no se registra el pago ni el gasto. Referencia, fecha y valor salen del propio formulario. El cobro de una cuenta por
+cobrar ya no pasa por aquí: su respaldo (nota o archivo) lo registra core/cobros con el mismo cobro.
 """
 from core.adjuntos import archivos, servicios as sv
+from core.adjuntos.documentos import DOCUMENTOS
 from core.adjuntos.models import CLASES
 
 
@@ -17,6 +19,8 @@ def adjuntar_al_registrar(request, tipo, documento):
     archivo = request.FILES.get('comprobante')
     if archivo is None:
         return None
+    if tipo not in DOCUMENTOS:
+        raise sv.ErrorAdjunto('Este documento se respalda desde el cobro (core/cobros), no con un adjunto genérico.', 'tipo', 400)
     permisos = sv.permisos(request, tipo)
     if not permisos['subir']:
         raise sv.ErrorAdjunto(permisos['bloqueo'] or 'Tu perfil no puede adjuntar comprobantes de pago.', 'permiso', 403)

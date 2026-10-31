@@ -178,8 +178,7 @@ $(function () {
                             if (row.anulado) {
                                 return '<span class="badge badge-secondary">Anulado</span>';
                             }
-                            // Comprobantes de pago del cobro (core/adjuntos): permisos y plan los decide el servidor.
-                            var botones = row.tipo.id === 'cobro' ? '<button type="button" class="btn btn-outline-secondary btn-xs btn-flat mr-1" data-adjuntos-tipo="cobro" data-adjuntos-id="' + parseInt(row.id, 10) + '" title="Comprobantes de pago" aria-label="Comprobantes de pago"><i class="fas fa-paperclip" aria-hidden="true"></i></button>' : '';
+                            var botones = '';   // el respaldo del cobro (nota o archivo) vive en core/cobros, no en adjuntos
                             if (row.tipo.id !== 'cobro' || !fpPuedeEliminarCobro()) {
                                 return botones;
                             }
