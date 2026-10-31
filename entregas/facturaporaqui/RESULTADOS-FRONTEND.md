@@ -1525,3 +1525,47 @@ Integrado `frontend/etapa3` de Codex (`e4c48c6` por avance rápido; `00c07fc`, s
 **Pruebas:** `tests/test_respaldo_cobros.py` (28) y `tests/test_zz_cobros_concurrencia_pg.py` (1): permisos por rol, aislamiento entre empresas (404), archivo ajeno, autor/estado/empresa falsificados, formatos y tamaños inválidos (incluidos SVG y HTML renombrados), nota sin archivo, archivo sin nota, ninguno, crédito sin abono, doble envío con la misma clave (también concurrente en PostgreSQL), conservación de saldos y documentos, privacidad (JSON, XML, RIDE, additional_info, correo). Suites completas: SQLite 1438 aprobadas y 46 omitidas; PostgreSQL 1483 aprobadas. En ambas falló solo el recuento de la vuelta de migraciones (20 → 23), corregido y repetido después; en PostgreSQL falló además test_zz_mejora_concurrencia_pg (mejora de plan, ajeno a esta rama), que pasó aislado y en la corrida anterior: sensible a la carga de la VM. Repetidas en PostgreSQL tras el ajuste: cobros, RLS, concurrencia y mejora de plan, 31 aprobadas.
 
 **Pendiente:** diseño y conexión del frontend (Codex); decisiones de la propietaria anotadas en HANDOFF; `birthdate` obligatorio en el alta de cliente (hallazgo de Codex). No se desplegó; sin emisiones, pagos ni correos reales.
+
+## 31/10/2026 — diseño de adjuntos y revisión del solapamiento con cobros (Codex)
+
+Fetch y avance rápido de `frontend/etapa3` a `plataforma=4a39a1a`. Se leyeron AGENTS, HANDOFF, los contratos nuevos de puntos/respaldo de cobro y el contrato de adjuntos en `fase/adjuntos-comprobantes=722475a`. La rama de adjuntos sigue sin fusionar: el ensayo con `git merge-tree --write-tree` encontró siete conflictos, incluidos vistas, permisos y pruebas. No se resolvieron desde frontend ni se inició una fusión en el árbol de trabajo.
+
+### Qué se hizo
+
+Página mensual de comprobantes de pago con identidad colibrí: selector de mes, ZIP e índice CSV, indicadores, pendientes, archivo mensual y estados vacíos. Tablas como fichas en móvil y desplazamiento contenido en tablet. Modal con documento origen, archivos vigentes e historial, selección/arrastre, metadatos, progreso por archivo, descarga y confirmación de baja dentro del mismo diálogo. Campo opcional integrado en los formularios que ya lo incluyen. Los datos, límites, roles, mensajes y rutas siguen siendo los del servidor.
+
+Se diferencia el archivo adjunto de la revisión del cobro: adjuntar no confirma ni concilia. El indicador dice «Pendientes de comprobante», porque un medio distinto de efectivo no necesariamente es una operación bancaria confirmada. Se conserva la interfaz `fpAdjuntos.abrir(tipo, id)`, campos, evento de cierre, atributos `data-adjuntos-*` y CSRF.
+
+El lote mantiene documento y metadatos durante la subida; bloquea doble envío y cierre hasta terminar. No reenvía automáticamente un POST tras error de red. Consulta los archivos y, si verifica un cambio, actualiza la página mensual al cerrar. Descarta consultas antiguas y muestra texto externo como texto. El modal sobre el de abonos devuelve el foco y conserva abierto el diálogo anterior; las acciones de listados también aceptan teclado.
+
+### Archivos
+
+- `core/adjuntos/templates/adjuntos/_modal.html`, `_campo_formulario.html`, `mes.html`: diseño real según el contrato de la rama de adjuntos, inactivo todavía en plataforma.
+- `static/adjuntos/js/adjuntos.js`: interacción, errores, consulta/cola e historial. `static/adjuntos/css/adjuntos.css`: compatibilidad con includes existentes.
+- `static/css/facturaporaqui.css`: bloque acotado `fp-adjuntos-*`, móvil, foco y movimiento reducido.
+- `entregas/facturaporaqui/propuestas/adjuntos/README.md`: entrega, bases, siete conflictos y necesidades concretas para integrar.
+- `entregas/facturaporaqui/manuales/COMPROBANTES-DE-PAGO.md`: guía en borrador, pendiente de contrato consolidado/publicación.
+- `entregas/facturaporaqui/capturas/adjuntos/`: diez capturas WebP, dos informes JSON y README.
+- `entregas/facturaporaqui/HANDOFF.md` y este informe: estado, tareas realizadas y coordinación con Claude.
+
+Los estáticos se entregan en la raíz `static/adjuntos/` para que también resuelvan antes de instalar la app. Al fusionar, Claude debe retirar/sincronizar los homónimos antiguos de `core/adjuntos/static/`, conservando las rutas públicas. No se cambiaron modelos, vistas, formularios Python, servicios, permisos, URLs, migraciones ni reglas de emisión/pago.
+
+### Cómo se probó
+
+Backend `722475a` en un checkout aislado y limpio, usando las plantillas/estáticos de esta entrega mediante las rutas de búsqueda de Django. Servidor local, SQLite ficticia, correo en memoria y acceso fiscal deshabilitado. Ningún archivo del backend de esa copia fue modificado.
+
+- `python -m pytest tests/test_adjuntos.py tests/test_estaticos.py tests/test_rutas.py tests/test_frontend_integracion.py`, con ajustes locales de prueba: **46 aprobadas** en 23,02 s.
+- Sobre plataforma `4a39a1a`, `tests/test_estaticos.py tests/test_rutas.py tests/test_frontend_integracion.py`: **11 aprobadas** en 17,14 s. Se corrigió la ubicación inicial de los estáticos, que no resolvían sin instalar todavía la app.
+- Chromium: **51 comprobaciones** a 360/390/768/1024/1360/1440 px, teclado y movimiento reducido. Subida/baja/descarga/ZIP reales exclusivamente de archivos ficticios; permisos de consulta, duplicado, doble envío, modal sobre abonos y ausencia de desbordes. Cero errores JavaScript; un 409 esperado por duplicado.
+- **Cuatro escenarios de fallo controlado**, incluida una respuesta perdida después de guardar y su recuperación por consulta sin repetir POST; una interrupción de red inducida. Se corrigió el refresco de la página mensual al recuperar un guardado incierto.
+- Se revisaron diez capturas, de 21–72 KB. Seis pares de contraste calculados, mínimo 4,75:1. `node --check` y `git diff --check` correctos. Sin nuevas librerías ni CDN.
+
+[Capturas, resultados y límites de la verificación](capturas/adjuntos/README.md).
+
+### Pendiente y alcance
+
+La recomendación `core/cobros` para ventas/cobros y `core/adjuntos` para compras/gastos/pagos sigue pendiente de decisión de la propietaria. El diseño se ha probado con los cinco tipos del contrato original; no se oculta la duplicación mediante filtros frontend. La factura de contado ya tiene acceso directo a `core/cobros`, sin necesidad de crear CxC.
+
+El resumen mensual y ZIP original cuentan solo `Adjunto`. Claude debe definir si incorporan `RespaldoCobro` con su fuente, archivo/nota y revisión, o si se limitan explícitamente a compras/gastos/pagos. Se documenta también la distinción entre `payment_method` (SRI) y `medio_cobro`, los límites de 8 MB frente a 5 MB y los permisos diferentes. El diseño de cobros y puntos mantiene su tarea separada.
+
+No se ejecutó la suite completa ni PostgreSQL, no se probó la fusión final ni un teléfono físico. Sin publicación, emisiones, pagos o correos reales. No se incluyeron datos de clientes, credenciales, `.env` o firmas. Claude debe integrar y validar el conjunto antes de proponer su publicación con respaldo.
