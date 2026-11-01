@@ -178,10 +178,11 @@ $(function () {
                             if (row.anulado) {
                                 return '<span class="badge badge-secondary">Anulado</span>';
                             }
+                            var botones = '';   // el respaldo del cobro (nota o archivo) vive en core/cobros, no en adjuntos
                             if (row.tipo.id !== 'cobro' || !fpPuedeEliminarCobro()) {
-                                return '';
+                                return botones;
                             }
-                            return '<a rel="delete" class="btn btn-danger btn-xs btn-flat" title="Eliminar cobro"><i class="fas fa-times"></i></a>';
+                            return botones + '<a rel="delete" class="btn btn-danger btn-xs btn-flat" title="Eliminar cobro"><i class="fas fa-times"></i></a>';
                         }
                     }
                 ],

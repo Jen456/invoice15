@@ -1,9 +1,11 @@
 import json
 
+from django.db import transaction
 from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView, FormView
 
+from core.adjuntos import registro as adjuntos
 from core.pos.forms import ExpensesForm, Expenses
 from core.reports.forms import ReportForm
 from core.security.mixins import GroupPermissionMixin
@@ -56,7 +58,11 @@ class ExpensesCreateView(GroupPermissionMixin, CreateView):
         action = request.POST['action']
         try:
             if action == 'add':
-                data = self.get_form().save()
+                form = self.get_form()
+                with transaction.atomic():   # el comprobante adjunto (opcional) va en la misma transacción que el gasto
+                    data = form.save()
+                    if not data.get('error'):
+                        adjuntos.adjuntar_al_registrar(request, 'gasto', form.instance)
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
         except Exception as e:
@@ -69,6 +75,7 @@ class ExpensesCreateView(GroupPermissionMixin, CreateView):
         context['list_url'] = self.success_url
         context['url_gasto'] = URL_GASTO
         context['action'] = 'add'
+        context.update(adjuntos.contexto())
         return context
 
 

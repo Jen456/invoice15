@@ -24,4 +24,5 @@
             {% if field.name == 'referencia' %}<small class="form-text text-muted">Obligatoria si pagas con cheque (escribe su número).</small>{% endif %}
         </div>
     {% endfor %}
+    {% include 'adjuntos/_campo_formulario.html' %}
 {% endblock %}

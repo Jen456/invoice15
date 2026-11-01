@@ -340,7 +340,6 @@ class ClientForm(forms.ModelForm):
             'birthdate': forms.DateInput(format='%Y-%m-%d', attrs={
                 'class': 'form-control datetimepicker-input',
                 'id': 'birthdate',
-                'value': datetime.now().strftime('%Y-%m-%d'),
                 'data-toggle': 'datetimepicker',
                 'data-target': '#birthdate'
             }),

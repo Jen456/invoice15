@@ -153,6 +153,51 @@ Pruebas SQLite: **73 aprobadas** en 24,90 s (estáticos, rutas, frontend, alta c
 4. **Pedido nuevo de la propietaria:** reemplazar el uso indiscriminado de efectivo/cambio por respaldo de transacción o nota del vendedor/administrador. Revisar `Sale.payment_type` (`efectivo`/`credito`) frente al medio real y la forma SRI. No ocultar campos y mandar importes inventados. Reutilizar `PaymentsCtaCollect` donde aplique. Contrato detallado, campos, privacidad, autoría, permisos y criterios en [README de la entrega](propuestas/venta-agil/README.md#contrato-solicitado-a-claude--siguiente-entrega-de-backend). Publica rutas/actions reales y tratamiento del saldo pendiente; no están inventados en frontend. Archivo o nota al registrar un cobro; no exigirlo a una factura a crédito sin abono. Nota y archivo fuera de XML/RIDE y de `additional_info`.
 5. Autor/fecha/revisor desde servidor; archivo privado por empresa; subida no equivale a pago confirmado. Auditar revisión/correcciones y evitar abonos duplicados. La selección individual de puntos y la persistencia de borradores siguen con sus contratos pendientes, sin mezclar su implementación con esta entrega.
 
+## Estado actual — comprobantes de pago adjuntos, sin publicar (Claude, 30/10/2026)
+
+Pedido de la propietaria del 30/10 (tras emitir la primera factura de NEXALLTI S.A.S, de contado por transferencia): poder **adjuntar
+comprobantes o recibos** a lo que se factura, compra, cobra y paga, para las declaraciones del mes y la conciliación bancaria, con
+erpnext como referencia de procesos. Rama `fase/adjuntos-comprobantes` sobre `plataforma` `3549c16`; app nueva `core/adjuntos`.
+Contrato completo en [`CONTRATO-PANTALLAS-ADJUNTOS.md`](CONTRATO-PANTALLAS-ADJUNTOS.md); migraciones en [`MIGRACIONES-ADJUNTOS.md`](MIGRACIONES-ADJUNTOS.md).
+
+- **Qué hay:** modal compartido «Comprobantes de pago» en Facturas emitidas (Opciones), Compras, Gastos, abonos de Cuentas por cobrar y
+  pagos de Cuentas por pagar; campo opcional «Comprobante de pago» al registrar un cobro, un pago o un gasto (misma transacción: con un
+  archivo inválido no se registra nada); página **/adjuntos/** «Comprobantes de pago» (menú Administrativo) con los documentos del mes, los
+  pagados por banco sin comprobante y el **ZIP del mes con `indice.csv`** para el contador.
+- **Reglas:** PDF/JPG/PNG/WEBP por su contenido, 8 MB, 10 por documento, sin duplicados por SHA-256 en el mismo documento (aviso si el mismo
+  archivo está en otro); archivo bajo `privado/` servido solo con el permiso de ver el documento (CSP sandbox); quitar = baja lógica con
+  motivo. Permisos: ver = ver el documento; subir = `add_adjunto` o escritura del documento; quitar = `delete_adjunto` o eliminar el
+  documento. El Contador recibe `add_adjunto` y `delete_adjunto` (`ACCOUNTANT_WRITE`), su única escritura. Plan: heredado del módulo del
+  documento (gratuito no ve ventas/cobros/gastos; vencido solo consulta).
+- **erpnext → aquí:** adjuntos por documento (`File`) → `Adjunto` por (tipo, id) con hash; `Payment Entry.reference_no/reference_date` →
+  referencia, fecha e importe del comprobante (y el medio y referencia del cobro de la Etapa 2); `Bank Transaction`/`Bank Clearance` →
+  Etapa 3, que usará estos datos para sugerir emparejamientos. Solo conceptos: erpnext es GPL-3.0.
+- **Pruebas:** `tests/test_adjuntos.py` (36: archivo, servicio, API por rol y por plan, aislamiento entre empresas, formularios, mes y ZIP,
+  menú y roles); `test_b0_contratos` y `test_migracion_vuelta_fase` actualizadas (22 pendientes tras la vuelta). Suites completas: ver
+  «Resultados» abajo. Verificación en Chromium sobre una vista previa local (SQLite, datos ficticios): `/root/capturas/fpa-adjuntos-previa.mjs`
+  → `/root/capturas/adjuntos/informe.json` y capturas 00–08 (modal apilado sobre el de abonos, subida, quitar, gasto con archivo, página
+  del mes, ZIP, móvil 390 px sin desplazamiento horizontal; 0 errores de JS, 0 respuestas ≥ 400).
+- **Toca archivos compartidos** (cada uno una o dos líneas): `config/settings.py`, `config/urls.py`, `core/security/menu.py`,
+  `core/tenancy/roles.py`, los listados y formularios de cobros, pagos, gastos, compras y facturas, y sus `list.js`. El worktree
+  `fase/puntos-por-usuario` modifica también `settings.py`, `urls.py`, `menu.py` y `roles.py`: fusionar con cuidado (líneas contiguas).
+
+## Pendiente para Codex — comprobantes de pago (Claude, 30/10/2026)
+
+- [ ] Diseño del modal (`templates/adjuntos/_modal.html`, `static/adjuntos/css/adjuntos.css`, prefijo `fp-adjuntos`) y del campo del
+  formulario (`templates/adjuntos/_campo_formulario.html`); vista previa de la imagen o del PDF si la ves útil (la URL se sirve en línea).
+- [ ] Página del mes (`templates/adjuntos/mes.html`) a 360/390/768/1024/1440 px; hoy las tablas se apilan en móvil con `data-label`.
+- [ ] Botón con clip en los listados (`btn-outline-secondary btn-xs`, `title` y `aria-label`) y la opción «Comprobantes de pago» del menú de
+  Facturas emitidas.
+- [ ] Manual de clientes: adjuntar al cobrar y desde la página del mes; formatos; quitar deja historial.
+
+## Notas entre agentes — comprobantes de pago (Claude → Codex)
+
+- El servidor decide permisos y plan: el modal pide `GET /adjuntos/api/<tipo>/<id>/` y dibuja según `permisos` y `bloqueo`; no ocultes
+  botones por tu cuenta sin ese dato. Todo texto de terceros va como texto (`textContent`), nunca como HTML.
+- El modal se apila sobre el de abonos y el de pagos (`z-index` y fondo los ajusta `adjuntos.js`); al cerrarlo, el de abajo sigue abierto.
+- No cambies los nombres de los campos del formulario de subida (`archivo`, `clase`, `referencia`, `fecha`, `importe`, `descripcion`) ni los
+  del campo opcional (`comprobante`, `comprobante_clase`): los leen las vistas y las pruebas.
+
 ## Estado actual — fase contable lista para proponer su publicación, sin publicar (Claude, 30/10/2026)
 
 La entrega de diseño de Codex (`adbe62f`, anotada en `d2bed3d`) queda integrada en `plataforma` sin reescribir historial, con los commits de abajo encima. **Código probado: `22ff73d`.** Lo posterior es un solo commit de documentación: cambia `entregas/facturaporaqui/`, que ninguna prueba lee, y el docstring y un comentario de `tests/test_migracion_vuelta_fase.py`; esa prueba se repitió sobre el commit final. **No se publicó nada**: la app sigue en lo publicado el 28/10 (`98cfa20`) y la base publicada no tiene ninguna de las 19 migraciones.
@@ -487,6 +532,64 @@ Códigos de error (`codigo` y texto exacto en `core/cobros/servicios.MENSAJES`):
 **Pantalla actual de cobros** (`/pos/ctas/collect/add/`, `action=add`): además de `ctas_collect`, `date_joined`, `valor`, `medio_pago`, `referencia`, `description`, acepta `archivo` y `clave` (la plantilla trae `clave_envio`); exige `description` o `archivo`; éxito `{}`, error `{error}` como antes.
 
 **Ticket y RIDE.** El ticket imprime «Efectivo» y «Cambio» solo cuando el medio es efectivo (o sin dato, ventas anteriores); con otro medio imprime «Pago: Transferencia». El RIDE y el XML no cambian (forma de pago del SRI de siempre).
+
+## Estado actual — entrega 1 (operación comercial) integrada en `plataforma`, sin publicar (Claude, 31/10/2026)
+
+Cierra solo la entrega 1 de [DECISION-ENTREGA-COMERCIAL-2026-10-31.md](DECISION-ENTREGA-COMERCIAL-2026-10-31.md). Base: `plataforma` `4a39a1a` + `frontend/etapa3` `e0399db` (diseño de adjuntos, alta de cliente/producto, decisión; merge `c788082`) + `fase/adjuntos-comprobantes` `722475a` (merge `7468e55`, conservando ambas documentaciones) + `c103bb4`.
+
+- **Opción A aplicada.** `core/cobros` respalda facturas al contado y cobros de cuentas por cobrar (nota o archivo, revisión, historial, idempotencia); `core/adjuntos` queda para compras, gastos y pagos a proveedores. Adjuntos ya no acepta `venta` ni `cobro` (API 404), no tiene modal ni botón en «Facturas emitidas» ni en «Cuentas por cobrar», y el cobro de CxC no pasa por él (su respaldo es el campo `archivo` o la nota «Detalles», por `core/cobros`). Un solo acceso por respaldo. Los estáticos de adjuntos son los del diseño de Codex en `static/adjuntos/`; los antiguos de `core/adjuntos/static/` se retiraron.
+- **Consulta mensual y ZIP comunes** (`/adjuntos/`, `/adjuntos/zip/`): filas de ambos orígenes con `origen`, archivo o nota, estado de revisión y permisos por documento; una nota válida no cuenta como falta de respaldo; nada se copia ni se duplica; el índice distingue archivo, nota y revisión y no lleva rutas del disco. Contrato abajo.
+- **Nacimiento del cliente opcional** (`pos 0034`): el servidor admite vacío, el formulario y el JS ya no precargan ni exigen la fecha de hoy, el JSON devuelve `''`; los clientes guardados no cambian y no se infiere el tipo de persona.
+- **Borrado concurrente cerrado**: `ComprobanteListView` (retenciones, liquidaciones, notas de débito, guías) decide el borrado sobre la fila bloqueada; un envío al SRI en curso termina antes y, si la dejó enviada, no se borra. Prueba real en PostgreSQL.
+- **Reenvíos inconsistentes corregidos** (los tres casos documentados el 30/10, reproducidos con pruebas): una liquidación devuelta no se reenvía si «Completar datos» ya tipificó la compra (04 u otro); una retención devuelta no se reenvía si su liquidación sustento está anulada en el SRI, y la liquidación no se marca anulada con una retención devuelta, en proceso o sin enviar encima («Elimina antes la retención …»); una nota de crédito o una guía devuelta no se reenvía si su factura se anuló en el SRI o si otra vigente ya acreditó o trasladó esas líneas. Las coherentes sí se reenvían. X-R1 no se tocó. Sin cambios de tasas ni catálogos.
+- **Hallazgo de la revisión de Codex (`9e65aea`) cerrado antes:** alta de producto con código repetido → mensaje claro y transacción sana.
+- **Pruebas:** `test_adjuntos.py` (36, portadas a la opción A y a la consulta común), `test_cliente_nacimiento.py` (3), `test_reenvios_compras.py` (5), `test_reenvios_ventas.py` (5), `test_zz_comprobantes_borrado_concurrencia_pg.py` (1). Suites completas del candidato: SQLite 1487 pasan + 47 omitidas y PostgreSQL 1532 pasan sobre `e4be758`, con tres fallos corregidos en `c103bb4` (solo pruebas) y repetidos: la cuenta 26→27 de `test_migracion_vuelta_fase` (pasa), una lectura fuera del contexto de empresa en `TestMes` que solo falla en PostgreSQL (los 36 de `test_adjuntos` pasan en PG y SQLite) y `test_zz_mejora_concurrencia_pg`, intermitente con la VM cargada (pasa aislada).
+- **Ensayo de migraciones del candidato** sobre copia del respaldo diario (`verif-firma/ensayo-fase/ensayo_migraciones_candidato.sh`, corrido sobre `e4be758`; los commits posteriores solo tocan pruebas y documentación): 33 pendientes; ida en un solo `migrate`, 54,5 s; esquema tras la vuelta IDÉNTICO al publicado; segunda ida idéntica a la primera (menú, permisos, catálogo y migraciones por claves naturales, 1056 filas). Residuos de la vuelta, como en la fase: filas de `Permission`/`ContentType` nuevas y el orden del menú de «Reglas de importación» y «Numeraciones registradas» (3→4, 4→5), inocuos.
+- **Rama paralela `fase/adjuntos-comprobantes` `c5e04a9`** (otra sesión, 31/10): la misma base integrada (adjuntos limitado a compras/gastos/pagos y diseño de Codex) sin la consulta común ni las correcciones de esta entrega. Queda superada por `plataforma`; no hace falta fusionarla. Se conserva en GitHub solo como referencia.
+- **No publicado.** El candidato se publica con `desplegar.sh` (volcado previo + un solo `migrate`); abajo el plan de migraciones, la vuelta y lo que no cubre `--revertir`.
+
+## Pendiente para Codex — entrega 1
+
+- [ ] Factura: sección de pago (`sale/admin/_cobro.html`), ficha de respaldos (`/cobros/factura/<id>/`) y formulario de CxC (campo `archivo` + nota), sobre el contrato de cobros (`4a39a1a`). Nada de eso cambió.
+- [ ] Locales y puntos: `configuracion/puntos.html`, `_selector_punto.html`, `_punto_emision.html` y filtros de factura/NC, sobre el contrato de puntos (`98b4a02`). Nada de eso cambió.
+- [ ] Consulta mensual (`adjuntos/mes.html`): adaptar al contrato consolidado de abajo: columna/etiqueta de origen, respaldo por nota, estado de revisión, y en las filas de ventas y cobros un enlace a la ficha de cobros (`url_cobros`) en vez del modal de adjuntos (su API responde 404 para `venta` y `cobro`). Textos: el mes incluye facturas al contado, cobros, compras, gastos y pagos.
+- [ ] Botones por permiso en proveedores/gastos/CxP ya contratados; alta de cliente sin asterisco en «Fecha de nacimiento (opcional)» (ya quitado en `_cliente_rapido.html`; los JS ya no la exigen).
+- Decisiones de la propietaria (no bloquean el diseño): las de DECISION-ENTREGA-COMERCIAL §«Decisiones menores». Esta entrega aplicó las que no exigían criterio tributario: nacimiento opcional, borrado y reenvíos.
+
+## Notas entre agentes — contrato consolidado de respaldos y consulta mensual (Claude → Codex)
+
+**Reparto por pantalla (quién guarda el respaldo).**
+
+| Pantalla | App | Acceso |
+|---|---|---|
+| Factura al contado (al emitir) y sus respaldos | `core/cobros` | `POST /pos/sale/admin/add/` con `medio_cobro`, `referencia_cobro`, `nota_cobro`, `respaldo`; ficha `GET /cobros/factura/<id>/` |
+| Cobro de una factura a crédito (CxC) | `core/cobros` | `POST /cobros/factura/<id>/registrar/` (ficha) o `POST /pos/ctas/collect/add/` con `archivo`/`description` y `clave` |
+| Compra | `core/adjuntos` | modal `data-adjuntos-tipo="compra"`; `GET/POST /adjuntos/api/compra/<id>/` |
+| Gasto y pago a proveedor (CxP) | `core/adjuntos` | campo `comprobante` al crear; modal `gasto` / `pago`; `GET/POST /adjuntos/api/<tipo>/<id>/` |
+| Consulta mensual y ZIP | ambos orígenes, en el servidor | `GET /adjuntos/?mes=AAAA-MM`, `GET /adjuntos/zip/?mes=AAAA-MM` |
+
+`/adjuntos/api/venta/<id>/` y `/adjuntos/api/cobro/<id>/` responden **404** `{"error": "Tipo de documento desconocido."}`; el servicio responde `codigo: "tipo"` si se intenta adjuntar a una venta o cobro. Límites sin cambios: genéricos PDF/JPG/PNG/WEBP, 8 MB, 10 por documento; cobros PDF/JPG/PNG, 5 MB, nota o archivo. Permisos sin cambios: Contador sube y quita adjuntos genéricos y **solo ve** respaldos de cobros; Vendedor registra respaldos de cobros y no toca adjuntos; Consulta solo ve; Propietario y Administrador todo (y solo ellos revisan cobros).
+
+**Consulta mensual (`GET /adjuntos/`, permiso `view_adjunto`; contexto `resumen`, `mes_valor`, `anterior`, `siguiente`, `limites`).**
+- `resumen.filas`: una por documento del mes, ordenadas por fecha. Claves comunes: `tipo` (`venta`, `cobro`, `compra`, `gasto`, `pago`), `tipo_nombre`, `id`, `numero`, `titulo`, `tercero`, `identificacion`, `fecha` (ISO), `importe` (texto), `medio_id`, `medio`, `contado`, `requiere` (medio distinto de efectivo o sin dato), `falta` (requiere y sin ningún respaldo), **`origen`** (`"cobros"` para venta y cobro, `"adjuntos"` para los demás), **`url_cobros`** (`/cobros/factura/<id>/`, vacío en adjuntos), `con_nota`, `pendientes_revision`, `rechazados`, `adjuntos` (lista de respaldos vigentes).
+- Cada elemento de `adjuntos` trae las mismas claves en los dos orígenes: `id`, `origen`, `clase {id, name}` (en cobros: `archivo` → «Comprobante del cobro», `nota` → «Nota interna»), `nombre`, `extension`, `tamano`, `tamano_texto`, `sha256`, `referencia`, `fecha`, `importe`, `descripcion` (en cobros, el texto de la nota), `subido_por`, `subido_en`, `url` (**vacío cuando es solo nota**), `url_descarga`, **`nota`** (bool), **`revision`** (`null` en adjuntos; en cobros `{id: pendiente|revisado|rechazado, name, por, motivo}`), `eliminado…` (siempre falso en cobros).
+- Qué entra: facturas **al contado** autorizadas y no anuladas (por fecha de registro; las de crédito no: su respaldo va en cada cobro), cobros vigentes de CxC, compras (sin 04/05) por fecha de emisión o registro, gastos y pagos a proveedores. Solo las filas que el rol puede ver: `resumen.tipos_visibles`; `venta` exige `view_respaldocobro` + `view_sale`, `cobro` exige `view_respaldocobro` + `view_ctas_collect`; los demás, el permiso de ver su documento y su regla de plan.
+- `resumen.totales`: `documentos`, `con_comprobante` (con archivo **o** nota), `sin_comprobante` (= `falta`), `adjuntos` (archivos de ambos orígenes), **`notas`**, **`pendientes_revision`**, **`rechazados`**, `bytes`, `bytes_texto`. `resumen.faltantes` y `resumen.con_adjuntos` son subconjuntos de `filas`.
+- Acción por fila: `origen = adjuntos` → el modal (`data-adjuntos-tipo`/`data-adjuntos-id`, como hoy); `origen = cobros` → enlace a `url_cobros` (la ficha de cobros, con su JSON `GET /cobros/factura/<id>/` y acciones de registrar/editar/revisar según `capacidades`). No usar `data-adjuntos-*` en filas de cobros.
+- ZIP (`/adjuntos/zip/?mes=`): `AAAA-MM/<facturas-emitidas|cobros|compras|gastos|pagos>/<numero>_<n>.<ext>` solo con los archivos de las filas visibles; `indice.csv` (`;`, UTF-8 con BOM) con las 16 columnas anteriores más `origen`, `respaldo` (`archivo` | `nota` | vacío en «SIN COMPROBANTE») y `revision` (nombre del estado en cobros). Las notas van como fila sin archivo; nunca rutas del disco ni credenciales. Más de 250 MB → HTTP 413.
+
+**Nacimiento del cliente.** `birthdate` opcional en `action=create_client` (venta), `/pos/client/add/` y perfil: vacío se guarda `null` y el JSON devuelve `""`; el formulario ya no trae la fecha de hoy y los JS no la exigen (`date` sigue validando el formato si se escribe). Nada se infiere del RUC ni se limpian históricos.
+
+**Borrado de comprobantes adicionales (`POST /comprobantes/<lista>/`, `action=delete`).** Decide con la fila bloqueada: si el envío en curso la dejó enviada, responde «Esta … ya fue enviada al SRI y no se puede eliminar…»; si no, la elimina. Sin cambios de campos.
+
+**Reenvíos (`emision.emitir` sobre devueltas o no autorizadas): nuevos motivos de rechazo, texto exacto en `error`:**
+- liquidación: «La compra #N ya es un comprobante 04 (…) y no una compra pendiente de liquidar, así que la liquidación … no se reenvió al SRI. No se anuló ni se cambió nada.»;
+- retención con sustento 03 anulado: «La liquidación 001-002-… , sustento de la retención …, está anulada en el SRI, así que la retención no se reenvió. Elimínala y, si corresponde, emite otra sobre la liquidación vigente. No se anuló ni se cambió nada.»;
+- nota de crédito: «La factura … está anulada en el SRI, así que la nota de crédito … no se reenvió…» / «Otra nota de crédito vigente ya acreditó «producto» de la factura …, así que la nota de crédito … no se reenvió al SRI: la acreditaría dos veces…»;
+- guía: «La factura … está anulada en el SRI, así que la guía de remisión … no se reenvió…» / «Otra guía vigente ya trasladó «producto» de la factura …, así que la guía … no se reenvió al SRI: ampararía dos veces el traslado…».
+- «Anulado en el SRI» de una liquidación: impedimentos nuevos `retencion_sobre_liquidacion_en_proceso` («La retención … sobre esta liquidación está en proceso en el SRI: espera su respuesta.») y `retencion_sobre_liquidacion_sin_enviar` («Elimina antes la retención … sobre esta liquidación, que el SRI no autorizó o no se envió.»).
+
+**Plan de migraciones del candidato (un solo `migrate`, 33 pendientes frente a lo publicado `98cfa20`):** fase contable (19: proformas 0001–0003, pos 0020–0024 y 0030–0031, comprobantes 0014–0015 y 0020–0023, importacion 0005–0006, tenancy 0007) + locales y puntos (configuracion 0001–0003, tenancy 0008) + cobros (pos 0032–0033, cobros 0001–0003, tenancy 0009) + nacimiento (pos 0034) + adjuntos (0001–0003). Vuelta documentada, en este orden: `adjuntos zero`, `cobros zero`, `configuracion zero`, `proformas zero`, `comprobantes 0013_modulo_guias`, `pos 0019_orden_de_las_lineas`, `importacion 0004_menu_con_guias`, `tenancy 0006_accion_empresa_agregada` (94,6 s en el ensayo; esquema idéntico al publicado; residuos: `Permission`/`ContentType` nuevos y el orden de dos módulos del menú). **`--revertir` solo cambia el código**: con datos nuevos (respaldos, adjuntos, puntos, medio de cobro) revertir exige restaurar el volcado previo de `desplegar.sh` **y** los archivos privados (`privado/empresas/<uuid>/{cobros,comprobantes-pago}/` bajo `FPA_ARCHIVOS`, en el respaldo diario y en el del hipervisor), y perder o reconciliar lo registrado después: plan a acordar antes de publicar.
 
 ## Estado actual — ticket térmico corregido tras la revisión, sin publicar (Claude, 28/10/2026)
 

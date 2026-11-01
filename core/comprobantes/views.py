@@ -70,13 +70,17 @@ class ComprobanteListView(GroupPermissionMixin, TemplateView):
             if accion == 'generate_invoice' and tiene_permiso(request, self.permiso('add')):
                 avisar_resultado(request, comprobante, comprobante.generate_electronic_invoice(), self.nombre)
             elif accion == 'delete' and tiene_permiso(request, self.permiso('delete')):
-                if comprobante.status in emision.BLOQUEAN_BORRADO:
-                    messages.error(request, f'Esta {self.nombre.lower()} ya fue enviada al SRI y no se puede eliminar. Para dejarla '
-                                            'sin efecto, anúlala en «SRI en línea».')
-                else:
-                    numero = comprobante.voucher_number_full
-                    comprobante.delete()
-                    messages.success(request, f'{self.nombre} {numero} eliminada.')
+                with transaction.atomic():
+                    # El estado se decide sobre la fila bloqueada: un envío al SRI en curso (emision._ejecutar la bloquea) termina
+                    # antes y, si la dejó enviada, no se borra. Antes se decidía con el estado leído sin bloqueo.
+                    actual = self.model.objects.select_for_update(of=('self',)).get(pk=comprobante.pk)
+                    if actual.status in emision.BLOQUEAN_BORRADO:
+                        messages.error(request, f'Esta {self.nombre.lower()} ya fue enviada al SRI y no se puede eliminar. Para dejarla '
+                                                'sin efecto, anúlala en «SRI en línea».')
+                    else:
+                        numero = actual.voucher_number_full
+                        actual.delete()
+                        messages.success(request, f'{self.nombre} {numero} eliminada.')
             else:
                 messages.error(request, 'Tu perfil no puede realizar esta acción.')
         except Exception as e:

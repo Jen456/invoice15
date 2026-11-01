@@ -118,6 +118,8 @@ var purchase = {
                             // Liquidación de compra cuando el vendedor no puede emitir factura (core/comprobantes).
                             buttons += '<a href="/comprobantes/liquidaciones/nueva/' + id + '/" data-toggle="tooltip" title="Emitir liquidación de compra" class="btn btn-info btn-xs btn-flat fp-retencion-compra"><i class="fas fa-file-signature"></i> Liquidación</a> ';
                         }
+                        // Comprobantes de pago de la compra (core/adjuntos).
+                        buttons += '<button type="button" class="btn btn-outline-secondary btn-xs btn-flat mr-1" data-adjuntos-tipo="compra" data-adjuntos-id="' + parseInt(row.id, 10) + '" title="Comprobantes de pago" aria-label="Comprobantes de pago"><i class="fas fa-paperclip" aria-hidden="true"></i></button>' + ' ';
                         if (permisos_compras.puede_eliminar) {
                             buttons += '<a href="' + pathname + 'delete/' + id + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
                         }

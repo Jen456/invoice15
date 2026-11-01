@@ -115,10 +115,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 },
                 birthdate: {
                     validators: {
-                        notEmpty: {
-                            message: 'La fecha es obligatoria'
-                        },
-                        date: {
+                        date: {   // opcional: vacío es válido (ya no se inventa la fecha de hoy)
                             format: 'YYYY-MM-DD',
                             message: 'La fecha no es válida'
                         }

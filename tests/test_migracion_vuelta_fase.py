@@ -1,4 +1,4 @@
-"""Vuelta completa de las 19 migraciones de la fase contable sobre una instalación con menú (start_installation), con los
+"""Vuelta completa de las 19 migraciones de la fase contable (más las 3 de adjuntos, que dependen de ellas) sobre una instalación con menú (start_installation), con los
 destinos y el orden de MIGRACIONES-FASE-CONTABLE.md, y otra ida: el menú, los módulos y los roles quedan como antes.
 
 Por subproceso con SQLite en archivo, como test_migracion_proformas: `migrate pos 0019` deshace varias migraciones en un
@@ -17,9 +17,9 @@ import tempfile
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-VUELTA = (('proformas', 'zero'), ('comprobantes', '0013_modulo_guias'), ('pos', '0019_orden_de_las_lineas'),
+VUELTA = (('adjuntos', 'zero'), ('proformas', 'zero'), ('comprobantes', '0013_modulo_guias'), ('pos', '0019_orden_de_las_lineas'),
           ('importacion', '0004_menu_con_guias'), ('tenancy', '0006_accion_empresa_agregada'))
-NUEVOS = {'/proformas/', '/comprobantes/retenciones-recibidas/'}
+NUEVOS = {'/proformas/', '/comprobantes/retenciones-recibidas/', '/adjuntos/'}
 VERIFICAR = """
 import json
 from django.contrib.auth.models import Group
@@ -63,11 +63,11 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
         def vuelta():
             for app, destino in VUELTA:
                 manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
-            # 19 de la fase + tenancy 0008/0009 (acciones de locales/puntos y de cobros, sobre tenancy 0007) + pos 0032/0033
-            # (medio de cobro y etiquetas de condición de pago, sobre pos 0031: una app tiene una sola hoja). Las tablas
-            # de locales y puntos (configuracion 0001-0003) y de respaldos (cobros 0001-0003) cuelgan de pos 0019 y no se
-            # deshacen con la fase.
-            assert len(pendientes(env)) == 23
+            # 19 de la fase + tenancy 0008/0009 (acciones de locales/puntos y de cobros, sobre tenancy 0007) + pos 0032/0033/0034
+            # (medio de cobro, etiquetas de condición de pago y nacimiento opcional, sobre pos 0031: una app tiene una sola hoja).
+            # Las tablas de locales y puntos (configuracion 0001-0003) y de respaldos (cobros 0001-0003) cuelgan de pos 0019 y no
+            # se deshacen con la fase. Las 3 de adjuntos (sobre pos 0031) sí: 27 en total.
+            assert len(pendientes(env)) == 27
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)

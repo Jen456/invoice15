@@ -312,7 +312,7 @@ var sale = {
             } else if (/^\d{13}$/.test(identificacion)) {
                 formulario.find('select[name="identification_type"]').val('04').trigger('change');
             }
-            input_birthdate.datetimepicker('date', new Date());
+            input_birthdate.datetimepicker('clear');   // sin fecha de nacimiento inventada
             $('#myModalClient').modal('show');
         }
     }
@@ -406,10 +406,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 },
                 birthdate: {
                     validators: {
-                        notEmpty: {
-                            message: 'La fecha es obligatoria'
-                        },
-                        date: {
+                        date: {   // opcional: vacío es válido (ya no se inventa la fecha de hoy)
                             format: 'YYYY-MM-DD',
                             message: 'La fecha no es válida'
                         }

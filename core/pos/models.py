@@ -541,7 +541,8 @@ class Client(TenantModel):
     dni = models.CharField(max_length=20, verbose_name='Número de cedula o ruc')
     # Opcional y repetible: hay compradores sin teléfono y empresas de un mismo grupo que comparten la central.
     mobile = models.CharField(max_length=10, blank=True, default='', verbose_name='Teléfono')
-    birthdate = models.DateField(default=datetime.now, verbose_name='Fecha de nacimiento')
+    # Opcional: no tiene finalidad operativa ni fiscal; antes se precargaba con la fecha de hoy (también para empresas).
+    birthdate = models.DateField(null=True, blank=True, verbose_name='Fecha de nacimiento')
     address = models.CharField(max_length=500, verbose_name='Dirección')
     identification_type = models.CharField(max_length=30, choices=IDENTIFICATION_TYPE, default=IDENTIFICATION_TYPE[0][0], verbose_name='Tipo de identificación')
     send_email_invoice = models.BooleanField(default=True, verbose_name='¿Enviar email de factura?')
@@ -559,14 +560,14 @@ class Client(TenantModel):
         return separar_correos(self.user.email, self.extra_emails)
 
     def birthdate_format(self):
-        return self.birthdate.strftime('%Y-%m-%d')
+        return self.birthdate.strftime('%Y-%m-%d') if self.birthdate else ''
 
     def toJSON(self):
         item = model_to_dict(self)
         item['text'] = self.get_full_name()
         item['user'] = self.user.toJSON()
         item['identification_type'] = {'id': self.identification_type, 'name': self.get_identification_type_display()}
-        item['birthdate'] = self.birthdate.strftime('%Y-%m-%d')
+        item['birthdate'] = self.birthdate.strftime('%Y-%m-%d') if self.birthdate else ''
         return item
 
     def delete(self, using=None, keep_parents=False):
