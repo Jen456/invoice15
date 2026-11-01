@@ -1613,3 +1613,25 @@ Sobre la [decisión de Codex](DECISION-ENTREGA-COMERCIAL-2026-10-31.md) (`e0399d
 **Pruebas:** `test_adjuntos.py` (36), `test_cliente_nacimiento.py` (3), `test_reenvios_compras.py` (5), `test_reenvios_ventas.py` (5), `test_zz_comprobantes_borrado_concurrencia_pg.py` (1). Suites completas del candidato: SQLite 1487 pasan + 47 omitidas y PostgreSQL 1532 pasan sobre `e4be758`, con tres fallos corregidos en `c103bb4` (solo pruebas) y repetidos: la cuenta 26→27 de `test_migracion_vuelta_fase` (pasa), una lectura fuera del contexto de empresa en `TestMes` que solo falla en PostgreSQL (los 36 de `test_adjuntos` pasan en PG y SQLite) y `test_zz_mejora_concurrencia_pg`, intermitente con la VM cargada (pasa aislada). Ensayo de las 33 migraciones sobre copia del respaldo diario: ida 54,5 s, vuelta 94,6 s con esquema idéntico, segunda ida idéntica (`verif-firma/ensayo-fase/ensayo_migraciones_candidato.sh`, registro en VM101 `wt-e1-ensayo.log`).
 
 **Pendiente / bloqueos:** diseño de Codex sobre los contratos (factura, ficha de cobros, CxC, locales, consulta mensual); aprobación de la propietaria sobre el candidato antes de publicar, con plan de restauración (volcado + archivos privados); pendientes fiscales de la decisión (producción/pruebas, IVA e ICE, vigencias, plazos) que exigen fuente oficial o contador y no se tocaron; prueba de navegador de punta a punta (Codex a 360–1440 px); `test_zz_mejora_concurrencia_pg` falla a veces con la VM cargada (ajeno). No se desplegó; sin emisiones, pagos ni correos reales.
+
+## 31/10/2026 — prueba en nube, gasto con recibo/nota y consulta mensual sin repeticiones
+
+Base real: fetch de `plataforma 5041f56` y `frontend/etapa3 dbf7374`; merge `537c010`. Único conflicto en este documento, resuelto conservando las dos entradas. Backend de Claude integrado sin editarlo.
+
+**Hallazgos reproducidos:** dos tablas repetían las filas pendientes; las ventas usaban el modal de la API de adjuntos, ya incompatible; las notas de cobro sin archivo generaban enlaces vacíos. La nota descriptiva de gasto sí persiste, pero el backend no la cuenta como respaldo mensual; no existe captura pendiente de recibo/nota sin los datos del gasto.
+
+**Cambios:** listado mensual único con filtros y etiquetas de origen/revisión; nota legible sin enlace de descarga; ZIP habilitado con documentos aunque no haya archivos; consulta visual de la API de cobros, sin otra subida. Formulario de gasto agrupado en nota/recibo y datos esenciales, fecha nativa, importe sin botones de incremento, referencia/clase desplegables, comprobante único y selección con límite de tamaño. Cheque conserva su referencia obligatoria y los mismos campos; el importe conserva en navegador el rango del control anterior. Se corrigió la pérdida de foco al ocultar «Volver a consultar» en el modal de lectura.
+
+**Archivos:**
+
+- `core/pos/templates/expenses/create.html`, `core/pos/static/expenses/js/form.js`.
+- `core/adjuntos/templates/adjuntos/mes.html`, nuevo `_consulta_cobro.html`.
+- `static/adjuntos/js/adjuntos.js`, nuevo `mes.js`, `static/css/facturaporaqui.css`.
+- `tests/test_adjuntos.py` (tres regresiones de interfaz) y `tests/test_gastos_medio_pago.py` (texto/enlace actualizado).
+- [Revisión y tarea concreta para Claude](REVISION-GASTOS-Y-RESPALDOS-NUBE.md), HANDOFF y [ocho capturas WebP](capturas/gastos-respaldos-nube/README.md).
+
+**Validación focalizada:** `python -m pytest tests/test_adjuntos.py tests/test_gastos_medio_pago.py tests/test_estaticos.py tests/test_rutas.py -ra`: **51 aprobadas**. La primera verificación del nuevo test contó por error el `<meta name="description">`; se corrigió para contar controles. La primera suite completa detectó el texto antiguo «¿Tienes factura?» en una prueba; se actualizó manteniendo además la comprobación del enlace a Compras. Se está verificando la suite completa final; el resultado se registra a continuación antes de la entrega.
+
+**Navegador:** 38 comprobaciones iniciales + 12 finales. Chromium a 360/390/768/1024/1360/1440 px, movimiento reducido, controles con teclado, retorno del foco, filtros, lectura por rol Consulta, nota y archivo con guardados reales en la SQLite ficticia, ZIP común. Cero errores JS/HTTP inesperados en el recorrido ordinario. Caso 503 simulado con reintento y caso 409 real de archivo duplicado sobre el mismo gasto, sin otro adjunto. Confirmación por ORM y lectura del índice CSV. Contraste de los pares principales de texto/fondo: 4,75:1 a 10,28:1; no se presenta como auditoría WCAG completa. WebP originales de 24–148 KB, revisados visualmente.
+
+**Alcance:** sin cambios de backend, campos, endpoints, CSRF, fiscalidad o roles. El modal de cobros es de lectura; sigue pendiente la ficha completa de acciones. La captura pendiente se solicitó a Claude con contrato y criterios concretos. Sin PostgreSQL ni teléfono físico en esta entrega; no hay URL pública de la vista de nube. Ningún dato real, pago, correo, emisión o despliegue.

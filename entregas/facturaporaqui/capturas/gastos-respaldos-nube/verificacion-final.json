@@ -1,0 +1,58 @@
+{
+  "checks": [
+    {
+      "prueba": "Error del servidor visible sin alterar su texto",
+      "correcta": true
+    },
+    {
+      "prueba": "Reintento recupera el cobro",
+      "correcta": true
+    },
+    {
+      "prueba": "Archivo duplicado rechazado por el servidor",
+      "correcta": true
+    },
+    {
+      "prueba": "Se conserva el mismo número de archivos",
+      "correcta": true
+    },
+    {
+      "prueba": "Importe cero no abre confirmación",
+      "correcta": true
+    },
+    {
+      "prueba": "Importe válido conserva el guardado",
+      "correcta": true
+    },
+    {
+      "prueba": "gasto final sin desborde 360",
+      "correcta": true
+    },
+    {
+      "prueba": "consulta final sin desborde 360",
+      "correcta": true
+    },
+    {
+      "prueba": "gasto final sin desborde 768",
+      "correcta": true
+    },
+    {
+      "prueba": "consulta final sin desborde 768",
+      "correcta": true
+    },
+    {
+      "prueba": "gasto final sin desborde 1360",
+      "correcta": true
+    },
+    {
+      "prueba": "consulta final sin desborde 1360",
+      "correcta": true
+    }
+  ],
+  "fallos_simulados": [
+    "HTTP 503 en consulta del cobro"
+  ],
+  "rechazos_esperados": [
+    "HTTP 409 al repetir un archivo en el mismo gasto"
+  ]
+}

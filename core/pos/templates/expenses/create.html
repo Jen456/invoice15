@@ -6,23 +6,62 @@
     <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
     <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}">
     <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
-    <link rel="stylesheet" href="{% static 'lib/bootstrap-touchspin-4.2.5/css/jquery.bootstrap-touchspin.css' %}"/>
-    <script src="{% static 'lib/bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js' %}"></script>
-    <script src="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js' %}"></script>
-    <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
     <script src="{% static 'expenses/js/form.js' %}"></script>
 {% endblock %}
 
+{% block form_title %}{% if action == 'add' %}Registrar gasto{% else %}Editar gasto{% endif %}{% endblock %}
 {% block form_fields %}
-    <div class="alert alert-info" role="note">
-        ¿Tienes factura? <a href="{{ url_gasto }}">Regístrala en Compras como compra de gasto</a> (sustenta el IVA y el ATS).
-    </div>
-    {% for field in form.visible_fields %}
+<div class="fp-gasto" data-fp-gasto>
+    <header class="fp-gasto-intro">
+        <div><span class="fp-eyebrow">Gastos del día a día</span><h2>Guarda el detalle de tu gasto</h2><p>Adjunta el recibo, escribe una nota o conserva ambos junto a tu gasto.</p></div>
+        <img src="{% static 'img/brand/isotipo-pie.png' %}" width="52" height="52" alt="">
+    </header>
+    <p class="fp-gasto-ruta"><i class="fas fa-file-invoice" aria-hidden="true"></i> ¿Tienes una factura del proveedor? <a href="{{ url_gasto }}">Regístrala en Compras como gasto</a> para conservar sus datos tributarios.</p>
+    <div class="fp-gasto-grid">
+      <section class="fp-gasto-panel" aria-labelledby="fpGastoRespaldo">
+        <h3 id="fpGastoRespaldo">¿En qué gastaste?</h3>
         <div class="form-group">
-            <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
-            {{ field|add_class:'form-control' }}
-            {% if field.name == 'referencia' %}<small class="form-text text-muted">Obligatoria si pagas con cheque (escribe su número).</small>{% endif %}
+          <label for="{{ form.description.id_for_label }}">Nota del gasto <span class="fp-gasto-opcional">(opcional)</span></label>
+          {{ form.description|add_class:'form-control'|attr:'placeholder:Ej.: taxi para entregar un pedido. Pagado por Ana.'|attr:'aria-describedby:fpGastoNotaAyuda' }}
+          <small id="fpGastoNotaAyuda" class="form-text">La nota queda guardada con el gasto.</small>
+          {% for error in form.description.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
         </div>
-    {% endfor %}
-    {% include 'adjuntos/_campo_formulario.html' %}
+        {% if action == 'add' %}
+        <div class="fp-gasto-recibo">
+          <i class="fas fa-camera" aria-hidden="true"></i>
+          <label for="id_comprobante">Recibo o comprobante <span class="fp-gasto-opcional">(opcional)</span></label>
+          <p>Se guarda con este gasto. No necesitas volver a subirlo al listado.</p>
+          <input type="file" name="comprobante" id="id_comprobante" class="form-control-file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" aria-describedby="fpGastoArchivoAyuda fpGastoArchivoEstado" data-max-bytes="{% widthratio comprobante_max_mb 1 1048576 %}">
+          <small id="fpGastoArchivoAyuda" class="form-text">{{ comprobante_formatos }} · máximo {{ comprobante_max_mb }} MB.</small>
+          <p id="fpGastoArchivoEstado" class="fp-gasto-archivo-estado" role="status" aria-live="polite"></p>
+          <button type="button" id="fpGastoQuitarArchivo" class="btn btn-outline-secondary btn-sm" hidden>Quitar selección</button>
+        </div>
+        {% else %}
+        <p class="fp-gasto-ayuda">Los archivos existentes se conservan. Puedes consultarlos o añadir otro desde «Comprobantes de pago» en el listado de gastos.</p>
+        {% endif %}
+      </section>
+      <section class="fp-gasto-panel" aria-labelledby="fpGastoDatos">
+        <h3 id="fpGastoDatos">Datos esenciales</h3>
+        <p>Completa estos cuatro datos para registrar el gasto.</p>
+        <div class="form-row">
+          <div class="form-group col-sm-6"><label for="{{ form.valor.id_for_label }}">Importe ($)</label>{{ form.valor|add_class:'form-control'|attr:'type:number'|attr:'inputmode:decimal'|attr:'step:0.01'|attr:'min:0.01'|attr:'max:1000000'|attr:'placeholder:0.00' }}{% for error in form.valor.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+          <div class="form-group col-sm-6"><label for="{{ form.date_joined.id_for_label }}">Fecha del gasto</label>{{ form.date_joined|add_class:'form-control'|attr:'type:date'|attr:'data-toggle:'|attr:'data-target:' }}{% for error in form.date_joined.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+          <div class="form-group col-12"><label for="{{ form.type_expense.id_for_label }}">Categoría</label>{{ form.type_expense|add_class:'form-control'|remove_attr:'autofocus' }}{% for error in form.type_expense.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+          <div class="form-group col-12"><label for="{{ form.medio_pago.id_for_label }}">¿Cómo pagaste?</label>{{ form.medio_pago|add_class:'form-control' }}{% for error in form.medio_pago.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+        </div>
+      </section>
+    </div>
+    <details class="fp-gasto-adicional" id="fpGastoAdicional" {% if form.referencia.value or form.referencia.errors or form.medio_pago.value == 'cheque' %}open{% endif %}>
+      <summary>Referencia y clasificación del comprobante</summary>
+      <div class="form-row">
+        <div class="form-group col-md-6"><label for="{{ form.referencia.id_for_label }}">Referencia</label>{{ form.referencia|add_class:'form-control'|attr:'aria-describedby:fpGastoReferenciaAyuda' }}<small id="fpGastoReferenciaAyuda" class="form-text">Obligatoria si pagas con cheque; escribe su número.</small>{% for error in form.referencia.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+        {% if action == 'add' %}<div class="form-group col-md-6"><label for="id_comprobante_clase">Clase del comprobante adjunto</label><select name="comprobante_clase" id="id_comprobante_clase" class="form-control"><option value="">Según el medio de pago</option>{% for codigo, nombre in clases_comprobante %}<option value="{{ codigo }}">{{ nombre }}</option>{% endfor %}</select><small class="form-text">Solo se aplica si adjuntas un archivo.</small></div>{% endif %}
+      </div>
+    </details>
+    <p class="fp-gasto-ayuda">Al guardar se registra el gasto. Una foto o una nota no determina por sí sola su tratamiento tributario.</p>
+</div>
+{% endblock %}
+{% block buttons %}
+    <button type="submit" class="btn btn-primary"><i class="fas fa-check" aria-hidden="true"></i> Guardar gasto</button>
+    <a href="{{ list_url }}" class="btn btn-outline-secondary">Volver a gastos</a>
 {% endblock %}

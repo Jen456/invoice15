@@ -1,0 +1,200 @@
+{
+  "entorno": "Nube local, SQLite ficticia, Chromium; sin acceso a producción",
+  "checks": [
+    {
+      "prueba": "Consulta única por documento",
+      "correcta": true,
+      "detalle": {
+        "filas": 5
+      }
+    },
+    {
+      "prueba": "Sin rutas de adjuntos en ventas y cobros",
+      "correcta": true
+    },
+    {
+      "prueba": "Nota sin enlace vacío",
+      "correcta": true
+    },
+    {
+      "prueba": "Filtro por pendientes",
+      "correcta": true
+    },
+    {
+      "prueba": "Filtro por revisión de cobros",
+      "correcta": true
+    },
+    {
+      "prueba": "Filtro sin resultados",
+      "correcta": true
+    },
+    {
+      "prueba": "Cobro con nota y revisión leídos desde API",
+      "correcta": true
+    },
+    {
+      "prueba": "Foco vuelve al botón de consulta",
+      "correcta": true
+    },
+    {
+      "prueba": "Descarga del ZIP común",
+      "correcta": true
+    },
+    {
+      "prueba": "Se consulta el recibo existente",
+      "correcta": true
+    },
+    {
+      "prueba": "gasto sin desborde a 360",
+      "correcta": true,
+      "detalle": {
+        "ancho": 360
+      }
+    },
+    {
+      "prueba": "Una entrada de archivo a 360",
+      "correcta": true
+    },
+    {
+      "prueba": "consulta sin desborde a 360",
+      "correcta": true,
+      "detalle": {
+        "ancho": 360
+      }
+    },
+    {
+      "prueba": "gasto sin desborde a 390",
+      "correcta": true,
+      "detalle": {
+        "ancho": 390
+      }
+    },
+    {
+      "prueba": "Una entrada de archivo a 390",
+      "correcta": true
+    },
+    {
+      "prueba": "consulta sin desborde a 390",
+      "correcta": true,
+      "detalle": {
+        "ancho": 390
+      }
+    },
+    {
+      "prueba": "gasto sin desborde a 768",
+      "correcta": true,
+      "detalle": {
+        "ancho": 768
+      }
+    },
+    {
+      "prueba": "Una entrada de archivo a 768",
+      "correcta": true
+    },
+    {
+      "prueba": "consulta sin desborde a 768",
+      "correcta": true,
+      "detalle": {
+        "ancho": 768
+      }
+    },
+    {
+      "prueba": "gasto sin desborde a 1024",
+      "correcta": true,
+      "detalle": {
+        "ancho": 1024
+      }
+    },
+    {
+      "prueba": "Una entrada de archivo a 1024",
+      "correcta": true
+    },
+    {
+      "prueba": "consulta sin desborde a 1024",
+      "correcta": true,
+      "detalle": {
+        "ancho": 1024
+      }
+    },
+    {
+      "prueba": "gasto sin desborde a 1360",
+      "correcta": true,
+      "detalle": {
+        "ancho": 1360
+      }
+    },
+    {
+      "prueba": "Una entrada de archivo a 1360",
+      "correcta": true
+    },
+    {
+      "prueba": "consulta sin desborde a 1360",
+      "correcta": true,
+      "detalle": {
+        "ancho": 1360
+      }
+    },
+    {
+      "prueba": "gasto sin desborde a 1440",
+      "correcta": true,
+      "detalle": {
+        "ancho": 1440
+      }
+    },
+    {
+      "prueba": "Una entrada de archivo a 1440",
+      "correcta": true
+    },
+    {
+      "prueba": "consulta sin desborde a 1440",
+      "correcta": true,
+      "detalle": {
+        "ancho": 1440
+      }
+    },
+    {
+      "prueba": "Navegación con teclado desde nota al archivo",
+      "correcta": true
+    },
+    {
+      "prueba": "Cheque abre referencia",
+      "correcta": true
+    },
+    {
+      "prueba": "Archivo grande se señala antes de enviar",
+      "correcta": true
+    },
+    {
+      "prueba": "Quitar selección recupera validez",
+      "correcta": true
+    },
+    {
+      "prueba": "Gasto con nota guardado desde interfaz",
+      "correcta": true
+    },
+    {
+      "prueba": "Gasto con recibo guardado en el mismo envío",
+      "correcta": true
+    },
+    {
+      "prueba": "Nuevos gastos aparecen sin volver a adjuntar",
+      "correcta": true
+    },
+    {
+      "prueba": "Consulta no muestra formulario para subir",
+      "correcta": true
+    },
+    {
+      "prueba": "Sin errores JavaScript",
+      "correcta": true,
+      "detalle": []
+    },
+    {
+      "prueba": "Sin errores HTTP inesperados",
+      "correcta": true,
+      "detalle": []
+    }
+  ],
+  "errors": [],
+  "httpErrors": []
+}

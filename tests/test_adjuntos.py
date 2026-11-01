@@ -3,6 +3,7 @@ core/cobros): validación del archivo por su contenido, alta y baja lógica, per
 empresas, archivo protegido, comprobante enviado con el formulario de pago o gasto (misma transacción), consulta y ZIP del mes
 con los dos orígenes (archivo, nota y revisión), y módulo del menú con sus roles."""
 import io
+import re
 import zipfile
 from datetime import timedelta
 from decimal import Decimal
@@ -449,13 +450,40 @@ class TestMes:
         pagina = client.get('/adjuntos/')
         assert pagina.status_code == 200
         html = pagina.content.decode()
-        assert 'Pendientes de comprobante' in html and f'#{gasto.pk}' in html and venta_contado.voucher_number_full in html and 'fpAdjuntosModal' in html
+        assert 'Sin respaldo asociado' in html and f'#{gasto.pk}' in html and venta_contado.voucher_number_full in html and 'fpAdjuntosModal' in html
         assert f'data-adjuntos-tipo="gasto" data-adjuntos-id="{gasto.pk}"' in html
-        assert 'No hay facturas, compras, gastos' in client.get('/adjuntos/?mes=2020-01').content.decode()
+        assert 'Este mes aún no tiene documentos.' in client.get('/adjuntos/?mes=2020-01').content.decode()
         assert client.get('/adjuntos/?mes=2026-13').status_code == 200   # mes inválido: el actual
         zip_ = client.get(f'/adjuntos/zip/?mes={MES:%Y-%m}')
         assert zip_.status_code == 200 and zip_['Content-Type'] == 'application/zip' and f'comprobantes-de-pago-{MES:%Y-%m}.zip' in zip_['Content-Disposition']
         assert client.get('/adjuntos/zip/?mes=2026-13').status_code == 404
+
+    def test_consulta_sin_filas_duplicadas_ni_api_de_adjuntos_para_cobros(self, client, empresa, admin, gasto, venta_contado, cobro):
+        helpers.iniciar_sesion(client, admin, empresa=empresa)
+        html = client.get('/adjuntos/').content.decode()
+        for tipo, documento in [('gasto', gasto), ('venta', venta_contado), ('cobro', cobro)]:
+            assert html.count(f'data-documento="{tipo}-{documento.pk}"') == 1
+        assert 'data-adjuntos-tipo="venta"' not in html and 'data-adjuntos-tipo="cobro"' not in html
+        assert f'data-cobros-url="/cobros/factura/{venta_contado.pk}/"' in html
+
+    def test_nota_sin_archivo_no_es_enlace_y_permite_descargar_indice(self, client, empresa, admin, venta_contado):
+        respaldo_de_cobros(empresa, admin, venta_contado, nota='Nota ficticia <script>no ejecutar</script>')
+        helpers.iniciar_sesion(client, admin, empresa=empresa)
+        pagina = client.get('/adjuntos/')
+        html = pagina.content.decode()
+        assert pagina.context['resumen']['totales']['adjuntos'] == 0
+        assert 'href=""' not in html and 'Nota interna' in html
+        assert '&lt;script&gt;no ejecutar&lt;/script&gt;' in html
+        assert 'Pendiente de revisión' in html and 'Descargar ZIP del mes' in html
+
+    def test_gasto_tiene_un_solo_archivo_y_conserva_campos_al_editar(self, client, empresa, admin, gasto):
+        helpers.iniciar_sesion(client, admin, empresa=empresa)
+        nueva = client.get('/pos/expenses/add/').content.decode()
+        for campo in ('type_expense', 'description', 'date_joined', 'valor', 'medio_pago', 'referencia', 'comprobante', 'comprobante_clase'):
+            assert len(re.findall(r'<(?:input|select|textarea)\b[^>]*\bname="' + campo + r'"', nueva)) == 1
+        edicion = client.get(f'/pos/expenses/update/{gasto.pk}/').content.decode()
+        assert 'name="comprobante"' not in edicion  # la vista de edición no procesa archivos
+        assert gasto.description in edicion and 'name="description"' in edicion
 
     @pytest.mark.parametrize('rol, estado', [(ROLE_ACCOUNTANT, 200), (ROLE_READONLY, 200), (ROLE_SELLER, 302), (ROLE_CLIENT, 302)])
     def test_pagina_por_rol(self, client, empresa, rol, estado):

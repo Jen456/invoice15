@@ -1,5 +1,28 @@
 # Handoff compartido — frontend
 
+## Estado actual — revisión en nube: gastos y respaldos sin repetir (Codex, 31/10/2026)
+
+La propietaria eligió probar en la nube y señaló repetición de subidas y exceso de datos al registrar gastos. Se hizo fetch y se fusionó `github/plataforma 5041f56` con `frontend/etapa3 dbf7374`, merge `537c010`. Único conflicto: RESULTADOS-FRONTEND; se conservaron ambas entradas. No se fusionó la rama superada de adjuntos.
+
+**Frontend implementado:** una sola lista mensual con filtros, origen y revisión; notas sin enlaces vacíos; ZIP disponible cuando solo hay notas; cobros consultados en su propia API mediante modal de lectura (sin subirlos a adjuntos). Gasto con nota y/o recibo en un solo envío, cuatro datos esenciales agrupados y referencia/clase desplegables. Contratos, CSRF y permisos conservados. No se cambiaron archivos Python del backend.
+
+**Límite comprobado:** la descripción del gasto sí se guarda, pero no cuenta como respaldo en el resumen mensual. Guardar solamente foto/nota sin completar los datos todavía no existe. No se inventaron gastos con importe cero ni se simuló esa función. [Hallazgos y orden acotada para Claude](REVISION-GASTOS-Y-RESPALDOS-NUBE.md).
+
+Pruebas y capturas en [RESULTADOS-FRONTEND](RESULTADOS-FRONTEND.md) y [revisión en nube](capturas/gastos-respaldos-nube/README.md). Navegador sobre SQLite ficticia, no producción. Sin publicación ni acceso remoto al equipo de la propietaria.
+
+## Pendiente para Codex — captura rápida y revisión de respaldos
+
+- [x] Adaptar la consulta mensual al contrato de ambos orígenes sin filas repetidas y sin dirigir cobros a la API de adjuntos.
+- [x] Simplificar el gasto actual y probar guardado con nota y con recibo, consulta, duplicados, ZIP, móvil y teclado.
+- [ ] Diseñar captura pendiente y completar gasto cuando Claude entregue el contrato solicitado abajo.
+- [ ] La ficha completa de cobros (alta, edición, revisión e historial), los locales/puntos y sus demás pantallas siguen pendientes; el modal de esta entrega es únicamente de consulta.
+
+## Notas entre agentes — recibo o nota ahora, completar gasto después (Codex → Claude)
+
+Encargo limitado en [REVISION-GASTOS-Y-RESPALDOS-NUBE.md](REVISION-GASTOS-Y-RESPALDOS-NUBE.md): captura pendiente por archivo y/o nota, autor/empresa/fecha de servidor, permisos existentes, sin efectos contables hasta completar. Al completar o vincular a un gasto/compra, reutilizar el archivo y evitar doble conversión con idempotencia y bloqueo. Incorporar la nota registrada al resumen/CSV sin dar por revisados los históricos. No crear otra subida paralela, OCR, IA ni cambios fiscales. Entregar contrato, migraciones y pruebas SQLite/PostgreSQL; no publicar.
+
+La consulta mensual anterior hacía dos cosas incorrectas frente al contrato nuevo: `data-adjuntos-tipo="venta|cobro"` terminaba en una API 404, y un respaldo solo por nota generaba `href=""`. Corregidas ambas. `url_cobros` devuelve JSON: el botón «Ver cobro» ahora lo presenta en un modal de lectura. No se presenta como ficha completa ni se crean nuevos endpoints.
+
 ## Estado actual — «Error» al solicitar factura de la suscripción (Codex, 31/10/2026)
 
 Diagnóstico confirmado: en `98cfa20`, los layouts vertical y horizontal convierten todos los mensajes ordinarios en `message_error(errors)`, incluido el `messages.success` de `PagoDetalleView.post`. La petición se guarda, pero aparece una cruz roja. La corrección ya existe desde `adbe62f` y está en plataforma/frontend; no se cambió el backend. [Diagnóstico, límites y parche aislado](correcciones/solicitud-factura/README.md).

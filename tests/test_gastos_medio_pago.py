@@ -86,7 +86,8 @@ def test_gasto_por_la_pantalla_con_aviso_de_compra_de_gasto(client, empresa, adm
     entrar(client, empresa, admin)
     respuesta = client.get('/pos/expenses/add/')
     assert respuesta.status_code == 200 and respuesta.context['url_gasto'] == '/pos/purchase/add/?tipo=gasto'
-    assert '¿Tienes factura?' in respuesta.content.decode()
+    assert '¿Tienes una factura del proveedor?' in respuesta.content.decode()
+    assert 'href="/pos/purchase/add/?tipo=gasto"' in respuesta.content.decode()
     datos = {'action': 'add', 'type_expense': tipo.pk, 'description': 'Taxi', 'date_joined': '2026-10-20', 'valor': '8.50',
              'medio_pago': 'transferencia', 'referencia': ' TRX   55 '}
     _, data = post_json(client, '/pos/expenses/add/', datos)

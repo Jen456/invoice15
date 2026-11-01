@@ -191,7 +191,7 @@
     function abrir(tipo, id, disparador) {
         if (estado.ocupado) return;
         var modal = el('fpAdjuntosModal');
-        if (!modal || !/^(venta|compra|gasto|cobro|pago)$/.test(tipo) || !/^\d+$/.test(String(id))) return;
+        if (!modal || !/^(compra|gasto|pago)$/.test(tipo) || !/^\d+$/.test(String(id))) return;
         estado.version++; estado.tipo = tipo; estado.id = Number(id); estado.datos = null; estado.cambios = false; estado.quitar = null;
         estado.disparador = disparador || document.activeElement;
         el('fpAdjuntosForm').reset(); el('fpAdjuntosForm').hidden = true;

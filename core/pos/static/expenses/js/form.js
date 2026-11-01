@@ -1,6 +1,5 @@
 // Gasto sin comprobante (espec-etapa2-compras §6.F): medio de pago obligatorio y sin valor inicial; referencia
 // obligatoria con cheque. El servidor repite estas reglas (ExpensesForm).
-var input_date_joined;
 var fv;
 
 document.addEventListener('DOMContentLoaded', function (e) {
@@ -90,6 +89,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
             }
         })
         .on('core.form.valid', function () {
+            if (!fv.form.reportValidity()) return;
             var args = {
                 'params': new FormData(fv.form),
                 'form': fv.form
@@ -99,17 +99,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
 });
 
 $(function () {
-
-    input_date_joined = $('input[name="date_joined"]');
-
-    input_date_joined.datetimepicker({
-        useCurrent: false,
-        format: 'YYYY-MM-DD',
-        locale: 'es',
-        keepOpen: false,
-    });
-
-    input_date_joined.on('change.datetimepicker', function (e) {
+    $('input[name="date_joined"]').on('change', function () {
         fv.revalidateField('date_joined');
     });
 
@@ -123,24 +113,31 @@ $(function () {
             fv.revalidateField('type_expense');
         });
 
-    $('input[name="valor"]')
-        .TouchSpin({
-            min: 0.01,
-            max: 1000000,
-            step: 0.01,
-            decimals: 2,
-            boostat: 5,
-            maxboostedstep: 10,
-            prefix: '$'
-        })
-        .on('keypress', function (e) {
-            return validate_text_box({'event': e, 'type': 'decimals'});
-        });
-
     $('select[name="medio_pago"]').on('change', function () {
+        if (this.value === 'cheque') document.getElementById('fpGastoAdicional').open = true;
         fv.revalidateField('referencia');
     });
 
     $('i[data-field="valor"]').hide();
+
+    var archivo = document.getElementById('id_comprobante');
+    if (archivo) {
+        var mensaje = document.getElementById('fpGastoArchivoEstado');
+        var quitar = document.getElementById('fpGastoQuitarArchivo');
+        archivo.addEventListener('change', function () {
+            var seleccionado = archivo.files[0];
+            var error = seleccionado && seleccionado.size > Number(archivo.dataset.maxBytes);
+            archivo.setCustomValidity(error ? 'El archivo supera los 8 MB. Elige uno más pequeño.' : '');
+            mensaje.textContent = error ? archivo.validationMessage : (seleccionado ? 'Seleccionado: ' + seleccionado.name + '. Se enviará al guardar.' : '');
+            mensaje.classList.toggle('text-danger', Boolean(error));
+            archivo.setAttribute('aria-invalid', error ? 'true' : 'false');
+            quitar.hidden = !seleccionado;
+        });
+        quitar.addEventListener('click', function () {
+            archivo.value = '';
+            archivo.dispatchEvent(new Event('change'));
+            archivo.focus();
+        });
+    }
 });
 
