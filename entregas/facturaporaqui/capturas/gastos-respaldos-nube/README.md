@@ -21,3 +21,5 @@ Ocho capturas WebP, dimensiones originales, 24–148 KB cada una. La empresa de 
 La prueba de cero corresponde a la interfaz, no demuestra una validación nueva del servidor. No se modificó el backend. Los estados de revisión proceden de la API; no se calculan a partir de la presencia de un archivo.
 
 Scripts, servidor, base y medios de ensayo en un directorio temporal de trabajo fuera del repositorio. El acceso de demostración es local al entorno de nube y no se incluyó en la aplicación. No es un enlace público de revisión ni una validación sobre un teléfono físico.
+
+Suite completa final: **1494 aprobadas y 47 omitidas exclusivas de PostgreSQL**, sin fallos, sobre el código `a9cbe28`. [Registro reproducible de comandos, entorno y resultados](pruebas-automatizadas.json). Los commits posteriores de cierre solo documentan esta verificación.

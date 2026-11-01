@@ -1,0 +1,49 @@
+{
+  "fecha_ecuador": "2026-10-31",
+  "commit_codigo": "a9cbe283ac87484c46838272ce96d8a1739761a4",
+  "base_plataforma": "5041f5602d90214a64d87b87a0240ba95c18f9a9",
+  "python": "3.12.14",
+  "django": "5.2.18",
+  "chromium": "151.0.7922.173",
+  "base_de_datos": "SQLite de pruebas, ficticia",
+  "suite_completa": {
+    "comando": "python -m pytest -ra",
+    "aprobadas": 1494,
+    "omitidas": 47,
+    "motivo_omisiones": "Pruebas exclusivas de PostgreSQL: seguridad por filas y bloqueos/concurrencia.",
+    "fallos": 0,
+    "errores": 0,
+    "duracion_segundos": 607.41
+  },
+  "suite_focalizada": {
+    "archivos": [
+      "tests/test_adjuntos.py",
+      "tests/test_gastos_medio_pago.py",
+      "tests/test_estaticos.py",
+      "tests/test_rutas.py"
+    ],
+    "aprobadas": 51,
+    "fallos": 0,
+    "duracion_segundos": 19.01
+  },
+  "navegador": {
+    "verificacion_inicial": 38,
+    "verificacion_final": 12,
+    "anchos": [
+      360,
+      390,
+      768,
+      1024,
+      1360,
+      1440
+    ],
+    "datos_ficticios": true,
+    "movimiento_reducido": true
+  },
+  "limites": [
+    "No se ejecutó PostgreSQL.",
+    "No se probó un teléfono físico.",
+    "No se publicó ni se accedió a datos de producción.",
+    "Captura pendiente de foto/nota requiere backend; documentada para Claude."
+  ]
+}

@@ -8,7 +8,7 @@ La propietaria eligió probar en la nube y señaló repetición de subidas y exc
 
 **Límite comprobado:** la descripción del gasto sí se guarda, pero no cuenta como respaldo en el resumen mensual. Guardar solamente foto/nota sin completar los datos todavía no existe. No se inventaron gastos con importe cero ni se simuló esa función. [Hallazgos y orden acotada para Claude](REVISION-GASTOS-Y-RESPALDOS-NUBE.md).
 
-Pruebas y capturas en [RESULTADOS-FRONTEND](RESULTADOS-FRONTEND.md) y [revisión en nube](capturas/gastos-respaldos-nube/README.md). Navegador sobre SQLite ficticia, no producción. Sin publicación ni acceso remoto al equipo de la propietaria.
+**Código de la entrega:** `a9cbe28`, en `frontend/etapa3`. Suite completa SQLite sobre ese código: **1494 aprobadas, 47 omitidas solo PostgreSQL, sin fallos** (607,41 s); 51 pruebas focalizadas y 50 comprobaciones de navegador. El cierre posterior solo actualiza documentación. Pruebas y capturas en [RESULTADOS-FRONTEND](RESULTADOS-FRONTEND.md) y [revisión en nube](capturas/gastos-respaldos-nube/README.md). Navegador sobre SQLite ficticia, no producción. Sin publicación ni acceso remoto al equipo de la propietaria.
 
 ## Pendiente para Codex — captura rápida y revisión de respaldos
 
