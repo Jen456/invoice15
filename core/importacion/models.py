@@ -40,11 +40,17 @@ class RutaPrivada:
 
 
 class LoteImportacion(TenantModel):
+    """Un lote agrupa entradas: archivos subidos (XML o RIDE), o claves de acceso pegadas o tomadas de un reporte del portal
+    del SRI (importación masiva de comprobantes recibidos). `total_archivos` cuenta las entradas, sean archivos o claves."""
     ESTADOS = (('procesando', 'Procesando'), ('terminado', 'Terminado'), ('con_errores', 'Terminado con errores'))
+    ORIGENES = (('archivos', 'Archivos XML / RIDE'), ('claves', 'Lista de claves de acceso'), ('reporte', 'Reporte del portal del SRI'))
 
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+', verbose_name='Importado por')
     estado = models.CharField(max_length=20, choices=ESTADOS, default='procesando', verbose_name='Estado')
-    total_archivos = models.PositiveIntegerField(default=0, verbose_name='Archivos')
+    origen = models.CharField(max_length=10, choices=ORIGENES, default='archivos', verbose_name='Origen del lote')
+    reporte = models.ForeignKey('ArchivoImportado', null=True, blank=True, on_delete=models.PROTECT, related_name='+',
+                                verbose_name='Reporte del SRI del que salieron las claves')
+    total_archivos = models.PositiveIntegerField(default=0, verbose_name='Entradas (archivos o claves)')
     creado = models.DateTimeField(default=timezone.now, verbose_name='Creado')
     terminado = models.DateTimeField(null=True, blank=True, verbose_name='Terminado')
 
@@ -57,11 +63,11 @@ class LoteImportacion(TenantModel):
 
 class ArchivoImportado(TenantModel):
     """Un archivo subido, guardado una sola vez por empresa (mismo SHA-256 = mismo archivo)."""
-    TIPOS = (('xml', 'XML'), ('pdf', 'PDF'))
+    TIPOS = (('xml', 'XML'), ('pdf', 'PDF'), ('reporte', 'Reporte del portal del SRI (TXT, CSV o XLSX)'))
     ORIGENES = (('subido', 'Subido por el usuario'), ('sri', 'Recuperado del SRI'))
 
     sha256 = models.CharField(max_length=64, verbose_name='SHA-256')
-    tipo = models.CharField(max_length=4, choices=TIPOS, verbose_name='Tipo')
+    tipo = models.CharField(max_length=10, choices=TIPOS, verbose_name='Tipo')
     origen = models.CharField(max_length=10, choices=ORIGENES, default='subido', verbose_name='Origen')
     tamano = models.PositiveIntegerField(verbose_name='Tamaño (bytes)')
     nombre_original = models.CharField(max_length=255, blank=True, verbose_name='Nombre original')
@@ -78,7 +84,8 @@ class ArchivoImportado(TenantModel):
 
 class DocumentoImportado(TenantModel):
     """Comprobante identificado por su clave de acceso: uno por empresa, ambiente y clave (idempotencia)."""
-    ORIGENES = (('xml', 'Archivo XML'), ('pdf', 'RIDE en PDF'), ('sri', 'Consulta al SRI'), ('manual', 'Clave escrita a mano'))
+    ORIGENES = (('xml', 'Archivo XML'), ('pdf', 'RIDE en PDF'), ('sri', 'Consulta al SRI'), ('manual', 'Clave escrita a mano'),
+                ('lista', 'Lista de claves de acceso'), ('reporte', 'Reporte del portal del SRI'))
     PROCESAMIENTO = (('pendiente_xml', 'Pendiente del XML autorizado'), ('procesado', 'Procesado'))
     VERIFICACION = (('sin_autorizacion', 'El archivo no trae autorización'),
                     ('declarada_en_archivo', 'Autorización declarada en el archivo (sin verificar)'),
@@ -86,7 +93,8 @@ class DocumentoImportado(TenantModel):
                     ('discrepancia_sri', 'Difiere de lo autorizado en el SRI'),
                     ('no_autorizada_sri', 'El SRI no la autoriza'),
                     ('no_encontrada_sri', 'El SRI no tiene esa clave'),
-                    ('sri_no_disponible', 'El SRI no respondió'))
+                    ('sri_no_disponible', 'El SRI no respondió'),
+                    ('en_proceso_sri', 'El SRI todavía la está procesando'))
     CLASIFICACION = (('pendiente', 'Sin clasificar'), ('emitido', 'Emitido por la empresa (venta)'),
                      ('recibido', 'Recibido por la empresa (compra o gasto)'), ('ajeno', 'Documento ajeno a la empresa'),
                      ('revision_manual', 'Requiere revisión manual'))
@@ -190,7 +198,9 @@ class ImpuestoImportado(TenantModel):
 
 
 class EntradaLote(TenantModel):
-    """Cada archivo de un lote y lo que pasó con él (el mismo archivo puede repetirse en otro lote: queda como duplicado)."""
+    """Cada archivo o clave de un lote y lo que pasó con él (el mismo archivo o la misma clave pueden repetirse en otro lote:
+    quedan como duplicado). En las entradas de clave (`tipo` = 'clave'), `clave` es la clave de acceso y `sugerencias` lo que
+    decía el reporte del SRI (solo orienta: la fuente es el XML autorizado) y su comparación con el XML."""
     ESTADOS = (('en_cola', 'En cola'), ('procesando', 'Procesando'), ('procesado', 'Procesado'), ('duplicado', 'Duplicado'),
                ('pendiente_xml', 'Clave encontrada: falta el XML autorizado'),
                ('pendiente_clave', 'Sin clave legible: escríbela o sube el XML'), ('rechazado', 'Rechazado'))
@@ -199,7 +209,9 @@ class EntradaLote(TenantModel):
     archivo = models.ForeignKey(ArchivoImportado, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
     nombre = models.CharField(max_length=255, verbose_name='Nombre del archivo')
     tamano = models.PositiveIntegerField(default=0)
-    tipo = models.CharField(max_length=12, blank=True, verbose_name='Tipo detectado')
+    tipo = models.CharField(max_length=12, blank=True, verbose_name='Tipo detectado')   # xml | pdf | clave | desconocido
+    clave = models.CharField(max_length=49, blank=True, default='', verbose_name='Clave de acceso')
+    sugerencias = models.JSONField(default=dict, blank=True)
     orden = models.PositiveIntegerField(default=0)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='en_cola', verbose_name='Estado')
     documento = models.ForeignKey(DocumentoImportado, null=True, blank=True, on_delete=models.SET_NULL, related_name='entradas')

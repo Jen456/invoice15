@@ -29,3 +29,10 @@ SRI_REINTENTOS = 1                  # un intento adicional si no responde (no si
 # PDF 15 s + SRI (10 s × 2 intentos + 1 s) ≈ 36 s; con el presupuesto, una petición queda por debajo de ~45 s.
 PROCESAR_POR_PETICION = 3
 PRESUPUESTO_PETICION_SEGUNDOS = 20
+
+# Importación masiva por claves de acceso (lista pegada o reporte del portal del SRI). Cada clave exige una consulta al SRI:
+# el lote avanza por partes (PROCESAR_POR_PETICION) y la tarea programada termina lo que quede.
+MAX_CLAVES_POR_LOTE = 500
+MAX_REPORTE_BYTES = 5 * MB
+MAX_TEXTO_CLAVES = 200_000           # caracteres pegados (500 claves con separadores caben con holgura)
+INCORPORAR_POR_PETICION = 25         # compras o retenciones creadas por petición al confirmar en lote (sin SRI: solo base de datos)

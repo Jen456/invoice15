@@ -3,16 +3,20 @@
 {% block content %}
 <div class="fp-comprobantes fp-importacion fp-importacion-lote" data-lote="{{ lote.pk }}">
     <header class="fp-welcome"><span class="fp-eyebrow">Importación de documentos</span><h1>Lote #{{ lote.pk }}</h1>
-        <p id="fp-lote-description">{{ resumen.estado.nombre }} · {{ resumen.progreso }} % · {{ resumen.total_archivos }} archivos</p><progress id="fp-lote-progress" value="{{ resumen.progreso }}" max="100" aria-label="Archivos procesados del lote">{{ resumen.progreso }} %</progress><p class="fp-import-note">La subida, el procesamiento y la verificación son etapas distintas. Revisa el resultado de cada archivo.</p></header>
+        <p id="fp-lote-description">{{ resumen.estado.nombre }} · {{ resumen.progreso }} % · {{ resumen.total_archivos }} entradas · {{ resumen.origen.nombre }}{% if resumen.reporte %} · <a href="{{ resumen.reporte.descarga }}">reporte subido</a>{% endif %}</p><progress id="fp-lote-progress" value="{{ resumen.progreso }}" max="100" aria-label="Archivos procesados del lote">{{ resumen.progreso }} %</progress><p class="fp-import-note">La subida, el procesamiento y la verificación son etapas distintas. Revisa el resultado de cada archivo.</p></header>
     {% include 'importacion/_mensajes.html' %}
     {% if resumen.pendientes and puede_importar %}
         <form method="post" class="mb-3" id="fp-import-process">{% csrf_token %}<button type="submit" name="action" value="procesar" class="btn fpa-btn-pagar">Procesar los pendientes ({{ resumen.pendientes }})</button></form>
     {% endif %}
+    {% if resumen.reintentables and puede_importar %}
+        <form method="post" class="mb-3" id="fp-import-retry">{% csrf_token %}<button type="submit" name="action" value="reintentar" class="btn btn-outline-secondary">Volver a consultar en el SRI las claves sin XML ({{ resumen.reintentables }})</button></form>
+    {% endif %}
+    {% if puede_revisar and resumen.por_estado.procesado %}<p><a href="{{ resumen.urls.incorporar }}" class="btn fpa-btn-pagar" id="fp-import-incorporar">Incorporar en lote</a></p>{% endif %}
     <p id="fp-process-status" role="status" aria-live="polite"></p><div class="table-responsive fp-retencion-listado"><table class="table table-sm table-bordered bg-white fp-retencion-tabla">
-        <thead><tr><th scope="col">Archivo</th><th scope="col">Tipo</th><th scope="col">Estado</th><th scope="col">Detalle</th></tr></thead>
+        <thead><tr><th scope="col">Archivo o clave</th><th scope="col">Tipo</th><th scope="col">Estado</th><th scope="col">Detalle</th></tr></thead>
         <tbody id="fp-lote-entries">
         {% for e in resumen.entradas %}
-            <tr><td data-label="Archivo">{{ e.nombre }}</td><td data-label="Tipo">{{ e.tipo|upper }}</td><td data-label="Estado"><span class="fp-import-tag" data-state="{{ e.estado.id }}">{{ e.estado.nombre }}</span></td>
+            <tr><td data-label="Archivo o clave"><span class="text-break">{{ e.nombre }}</span>{% if e.sugerencias.emisor_razon_social %}<br><small class="text-muted">{{ e.sugerencias.emisor_razon_social }}{% if e.sugerencias.importe_total %} · ${{ e.sugerencias.importe_total }}{% endif %}{% if e.sugerencias.comparacion and not e.sugerencias.comparacion.coincide %} · difiere del XML: {{ e.sugerencias.comparacion.diferencias|join:", " }}{% endif %}</small>{% endif %}</td><td data-label="Tipo">{{ e.tipo|upper }}</td><td data-label="Estado"><span class="fp-import-tag" data-state="{{ e.estado.id }}">{{ e.estado.nombre }}</span></td>
                 <td data-label="Detalle">
                     {% for m in e.errores %}<div class="text-danger">{{ m.texto }}</div>{% endfor %}
                     {% for m in e.advertencias %}<div class="text-muted small">{{ m.texto }}</div>{% endfor %}

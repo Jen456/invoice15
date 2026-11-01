@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import TemplateView, View
 
-from core.importacion import compras as desde_xml, limites, recibidos, servicios as sv
+from core.importacion import compras as desde_xml, limites, recibidos, reporte_sri, servicios as sv
 from core.importacion.forms import RetencionRecibidaDesdeDocumentoForm
 from core.importacion.models import ArchivoImportado, DocumentoImportado, EntradaLote, LoteImportacion, ReglaImportacion
 from core.importacion.xml_sri import _serializable
@@ -62,6 +62,10 @@ def archivo_dict(archivo):
         return None
     return {'id': archivo.pk, 'tipo': archivo.tipo, 'origen': archivo.origen, 'tamano': archivo.tamano, 'sha256': archivo.sha256,
             'nombre': archivo.nombre_original, 'descarga': reverse('importacion_descargar', args=[archivo.pk])}
+
+
+def _si(valor):
+    return str(valor if valor is not None else '').strip().lower() in ('1', 'true', 'on', 'si', 'sí')
 
 
 def documento_dict(d, detalle=False):
@@ -150,18 +154,22 @@ def acciones_posibles(d):
 
 
 def entrada_dict(e):
-    return _serializable({'id': e.pk, 'nombre': e.nombre, 'tamano': e.tamano, 'tipo': e.tipo, 'orden': e.orden,
+    return _serializable({'id': e.pk, 'nombre': e.nombre, 'tamano': e.tamano, 'tipo': e.tipo, 'orden': e.orden, 'clave': e.clave,
                           'estado': {'id': e.estado, 'nombre': e.get_estado_display()}, 'errores': e.errores, 'advertencias': e.advertencias,
-                          'candidatas': e.candidatas, 'documento_id': e.documento_id, 'procesado_en': e.procesado_en,
-                          'sha256': e.archivo.sha256 if e.archivo_id else None})
+                          'candidatas': e.candidatas, 'sugerencias': e.sugerencias, 'documento_id': e.documento_id,
+                          'procesado_en': e.procesado_en, 'sha256': e.archivo.sha256 if e.archivo_id else None})
 
 
 def lote_dict(lote, entradas=False):
     conteo = dict(lote.entradas.values_list('estado').annotate(n=Count('id')))
     item = {'id': lote.pk, 'estado': {'id': lote.estado, 'nombre': lote.get_estado_display()}, 'total_archivos': lote.total_archivos,
+            'origen': {'id': lote.origen, 'nombre': lote.get_origen_display()}, 'reporte': archivo_dict(lote.reporte),
             'pendientes': conteo.get('en_cola', 0) + conteo.get('procesando', 0), 'por_estado': conteo,
+            'sin_xml': conteo.get('pendiente_xml', 0), 'reintentables': sv.reintentables(lote) if conteo.get('pendiente_xml') else 0,
             'creado': lote.creado, 'terminado': lote.terminado, 'usuario': lote.usuario.username,
-            'progreso': round(100 * (lote.total_archivos - conteo.get('en_cola', 0) - conteo.get('procesando', 0)) / max(lote.total_archivos, 1))}
+            'progreso': round(100 * (lote.total_archivos - conteo.get('en_cola', 0) - conteo.get('procesando', 0)) / max(lote.total_archivos, 1)),
+            'urls': {'detalle': reverse('importacion_lote', args=[lote.pk]), 'incorporar': reverse('importacion_incorporar', args=[lote.pk]),
+                     'api_incorporar': reverse('importacion_api_incorporar', args=[lote.pk])}}
     if entradas:
         item['entradas'] = [entrada_dict(e) for e in lote.entradas.select_related('archivo')]
     return _serializable(item)
@@ -217,11 +225,85 @@ class ArchivosLoteApi(ApiMixin, View):
 
 
 class ProcesarLoteApi(ApiMixin, View):
+    """Avanza el lote por partes. Con `reintentar`, vuelve a poner en cola las claves sin XML cuyo motivo es reintentable."""
     permission_required = IMPORTAR
 
     def post(self, request, pk):
-        lote = sv.procesar_lote(get_object_or_404(LoteImportacion, pk=pk), request.user)
-        return JsonResponse({'lote': lote_dict(lote, entradas=True)})
+        lote = get_object_or_404(LoteImportacion, pk=pk)
+        reencoladas = sv.reencolar_pendientes(lote) if _si(datos_peticion(request).get('reintentar')) else 0
+        lote = sv.procesar_lote(lote, request.user)
+        return JsonResponse({'lote': lote_dict(lote, entradas=True), 'reencoladas': reencoladas})
+
+
+class ClavesLoteApi(ApiMixin, View):
+    """Lote a partir de claves de acceso pegadas (una por línea). El cuerpo trae `texto` (JSON o formulario)."""
+    permission_required = IMPORTAR
+
+    def post(self, request):
+        try:
+            lista = reporte_sri.filas_de_texto(str(datos_peticion(request).get('texto') or ''))
+            lote = sv.crear_lote_de_claves(request.company, request.user, lista, 'claves')
+        except (reporte_sri.ListaInvalida, sv.ErrorImportacion) as e:
+            return error(str(e))
+        return JsonResponse({'lote': lote_dict(lote, entradas=True), 'lista': lista.resumen()}, status=201)
+
+
+class ReporteLoteApi(ApiMixin, View):
+    """Lote a partir del reporte exportado del portal del SRI (multipart, campo `reporte`: TXT, CSV o XLSX)."""
+    permission_required = IMPORTAR
+
+    def post(self, request):
+        archivo = request.FILES.get('reporte')
+        if archivo is None:
+            return error('Sube el reporte del portal del SRI (TXT, CSV o XLSX).')
+        if archivo.size > limites.MAX_REPORTE_BYTES:
+            return error(f'El reporte supera {limites.MAX_REPORTE_BYTES // limites.MB} MB.', 413)
+        datos = archivo.read()
+        try:
+            lista = reporte_sri.filas_de_reporte(archivo.name, datos)
+            guardado, _ = sv.guardar_archivo(request.company, request.user, archivo.name, datos, 'reporte')
+            lote = sv.crear_lote_de_claves(request.company, request.user, lista, 'reporte', reporte=guardado)
+        except (reporte_sri.ListaInvalida, sv.ErrorImportacion) as e:
+            return error(str(e))
+        return JsonResponse({'lote': lote_dict(lote, entradas=True), 'lista': lista.resumen()}, status=201)
+
+
+def _seleccion_incorporar(request):
+    """(documentos, opciones, proveedores) desde JSON ({documentos, opciones, proveedores}) o desde el formulario de la página
+    (documentos[], confirmaciones y type_expense/date_joined sueltos, y proveedor-<ruc>-<campo>)."""
+    if request.content_type == 'application/json':
+        datos = datos_peticion(request)
+        if not isinstance(datos, dict):
+            return [], {}, {}
+        return (datos.get('documentos') or [], datos.get('opciones') if isinstance(datos.get('opciones'), dict) else {},
+                datos.get('proveedores') if isinstance(datos.get('proveedores'), dict) else {})
+    opciones = {c: request.POST.get(c, '') for c in sv.CONFIRMACIONES}
+    opciones.update({c: request.POST.get(c, '') for c in ('type_expense', 'date_joined')})
+    proveedores = {}
+    for clave, valor in request.POST.items():
+        if clave.startswith('proveedor-'):
+            partes = clave.split('-', 2)
+            if len(partes) == 3:
+                proveedores.setdefault(partes[1], {})[partes[2]] = valor
+    return request.POST.getlist('documentos'), opciones, proveedores
+
+
+class IncorporarLoteApi(ApiMixin, View):
+    """GET: plan de incorporación (qué se puede incorporar y qué falta). POST: incorpora los documentos elegidos, por partes."""
+    permission_required = REVISAR
+
+    def get(self, request, pk):
+        lote = get_object_or_404(LoteImportacion, pk=pk)
+        return JsonResponse(_serializable({'lote': lote_dict(lote), 'plan': sv.plan_incorporacion(lote, request), 'opciones': opciones_compra()}))
+
+    def post(self, request, pk):
+        lote = get_object_or_404(LoteImportacion, pk=pk)
+        documentos, opciones, proveedores = _seleccion_incorporar(request)
+        try:
+            resultado = sv.incorporar_lote(lote, request.user, request, documentos, opciones, proveedores)
+        except sv.ErrorImportacion as e:
+            return error(str(e))
+        return JsonResponse(_serializable({**resultado, 'plan': sv.plan_incorporacion(lote, request)}))
 
 
 class ClaveEntradaApi(ApiMixin, View):
@@ -329,9 +411,11 @@ class DescargarArchivo(GroupPermissionMixin, View):
 
     def get(self, request, pk):
         archivo = get_object_or_404(ArchivoImportado, pk=pk)
-        tipo = 'application/xml' if archivo.tipo == 'xml' else 'application/pdf'
+        tipo = {'xml': 'application/xml', 'pdf': 'application/pdf'}.get(archivo.tipo, 'application/octet-stream')
+        extension = archivo.tipo if archivo.tipo in ('xml', 'pdf') else (archivo.nombre_original.rsplit('.', 1)[-1][:5].lower()
+                                                                           if '.' in archivo.nombre_original else 'txt')
         respuesta = FileResponse(archivo.archivo.open('rb'), content_type=tipo, as_attachment=True,
-                                 filename=f'{archivo.sha256[:16]}.{archivo.tipo}')
+                                 filename=f'{archivo.sha256[:16]}.{extension}')
         respuesta['Cache-Control'] = 'private, no-store'
         respuesta['X-Content-Type-Options'] = 'nosniff'
         respuesta['Content-Security-Policy'] = "sandbox; default-src 'none'"
@@ -369,6 +453,64 @@ class NuevaImportacion(Pagina):
         return HttpResponseRedirect(reverse('importacion_lote', args=[lote.pk]))
 
 
+class ImportarClaves(Pagina):
+    """Importación masiva de comprobantes recibidos: claves pegadas o reporte del portal del SRI (diseño: Codex)."""
+    template_name = 'importacion/claves.html'
+    permission_required = IMPORTAR
+    titulo = 'Importar por claves o reporte del SRI'
+
+    def post(self, request):
+        try:
+            archivo = request.FILES.get('reporte')
+            if archivo is not None:
+                if archivo.size > limites.MAX_REPORTE_BYTES:
+                    raise sv.ErrorImportacion(f'El reporte supera {limites.MAX_REPORTE_BYTES // limites.MB} MB.')
+                datos = archivo.read()
+                lista = reporte_sri.filas_de_reporte(archivo.name, datos)
+                guardado, _ = sv.guardar_archivo(request.company, request.user, archivo.name, datos, 'reporte')
+                lote = sv.crear_lote_de_claves(request.company, request.user, lista, 'reporte', reporte=guardado)
+            else:
+                lista = reporte_sri.filas_de_texto(request.POST.get('texto', ''))
+                lote = sv.crear_lote_de_claves(request.company, request.user, lista, 'claves')
+        except (reporte_sri.ListaInvalida, sv.ErrorImportacion) as e:
+            messages.error(request, str(e))
+            return HttpResponseRedirect(reverse('importacion_claves'))
+        resumen = lista.resumen()
+        messages.success(request, f'Lote #{lote.pk}: {resumen["con_clave"]} claves en cola, {resumen["rechazadas"]} rechazadas.')
+        return HttpResponseRedirect(reverse('importacion_lote', args=[lote.pk]))
+
+
+class IncorporarLote(Pagina):
+    """Vista previa y confirmación en lote de los documentos de un lote (compras, retenciones recibidas y ventas vinculadas)."""
+    template_name = 'importacion/incorporar.html'
+    permission_required = REVISAR
+    titulo = 'Incorporar documentos del lote'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        lote = get_object_or_404(LoteImportacion, pk=self.kwargs['pk'])
+        context.update({'lote': lote, 'resumen': lote_dict(lote), 'plan': sv.plan_incorporacion(lote, self.request),
+                        'opciones': opciones_compra(), 'hoy': timezone.localdate().isoformat()})
+        return context
+
+    def post(self, request, pk):
+        lote = get_object_or_404(LoteImportacion, pk=pk)
+        documentos, opciones, proveedores = _seleccion_incorporar(request)
+        try:
+            resultado = sv.incorporar_lote(lote, request.user, request, documentos, opciones, proveedores)
+        except sv.ErrorImportacion as e:
+            messages.error(request, str(e))
+            return HttpResponseRedirect(reverse('importacion_incorporar', args=[pk]))
+        bien = [r for r in resultado['resultados'] if r['resultado'] != 'error']
+        mal = [r for r in resultado['resultados'] if r['resultado'] == 'error']
+        if bien:
+            messages.success(request, f'{len(bien)} documentos incorporados' + (f' ({len(resultado["restantes"])} pendientes: vuelve a '
+                                                                                  'confirmar para continuar).' if resultado['restantes'] else '.'))
+        for r in mal[:10]:
+            messages.error(request, f'{r["numero"]}: {r["mensaje"]}')
+        return HttpResponseRedirect(reverse('importacion_incorporar', args=[pk]))
+
+
 class Lotes(Pagina):
     template_name = 'importacion/lotes.html'
     permission_required = VER
@@ -402,6 +544,8 @@ class Lote(Pagina):
             except sv.ErrorImportacion as e:
                 messages.error(request, str(e))
         else:
+            if request.POST.get('action') == 'reintentar':
+                messages.info(request, f'{sv.reencolar_pendientes(lote)} claves vuelven a consultarse en el SRI.')
             sv.procesar_lote(lote, request.user)
         return HttpResponseRedirect(reverse('importacion_lote', args=[pk]))
 

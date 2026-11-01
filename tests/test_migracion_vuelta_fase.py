@@ -64,10 +64,11 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
             for app, destino in VUELTA:
                 manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
             # 19 de la fase + tenancy 0008/0009 (acciones de locales/puntos y de cobros, sobre tenancy 0007) + pos 0032/0033/0034
-            # (medio de cobro, etiquetas de condición de pago y nacimiento opcional, sobre pos 0031: una app tiene una sola hoja).
-            # Las tablas de locales y puntos (configuracion 0001-0003) y de respaldos (cobros 0001-0003) cuelgan de pos 0019 y no
-            # se deshacen con la fase. Las 3 de adjuntos (sobre pos 0031) sí: 27 en total.
-            assert len(pendientes(env)) == 27
+            # (medio de cobro, etiquetas de condición de pago y nacimiento opcional, sobre pos 0031: una app tiene una sola hoja)
+            # + importacion 0007 (lotes de claves, sobre 0006: la vuelta a importacion 0004 la deshace). Las tablas de locales y
+            # puntos (configuracion 0001-0003) y de respaldos (cobros 0001-0003) cuelgan de pos 0019 y no se deshacen con la
+            # fase. Las 3 de adjuntos (sobre pos 0031) sí: 28 en total.
+            assert len(pendientes(env)) == 28
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)

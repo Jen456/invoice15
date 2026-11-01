@@ -604,8 +604,12 @@ def crear_compra_desde_documento(documento, usuario, datos):
             registro = hoy
         end_credit = _texto(datos.get('end_credit')) or ((registro + timedelta(days=plazo)).isoformat() if plazo > 0 else '')
         forma_pago = datos.get('forma_pago') if 'forma_pago' in datos else forma_pago_del_xml(documento, comprobante)
+        # «datos_pendientes» (incorporación en lote): la compra se registra con el comprobante completo pero sin decidir el
+        # sustento tributario, la parte relacionada ni la forma de pago que el XML no trae; queda con datos incompletos para
+        # «Completar datos» (modo «despues» de compras.crear_compra), en vez de inventar un criterio tributario.
+        modo = 'despues' if _si_no(datos.get('datos_pendientes')) is True else 'si'
         cabecera = {
-            'provider': proveedor.pk, 'modo_comprobante': 'si', 'tipo_comprobante': documento.cod_doc,
+            'provider': proveedor.pk, 'modo_comprobante': modo, 'tipo_comprobante': documento.cod_doc,
             'cod_sustento': _texto(datos.get('cod_sustento')), 'estab': documento.estab, 'pto_emi': documento.pto_emi,
             'secuencial': documento.secuencial, 'autorizacion': documento.clave_acceso,
             'fecha_emision': documento.fecha_emision.isoformat() if documento.fecha_emision else '',

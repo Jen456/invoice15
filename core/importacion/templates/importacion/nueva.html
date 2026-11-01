@@ -11,6 +11,7 @@
         </div><small class="form-text text-muted">Hasta {{ limites.MAX_ARCHIVOS_POR_LOTE }} archivos por lote; XML de hasta {{ limites.MAX_XML_BYTES|filesizeformat }} y PDF de hasta {{ limites.MAX_PDF_BYTES|filesizeformat }} y {{ limites.MAX_PDF_PAGINAS }} páginas. Se admiten facturas, notas de crédito, notas de débito y retenciones (01, 04, 05 y 07).</small>
         <p class="fp-import-note">Máximo 60 MB por lote. La subida se divide en peticiones de menos de 9 MB. Un PDF admite hasta 5 páginas; se importan facturas, notas de crédito, notas de débito y retenciones.</p><noscript><p class="alert alert-info">Sin JavaScript, selecciona archivos que sumen menos de 9 MB por envío. Puedes revisar y procesar el lote desde su detalle.</p></noscript><button type="submit" class="btn fpa-btn-pagar mt-3">Importar</button>
         <a href="{% url 'importacion_lotes' %}" class="btn btn-link mt-3">Ver lotes</a>
+        <a href="{% url 'importacion_claves' %}" class="btn btn-link mt-3">¿Solo tienes las claves o el reporte del SRI? Importar por claves</a>
     </div></form><section id="fp-import-upload-status" class="fp-import-panel" hidden aria-labelledby="fp-upload-title"><h2 id="fp-upload-title">Avance de tu importación</h2><p id="fp-upload-message" role="status" aria-live="polite"></p><ul id="fp-upload-files" class="fp-upload-files"></ul><a id="fp-upload-lote" class="btn btn-outline-secondary" hidden>Ver lote y resultados</a></section>
 </div>
 {% endblock %}

@@ -180,6 +180,7 @@ class TestMenu:
     def test_cada_modulo_nuevo_declara_su_app_sin_entradas_nuevas(self):
         assert [m[:2] for m in menu.MODULOS_NUEVOS] == [
             ('importacion', '/importacion/recibidos/'), ('importacion', '/importacion/nueva/'), ('importacion', '/importacion/lotes/'),
+            ('importacion', '/importacion/claves/'),   # importación masiva por claves o reporte del SRI (importacion 0007)
             ('importacion', '/importacion/pendientes/'), ('importacion', '/importacion/reglas/'),
             ('proformas', '/proformas/'),   # Proformas (Etapa 1) declara su módulo
             ('comprobantes', '/comprobantes/retenciones-recibidas/'),   # Etapa 2 (O2)

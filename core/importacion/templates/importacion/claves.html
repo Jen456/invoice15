@@ -1,0 +1,25 @@
+{% extends 'importacion/base.html' %}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page"><i class="fas fa-list-ol"></i> Importar por claves</li>{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-importacion fp-importacion-claves">
+    <header class="fp-welcome"><span class="fp-eyebrow">Importación de documentos</span><h1>Importar por claves o reporte del SRI</h1>
+        <p>Pega las claves de acceso de los comprobantes que recibiste, o sube el reporte que exporta el portal del SRI («Comprobantes electrónicos recibidos»). Cada clave se consulta al SRI y se importa su XML autorizado; el reporte solo sirve para localizar los documentos. Esto no emite facturas ni usa tu numeración.</p></header>
+    {% include 'importacion/_mensajes.html' %}
+    <ol class="fp-import-steps" aria-label="Etapas de importación"><li><b>1</b> Pega las claves o sube el reporte</li><li><b>2</b> Se consultan al SRI por partes</li><li><b>3</b> Revisa e incorpora en lote</li></ol>
+    <form method="post" class="card fp-retencion-panel mb-3" id="fp-claves-texto"><div class="card-body">{% csrf_token %}
+        <h2 class="h5">Lista de claves de acceso</h2>
+        <label for="id_texto" class="font-weight-bold">Una clave por línea (49 dígitos)</label>
+        <textarea name="texto" id="id_texto" class="form-control" rows="8" inputmode="numeric" spellcheck="false" placeholder="0110202601099000000100120010020000002711234567813&#10;…" required></textarea>
+        <small class="form-text text-muted">Hasta {{ limites.MAX_CLAVES_POR_LOTE }} claves por lote. Se admiten facturas, notas de crédito, notas de débito y retenciones (01, 04, 05 y 07); las claves repetidas o ya importadas no se duplican.</small>
+        <button type="submit" class="btn fpa-btn-pagar mt-3">Consultar en el SRI</button>
+    </div></form>
+    <form method="post" enctype="multipart/form-data" class="card fp-retencion-panel" id="fp-claves-reporte"><div class="card-body">{% csrf_token %}
+        <h2 class="h5">Reporte del portal del SRI</h2>
+        <label for="id_reporte" class="font-weight-bold">Archivo TXT, CSV o XLSX exportado de «Comprobantes electrónicos recibidos»</label>
+        <input type="file" name="reporte" id="id_reporte" class="form-control" accept=".txt,.csv,.xlsx,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+        <small class="form-text text-muted">Hasta {{ limites.MAX_REPORTE_BYTES|filesizeformat }} y {{ limites.MAX_CLAVES_POR_LOTE }} filas. Las claves y los RUC se leen como texto: si abriste el reporte en una hoja de cálculo y guardó la clave como número, descárgalo otra vez en TXT. Los datos del reporte solo orientan: lo que se importa es el XML autorizado.</small>
+        <button type="submit" class="btn fpa-btn-pagar mt-3">Subir reporte</button>
+        <a href="{% url 'importacion_lotes' %}" class="btn btn-link mt-3">Ver lotes</a>
+    </div></form>
+</div>
+{% endblock %}

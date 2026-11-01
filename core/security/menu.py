@@ -35,8 +35,9 @@ ESTRUCTURA = (
     )),
     ('Importación de documentos', 'fas fa-file-import', 40, (
         ('/importacion/nueva/', 'Nueva importación XML / RIDE', 1),
-        ('/importacion/lotes/', 'Lotes e historial', 2),
-        ('/importacion/pendientes/', 'Documentos pendientes de revisión', 3),
+        ('/importacion/claves/', 'Importar por claves o reporte del SRI', 2),
+        ('/importacion/lotes/', 'Lotes e historial', 3),
+        ('/importacion/pendientes/', 'Documentos pendientes de revisión', 4),
     )),
     ('Bodega', 'fas fa-boxes', 50, (
         ('/pos/category/', 'Categorías', 1),
@@ -70,6 +71,10 @@ MODULOS_NUEVOS = (
     ('importacion', '/importacion/nueva/', 'fas fa-file-upload', 'Importar comprobantes XML del SRI o RIDE en PDF',
      ('view_documentoimportado', 'add_documentoimportado')),
     ('importacion', '/importacion/lotes/', 'fas fa-layer-group', 'Lotes de importación y su historial',
+     ('view_documentoimportado', 'add_documentoimportado')),
+    # Importación masiva de comprobantes recibidos (importacion 0007 en instalaciones existentes)
+    ('importacion', '/importacion/claves/', 'fas fa-list-ol',
+     'Importar comprobantes recibidos pegando claves de acceso o subiendo el reporte del portal del SRI',
      ('view_documentoimportado', 'add_documentoimportado')),
     ('importacion', '/importacion/pendientes/', 'fas fa-tasks', 'Documentos importados pendientes de revisión',
      ('view_documentoimportado', 'change_documentoimportado')),

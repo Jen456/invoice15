@@ -1,23 +1,28 @@
 """Flujo de importación (siempre dentro de la empresa activa, que decide el servidor por membresía).
 
-1. Importación: crear_lote guarda cada archivo una sola vez por empresa (SHA-256) y crea una entrada por archivo.
-2. Validación: procesar_entrada analiza XML (xml_sri) o PDF (ride_pdf → clave → XML del SRI).
+1. Importación: crear_lote guarda cada archivo una sola vez por empresa (SHA-256) y crea una entrada por archivo;
+   crear_lote_de_claves crea una entrada por clave de acceso (lista pegada o reporte del portal del SRI: reporte_sri).
+2. Validación: procesar_entrada analiza XML (xml_sri), PDF (ride_pdf → clave → XML del SRI) o una clave (→ XML del SRI).
 3. Verificación: verificar_en_sri compara el documento con lo que el SRI tiene autorizado.
 4. Clasificación: emitido / recibido / ajeno / revisión manual, por coincidencia EXACTA del RUC de la empresa.
 5. Revisión y vinculación: revisar(...) aprueba, descarta, clasifica a mano o vincula con una compra o venta existente.
 6. Propuesta contable: revisable; nunca se marca como contabilizado (no hay libro mayor).
+7. Incorporación en lote (importación masiva): plan_incorporacion muestra qué se puede incorporar y por qué no, e
+   incorporar_lote crea las compras (agrupadas por tarifa, con los datos tributarios pendientes de revisión), registra las
+   retenciones recibidas o vincula ventas, documento por documento y reutilizando los servicios de cada acción.
 
 La idempotencia la garantizan restricciones de base de datos (archivo por empresa+hash, documento por
 empresa+ambiente+clave): si dos importaciones chocan, la que pierde reutiliza lo que guardó la otra.
 """
 import hashlib
+import logging
 from decimal import Decimal
 
 from django.core.files.base import ContentFile
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from core.importacion import clave_acceso, limites
+from core.importacion import clave_acceso, limites, reporte_sri
 from core.importacion.models import (ArchivoImportado, DocumentoImportado, EntradaLote, EventoImportacion, ImpuestoImportado,
                                      LoteImportacion, ReglaImportacion)
 from core.importacion.ride_pdf import procesar_ride_pdf
@@ -25,6 +30,9 @@ from core.importacion.sri_autorizacion import consultar_autorizacion
 from core.importacion.xml_sri import MENSAJE_NO_SOPORTADO, NOMBRES, SOPORTADOS, procesar_xml_sri
 
 PENDIENTES = ('en_cola', 'procesando')
+ORIGEN_DOCUMENTO = {'claves': 'lista', 'reporte': 'reporte'}   # origen del lote → origen del documento registrado por su clave
+REINTENTABLES = ('sri_no_disponible', 'en_proceso_sri', 'no_encontrada_sri')   # el SRI puede responder más tarde
+REINTENTABLES_AUTOMATICOS = ('sri_no_disponible', 'en_proceso_sri')             # la tarea programada reintenta solo estos
 CAMPOS_VERIFICADOS = ('emisor_ruc', 'receptor_identificacion', 'fecha_emision', 'numero', 'total_sin_impuestos', 'total_iva',
                       'importe_total')
 
@@ -187,18 +195,26 @@ def _mensajes(lista):
 
 
 def procesar_entrada(entrada, usuario):
-    """Analiza el archivo de la entrada. Nunca lanza por el contenido: el resultado queda en la entrada."""
+    """Analiza el archivo o la clave de la entrada. Nunca lanza por el contenido: el resultado queda en la entrada."""
     entrada.estado = 'procesando'
     try:
-        with entrada.archivo.archivo.open('rb') as archivo:
-            datos = archivo.read()
-        if entrada.tipo == 'xml':
-            _entrada_xml(entrada, usuario, datos)
+        if entrada.tipo == 'clave':
+            _entrada_clave(entrada, usuario)
         else:
-            _entrada_pdf(entrada, usuario, datos)
+            with entrada.archivo.archivo.open('rb') as archivo:
+                datos = archivo.read()
+            if entrada.tipo == 'xml':
+                _entrada_xml(entrada, usuario, datos)
+            else:
+                _entrada_pdf(entrada, usuario, datos)
     except ErrorImportacion as e:
         entrada.estado = 'rechazado'
         entrada.errores = entrada.errores + [{'codigo': 'error', 'texto': str(e)}]
+    except Exception as e:   # nunca dejar la entrada en «procesando» para siempre (el lote quedaría eterno)
+        logging.getLogger(__name__).exception('Entrada %s del lote %s sin procesar', entrada.pk, entrada.lote_id)
+        entrada.estado = 'rechazado'
+        entrada.errores = entrada.errores + [{'codigo': 'error_interno',
+                                             'texto': f'No se pudo procesar ({e.__class__.__name__}); vuelve a intentarlo o avisa a soporte.'}]
     entrada.procesado_en = timezone.now()
     entrada.save()
     return entrada
@@ -255,6 +271,106 @@ def usar_clave_manual(entrada, usuario, clave):
     entrada.save()
     actualizar_estado_lote(entrada.lote)
     return entrada
+
+
+# ------------------------------------------------------------------ 1b. importación masiva por claves (lista o reporte del SRI)
+
+def crear_lote_de_claves(company, usuario, lista, origen, reporte=None):
+    """Lote con una entrada por clave (`lista`: reporte_sri.Lista). Antes de consultar al SRI rechaza lo que no hace falta
+    consultar: claves mal formadas o alteradas, tipos no soportados y filas cuyo receptor (según el reporte) es otra empresa.
+    Las claves repetidas en la misma lista quedan como duplicado sin consulta. El resto queda en cola: procesar_lote las
+    consulta al SRI por partes."""
+    if origen not in ORIGEN_DOCUMENTO:
+        raise ErrorImportacion('Origen del lote no válido.')
+    if not lista.filas:
+        raise ErrorImportacion('No se encontró ninguna clave de acceso.' if lista.formato == 'texto'
+                               else 'El reporte no trae filas con clave de acceso.')
+    if len(lista.filas) > limites.MAX_CLAVES_POR_LOTE:
+        raise ErrorImportacion(f'Un lote admite hasta {limites.MAX_CLAVES_POR_LOTE} claves: divide la lista.')
+    ruc = (company.ruc or '').strip()
+    lote = LoteImportacion.objects.create(company=company, usuario=usuario, origen=origen, reporte=reporte, total_archivos=len(lista.filas))
+    evento('lote_creado', f'Lote de {len(lista.filas)} claves ({lote.get_origen_display().lower()})', lote=lote, usuario=usuario,
+           resumen=lista.resumen())
+    vistas = {}
+    for fila in lista.filas:
+        entrada = EntradaLote(company=company, lote=lote, nombre=(fila.clave or fila.texto or f'fila-{fila.orden + 1}')[:255],
+                              tipo='clave', clave=fila.clave, orden=fila.orden, sugerencias=dict(fila.sugerencias),
+                              errores=list(fila.errores), advertencias=list(fila.advertencias))
+        if fila.errores:
+            entrada.estado = 'rechazado'
+        else:
+            datos = clave_acceso.analizar(fila.clave)
+            receptor = (fila.sugerencias.get('receptor_identificacion') or '').strip()
+            if datos.cod_doc not in SOPORTADOS:
+                entrada.estado = 'rechazado'
+                entrada.errores = [{'codigo': 'tipo_no_soportado',
+                                    'texto': f'{NOMBRES.get(datos.cod_doc, "Comprobante " + datos.cod_doc)} ({datos.cod_doc}): {MENSAJE_NO_SOPORTADO}'}]
+            elif receptor and receptor != ruc and datos.ruc != ruc:
+                entrada.estado = 'rechazado'
+                entrada.errores = [{'codigo': 'otra_empresa', 'texto': 'Según el reporte, el receptor de este comprobante no es '
+                                                                       'esta empresa: no se consulta ni se importa.'}]
+            elif fila.clave in vistas:
+                entrada.estado = 'duplicado'
+                entrada.advertencias = entrada.advertencias + [{'codigo': 'repetida_en_lista',
+                                                                'texto': f'Repetida en la lista (fila {vistas[fila.clave] + 1}).'}]
+            else:
+                vistas[fila.clave] = fila.orden
+                if datos.ambiente == 1:   # los comprobantes recibidos reales son de producción, sea cual sea el ambiente propio
+                    entrada.advertencias = entrada.advertencias + [{
+                        'codigo': 'ambiente_pruebas',
+                        'texto': 'Clave del ambiente de PRUEBAS del SRI: se importa para revisarla, pero no sustenta una compra.'}]
+                entrada.estado = 'en_cola'
+        entrada.save()
+    return actualizar_estado_lote(lote)
+
+
+def _entrada_clave(entrada, usuario):
+    """Registra la clave (o encuentra el documento que ya la tenía) y pide el XML al SRI. Sin XML queda pendiente con el motivo."""
+    documento, duplicado = registrar_clave(entrada.company, usuario, entrada.clave, origen=ORIGEN_DOCUMENTO[entrada.lote.origen],
+                                           lote=entrada.lote)
+    entrada.documento = documento
+    if duplicado:
+        entrada.estado = 'duplicado'
+        entrada.advertencias = entrada.advertencias + [{'codigo': 'ya_importada', 'texto': f'{documento.numero} ya estaba importada.'}]
+        _anotar_comparacion(entrada, documento)
+        return
+    if documento.estado_procesamiento == 'pendiente_xml':
+        recuperar_xml(documento, usuario)
+    if documento.estado_procesamiento == 'procesado':
+        entrada.estado = 'procesado'
+        entrada.errores = []
+        _anotar_comparacion(entrada, documento)
+    else:
+        entrada.estado = 'pendiente_xml'
+        motivo = documento.get_estado_verificacion_display()
+        entrada.errores = [{'codigo': documento.estado_verificacion, 'texto': f'Sin XML autorizado: {motivo.lower()}.'}]
+
+
+def _anotar_comparacion(entrada, documento):
+    """Guarda en la entrada la comparación entre lo que decía el reporte y el XML, y avisa si el documento no es de la empresa."""
+    if documento.estado_procesamiento != 'procesado':
+        return
+    if entrada.sugerencias:
+        entrada.sugerencias = {**entrada.sugerencias, 'comparacion': reporte_sri.comparar_con_documento(entrada.sugerencias, documento)}
+    if documento.clasificacion == 'ajeno':
+        entrada.advertencias = entrada.advertencias + [{'codigo': 'ajeno', 'texto': 'El XML no es emitido ni recibido por esta '
+                                                                                 'empresa: no se incorpora.'}]
+    elif documento.clasificacion == 'emitido':
+        entrada.advertencias = entrada.advertencias + [{'codigo': 'emitido', 'texto': 'Es un comprobante emitido por la empresa, '
+                                                                                   'no recibido.'}]
+
+
+def reintentables(lote):
+    return EntradaLote.objects.filter(lote=lote, estado='pendiente_xml', tipo='clave', documento__estado_procesamiento='pendiente_xml',
+                                      documento__estado_verificacion__in=REINTENTABLES).count()
+
+
+def reencolar_pendientes(lote):
+    """Vuelve a poner en cola las entradas de clave sin XML cuyo documento sigue esperándolo por un motivo reintentable (el SRI
+    no respondió o aún no tenía la clave). Devuelve cuántas; procesar_lote las consulta otra vez."""
+    pendientes = (EntradaLote.objects.filter(lote=lote, estado='pendiente_xml', tipo='clave', documento__estado_procesamiento='pendiente_xml',
+                                              documento__estado_verificacion__in=REINTENTABLES))
+    return pendientes.update(estado='en_cola')
 
 
 def _datos_documento(resultado):
@@ -354,6 +470,7 @@ def registrar_clave(company, usuario, clave, origen, archivo_pdf=None, lote=None
 MOTIVOS_SRI = {'sin_resultados': ('no_encontrada_sri', 'El SRI no tiene un comprobante autorizado con esa clave.'),
                'no_autorizado': ('no_autorizada_sri', 'El SRI responde que la clave NO está autorizada.'),
                'no_disponible': ('sri_no_disponible', 'El SRI no respondió; se puede reintentar más tarde.'),
+               'en_proceso': ('en_proceso_sri', 'El SRI todavía está procesando el comprobante; se reintenta más tarde.'),
                'clave_invalida': ('no_encontrada_sri', 'La clave no es válida.')}
 
 
@@ -366,6 +483,12 @@ def recuperar_xml(documento, usuario):
             archivo, _ = guardar_archivo(documento.company, usuario, f'{documento.clave_acceso}.xml', consulta.xml, 'xml', origen='sri')
             registrar_xml(documento.company, usuario, resultado, archivo, documento.lote, origen='sri')
             documento.refresh_from_db()
+            # las entradas que esperaban este XML (RIDE, clave manual o clave en lote) quedan procesadas
+            for entrada in EntradaLote.objects.filter(documento=documento, estado='pendiente_xml'):
+                entrada.estado, entrada.errores, entrada.procesado_en = 'procesado', [], timezone.now()
+                _anotar_comparacion(entrada, documento)
+                entrada.save()
+                actualizar_estado_lote(entrada.lote)
             return documento
         motivo = ('discrepancia_sri', 'El SRI devolvió un XML que no se pudo validar: ' +
                   '; '.join(e.texto for e in resultado.errores)[:300])
@@ -613,6 +736,11 @@ def crear_proveedor_de_documento(documento, datos):
                                            tipo_sujeto=sujeto_de_ruc(documento.emisor_ruc),
                                            parte_relacionada=_parte_relacionada(datos.get('parte_relacionada')))
     except IntegrityError:
+        # otra petición creó el mismo proveedor al mismo tiempo: se reutiliza; si lo que choca es el nombre, celular o correo
+        # con OTRO proveedor, se informa sin crear nada
+        existente = Provider.objects.filter(ruc=documento.emisor_ruc).first()
+        if existente is not None:
+            return existente
         raise ErrorImportacion('Ya existe un proveedor con ese nombre, celular o correo.')
 
 
@@ -687,3 +815,212 @@ def propuesta_contable(documento, regla):
     return {'estado': 'propuesta', 'contabilizado': False, 'cuadra': debe == haber, 'debe': format(debe, '.2f'),
             'haber': format(haber, '.2f'), 'lineas': lineas, 'avisos': avisos,
             'nota': 'Propuesta para revisión del contador. FacturaPorAquí aún no lleva libro mayor: no se ha contabilizado.'}
+
+
+# ------------------------------------------------------------------ 7. incorporación en lote (importación masiva)
+
+CONFIRMACIONES = ('confirmar_plazo_ats', 'confirmar_sin_verificar', 'confirmar_no_duplicada')
+ESTADOS_INCORPORACION = {'listo': 'Listo para incorporar', 'requiere_datos': 'Requiere datos o confirmación',
+                         'bloqueado': 'No se puede incorporar', 'ya_incorporado': 'Ya incorporado', 'sin_xml': 'Sin XML autorizado',
+                         'no_aplica': 'Se revisa a mano', 'rechazado': 'Rechazado', 'duplicado': 'Duplicado'}
+
+
+def _permisos(request):
+    from core.security.session import get_group
+    grupo = get_group(request) if request is not None else None
+    if grupo is None:
+        return set()
+    return set(grupo.permissions.values_list('codename', flat=True))
+
+
+def _accion_de(documento):
+    """Qué haría la incorporación en lote con este documento (o None: se revisa a mano en su ficha)."""
+    from core.importacion.compras import CODIGOS_DE_COMPRA
+    if documento.estado_procesamiento != 'procesado':
+        return None
+    if documento.clasificacion == 'recibido':
+        if documento.cod_doc in CODIGOS_DE_COMPRA:
+            return 'crear_compra'
+        if documento.cod_doc == '07':
+            return 'registrar_retencion'
+    elif documento.clasificacion == 'emitido' and documento.cod_doc == '01':
+        return 'vincular_venta'
+    return None
+
+
+def _pendientes_de_revision(documento, propuesta):
+    """Datos tributarios que la incorporación en lote deja sin decidir (quedan en la compra como datos incompletos)."""
+    pendientes = [{'codigo': 'cod_sustento', 'texto': 'Sustento tributario'}]
+    if not propuesta.get('forma_pago_del_xml'):
+        pendientes.append({'codigo': 'forma_pago', 'texto': 'Forma de pago (el XML no la trae)'})
+    if propuesta.get('parte_relacionada') is None:
+        pendientes.append({'codigo': 'parte_relacionada', 'texto': 'Parte relacionada'})
+    return pendientes
+
+
+def _plan_documento(entrada, documento, permisos):
+    from core.importacion import compras as desde_xml, recibidos
+    item = {'entrada_id': entrada.pk, 'orden': entrada.orden, 'clave': entrada.clave or (documento.clave_acceso if documento else ''),
+            'documento_id': documento.pk if documento else None, 'entrada_estado': entrada.estado, 'sugerencias': entrada.sugerencias,
+            'errores': entrada.errores, 'advertencias': entrada.advertencias, 'accion': None, 'estado': 'rechazado',
+            'bloqueos': [], 'confirmaciones': [], 'pendientes_revision': [], 'proveedor': None, 'proveedor_nuevo': None,
+            'venta_id': None, 'permiso': True}
+    if documento is None:
+        item['estado'] = 'duplicado' if entrada.estado == 'duplicado' else 'rechazado'
+        return item
+    item.update({'numero': documento.numero, 'cod_doc': documento.cod_doc, 'tipo_documento': documento.get_cod_doc_display(),
+                 'emisor': {'ruc': documento.emisor_ruc, 'razon_social': documento.emisor_razon_social},
+                 'fecha_emision': documento.fecha_emision.isoformat() if documento.fecha_emision else None,
+                 'importe_total': f'{documento.importe_total:.2f}', 'clasificacion': documento.clasificacion,
+                 'verificacion': documento.estado_verificacion, 'revision': documento.estado_revision,
+                 'compra_id': documento.compra_id, 'venta_vinculada_id': documento.venta_id})
+    if documento.estado_procesamiento != 'procesado':
+        item['estado'] = 'sin_xml'
+        return item
+    if documento.compra_id or documento.estado_revision == 'vinculado':
+        item['estado'] = 'ya_incorporado'
+        return item
+    accion = _accion_de(documento)
+    item['accion'] = accion
+    if accion is None:
+        item['estado'] = 'no_aplica'
+        return item
+    if accion == 'crear_compra':
+        propuesta = desde_xml.propuesta_compra(documento)
+        item['bloqueos'] = propuesta['bloqueos']
+        item['confirmaciones'] = list(propuesta['confirmaciones'])
+        if propuesta['exige_confirmar_sin_verificar']:
+            item['confirmaciones'].append('confirmar_sin_verificar')
+        item['pendientes_revision'] = _pendientes_de_revision(documento, propuesta)
+        item['proveedor'] = propuesta['proveedor']
+        if propuesta['proveedor'] is None:
+            item['proveedor_nuevo'] = {'ruc': documento.emisor_ruc, 'razon_social': documento.emisor_razon_social,
+                                       'requiere': ['mobile', 'email']}
+        item['permiso'] = {'change_documentoimportado', 'add_purchase'} <= permisos
+    elif accion == 'registrar_retencion':
+        item['bloqueos'] = recibidos.bloqueos_retencion(documento)
+        if recibidos.exige_confirmar_sin_verificar(documento):
+            item['confirmaciones'] = ['confirmar_sin_verificar']
+        item['permiso'] = {'change_documentoimportado', 'add_retencionrecibida'} <= permisos
+    else:   # vincular_venta: solo con la venta de la misma clave de acceso (coincidencia exacta)
+        exactas = [c for c in candidatos_conciliacion(documento) if c['tipo'] == 'venta' and 'misma clave de acceso' in c['razones']]
+        if len(exactas) == 1:
+            item['venta_id'] = exactas[0]['id']
+        else:
+            item['bloqueos'] = [{'codigo': 'sin_venta', 'texto': 'No hay una venta con esta clave de acceso: revísalo en la ficha.'}]
+        if documento.estado_revision != 'pendiente':
+            item['bloqueos'].append({'codigo': 'revisado', 'texto': f'El documento ya está «{documento.get_estado_revision_display()}».'})
+        if documento.estado_verificacion != 'verificada_sri' and reglas_de(documento.company).exigir_verificacion:
+            item['confirmaciones'] = ['confirmar_sin_verificar']
+        item['permiso'] = 'change_documentoimportado' in permisos
+    if item['bloqueos']:
+        item['estado'] = 'bloqueado'
+    elif item['confirmaciones'] or item['proveedor_nuevo']:
+        item['estado'] = 'requiere_datos'
+    else:
+        item['estado'] = 'listo'
+    return item
+
+
+def plan_incorporacion(lote, request=None):
+    """Qué se puede incorporar del lote y qué falta para cada documento (vista previa de la confirmación en lote)."""
+    permisos = _permisos(request)
+    items = [_plan_documento(e, e.documento, permisos)
+             for e in lote.entradas.select_related('documento__proveedor').order_by('orden', 'id')]
+    proveedores = {}
+    for item in items:
+        nuevo = item.get('proveedor_nuevo')
+        if nuevo:
+            registro = proveedores.setdefault(nuevo['ruc'], {**nuevo, 'documentos': 0})
+            registro['documentos'] += 1
+    conteo = {}
+    for item in items:
+        conteo[item['estado']] = conteo.get(item['estado'], 0) + 1
+    return {'lote_id': lote.pk, 'items': items, 'proveedores_nuevos': sorted(proveedores.values(), key=lambda p: p['ruc']),
+            'resumen': {'por_estado': conteo, 'estados': ESTADOS_INCORPORACION, 'total': len(items),
+                        'incorporables': sum(1 for i in items if i['estado'] in ('listo', 'requiere_datos'))},
+            'confirmaciones': CONFIRMACIONES}
+
+
+def _si(valor):
+    return str(valor).strip().lower() in ('1', 'true', 'on', 'si', 'sí')
+
+
+def incorporar_lote(lote, usuario, request, documentos, opciones=None, proveedores=None, maximo=limites.INCORPORAR_POR_PETICION,
+                    presupuesto=limites.PRESUPUESTO_PETICION_SEGUNDOS):
+    """Incorpora, uno por uno y cada uno en su transacción, los documentos elegidos del lote: compra agrupada por tarifa con
+    los importes del XML y los datos tributarios pendientes de revisión (sustento, parte relacionada y forma de pago solo
+    si el XML la trae), retención recibida (07) o vínculo con la venta de la misma clave. Reutiliza los servicios de cada
+    acción, que ya son idempotentes (bloqueo del documento y actualización condicionada): repetir la confirmación no crea
+    otra compra, otro proveedor ni otro movimiento. `opciones`: confirmaciones globales, type_expense y date_joined;
+    `proveedores`: {ruc: {mobile, email, parte_relacionada}} para los emisores sin proveedor. Devuelve los resultados y
+    cuántos quedaron sin tratar por el presupuesto de tiempo (el navegador vuelve a llamar)."""
+    import time
+    from core.importacion import compras as desde_xml, recibidos
+    inicio = time.monotonic()
+    opciones, proveedores, permisos = dict(opciones or {}), dict(proveedores or {}), _permisos(request)
+    try:
+        ids = [int(d) for d in documentos]
+    except (TypeError, ValueError):
+        raise ErrorImportacion('Los documentos elegidos no tienen un formato válido.')
+    if not ids:
+        raise ErrorImportacion('Elige al menos un documento.')
+    del_lote = {d.pk: d for d in DocumentoImportado.objects.filter(pk__in=ids, entradas__lote=lote).distinct()}
+    if len(del_lote) != len(set(ids)):
+        raise ErrorImportacion('Alguno de los documentos elegidos no pertenece a este lote.')
+    confirmaciones = {c: _si(opciones.get(c, '')) for c in CONFIRMACIONES}
+    resultados, tratados = [], 0
+    for documento_id in ids:
+        if tratados >= maximo or (tratados and presupuesto is not None and time.monotonic() - inicio >= presupuesto):
+            break
+        tratados += 1
+        documento = del_lote[documento_id]
+        resultado = {'documento_id': documento_id, 'numero': documento.numero}
+        try:
+            resultado.update(_incorporar_documento(documento, usuario, permisos, confirmaciones, opciones, proveedores))
+        except ErrorImportacion as e:
+            if e.codigo == 'ya_vinculado':
+                resultado.update(resultado='ya_incorporado', mensaje=str(e))
+            else:
+                resultado.update(resultado='error', codigo=e.codigo or 'error', mensaje=str(e))
+        resultados.append(resultado)
+    evento('incorporacion_en_lote', f'{sum(1 for r in resultados if r["resultado"] not in ("error",))} de {len(resultados)} documentos '
+           'incorporados o ya incorporados', lote=lote, usuario=usuario,
+           resultados={str(r['documento_id']): r['resultado'] for r in resultados})
+    return {'resultados': resultados, 'restantes': ids[tratados:], 'tratados': tratados}
+
+
+def _incorporar_documento(documento, usuario, permisos, confirmaciones, opciones, proveedores):
+    from core.importacion import compras as desde_xml, recibidos
+    accion = _accion_de(documento)
+    if accion is None:
+        raise ErrorImportacion('Este documento se revisa a mano en su ficha.', 'no_aplica')
+    if accion == 'crear_compra':
+        if not {'change_documentoimportado', 'add_purchase'} <= permisos:
+            raise ErrorImportacion('Tu perfil no puede crear compras.', 'sin_permiso')
+        datos = {'agrupar_por_tarifa': True, 'datos_pendientes': 'si', **{c: 'si' for c, v in confirmaciones.items() if v}}
+        for campo in ('type_expense', 'date_joined'):
+            if opciones.get(campo) not in (None, ''):
+                datos[campo] = opciones[campo]
+        nuevo = proveedores.get(documento.emisor_ruc) or {}
+        if nuevo:
+            datos['proveedor_nuevo'] = {'mobile': nuevo.get('mobile', ''), 'email': nuevo.get('email', ''),
+                                        'parte_relacionada': nuevo.get('parte_relacionada')}
+        compra = desde_xml.crear_compra_desde_documento(documento, usuario, datos)
+        return {'resultado': 'compra_creada', 'compra_id': compra.pk, 'mensaje': f'Compra #{compra.pk} creada con los importes del XML.',
+                'datos_incompletos': compra.datos_incompletos}
+    if accion == 'registrar_retencion':
+        if not {'change_documentoimportado', 'add_retencionrecibida'} <= permisos:
+            raise ErrorImportacion('Tu perfil no puede registrar retenciones recibidas.', 'sin_permiso')
+        registradas = recibidos.registrar_en_retenciones_recibidas(documento.company, usuario, documento,
+                                                                   confirmar_sin_verificar=confirmaciones['confirmar_sin_verificar'])
+        return {'resultado': 'retencion_registrada', 'retenciones': [getattr(r, 'pk', r) for r in (registradas or [])],
+                'mensaje': f'Retención recibida registrada ({len(registradas or [])} documentos sustento).'}
+    if 'change_documentoimportado' not in permisos:
+        raise ErrorImportacion('Tu perfil no puede revisar documentos.', 'sin_permiso')
+    exactas = [c for c in candidatos_conciliacion(documento) if c['tipo'] == 'venta' and 'misma clave de acceso' in c['razones']]
+    if len(exactas) != 1:
+        raise ErrorImportacion('No hay una venta con esta clave de acceso: revísalo en la ficha.', 'sin_venta')
+    revisar(documento, usuario, 'vincular_venta', {'id': exactas[0]['id'],
+                                                   'confirmar_sin_verificar': 'si' if confirmaciones['confirmar_sin_verificar'] else ''})
+    return {'resultado': 'venta_vinculada', 'venta_id': exactas[0]['id'], 'mensaje': f'Vinculado con la venta {exactas[0]["numero"]}.'}

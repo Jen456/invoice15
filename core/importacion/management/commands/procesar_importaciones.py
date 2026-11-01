@@ -1,5 +1,5 @@
 """Tarea programada de respaldo: avanza los lotes con archivos en cola (RIDE en PDF) y reintenta recuperar del SRI el XML
-de los documentos que quedaron pendientes porque el SRI no respondió. El navegador también avanza los lotes
+de los documentos que quedaron pendientes porque el SRI no respondió o aún los estaba procesando. El navegador también avanza los lotes
 (POST /importacion/api/lotes/<id>/procesar/); esta tarea cubre lo que quedó a medias. No emite ni toca numeraciones."""
 from datetime import timedelta
 
@@ -22,7 +22,8 @@ class Command(BaseCommand):
         with platform_scope():
             lotes = list(LoteImportacion.all_companies.select_related('company', 'usuario').filter(estado='procesando')[:50])
             pendientes = list(DocumentoImportado.all_companies.select_related('company', 'importado_por').filter(
-                estado_procesamiento='pendiente_xml', estado_verificacion='sri_no_disponible', verificado_en__lt=hace_un_rato)[:50])
+                estado_procesamiento='pendiente_xml', estado_verificacion__in=sv.REINTENTABLES_AUTOMATICOS,
+                verificado_en__lt=hace_un_rato)[:50])
         for lote in lotes:
             with company_context(lote.company):
                 sv.procesar_lote(lote, lote.usuario, maximo=opciones['maximo'], presupuesto=None)   # sin corte de gunicorn

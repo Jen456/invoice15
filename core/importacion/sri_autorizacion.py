@@ -18,7 +18,7 @@ PAUSA_REINTENTO = 1.0
 
 @dataclass
 class ResultadoConsulta:
-    estado: str                       # autorizado | no_autorizado | sin_resultados | no_disponible | clave_invalida
+    estado: str                       # autorizado | no_autorizado | en_proceso | sin_resultados | no_disponible | clave_invalida
     clave: str
     xml: bytes | None = None          # <autorizacion> reconstruida con la respuesta, para procesar_xml_sri
     mensajes: list = field(default_factory=list)
@@ -69,6 +69,10 @@ def consultar_autorizacion(clave):
     autorizadas = [a for a in autorizaciones if str(getattr(a, 'estado', '')).upper() == 'AUTORIZADO']
     if autorizadas:
         resultado.estado, resultado.xml, resultado.mensajes = 'autorizado', _sobre(autorizadas[0], clave), []
+        return resultado
+    # EN PROCESO / EN PROCESAMIENTO (literal observado) o PPR (código de la ficha técnica): todavía no es un rechazo
+    if any('PROCES' in str(getattr(a, 'estado', '')).upper() or str(getattr(a, 'estado', '')).upper() == 'PPR' for a in autorizaciones):
+        resultado.estado, resultado.mensajes = 'en_proceso', ['El SRI todavía está procesando el comprobante.']
         return resultado
     resultado.estado = 'no_autorizado'
     for aut in autorizaciones:

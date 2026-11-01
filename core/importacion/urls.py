@@ -5,8 +5,10 @@ from core.importacion import views
 urlpatterns = [
     # Páginas de los módulos del menú
     path('nueva/', views.NuevaImportacion.as_view(), name='importacion_nueva'),
+    path('claves/', views.ImportarClaves.as_view(), name='importacion_claves'),
     path('lotes/', views.Lotes.as_view(), name='importacion_lotes'),
     path('lotes/<int:pk>/', views.Lote.as_view(), name='importacion_lote'),
+    path('lotes/<int:pk>/incorporar/', views.IncorporarLote.as_view(), name='importacion_incorporar'),
     path('pendientes/', views.Pendientes.as_view(), name='importacion_pendientes'),
     path('recibidos/', views.Recibidos.as_view(), name='importacion_recibidos'),
     path('documentos/<int:pk>/', views.Documento.as_view(), name='importacion_documento'),
@@ -17,9 +19,12 @@ urlpatterns = [
     path('archivos/<int:pk>/descargar/', views.DescargarArchivo.as_view(), name='importacion_descargar'),
     # API JSON (contrato en entregas/facturaporaqui/HANDOFF.md)
     path('api/lotes/', views.LotesApi.as_view(), name='importacion_api_lotes'),
+    path('api/lotes/claves/', views.ClavesLoteApi.as_view(), name='importacion_api_claves'),       # antes de <int:pk>
+    path('api/lotes/reporte/', views.ReporteLoteApi.as_view(), name='importacion_api_reporte'),
     path('api/lotes/<int:pk>/', views.LoteApi.as_view(), name='importacion_api_lote'),
     path('api/lotes/<int:pk>/archivos/', views.ArchivosLoteApi.as_view(), name='importacion_api_archivos'),
     path('api/lotes/<int:pk>/procesar/', views.ProcesarLoteApi.as_view(), name='importacion_api_procesar'),
+    path('api/lotes/<int:pk>/incorporar/', views.IncorporarLoteApi.as_view(), name='importacion_api_incorporar'),
     path('api/entradas/<int:pk>/clave/', views.ClaveEntradaApi.as_view(), name='importacion_api_clave'),
     path('api/documentos/', views.DocumentosApi.as_view(), name='importacion_api_documentos'),
     path('api/documentos/<int:pk>/', views.DocumentoApi.as_view(), name='importacion_api_documento'),

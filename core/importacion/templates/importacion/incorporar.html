@@ -1,0 +1,61 @@
+{% extends 'importacion/base.html' %}
+{% block breadcrumb_li %}<li class="breadcrumb-item"><a href="{% url 'importacion_lotes' %}"><i class="fas fa-layer-group"></i> Lotes</a></li><li class="breadcrumb-item"><a href="{% url 'importacion_lote' lote.pk %}">Lote #{{ lote.pk }}</a></li><li class="breadcrumb-item active" aria-current="page">Incorporar</li>{% endblock %}
+{% block content %}
+<div class="fp-comprobantes fp-importacion fp-importacion-incorporar" data-lote="{{ lote.pk }}">
+    <header class="fp-welcome"><span class="fp-eyebrow">Importación de documentos</span><h1>Incorporar documentos del lote #{{ lote.pk }}</h1>
+        <p>{{ plan.resumen.incorporables }} de {{ plan.resumen.total }} se pueden incorporar ahora. Las compras se crean agrupadas por tarifa con los importes del XML; el sustento tributario, la parte relacionada y la forma de pago que el XML no trae quedan <b>pendientes de revisión</b> en la compra (no se deciden aquí). Confirmar otra vez no duplica compras, proveedores ni movimientos.</p></header>
+    {% include 'importacion/_mensajes.html' %}
+    <form method="post" id="fp-incorporar">{% csrf_token %}
+        <fieldset class="card fp-retencion-panel mb-3"><div class="card-body">
+            <legend class="h5">Opciones para todas las compras del lote</legend>
+            <div class="form-row">
+                <div class="form-group col-md-4"><label for="id_type_expense">Tipo de gasto (opcional)</label>
+                    <select name="type_expense" id="id_type_expense" class="form-control"><option value="">Sin tipo de gasto</option>{% for tg in opciones.tipos_gasto %}<option value="{{ tg.id }}">{{ tg.nombre }}</option>{% endfor %}</select></div>
+                <div class="form-group col-md-4"><label for="id_date_joined">Fecha de registro</label><input type="date" name="date_joined" id="id_date_joined" class="form-control" value="{{ hoy }}"></div>
+            </div>
+            <div class="form-check"><input type="checkbox" class="form-check-input" name="confirmar_plazo_ats" id="id_confirmar_plazo_ats" value="si"><label class="form-check-label" for="id_confirmar_plazo_ats">Registrar también las que llevan más de un año desde su emisión (el ATS no las admite)</label></div>
+            <div class="form-check"><input type="checkbox" class="form-check-input" name="confirmar_sin_verificar" id="id_confirmar_sin_verificar" value="si"><label class="form-check-label" for="id_confirmar_sin_verificar">Incorporar también las que no están verificadas en el SRI</label></div>
+            <div class="form-check"><input type="checkbox" class="form-check-input" name="confirmar_no_duplicada" id="id_confirmar_no_duplicada" value="si"><label class="form-check-label" for="id_confirmar_no_duplicada">Confirmo que las marcadas como posible duplicado son compras distintas</label></div>
+        </div></fieldset>
+        {% if plan.proveedores_nuevos %}
+        <fieldset class="card fp-retencion-panel mb-3"><div class="card-body">
+            <legend class="h5">Proveedores que no existen todavía</legend>
+            <p class="text-muted small">Se crean con el RUC y la razón social del XML. Celular y correo son obligatorios en Proveedores (no se inventan): sin ellos, sus documentos quedan pendientes.</p>
+            {% for p in plan.proveedores_nuevos %}
+            <div class="form-row align-items-end border-bottom pb-2 mb-2">
+                <div class="col-md-4"><b>{{ p.razon_social }}</b><br><small class="text-muted">RUC {{ p.ruc }} · {{ p.documentos }} doc.</small></div>
+                <div class="form-group col-md-3 mb-0"><label for="prov-{{ p.ruc }}-mobile">Celular</label><input id="prov-{{ p.ruc }}-mobile" name="proveedor-{{ p.ruc }}-mobile" class="form-control form-control-sm" inputmode="numeric" maxlength="10"></div>
+                <div class="form-group col-md-3 mb-0"><label for="prov-{{ p.ruc }}-email">Correo</label><input id="prov-{{ p.ruc }}-email" name="proveedor-{{ p.ruc }}-email" type="email" class="form-control form-control-sm" maxlength="50"></div>
+                <div class="form-group col-md-2 mb-0"><label for="prov-{{ p.ruc }}-parte">Parte relacionada</label><select id="prov-{{ p.ruc }}-parte" name="proveedor-{{ p.ruc }}-parte_relacionada" class="form-control form-control-sm"><option value="">Pendiente</option><option value="no">No</option><option value="si">Sí</option></select></div>
+            </div>
+            {% endfor %}
+        </div></fieldset>
+        {% endif %}
+        <div class="table-responsive fp-retencion-listado"><table class="table table-sm table-bordered bg-white fp-retencion-tabla">
+            <thead><tr><th scope="col"><span class="sr-only">Elegir</span></th><th scope="col">Comprobante</th><th scope="col">Emisor</th><th scope="col" class="text-right">Total</th><th scope="col">Acción</th><th scope="col">Estado</th><th scope="col">Detalle</th></tr></thead>
+            <tbody id="fp-incorporar-items">
+            {% for i in plan.items %}
+            <tr data-estado="{{ i.estado }}">
+                <td>{% if i.estado == 'listo' or i.estado == 'requiere_datos' %}<input type="checkbox" name="documentos" value="{{ i.documento_id }}" aria-label="Incorporar {{ i.tipo_documento }} {{ i.numero }}" {% if i.estado == 'listo' %}checked{% endif %}>{% endif %}</td>
+                <td data-label="Comprobante">{% if i.documento_id %}<a href="{% url 'importacion_documento' i.documento_id %}">{{ i.tipo_documento }} {{ i.numero }}</a>{% if i.fecha_emision %}<br><small class="text-muted">{{ i.fecha_emision }}</small>{% endif %}{% else %}<span class="text-break">{{ i.clave|default:'—' }}</span>{% endif %}</td>
+                <td data-label="Emisor">{% if i.emisor %}{{ i.emisor.razon_social|default:i.emisor.ruc }}<br><small class="text-muted">{{ i.emisor.ruc }}</small>{% endif %}</td>
+                <td data-label="Total" class="text-right">{% if i.importe_total %}${{ i.importe_total }}{% endif %}</td>
+                <td data-label="Acción">{% if i.accion == 'crear_compra' %}Crear compra{% elif i.accion == 'registrar_retencion' %}Registrar retención recibida{% elif i.accion == 'vincular_venta' %}Vincular con la venta{% else %}—{% endif %}</td>
+                <td data-label="Estado"><span class="fp-import-tag" data-state="{{ i.estado }}">{{ plan.resumen.estados|default_if_none:''|default:'' }}{% for k, v in plan.resumen.estados.items %}{% if k == i.estado %}{{ v }}{% endif %}{% endfor %}</span></td>
+                <td data-label="Detalle">
+                    {% for b in i.bloqueos %}<div class="text-danger">{{ b.texto }}</div>{% endfor %}
+                    {% for e in i.errores %}<div class="text-danger">{{ e.texto }}</div>{% endfor %}
+                    {% for a in i.advertencias %}<div class="text-muted small">{{ a.texto }}</div>{% endfor %}
+                    {% if i.proveedor_nuevo %}<div class="small">Proveedor nuevo: completa celular y correo arriba.</div>{% endif %}
+                    {% for c in i.confirmaciones %}<div class="small">Requiere: {% if c == 'confirmar_plazo_ats' %}confirmar fuera del plazo del ATS{% elif c == 'confirmar_sin_verificar' %}confirmar sin verificación del SRI{% else %}confirmar que no es duplicada{% endif %}</div>{% endfor %}
+                    {% if i.pendientes_revision %}<div class="small text-muted">Quedará pendiente: {% for p in i.pendientes_revision %}{{ p.texto }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+                    {% if i.compra_id %}<div class="small">Compra #{{ i.compra_id }}</div>{% endif %}
+                </td>
+            </tr>
+            {% empty %}<tr><td colspan="7" class="text-muted">Este lote no tiene documentos.</td></tr>{% endfor %}
+            </tbody></table></div>
+        {% if puede_revisar %}<button type="submit" class="btn fpa-btn-pagar">Incorporar los elegidos</button>{% endif %}
+        <a href="{% url 'importacion_lote' lote.pk %}" class="btn btn-link">Volver al lote</a>
+    </form>
+</div>
+{% endblock %}
