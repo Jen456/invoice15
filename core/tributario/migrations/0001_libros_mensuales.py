@@ -22,9 +22,9 @@ class Migration(migrations.Migration):
             name='ExportacionLibro',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('libro', models.CharField(choices=[('ventas', 'Libro de ventas'), ('compras', 'Libro de compras'), ('retenciones_efectuadas', 'Retenciones efectuadas'), ('retenciones_recibidas', 'Retenciones recibidas'), ('todos', 'Los cuatro libros')], max_length=25, verbose_name='Libro')),
+                ('libro', models.CharField(choices=[('ventas', 'Libro de ventas'), ('compras', 'Libro de compras'), ('retenciones_efectuadas', 'Retenciones efectuadas'), ('retenciones_recibidas', 'Retenciones recibidas'), ('todos', 'Los cuatro libros'), ('ats', 'ATS del mes')], max_length=25, verbose_name='Libro')),
                 ('mes', models.DateField(verbose_name='Mes (primer día)')),
-                ('formato', models.CharField(choices=[('xlsx', 'XLSX'), ('csv', 'CSV')], max_length=4, verbose_name='Formato')),
+                ('formato', models.CharField(choices=[('xlsx', 'XLSX'), ('csv', 'CSV'), ('zip', 'ZIP')], max_length=4, verbose_name='Formato')),
                 ('filas', models.PositiveIntegerField(default=0, verbose_name='Filas')),
                 ('totales', models.JSONField(blank=True, default=dict, encoder=django.core.serializers.json.DjangoJSONEncoder, verbose_name='Totales')),
                 ('sha256', models.CharField(max_length=64, verbose_name='SHA-256 del archivo')),

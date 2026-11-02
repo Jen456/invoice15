@@ -199,3 +199,59 @@ class EmpresasApi(GroupPermissionMixin, View):
     def get(self, request):
         inicio, _ = mes_de(request.GET.get('mes'))
         return JsonResponse({'mes': f'{inicio:%Y-%m}', 'empresas': resumen_de_empresas(request.user, inicio), 'activa': request.company.pk})
+
+
+# ---------------------------------------------------------------- ATS del mes (entrega D)
+
+class AtsPagina(GroupPermissionMixin, TemplateView):
+    """Pantalla funcional del ATS: compras incluidas y excluidas con su motivo, validación y advertencias."""
+    template_name = 'tributario/ats.html'
+    permission_required = VER
+
+    def get_context_data(self, **kwargs):
+        from core.tributario import ats
+        context = super().get_context_data(**kwargs)
+        inicio, valido = mes_de(self.request.GET.get('mes'))
+        context.update({'title': 'ATS del mes', 'mes': inicio, 'mes_valor': f'{inicio:%Y-%m}',
+                        'mes_invalido': bool(self.request.GET.get('mes')) and not valido,
+                        'ats': ats.informe(ats.generar(inicio, self.request.company))})
+        return context
+
+
+class AtsApi(GroupPermissionMixin, View):
+    """GET /tributario/api/ats/?mes=AAAA-MM[&empresa=<id>] → informe del ATS (sin el XML)."""
+    permission_required = VER
+
+    def get(self, request):
+        from core.tributario import ats
+        if empresa_cambiada(request):
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
+        inicio, _ = mes_de(request.GET.get('mes'))
+        return JsonResponse(ats.informe(ats.generar(inicio, request.company)))
+
+
+class DescargarAts(GroupPermissionMixin, View):
+    """GET ?mes=AAAA-MM[&empresa=<id>] → ATmmaaaa.zip solo si el XML valida contra el esquema; si no, 409 con los errores."""
+    permission_required = VER
+
+    def get(self, request):
+        from core.tributario import ats
+        if empresa_cambiada(request):
+            return HttpResponse(EMPRESA_CAMBIADA, status=409, content_type='text/plain; charset=utf-8')
+        inicio, valido = mes_de(request.GET.get('mes'))
+        if request.GET.get('mes') and not valido:
+            raise Http404
+        resultado = ats.generar(inicio, request.company)
+        if not resultado['valido']:
+            return JsonResponse({'error': 'El ATS no valida contra el esquema oficial: corrige los errores antes de descargarlo.',
+                                 'codigo': 'ats_invalido', 'errores_xsd': resultado['errores_xsd']}, status=409)
+        contenido = ats.comprimido(resultado)
+        ExportacionLibro.objects.create(libro='ats', mes=inicio, formato='zip', filas=len(resultado['incluidas']),
+                                        totales={'incluidas': len(resultado['incluidas']), 'excluidas': len(resultado['excluidas']),
+                                                 'esquema_sha256': resultado['esquema']['sha256']},
+                                        sha256=exportar.huella(contenido), generado_por=request.user)
+        respuesta = HttpResponse(contenido, content_type='application/zip')
+        respuesta['Content-Disposition'] = f'attachment; filename="{resultado["nombre"]}.zip"'
+        respuesta['Cache-Control'] = 'private, no-store'
+        respuesta['X-Content-Type-Options'] = 'nosniff'
+        return respuesta

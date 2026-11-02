@@ -1,0 +1,30 @@
+{% extends 'skin.html' %}
+{# Pantalla funcional «ATS del mes» (core/tributario/ats.py). El diseño lo hace Codex sobre el contrato de HANDOFF. #}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page">ATS del mes</li>{% endblock %}
+{% block content %}
+<div class="fp-ats">
+  <header class="mb-3">
+    <h1 class="h3">ATS del mes</h1>
+    <p>Genera el Anexo Transaccional Simplificado con las compras registradas en el mes y lo valida contra el esquema oficial del
+       SRI. La validación es técnica: no equivale a la aceptación del SRI. Revísalo con tu contador antes de presentarlo.</p>
+  </header>
+  <form method="get" class="form-inline mb-3" aria-label="Elegir el mes">
+    <label for="fpAtsMes" class="mr-2">Mes</label>
+    <input type="month" id="fpAtsMes" name="mes" class="form-control mr-2" value="{{ mes_valor }}" max="{% now 'Y-m' %}">
+    <button type="submit" class="btn btn-primary">Ver</button>
+  </form>
+  {% if mes_invalido %}<div class="alert alert-warning" role="alert">Ese mes no es válido: se muestra el mes actual.</div>{% endif %}
+  {% if ats.valido %}
+    <p class="alert alert-success">El XML valida contra el esquema ({{ ats.incluidas|length }} compras). <a class="btn btn-primary btn-sm" href="/tributario/ats/descargar/?mes={{ mes_valor }}&amp;empresa={{ request.company.pk }}">Descargar {{ ats.nombre }}.zip</a></p>
+  {% else %}
+    <div class="alert alert-danger" role="alert"><p>El XML no valida contra el esquema oficial:</p><ul>{% for e in ats.errores_xsd %}<li>Línea {{ e.linea }}: {{ e.mensaje }}</li>{% endfor %}</ul></div>
+  {% endif %}
+  {% for a in ats.advertencias %}<p class="alert alert-warning" role="status">{{ a.texto }}</p>{% endfor %}
+  <section aria-labelledby="fpAtsExcluidas"><h2 id="fpAtsExcluidas" class="h6">Compras que quedaron fuera ({{ ats.excluidas|length }})</h2>
+    <ul>{% for c in ats.excluidas %}<li>{{ c.numero }} · {{ c.proveedor }} · registrada {{ c.fecha_registro }} · <a href="{{ c.url }}">Completar</a>
+      <ul>{% for m in c.motivos %}<li>{{ m }}</li>{% endfor %}</ul></li>{% empty %}<li>Ninguna.</li>{% endfor %}</ul></section>
+  <section aria-labelledby="fpAtsIncluidas"><h2 id="fpAtsIncluidas" class="h6">Compras incluidas ({{ ats.incluidas|length }})</h2>
+    <ul>{% for c in ats.incluidas %}<li>{{ c.numero }} · {{ c.proveedor }} · registrada {{ c.fecha_registro }} · <a href="{{ c.url }}">Ver</a></li>{% empty %}<li>Ninguna.</li>{% endfor %}</ul></section>
+  <p class="small text-muted">Esquema: {{ ats.esquema.url }} · publicado {{ ats.esquema.publicado }} · descargado {{ ats.esquema.descargado }} · SHA-256 {{ ats.esquema.sha256 }}</p>
+</div>
+{% endblock %}

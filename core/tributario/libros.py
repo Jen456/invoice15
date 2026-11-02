@@ -3,7 +3,8 @@
 Reglas (PLAN-PROFORMAS-BANCOS-CONTABILIDAD.md §2 y §3.6, NORMA-CONTABLE-TRIBUTARIA-2026-10.md):
 - Solo comprobantes electrónicos AUTORIZADOS en PRODUCCIÓN (ambiente 2), por fecha de emisión (la de registro si no la
   tienen). Los de PRUEBAS y los que el SRI no autorizó no entran: se cuentan aparte en `excluidos`, para contrastar.
-- Las compras (documentos de terceros) entran por su fecha de emisión (o de registro si no la tienen).
+- Las compras (documentos de terceros) entran por su fecha de REGISTRO, la «fechaRegistro» del ATS (el DIMM no admite
+  registros a más de un año de la emisión: Etapa 2, compras.cat.PLAZO_ATS_DIAS).
 - Cada fila lleva su documento (id y enlace) y su estado. Lo marcado «Anulado en el SRI» se lista con ese estado y NO suma.
   Las notas de crédito restan (signo −1) y las de débito suman: es el signo que usan los reportes de la aplicación; el
   tratamiento en cada casillero del 104 se decide en la etapa del formulario, con el contador.
@@ -158,12 +159,13 @@ def libro_ventas(inicio):
 
 
 def libro_compras(inicio):
-    """Compras registradas (todas sus clases de comprobante) por fecha de emisión; las notas de crédito del proveedor restan."""
+    """Compras REGISTRADAS en el mes (fecha de registro, la «fechaRegistro» del ATS), de todas sus clases de comprobante; las
+    notas de crédito del proveedor restan."""
     from core.pos.compras import resumen_por_tarifa
     from core.pos.models import Purchase
     libro = Libro('compras', inicio)
     compras = (Purchase.objects.select_related('provider').prefetch_related('purchasedetail_set', 'retenciones', 'liquidaciones')
-               .filter(_en_mes(inicio, 'fecha_emision', 'date_joined')).order_by('fecha_emision', 'date_joined', 'id'))
+               .filter(_en_mes(inicio, 'date_joined')).order_by('date_joined', 'fecha_emision', 'id'))
     incompletas = sin_tarifa = 0
     for compra in compras:
         grupos = resumen_por_tarifa(list(compra.purchasedetail_set.all()))

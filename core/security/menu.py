@@ -54,7 +54,8 @@ ESTRUCTURA = (
     ('Tributario', 'fas fa-balance-scale', 65, (
         ('/tributario/libros/', 'Libros mensuales', 1),   # libros de ventas, compras y retenciones (core/tributario)
         ('/tributario/revision/', 'Revisión del mes', 2),
-        ('/tributario/empresas/', 'Revisión de mis empresas', 3),
+        ('/tributario/ats/', 'ATS del mes', 3),
+        ('/tributario/empresas/', 'Revisión de mis empresas', 4),
     )),
     ('Reportes', 'fas fa-chart-pie', 70, ()),   # sin cambios de nombre
     ('Configuración', 'fas fa-cogs', 80, (
@@ -110,6 +111,8 @@ MODULOS_NUEVOS = (
      'Lo que conviene revisar del mes antes de declarar, con su causa y el enlace a cada registro', ('view_revision',)),
     ('tributario', '/tributario/empresas/', 'fas fa-building',
      'Resumen de tus empresas: pendientes de la revisión del mes y acceso a cada una', ('view_revision',)),
+    ('tributario', '/tributario/ats/', 'fas fa-file-code',
+     'ATS del mes: XML validado contra el esquema oficial del SRI, con lo que queda fuera y por qué', ('view_libros',)),
 )
 
 

@@ -77,8 +77,8 @@ def devueltos(inicio):
 def datos_ats(inicio):
     from core.pos.models import Purchase
     resultado, proveedores = [], {}
-    for compra in (Purchase.objects.select_related('provider').filter(lb._en_mes(inicio, 'fecha_emision', 'date_joined'))
-                   .order_by('fecha_emision', 'date_joined', 'id')):
+    for compra in (Purchase.objects.select_related('provider').filter(lb._en_mes(inicio, 'date_joined'))
+                   .order_by('date_joined', 'id')):
         faltan = compra.faltantes()
         if faltan:
             resultado.append(_obs('datos_ats', 'compra_incompleta', f'Compra {compra.numero_comprobante} de {compra.provider.name}',
@@ -186,7 +186,7 @@ def retenciones(inicio, company):
     if getattr(company, 'retention_agent', 'NO') != 'SI':
         return []
     resultado = []
-    compras = (Purchase.objects.select_related('provider').filter(lb._en_mes(inicio, 'fecha_emision', 'date_joined'),
+    compras = (Purchase.objects.select_related('provider').filter(lb._en_mes(inicio, 'date_joined'),
                                                                      tipo_comprobante__in=('01', '03'))
                .exclude(retenciones__in=_retenciones_validas()).order_by('fecha_emision', 'date_joined', 'id').distinct())
     for compra in compras:

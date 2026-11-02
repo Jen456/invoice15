@@ -6,7 +6,7 @@ Contador y Consulta lo ven; Vendedor y Cliente no.
 """
 from django.db import migrations
 
-URLS = ('/tributario/libros/', '/tributario/revision/', '/tributario/empresas/')
+URLS = ('/tributario/libros/', '/tributario/revision/', '/tributario/empresas/', '/tributario/ats/')
 
 
 def forwards(apps, schema_editor):
