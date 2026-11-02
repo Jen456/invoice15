@@ -1,4 +1,4 @@
-"""Vuelta completa de las 19 migraciones de la fase contable (más las 3 de adjuntos, que dependen de ellas) sobre una instalación con menú (start_installation), con los
+"""Vuelta completa de las 19 migraciones de la fase contable (más las de adjuntos, que dependen de ellas, y las de tributario) sobre una instalación con menú (start_installation), con los
 destinos y el orden de MIGRACIONES-FASE-CONTABLE.md, y otra ida: el menú, los módulos y los roles quedan como antes.
 
 Por subproceso con SQLite en archivo, como test_migracion_proformas: `migrate pos 0019` deshace varias migraciones en un
@@ -17,9 +17,10 @@ import tempfile
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-VUELTA = (('adjuntos', 'zero'), ('proformas', 'zero'), ('comprobantes', '0013_modulo_guias'), ('pos', '0019_orden_de_las_lineas'),
+VUELTA = (('tributario', 'zero'), ('adjuntos', 'zero'), ('proformas', 'zero'), ('comprobantes', '0013_modulo_guias'), ('pos', '0019_orden_de_las_lineas'),
           ('importacion', '0004_menu_con_guias'), ('tenancy', '0006_accion_empresa_agregada'))
-NUEVOS = {'/proformas/', '/comprobantes/retenciones-recibidas/', '/adjuntos/', '/adjuntos/capturas/'}
+NUEVOS = {'/proformas/', '/comprobantes/retenciones-recibidas/', '/adjuntos/', '/adjuntos/capturas/', '/tributario/libros/',
+          '/tributario/revision/', '/tributario/empresas/', '/tributario/ats/', '/tributario/formularios/'}
 VERIFICAR = """
 import json
 from django.contrib.auth.models import Group
@@ -68,8 +69,9 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
             # + importacion 0007 (lotes de claves, sobre 0006: la vuelta a importacion 0004 la deshace). Las tablas de locales y
             # puntos (configuracion 0001-0003) y de respaldos (cobros 0001-0003) cuelgan de pos 0019 y no se deshacen con la
             # fase. Las 6 de adjuntos (sobre pos 0031; 0004-0006 = recibos por completar) y tenancy 0010 (acciones de los
-            # recibos) sí: 32 en total.
-            assert len(pendientes(env)) == 32
+            # recibos) sí. Las 3 de tributario (libros, revisión, ATS y borradores) cuelgan de pos 0019 e importacion 0004:
+            # la vuelta empieza por `tributario zero`. 35 en total.
+            assert len(pendientes(env)) == 35
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)
@@ -90,4 +92,5 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
         manage(env, 'migrate', 'comprobantes', '--noinput', '-v', '0')   # ida parcial: pos y comprobantes, sin Proformas
         urls = {m[0] for m in estado(env)['modulos']}
         assert '/comprobantes/retenciones-recibidas/' in urls and '/proformas/' not in urls
+        assert not {u for u in urls if u.startswith('/tributario/')}   # ni tributario sin migrar
         ida_completa()

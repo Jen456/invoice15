@@ -1,6 +1,7 @@
-"""Módulos «Libros mensuales», «Revisión del mes» y «Revisión de mis empresas» (/tributario/…) en el grupo «Tributario» del
-menú, con sus permisos, para instalaciones
-existentes (las nuevas lo crea start_installation). Mismo patrón que adjuntos 0003: se crea el permiso de la app,
+"""Módulos «Libros mensuales», «Revisión del mes», «ATS del mes», «Borradores del 104 y del 103» y «Revisión de mis empresas»
+(/tributario/…) en el grupo «Tributario» del menú, con sus permisos, para instalaciones existentes (las nuevas lo crea
+start_installation). La vuelta quita los cinco módulos, los permisos de la app en los grupos y el grupo «Tributario» si
+queda vacío. Mismo patrón que adjuntos 0003: se crea el permiso de la app,
 organizar_menu solo crea el módulo si la app ya está migrada y sync_roles reparte (roles.py): Propietario, Administrador,
 Contador y Consulta lo ven; Vendedor y Cliente no.
 """
@@ -29,9 +30,13 @@ def forwards(apps, schema_editor):
 
 
 def backwards(apps, schema_editor):
-    apps.get_model('security', 'Module').objects.filter(url__in=URLS).delete()   # sus GroupModule caen en cascada
+    Module = apps.get_model('security', 'Module')
+    Module.objects.filter(url__in=URLS).delete()   # sus GroupModule caen en cascada
     Group = apps.get_model('auth', 'Group')
     Group.permissions.through.objects.filter(permission__content_type__app_label='tributario').delete()
+    for tipo in apps.get_model('security', 'ModuleType').objects.filter(name='Tributario'):
+        if not Module.objects.filter(module_type=tipo).exists():
+            tipo.delete()
 
 
 class Migration(migrations.Migration):
