@@ -241,7 +241,7 @@ class TestCompletarYVincular:
         assert (adjunto.documento_tipo, adjunto.documento_id, adjunto.descripcion, adjunto.clase) == ('gasto', gasto.pk, 'Taxi al banco', 'recibo')
         assert (adjunto.importe, adjunto.fecha, adjunto.referencia, adjunto.subido_por) == (Decimal('8.50'), HOY, 'T-55', admin)
         assert archivos_en(captura) == en_disco
-        captura.refresh_from_db()
+        leer(empresa, captura.refresh_from_db)   # con RLS (PostgreSQL), fuera de la empresa no se ve
         assert (captura.estado, captura.documento_tipo, captura.documento_id, captura.completado_por) == ('completada', 'gasto', gasto.pk, admin)
         assert cuerpo['captura']['documento']['titulo'] == f'Gasto #{gasto.pk} · MOVILIZACIÓN'
         with company_context(empresa):

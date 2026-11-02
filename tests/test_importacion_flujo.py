@@ -356,7 +356,7 @@ class TestMenu:
     def test_grupos_nombres_y_orden(self):
         assert list(ModuleType.objects.order_by('orden').values_list('name', flat=True)) == [
             'Comprobantes Electrónicos', 'Cotizaciones', 'Clientes y promociones', 'Compras y gastos', 'Importación de documentos',
-            'Bodega', 'Administrativo', 'Reportes', 'Configuración', 'Seguridad']
+            'Bodega', 'Administrativo', 'Tributario', 'Reportes', 'Configuración', 'Seguridad']
         m = Module.objects.get(url='/proformas/')
         assert m.module_type.name == 'Cotizaciones' and m.orden == 1 and m.name == 'Proformas'
         assert Module.objects.get(url='/pos/sale/admin/').name == 'Facturas emitidas'   # misma URL
