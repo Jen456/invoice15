@@ -1,0 +1,35 @@
+{% extends 'skin.html' %}
+{# Pantalla funcional «Borradores del 104 y del 103» (core/tributario/formularios.py). El diseño lo hace Codex (HANDOFF). #}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page">Borradores del 104 y del 103</li>{% endblock %}
+{% block content %}
+<div class="fp-formularios">
+  <header class="mb-3">
+    <h1 class="h3">Borradores del 104 y del 103</h1>
+    <div class="alert alert-info" role="note">Borrador para que lo revise tu contador. FacturaPorAquí no presenta declaraciones: la
+      presentas tú en el portal del SRI. Lo marcado «por confirmar» no se asignó a ningún casillero.</div>
+  </header>
+  <form method="get" class="form-inline mb-3" aria-label="Elegir formulario y mes">
+    <label for="fpFormulario" class="mr-2">Formulario</label>
+    <select id="fpFormulario" name="formulario" class="form-control mr-2"><option value="104"{% if formulario == '104' %} selected{% endif %}>104 (IVA)</option><option value="103"{% if formulario == '103' %} selected{% endif %}>103 (retenciones de renta)</option></select>
+    <label for="fpFormMes" class="mr-2">Mes</label>
+    <input type="month" id="fpFormMes" name="mes" class="form-control mr-2" value="{{ mes_valor }}" max="{% now 'Y-m' %}">
+    <button type="submit" class="btn btn-primary">Ver</button>
+  </form>
+  {% if mes_invalido %}<div class="alert alert-warning" role="alert">Ese mes no es válido: se muestra el mes actual.</div>{% endif %}
+  {% if error %}<div class="alert alert-warning" role="alert">{{ error }}</div>{% endif %}
+  {% if hoja %}
+  <p><a class="btn btn-outline-primary btn-sm" href="/tributario/formularios/exportar/?formulario={{ formulario }}&amp;mes={{ mes_valor }}&amp;empresa={{ request.company.pk }}">Descargar el borrador (XLSX)</a></p>
+  {% for a in hoja.advertencias %}<p class="alert alert-warning" role="status">{{ a.texto }}</p>{% endfor %}
+  <section aria-labelledby="fpCasilleros"><h2 id="fpCasilleros" class="h6">Casilleros calculados</h2>
+    <div class="table-responsive" tabindex="0" role="region" aria-label="Casilleros"><table class="table table-sm">
+      <thead><tr><th scope="col">Casillero</th><th scope="col">Descripción</th><th scope="col">Valor</th><th scope="col">Documentos</th><th scope="col">Fuente</th></tr></thead>
+      <tbody>{% for c in hoja.casilleros %}<tr data-casillero="{{ c.casillero }}"><td>{{ c.casillero }}</td><td>{{ c.descripcion }}</td><td>{{ c.valor }}</td>
+        <td>{% if c.documentos %}<details><summary>{{ c.documentos|length }}</summary><ul>{% for d in c.documentos %}<li><a href="{{ d.url }}">{{ d.numero }}</a> · {{ d.importe }}</li>{% endfor %}</ul></details>{% else %}—{% endif %}</td>
+        <td><small>{{ c.fuente }}</small></td></tr>{% empty %}<tr><td colspan="5">Sin valores en el mes.</td></tr>{% endfor %}</tbody>
+    </table></div></section>
+  <section aria-labelledby="fpPorConfirmar"><h2 id="fpPorConfirmar" class="h6">Por confirmar con el contador</h2>
+    <ul>{% for p in hoja.por_confirmar %}<li data-clave="{{ p.clave }}">{{ p.concepto }}: <strong>{{ p.valor }}</strong>{% if p.casilleros_posibles %} · posibles: {{ p.casilleros_posibles|join:", " }}{% endif %}<br><small>{{ p.motivo }}</small></li>{% empty %}<li>Nada.</li>{% endfor %}</ul></section>
+  <section aria-labelledby="fpNoCalculados"><h2 id="fpNoCalculados" class="h6">No calculados</h2><ul>{% for n in hoja.no_calculados %}<li>{{ n }}</li>{% endfor %}</ul></section>
+  {% endif %}
+</div>
+{% endblock %}

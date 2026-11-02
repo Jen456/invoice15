@@ -11,7 +11,8 @@ from core.tenancy.models_base import TenantModel
 
 class ExportacionLibro(TenantModel):
     LIBROS = (('ventas', 'Libro de ventas'), ('compras', 'Libro de compras'), ('retenciones_efectuadas', 'Retenciones efectuadas'),
-              ('retenciones_recibidas', 'Retenciones recibidas'), ('todos', 'Los cuatro libros'), ('ats', 'ATS del mes'))
+              ('retenciones_recibidas', 'Retenciones recibidas'), ('todos', 'Los cuatro libros'), ('ats', 'ATS del mes'),
+              ('f104', 'Borrador del 104'), ('f103', 'Borrador del 103'))
     FORMATOS = (('xlsx', 'XLSX'), ('csv', 'CSV'), ('zip', 'ZIP'))
     libro = models.CharField(max_length=25, choices=LIBROS, verbose_name='Libro')
     mes = models.DateField(verbose_name='Mes (primer día)')

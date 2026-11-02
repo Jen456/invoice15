@@ -55,7 +55,8 @@ ESTRUCTURA = (
         ('/tributario/libros/', 'Libros mensuales', 1),   # libros de ventas, compras y retenciones (core/tributario)
         ('/tributario/revision/', 'Revisión del mes', 2),
         ('/tributario/ats/', 'ATS del mes', 3),
-        ('/tributario/empresas/', 'Revisión de mis empresas', 4),
+        ('/tributario/formularios/', 'Borradores del 104 y del 103', 4),
+        ('/tributario/empresas/', 'Revisión de mis empresas', 5),
     )),
     ('Reportes', 'fas fa-chart-pie', 70, ()),   # sin cambios de nombre
     ('Configuración', 'fas fa-cogs', 80, (
@@ -113,6 +114,8 @@ MODULOS_NUEVOS = (
      'Resumen de tus empresas: pendientes de la revisión del mes y acceso a cada una', ('view_revision',)),
     ('tributario', '/tributario/ats/', 'fas fa-file-code',
      'ATS del mes: XML validado contra el esquema oficial del SRI, con lo que queda fuera y por qué', ('view_libros',)),
+    ('tributario', '/tributario/formularios/', 'fas fa-file-invoice-dollar',
+     'Borradores por casillero del 104 y del 103 para revisar con el contador (no se presentan desde aquí)', ('view_libros',)),
 )
 
 

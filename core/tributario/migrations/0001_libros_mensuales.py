@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
             name='ExportacionLibro',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('libro', models.CharField(choices=[('ventas', 'Libro de ventas'), ('compras', 'Libro de compras'), ('retenciones_efectuadas', 'Retenciones efectuadas'), ('retenciones_recibidas', 'Retenciones recibidas'), ('todos', 'Los cuatro libros'), ('ats', 'ATS del mes')], max_length=25, verbose_name='Libro')),
+                ('libro', models.CharField(choices=[('ventas', 'Libro de ventas'), ('compras', 'Libro de compras'), ('retenciones_efectuadas', 'Retenciones efectuadas'), ('retenciones_recibidas', 'Retenciones recibidas'), ('todos', 'Los cuatro libros'), ('ats', 'ATS del mes'), ('f104', 'Borrador del 104'), ('f103', 'Borrador del 103')], max_length=25, verbose_name='Libro')),
                 ('mes', models.DateField(verbose_name='Mes (primer día)')),
                 ('formato', models.CharField(choices=[('xlsx', 'XLSX'), ('csv', 'CSV'), ('zip', 'ZIP')], max_length=4, verbose_name='Formato')),
                 ('filas', models.PositiveIntegerField(default=0, verbose_name='Filas')),

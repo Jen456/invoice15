@@ -255,3 +255,65 @@ class DescargarAts(GroupPermissionMixin, View):
         respuesta['Cache-Control'] = 'private, no-store'
         respuesta['X-Content-Type-Options'] = 'nosniff'
         return respuesta
+
+
+# ---------------------------------------------------------------- borradores del 104 y del 103 (entrega E)
+
+def _hoja(request):
+    from core.tributario import formularios
+    formulario = request.GET.get('formulario') if request.GET.get('formulario') in ('104', '103') else '104'
+    inicio, valido = mes_de(request.GET.get('mes'))
+    try:
+        return formulario, inicio, valido, formularios.hoja(formulario, inicio), ''
+    except formularios.SinVigencia as e:
+        return formulario, inicio, valido, None, str(e)
+
+
+class FormularioPagina(GroupPermissionMixin, TemplateView):
+    """Borrador por casillero para el contador; no presenta nada (el diseño lo hace Codex)."""
+    template_name = 'tributario/formularios.html'
+    permission_required = VER
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        formulario, inicio, valido, hoja, error = _hoja(self.request)
+        context.update({'title': 'Borradores del 104 y del 103', 'formulario': formulario, 'mes': inicio, 'mes_valor': f'{inicio:%Y-%m}',
+                        'mes_invalido': bool(self.request.GET.get('mes')) and not valido, 'hoja': hoja.como_dict() if hoja else None,
+                        'error': error})
+        return context
+
+
+class FormularioApi(GroupPermissionMixin, View):
+    """GET /tributario/api/formularios/?formulario=104|103&mes=AAAA-MM[&empresa=<id>] → el borrador por casillero."""
+    permission_required = VER
+
+    def get(self, request):
+        if empresa_cambiada(request):
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
+        _, _, _, hoja, error = _hoja(request)
+        if hoja is None:
+            return JsonResponse({'error': error, 'codigo': 'sin_vigencia'}, status=400)
+        return JsonResponse(hoja.como_dict())
+
+
+class ExportarFormulario(GroupPermissionMixin, View):
+    """GET ?formulario=104|103&mes=AAAA-MM[&empresa=<id>] → XLSX del borrador (casilleros, por confirmar y documentos)."""
+    permission_required = VER
+
+    def get(self, request):
+        from core.tributario import formularios
+        if empresa_cambiada(request):
+            return HttpResponse(EMPRESA_CAMBIADA, status=409, content_type='text/plain; charset=utf-8')
+        formulario, inicio, valido, hoja, error = _hoja(request)
+        if (request.GET.get('mes') and not valido) or hoja is None:
+            raise Http404
+        contenido = formularios.a_xlsx(hoja)
+        datos = hoja.como_dict()
+        ExportacionLibro.objects.create(libro=f'f{formulario}', mes=inicio, formato='xlsx', filas=len(datos['casilleros']),
+                                        totales={c['casillero']: c['valor'] for c in datos['casilleros']},
+                                        sha256=exportar.huella(contenido), generado_por=request.user)
+        respuesta = HttpResponse(contenido, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        respuesta['Content-Disposition'] = f'attachment; filename="borrador-{formulario}-{request.company.ruc}-{inicio:%Y-%m}.xlsx"'
+        respuesta['Cache-Control'] = 'private, no-store'
+        respuesta['X-Content-Type-Options'] = 'nosniff'
+        return respuesta
