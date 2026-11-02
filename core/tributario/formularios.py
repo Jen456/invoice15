@@ -138,7 +138,7 @@ def hoja_104(inicio):
                 hoja.pendiente('compras_sin_tarifa', 'Compras antiguas sin tarifa registrada', signo * base, [],
                                'No se sabe su tarifa: complétalas antes de declarar.', _ref('compras', fila, signo * base))
             else:
-                hoja.pendiente(f'compras_{fila["sustento"] or "sin sustento"}',
+                hoja.pendiente(f'compras_{fila.get("cod_sustento") or "sin_sustento"}',
                                f'Compras con tarifa diferente de 0 — sustento: {fila["sustento"] or "sin sustento"} (base neta)',
                                signo * base, ['500/510/520', '501/511/521', '502', '540/550/560'],
                                'Con o sin derecho a crédito tributario y si son activos fijos depende del sustento y del contador.',

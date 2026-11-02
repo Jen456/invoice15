@@ -93,7 +93,7 @@ class Test104:
         assert [x['id'] for x in hoja.casilleros['725']['documentos']] == [ret_iva.pk]
         assert casillero(hoja, '609') == Decimal('0.90')                             # IVA que le retuvieron (registro manual)
         gravadas = [p for p in hoja.por_confirmar if p['clave'].startswith('compras_') and p['clave'] != 'compras_sin_tarifa']
-        assert [p['valor'] for p in gravadas] == [Decimal('300.00')]                 # 100 + 200 con tarifa 15 %: según sustento
+        assert [(p['clave'], p['valor']) for p in gravadas] == [('compras_06', Decimal('300.00'))]   # 100 + 200 al 15 %, sustento 06
         assert pendiente(hoja, 'compras_sin_tarifa')['valor'] == Decimal('50.00')    # compra antigua sin tarifa
         assert not {'500', '510', '520'} & set(hoja.casilleros)
 

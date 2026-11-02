@@ -181,6 +181,7 @@ def libro_compras(inicio):
                 'fecha_registro': _fecha(compra.date_joined), 'autorizacion': compra.autorizacion,
                 'identificacion': compra.provider.ruc, 'nombre': compra.provider.name,
                 'sustento': compra.get_cod_sustento_display() if compra.cod_sustento else '',
+                'cod_sustento': compra.cod_sustento or '',
                 'parte_relacionada': {True: 'Sí', False: 'No'}.get(compra.parte_relacionada, ''),
                 'forma_pago': compra.get_forma_pago_display() if compra.forma_pago else '',
                 'documento_modificado': compra.num_doc_modificado, 'retenciones': ', '.join(retenciones),
