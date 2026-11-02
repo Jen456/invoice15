@@ -25,6 +25,7 @@ pytestmark = [
 
 def test_tres_confirmaciones_simultaneas_aplican_una_sola_mejora(settings):
     settings.PAYPHONE_TOKEN = 'token-de-prueba'
+    helpers.restaurar_planes()   # una prueba transaccional anterior vació la base (planes de las migraciones incluidos)
     empresa = helpers.crear_empresa('CONCURRENCIA', plan=None)
     ahora = timezone.now()
     periodo = helpers.dar_plan(empresa, 'plan-1000', inicio=ahora - timedelta(days=30), ends_at=ahora + timedelta(days=200))
