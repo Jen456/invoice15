@@ -59,6 +59,7 @@ class ProductListView(GroupPermissionMixin, TemplateView):
                         product = Product.objects.filter(pk=id).first()
                         if product is None:
                             product = Product()
+                        anterior = product.stock if product.pk else 0
                         product.name = str(wb.cell(row=row, column=2).value)
                         product.code = str(wb.cell(row=row, column=3).value)
                         product.category = Category.objects.get_or_create(name=str(wb.cell(row=row, column=4).value))[0]
@@ -75,6 +76,9 @@ class ProductListView(GroupPermissionMixin, TemplateView):
                         elif not product.tarifa_iva or con_impuesto != (PORCENTAJE_IVA.get(product.tarifa_iva, 0) > 0):
                             product.tarifa_iva = '4' if con_impuesto else '0'
                         product.save()
+                        if product.inventoried:   # kardex: el cambio de stock de la importación queda registrado
+                            from core.contabilidad.servicios import registrar_ajuste
+                            registrar_ajuste(product, anterior, product.stock, request.user, origen='importacion')
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
         except Exception as e:
@@ -219,11 +223,10 @@ class ProductStockAdjustmentView(GroupPermissionMixin, TemplateView):
                     item['value'] = i.get_full_name()
                     data.append(item)
             elif action == 'create':
+                from core.contabilidad.servicios import ajustar_stock
                 with transaction.atomic():
                     for i in json.loads(request.POST['products']):
-                        product = Product.objects.get(pk=i['id'])
-                        product.stock = int(i['newstock'])
-                        product.save()
+                        ajustar_stock(i['id'], int(i['newstock']), request.user)   # kardex: el ajuste queda registrado
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
         except Exception as e:

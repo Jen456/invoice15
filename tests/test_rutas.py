@@ -15,6 +15,8 @@ ESPERADOS = {
     '/adjuntos/api/capturas/documentos/': 400,   # exige ?tipo=compra|gasto|pago (JSON con codigo «tipo»)
     '/importacion/api/lotes/claves/': 405,    # solo POST (crea un lote con las claves pegadas)
     '/importacion/api/lotes/reporte/': 405,   # solo POST (crea un lote con el reporte del portal del SRI)
+    '/contabilidad/api/kardex/movimientos/': 404,   # pide ?producto=<id> de un producto inventariado de la empresa
+    '/contabilidad/kardex/exportar/': 404,          # ídem: el XLSX es del kardex de un producto
 }
 
 

@@ -1,0 +1,67 @@
+{% extends 'skin.html' %}
+{# Pantalla funcional «Kardex por producto» (core/contabilidad/kardex.py). El diseño lo hace Codex (HANDOFF). #}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page">Kardex por producto</li>{% endblock %}
+{% block content %}
+<div class="fp-kardex">
+  <header class="mb-3">
+    <h1 class="h3">Kardex por producto</h1>
+    <p class="text-muted">Costo promedio ponderado calculado desde los documentos (compras sin IVA, ventas, notas de crédito,
+      anulaciones con ajuste de inventario y ajustes de stock). Los movimientos manuales completan lo que no está en el sistema
+      y no cambian el stock.</p>
+  </header>
+  <form method="get" class="form-inline mb-3" aria-label="Elegir producto y período">
+    <label for="fpKProducto" class="mr-2">Producto</label>
+    <select id="fpKProducto" name="producto" class="form-control mr-2" required>
+      <option value="">Elige un producto inventariado</option>
+      {% for p in productos %}<option value="{{ p.id }}"{% if producto and producto.pk == p.id %} selected{% endif %}>{{ p.code }} · {{ p.name }}</option>{% endfor %}
+    </select>
+    <label for="fpKDesde" class="mr-2">Desde</label>
+    <input type="date" id="fpKDesde" name="desde" class="form-control mr-2" value="{{ desde }}" max="{{ hoy }}">
+    <label for="fpKHasta" class="mr-2">Hasta</label>
+    <input type="date" id="fpKHasta" name="hasta" class="form-control mr-2" value="{{ hasta }}" max="{{ hoy }}">
+    <button type="submit" class="btn btn-primary">Ver</button>
+  </form>
+  {% if rango_invalido %}<div class="alert alert-warning" role="alert">Alguna fecha no era válida: se usó el mes actual.</div>{% endif %}
+  {% if producto_pedido %}<div class="alert alert-warning" role="alert">El producto no existe, es de otra empresa o no es inventariado.</div>{% endif %}
+  {% if kardex %}
+  <p><a class="btn btn-outline-primary btn-sm" href="/contabilidad/kardex/exportar/?producto={{ producto.pk }}&amp;desde={{ desde }}&amp;hasta={{ hasta }}&amp;empresa={{ request.company.pk }}">Descargar el kardex (XLSX)</a></p>
+  {% for a in kardex.advertencias %}<p class="alert alert-warning" role="status" data-aviso="{{ a.codigo }}">{{ a.texto }}</p>{% endfor %}
+  <p>Saldo anterior: <strong>{{ kardex.saldo_anterior.cantidad }}</strong>{% if kardex.saldo_anterior.valor %} · valor {{ kardex.saldo_anterior.valor }}{% endif %}
+    · Saldo final: <strong data-saldo-final="{{ kardex.saldo_final.cantidad }}">{{ kardex.saldo_final.cantidad }}</strong>
+    {% if kardex.saldo_final.conocido %}· valor {{ kardex.saldo_final.valor }} · costo promedio {{ kardex.saldo_final.costo_promedio|default:'—' }}{% else %}· costo desconocido{% endif %}
+    {% if kardex.diferencia_stock is not None %}· stock del producto {{ kardex.producto.stock_actual }}{% endif %}</p>
+  <div class="table-responsive" tabindex="0" role="region" aria-label="Movimientos del kardex"><table class="table table-sm">
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Movimiento</th><th scope="col">Documento</th><th scope="col">Entrada</th><th scope="col">Salida</th>
+      <th scope="col">Costo unitario</th><th scope="col">Costo total</th><th scope="col">Saldo</th><th scope="col">Costo promedio</th><th scope="col">Valor del saldo</th></tr></thead>
+    <tbody>{% for m in kardex.movimientos %}<tr data-tipo="{{ m.tipo }}"><td>{{ m.fecha }}</td><td>{{ m.tipo_nombre }}{% if m.observacion %}<br><small>{{ m.observacion }}</small>{% endif %}</td>
+      <td><a href="{{ m.documento.url }}">{{ m.documento.numero }}</a></td><td>{{ m.entrada|default:'' }}</td><td>{{ m.salida|default:'' }}</td>
+      <td>{{ m.costo_unitario|default:'—' }}</td><td>{{ m.costo_total|default:'—' }}</td><td>{{ m.saldo_cantidad }}</td>
+      <td>{{ m.costo_promedio|default:'—' }}</td><td>{% if m.conocido %}{{ m.saldo_valor }}{% else %}desconocido{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="10">Sin movimientos en el período.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <section aria-labelledby="fpKManuales" class="mt-3"><h2 id="fpKManuales" class="h6">Movimientos manuales de este producto</h2>
+    <ul>{% for m in manuales %}<li id="manual-{{ m.id }}" data-anulado="{{ m.anulado|yesno:'si,no' }}">{{ m.fecha }} · {{ m.tipo.name }} · {{ m.cantidad }}{% if m.costo_unitario %} a {{ m.costo_unitario }}{% endif %} · {{ m.documento }}{% if m.nota %} · {{ m.nota }}{% endif %} · {{ m.creado_por }}
+      {% if m.anulado %}<strong>Anulado</strong> ({{ m.anulado_por }}, {{ m.anulado_en }}: {{ m.motivo_anulacion }}){% elif capacidades.anular %}
+      <form method="post" class="form-inline d-inline"><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"><input type="hidden" name="accion" value="anular">
+        <input type="hidden" name="movimiento" value="{{ m.id }}"><input type="hidden" name="producto" value="{{ producto.pk }}"><input type="hidden" name="desde" value="{{ desde }}"><input type="hidden" name="hasta" value="{{ hasta }}">
+        <label class="sr-only" for="fpKMotivo{{ m.id }}">Motivo</label><input id="fpKMotivo{{ m.id }}" name="motivo" class="form-control form-control-sm mx-1" maxlength="300" required placeholder="Motivo">
+        <button type="submit" class="btn btn-outline-danger btn-sm">Anular</button></form>{% endif %}</li>
+      {% empty %}<li>Ninguno.</li>{% endfor %}</ul>
+  </section>
+  {% if capacidades.registrar %}
+  <section aria-labelledby="fpKNuevo" class="mt-3"><h2 id="fpKNuevo" class="h6">Registrar un movimiento manual</h2>
+    <form method="post" class="form-inline"><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"><input type="hidden" name="accion" value="registrar">
+      <input type="hidden" name="clave" value="{{ clave_sugerida }}"><input type="hidden" name="producto" value="{{ producto.pk }}"><input type="hidden" name="desde" value="{{ desde }}"><input type="hidden" name="hasta" value="{{ hasta }}">
+      <label for="fpKTipo" class="mr-2">Tipo</label><select id="fpKTipo" name="tipo" class="form-control mr-2">{% for t in tipos %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+      <label for="fpKFecha" class="mr-2">Fecha</label><input type="date" id="fpKFecha" name="fecha" class="form-control mr-2" max="{{ hoy }}" required>
+      <label for="fpKCantidad" class="mr-2">Cantidad</label><input type="number" id="fpKCantidad" name="cantidad" class="form-control mr-2" min="1" step="1" required>
+      <label for="fpKCosto" class="mr-2">Costo unitario sin IVA</label><input type="text" inputmode="decimal" id="fpKCosto" name="costo_unitario" class="form-control mr-2" placeholder="Vacío en las salidas">
+      <label for="fpKDocumento" class="mr-2">Documento de respaldo</label><input id="fpKDocumento" name="documento" class="form-control mr-2" maxlength="120" required>
+      <label for="fpKNota" class="mr-2">Nota</label><input id="fpKNota" name="nota" class="form-control mr-2" maxlength="300">
+      <button type="submit" class="btn btn-primary">Registrar</button>
+    </form>
+  </section>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

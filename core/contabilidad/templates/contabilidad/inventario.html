@@ -1,0 +1,28 @@
+{% extends 'skin.html' %}
+{# Pantalla funcional «Inventario valorizado» (core/contabilidad/kardex.py). El diseño lo hace Codex (HANDOFF). #}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page">Inventario valorizado</li>{% endblock %}
+{% block content %}
+<div class="fp-inventario">
+  <header class="mb-3"><h1 class="h3">Inventario valorizado</h1>
+    <p class="text-muted">Saldo de cada producto inventariado a la fecha, al costo promedio ponderado del kardex. Los productos con
+      costo desconocido no suman al total.</p></header>
+  <form method="get" class="form-inline mb-3" aria-label="Elegir la fecha">
+    <label for="fpIFecha" class="mr-2">Fecha</label>
+    <input type="date" id="fpIFecha" name="fecha" class="form-control mr-2" value="{{ fecha }}" max="{% now 'Y-m-d' %}">
+    <button type="submit" class="btn btn-primary">Ver</button>
+  </form>
+  {% if fecha_invalida %}<div class="alert alert-warning" role="alert">Esa fecha no es válida: se muestra la de hoy.</div>{% endif %}
+  <p><a class="btn btn-outline-primary btn-sm" href="/contabilidad/inventario/exportar/?fecha={{ fecha }}&amp;empresa={{ request.company.pk }}">Descargar (XLSX)</a></p>
+  <p>Productos: <strong>{{ inventario.totales.productos }}</strong> · Valor con costo conocido: <strong data-valor-total="{{ inventario.totales.valor_conocido }}">{{ inventario.totales.valor_conocido }}</strong>
+    · Sin costo conocido: {{ inventario.totales.sin_costo }} · Con diferencia frente al stock: {{ inventario.totales.con_diferencia }}</p>
+  <div class="table-responsive" tabindex="0" role="region" aria-label="Inventario valorizado"><table class="table table-sm">
+    <thead><tr><th scope="col">Código</th><th scope="col">Producto</th><th scope="col">Cantidad</th><th scope="col">Costo promedio</th><th scope="col">Valor</th>
+      <th scope="col">Stock actual</th><th scope="col">Diferencia</th><th scope="col">Kardex</th></tr></thead>
+    <tbody>{% for f in inventario.filas %}<tr data-producto="{{ f.producto.id }}"><td>{{ f.producto.codigo }}</td><td>{{ f.producto.nombre }}</td><td>{{ f.cantidad }}</td>
+      <td>{{ f.costo_promedio|default:'—' }}</td><td>{% if f.conocido %}{{ f.valor }}{% else %}desconocido{% endif %}</td>
+      <td>{{ f.stock_actual|default_if_none:'' }}</td><td>{{ f.diferencia_stock|default_if_none:'' }}</td>
+      <td><a href="/contabilidad/kardex/?producto={{ f.producto.id }}&amp;hasta={{ fecha }}">Ver</a></td></tr>
+      {% empty %}<tr><td colspan="8">No hay productos inventariados con saldo.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

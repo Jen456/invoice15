@@ -114,6 +114,8 @@ class AuditLog(models.Model):
         ('captura_descartada', 'Recibo descartado'),
         ('captura_nota', 'Nota de un recibo pendiente corregida'),
         ('captura_liberada', 'Recibo devuelto a pendiente al eliminar su documento'),
+        ('kardex_movimiento', 'Movimiento manual del kardex registrado'),
+        ('kardex_movimiento_anulado', 'Movimiento manual del kardex anulado'),
     )
     created_at = models.DateTimeField(default=timezone.now, db_index=True, verbose_name='Fecha')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,

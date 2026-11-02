@@ -58,6 +58,10 @@ ESTRUCTURA = (
         ('/tributario/formularios/', 'Borradores del 104 y del 103', 4),
         ('/tributario/empresas/', 'Revisión de mis empresas', 5),
     )),
+    ('Contabilidad', 'fas fa-calculator', 66, (
+        ('/contabilidad/kardex/', 'Kardex por producto', 1),   # costo promedio ponderado (core/contabilidad)
+        ('/contabilidad/inventario/', 'Inventario valorizado', 2),
+    )),
     ('Reportes', 'fas fa-chart-pie', 70, ()),   # sin cambios de nombre
     ('Configuración', 'fas fa-cogs', 80, (
         ('/pos/company/update/', 'Empresa', 1),
@@ -116,6 +120,12 @@ MODULOS_NUEVOS = (
      'ATS del mes: XML validado contra el esquema oficial del SRI, con lo que queda fuera y por qué', ('view_libros',)),
     ('tributario', '/tributario/formularios/', 'fas fa-file-invoice-dollar',
      'Borradores por casillero del 104 y del 103 para revisar con el contador (no se presentan desde aquí)', ('view_libros',)),
+    # Kardex (core/contabilidad): lo crea contabilidad 0003 en instalaciones existentes.
+    ('contabilidad', '/contabilidad/kardex/', 'fas fa-boxes',
+     'Kardex por producto con costo promedio ponderado, calculado desde los documentos y completable a mano',
+     ('view_kardex', 'add_movimientomanual', 'change_movimientomanual')),
+    ('contabilidad', '/contabilidad/inventario/', 'fas fa-warehouse',
+     'Inventario valorizado a una fecha, al costo promedio del kardex', ('view_kardex',)),
 )
 
 

@@ -17,11 +17,12 @@ import tempfile
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-VUELTA = (('tributario', 'zero'), ('adjuntos', 'zero'), ('proformas', 'zero'), ('comprobantes', '0013_modulo_guias'), ('pos', '0019_orden_de_las_lineas'),
+VUELTA = (('contabilidad', 'zero'), ('tributario', 'zero'), ('adjuntos', 'zero'), ('proformas', 'zero'), ('comprobantes', '0013_modulo_guias'), ('pos', '0019_orden_de_las_lineas'),
           ('importacion', '0004_menu_con_guias'), ('tenancy', '0006_accion_empresa_agregada'))
 NUEVOS = {'/proformas/', '/comprobantes/retenciones-recibidas/', '/adjuntos/', '/adjuntos/capturas/', '/importacion/claves/',
           '/tributario/libros/',
-          '/tributario/revision/', '/tributario/empresas/', '/tributario/ats/', '/tributario/formularios/'}
+          '/tributario/revision/', '/tributario/empresas/', '/tributario/ats/', '/tributario/formularios/',
+          '/contabilidad/kardex/', '/contabilidad/inventario/'}
 VERIFICAR = """
 import json
 from django.contrib.auth.models import Group
@@ -71,8 +72,9 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
             # puntos (configuracion 0001-0003) y de respaldos (cobros 0001-0003) cuelgan de pos 0019 y no se deshacen con la
             # fase. Las 6 de adjuntos (sobre pos 0031; 0004-0006 = recibos por completar) y tenancy 0010 (acciones de los
             # recibos) sí. Las 3 de tributario (libros, revisión, ATS y borradores) cuelgan de pos 0019 e importacion 0004:
-            # la vuelta empieza por `tributario zero`. 35 en total.
-            assert len(pendientes(env)) == 35
+            # la vuelta empieza por `tributario zero`. Las 3 de contabilidad (kardex) cuelgan de pos 0019: antes,
+            # `contabilidad zero`; tenancy 0011 (acciones del kardex) cae con la vuelta a tenancy 0006. 39 en total.
+            assert len(pendientes(env)) == 39
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)
@@ -93,5 +95,5 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
         manage(env, 'migrate', 'comprobantes', '--noinput', '-v', '0')   # ida parcial: pos y comprobantes, sin Proformas
         urls = {m[0] for m in estado(env)['modulos']}
         assert '/comprobantes/retenciones-recibidas/' in urls and '/proformas/' not in urls
-        assert not {u for u in urls if u.startswith('/tributario/')}   # ni tributario sin migrar
+        assert not {u for u in urls if u.startswith(('/tributario/', '/contabilidad/'))}   # ni tributario ni kardex sin migrar
         ida_completa()

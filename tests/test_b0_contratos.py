@@ -189,7 +189,8 @@ class TestMenu:
             ('adjuntos', '/adjuntos/capturas/'),
             ('tributario', '/tributario/libros/'), ('tributario', '/tributario/revision/'),
             ('tributario', '/tributario/empresas/'), ('tributario', '/tributario/ats/'),
-            ('tributario', '/tributario/formularios/')]   # comprobantes de pago adjuntos
+            ('tributario', '/tributario/formularios/'), ('contabilidad', '/contabilidad/kardex/'),
+           ('contabilidad', '/contabilidad/inventario/')]   # comprobantes de pago adjuntos
 
     def test_importacion_queda_igual_y_se_recrea_igual(self):
         antes = estado_menu()

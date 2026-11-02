@@ -23,7 +23,7 @@ ACCOUNTANT_URLS = REPORT_URLS | {'/pos/sale/admin/', '/pos/credit/note/admin/', 
                                  '/proformas/', '/comprobantes/retenciones-recibidas/', '/adjuntos/',
                                  '/adjuntos/capturas/', '/tributario/libros/',
                                  '/tributario/revision/', '/tributario/empresas/', '/tributario/ats/',
-                                 '/tributario/formularios/'} | PROFILE_URLS
+                                 '/tributario/formularios/', '/contabilidad/kardex/', '/contabilidad/inventario/'} | PROFILE_URLS
 # Permisos que un rol de solo lectura nunca recibe aunque el módulo esté en su menú.
 WRITE_PREFIXES = ('add_', 'change_', 'delete_', 'adjust_')
 SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note', 'add_proforma', 'change_proforma',
@@ -31,7 +31,8 @@ SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note', 'a
                 'add_captura', 'change_captura'}   # guarda recibos o notas y completa como gasto los que guardó
 # Escritura que sí recibe el Contador: adjuntar y quitar comprobantes de pago (respaldo contable) y guardar, completar,
 # vincular o descartar recibos por completar (completar crea el gasto que faltaba); ningún otro documento.
-ACCOUNTANT_WRITE = {'add_adjunto', 'delete_adjunto', 'add_captura', 'change_captura'}
+ACCOUNTANT_WRITE = {'add_adjunto', 'delete_adjunto', 'add_captura', 'change_captura',
+                    'add_movimientomanual', 'change_movimientomanual'}   # movimientos manuales del kardex
 
 
 def role_modules(role, modules):

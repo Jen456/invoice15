@@ -40,5 +40,6 @@ urlpatterns = [
     path('proformas/', include('core.proformas.urls')),
     path('adjuntos/', include('core.adjuntos.urls')),
     path('tributario/', include('core.tributario.urls')),
+    path('contabilidad/', include('core.contabilidad.urls')),
     path('', DashboardView.as_view(), name='dashboard'),
 ]

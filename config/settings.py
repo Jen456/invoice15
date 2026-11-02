@@ -61,6 +61,7 @@ LOCAL_APPS = [
     'core.proformas',
     'core.adjuntos',
     'core.tributario',
+    'core.contabilidad',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + LOCAL_APPS + THIRD_PARTY_APPS
