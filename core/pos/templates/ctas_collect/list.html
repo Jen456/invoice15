@@ -19,7 +19,8 @@
 {% endblock %}
 
 {% block content_list_before %}
-    {% permisos_de 'delete_ctas_collect' as fpa_permisos %}{{ fpa_permisos|json_script:'fp-cobros-permisos' }}
+    {% include 'cobros/_panel.html' %}
+    {% permisos_de 'delete_ctas_collect' 'view_respaldocobro' as fpa_permisos %}{{ fpa_permisos|json_script:'fp-cobros-permisos' }}
     <div class="row">
         <div class="col-lg-5 col-md-12">
             <div class="form-group">

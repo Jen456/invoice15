@@ -31,8 +31,10 @@ function fpaAnulableEnSri(row) {
 }
 var sale = {
     list: function (all) {
+        this.todas = Boolean(all);
         var parameters = {
             'action': 'search',
+            'punto': $('#fpFiltroPunto').val() || '',
             'start_date': input_date_range.data('daterangepicker').startDate.format('YYYY-MM-DD'),
             'end_date': input_date_range.data('daterangepicker').endDate.format('YYYY-MM-DD'),
         };
@@ -68,8 +70,13 @@ var sale = {
                 {data: "id"},
             ],
             columnDefs: [
+                {targets: [1], render: function (data, type, row) {
+                    if (type !== 'display') return data;
+                    var punto = row.receipt && row.receipt.punto;
+                    return fpaTexto(data) + (punto ? '<small class="fp-lista-local">' + fpaTexto(punto.local) + ' · ' + fpaTexto(punto.descripcion) + '</small>' : '');
+                }},
                 {
-                    targets: [1, 2, 3],
+                    targets: [2, 3],
                     render: $.fn.dataTable.render.text()
                 },
                 {
@@ -122,6 +129,9 @@ var sale = {
                         buttons += '<div class="btn-group" role="group">';
                         buttons += '<button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fas fa-list"></i> Opciones</button>';
                         buttons += '<div class="dropdown-menu dropdown-menu-right">';
+                        if (fpaPermiso('view_respaldocobro')) {
+                            buttons += '<button type="button" class="dropdown-item" data-cobros-url="/cobros/factura/' + parseInt(row.id, 10) + '/"><i class="fas fa-receipt" aria-hidden="true"></i> Cobros y respaldos</button>';
+                        }
                         buttons += '<a class="dropdown-item" rel="detail"><i class="fas fa-folder-open"></i> Detalle de productos</a>';
                         buttons += '<a target="_blank" href="' + pathname + 'print/invoice/' + row.id + '/" class="dropdown-item"><i class="fas fa-ticket-alt"></i> Imprimir factura ticket</a> ';
                         // RIDE A4 (versión completa): existe desde que el SRI autoriza la factura (también si luego se anuló).
@@ -319,3 +329,5 @@ $(function () {
         sale.list(true);
     });
 });
+
+$(function () { $('#fpFiltroPunto').on('change', function () { sale.list(sale.todas); }); });

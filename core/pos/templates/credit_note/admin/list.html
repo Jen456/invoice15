@@ -38,6 +38,13 @@
                 </div>
             </div>
         </div>
+        <div class="col-lg-7 col-md-12"><div class="form-group fp-filtro-punto">
+            <label for="fpFiltroPunto">Local y punto de emisión</label>
+            <select id="fpFiltroPunto" name="punto" class="form-control">
+                <option value="">Todos los puntos</option>
+                {% for p in fpa_puntos %}<option value="{{ p.pk }}">{{ p.establishment.name|default:p.establishment.address }} · {{ p.description|default:"Punto" }} · {{ p.full_code }}</option>{% endfor %}
+            </select><small class="form-text text-muted">El filtro consulta documentos; no cambia tu punto para emitir.</small>
+        </div></div>
     </div>
     <hr>
     <div class="modal fade" id="myModalDetails" role="dialog">

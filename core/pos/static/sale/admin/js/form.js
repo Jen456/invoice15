@@ -198,30 +198,26 @@ var sale = {
         });
     },
     searchVoucherNumber: function () {
-        $.ajax({
-            url: pathname,
-            data: {
-                'action': 'search_voucher_number',
-                'receipt': select_receipt.val(),
-                'punto': $('[name="punto"]').val() || ''   // punto de emisión fijado al formulario (configuracion/_punto_emision.html)
+        if (this.consultaNumero) this.consultaNumero.abort();
+        var version = this.versionNumero = (this.versionNumero || 0) + 1;
+        var panel = $('.fp-punto-emision'), aviso = panel.find('.fp-punto-aviso');
+        $('input[name="voucher_number"]').val('');
+        panel.find('.fp-punto-proximo').text('Consultando…');
+        this.consultaNumero = $.ajax({
+            url: pathname, type: 'POST', dataType: 'json', headers: {'X-CSRFToken': csrftoken},
+            data: {action: 'search_voucher_number', receipt: select_receipt.val(), punto: panel.find('[name="punto"]').val() || ''},
+            success: function (r) {
+                if (version !== sale.versionNumero) return;
+                var mensaje = r.error || (r.pending && r.pending.mensaje);
+                aviso.text(mensaje || '').prop('hidden', !mensaje);
+                $('input[name="voucher_number"]').val(r.voucher_number || '');
+                panel.find('.fp-punto-proximo').text(r.voucher_number_full || 'Por confirmar');
+                if (r.punto) panel.find('.fp-punto-etiqueta').text(r.punto.etiqueta);
             },
-            type: 'POST',
-            headers: {
-                'X-CSRFToken': csrftoken
-            },
-            dataType: 'json',
-            success: function (request) {
-                if (!request.hasOwnProperty('error')) {
-                    $('input[name="voucher_number"]').val(request.voucher_number);
-                    return false;
-                }
-                message_error(request.error);
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-                message_error((jqXHR.responseJSON && jqXHR.responseJSON.error) || (errorThrown + ' ' + textStatus));
-            },
-            complete: function () {
-
+            error: function (xhr, status) {
+                if (status === 'abort' || version !== sale.versionNumero) return;
+                panel.find('.fp-punto-proximo').text('Por confirmar');
+                aviso.text((xhr.responseJSON && xhr.responseJSON.error) || 'No se pudo consultar el próximo número. Vuelve a elegir el punto para reintentar.').prop('hidden', false);
             }
         });
     },
@@ -890,7 +886,7 @@ $(function () {
         var contado = select_payment_type.val() === 'efectivo';
         var efectivo = contado && select_medio_cobro.val() === 'efectivo';
         sale.setOptionsFields([{'index': 0, 'enable': efectivo}, {'index': 1, 'enable': efectivo}, {'index': 2, 'enable': !contado}]);
-        $('.fp-cobro').toggle(contado);
+        $('.fp-cobro').toggle(contado).find('input,select,textarea').prop('disabled', !contado);
         $('.fp-cobro-efectivo-aviso').toggle(efectivo);
         if (efectivo) {
             fvSale.enableValidator('cash');
@@ -968,9 +964,13 @@ $(function () {
     // Barcode
 
     $(document).on('keypress', function (e) {
-        if (e.which === 13) {
+        if (e.which !== 13) return;
+        if (e.target === input_search_product[0]) {
             e.preventDefault();
             sale.searchProductBarcode();
+        } else if ($(e.target).closest('#frmForm').length && $(e.target).is('input:not([type=file]):not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit])')) {
+            // Evita la emisión implícita desde un campo; conserva Enter en notas y botones.
+            e.preventDefault();
         }
     });
 

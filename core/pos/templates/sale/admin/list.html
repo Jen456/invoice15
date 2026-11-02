@@ -9,7 +9,7 @@
 
 {% block columns %}
     <th>Id</th>
-    <th>Múmero</th>
+    <th>Número</th>
     <th>Fecha de registro</th>
     <th>Cliente</th>
     <th>Tipo de comprobante</th>
@@ -22,8 +22,9 @@
 {% endblock %}
 
 {% block content_list_before %}
+    {% include 'cobros/_panel.html' %}
     {# Etapa 2 (O2): permisos del rol para las opciones de anulado y retención recibida con json_script. #}
-    {% permisos_de 'change_anulado_sri_sale' 'add_retencionrecibida' as fpa_permisos %}{{ fpa_permisos|json_script:'fpa-permisos' }}
+    {% permisos_de 'change_anulado_sri_sale' 'add_retencionrecibida' 'view_respaldocobro' as fpa_permisos %}{{ fpa_permisos|json_script:'fpa-permisos' }}
     <div class="row">
         <div class="col-lg-5 col-md-12">
             <div class="form-group">
@@ -38,6 +39,13 @@
                 </div>
             </div>
         </div>
+        <div class="col-lg-7 col-md-12"><div class="form-group fp-filtro-punto">
+            <label for="fpFiltroPunto">Local y punto de emisión</label>
+            <select id="fpFiltroPunto" name="punto" class="form-control">
+                <option value="">Todos los puntos</option>
+                {% for p in fpa_puntos %}<option value="{{ p.pk }}">{{ p.establishment.name|default:p.establishment.address }} · {{ p.description|default:"Punto" }} · {{ p.full_code }}</option>{% endfor %}
+            </select><small class="form-text text-muted">El filtro consulta documentos; no cambia tu punto para emitir.</small>
+        </div></div>
     </div>
     <hr>
     <div class="modal fade" id="myModalDetails" role="dialog">

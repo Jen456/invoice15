@@ -29,3 +29,17 @@ El generador solo renderiza HTML con recursos locales; no inicializa Django ni c
 - Capturas de muestra en `../capturas/manual-clientes-*.webp`.
 
 Para compartir con clientes, descargar el PDF y enviarlo por el canal de atención acordado. El enlace del repositorio privado no es accesible a quien no tenga permisos. Esta entrega no ha enviado mensajes ni publicado el archivo en el sitio.
+
+## Complemento de revisión: cobros, gastos y locales (02/11/2026)
+
+- [Guía PDF de 3 páginas](Guia-cobros-gastos-locales.pdf).
+- [Texto fuente y alcance](COMPROBANTES-DE-PAGO.md).
+- [HTML imprimible](guia-cobros-gastos-locales.html).
+
+Describe la versión integrada y esta entrega frontend **aún sin publicar**. No reemplaza el manual público anterior hasta que Claude integre y verifique el despliegue. Incluye una sola ruta por respaldo, revisión y saldos, límites distintos de archivos, consulta mensual, gastos y puntos por usuario. Declara explícitamente que la captura solo por foto/nota pendiente de completar aún requiere backend.
+
+Regeneración sin servidor ni base de datos, con WeasyPrint instalado:
+
+```bash
+python -m weasyprint entregas/facturaporaqui/manuales/guia-cobros-gastos-locales.html entregas/facturaporaqui/manuales/Guia-cobros-gastos-locales.pdf
+```

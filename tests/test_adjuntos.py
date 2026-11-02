@@ -404,9 +404,13 @@ class TestMes:
             assert filas[('gasto', gasto.pk)]['falta'] is True and filas[('pago', pago.pk)]['falta'] is False
             assert filas[('gasto', en_efectivo.pk)]['requiere'] is False and filas[('gasto', en_efectivo.pk)]['falta'] is False
             compra = pago.debts_pay.purchase
-            assert filas[('compra', compra.pk)]['requiere'] is False   # compra antigua a crédito sin forma de pago: no se exige
+            compra_en_mes = compra.date_joined.replace(day=1) == MES
+            if compra_en_mes:
+                assert filas[('compra', compra.pk)]['requiere'] is False   # crédito sin forma de pago: no se exige
+            else:
+                assert ('compra', compra.pk) not in filas   # al principio del mes, la compra es del mes anterior
             totales = {k: v for k, v in resumen['totales'].items() if k != 'bytes_texto'}
-            assert totales == {'documentos': 8, 'con_comprobante': 3, 'sin_comprobante': 3, 'adjuntos': 2, 'notas': 1, 'pendientes_revision': 1,
+            assert totales == {'documentos': 8 if compra_en_mes else 7, 'con_comprobante': 3, 'sin_comprobante': 3, 'adjuntos': 2, 'notas': 1, 'pendientes_revision': 1,
                                'rechazados': 0, 'bytes': len(PDF) + con_archivo.archivo_bytes}
             assert sorted((f['tipo'], f['id']) for f in resumen['faltantes']) == sorted([('gasto', gasto.pk), ('cobro', cobro.pk), ('cobro', sin_respaldo.pk)])
             contenido = sv.zip_mes(MES)

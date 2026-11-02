@@ -710,3 +710,102 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
   .fp-consulta-cobro-datos { grid-template-columns: 1fr; }
 }
 .fp-gasto .form-control::placeholder { color: #486575; opacity: 1; }
+
+/* Cobros y locales: contratos de plataforma, sin duplicar los adjuntos de compras. */
+.fp-cobro, .fp-cobro-alta { color: #163B50; }
+.fp-cobro { padding: 22px; border: 1px solid #cbdfe8; border-radius: 14px; background: #f4fafd; margin: 18px 0; }
+.fp-cobro-cabecera { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; }
+.fp-cobro-cabecera > i { color: #a83924; background: #fcebe6; border-radius: 12px; padding: 13px; font-size: 20px; }
+.fp-cobro-cabecera h2, .fp-cobro-cabecera h3 { font-size: 21px; font-weight: 700; margin: 0 0 6px; }
+.fp-cobro-cabecera p { margin: 0; }
+.fp-cobro-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.fp-cobro-grid > * { min-width: 0; }
+.fp-cobro small, .fp-cobro-alta small, .fp-cobros-panel small { display: block; color: #486575; font-size: 13px; margin-top: 6px; }
+.fp-cobro .form-control, .fp-cobro-alta .form-control, .fp-cobros-panel .form-control { font-size: 16px; }
+.fp-cobro textarea, .fp-cobro-alta textarea { min-height: 100px; resize: vertical; }
+.fp-cobro-archivo { padding: 16px; border: 1px dashed #759eb1; background: white; border-radius: 10px; }
+.fp-cobro-archivo input, .fp-cobros-panel input[type=file] { max-width: 100%; font-size: 14px; min-height: 44px; }
+.fp-cobro-seccion { border: 1px solid #cbdfe8; border-radius: 14px; margin-bottom: 22px; padding: 22px; }
+.fp-cobro-seccion h3 { font-size: 20px; margin-bottom: 20px; }
+.fp-cobros-panel [hidden], .fp-selector-punto [hidden], .fp-punto-emision [hidden] { display: none !important; }
+.fp-cobros-panel .modal-dialog { max-width: 760px; }
+.fp-cobros-panel .modal-body { overflow-x: hidden; }
+.fp-cobros-panel .modal-title { font-size: 24px; }
+.fp-cobros-panel .modal-header { background: #E5F1F6; }
+.fp-cobros-panel fieldset { min-width: 0; }
+.fp-cobros-panel :focus-visible, .fp-puntos :focus-visible, .fp-selector-punto :focus-visible { outline: 3px solid #176581; outline-offset: 3px; }
+.fp-cobros-panel button { min-height: 44px; white-space: normal; }
+.fp-cobros-formulario { padding: 20px; margin-top: 22px; border-radius: 12px; background: #f4fafd; border: 1px solid #cbdfe8; }
+.fp-cobros-formulario h3 { font-size: 21px; }
+.fp-cobros-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 4px; }
+.fp-cobros-leyenda { font-size: 13px; color: #486575; line-height: 1.55; margin: 18px 0 0; }
+.fp-cobros-confirmacion { border-left: 4px solid #CA462C; padding: 16px; margin-top: 16px; background: white; }
+.fp-cobros-confirmacion button { margin: 4px 0; }
+.fp-cobros-historial { margin: 18px 0 0; padding-left: 22px; }
+.fp-cobros-historial li { padding: 8px 0; border-top: 1px solid #cbdfe8; overflow-wrap: anywhere; }
+.fp-cobros-historial p { white-space: pre-wrap; }
+.fp-selector-punto > .nav-link { display: flex; gap: 8px; align-items: center; background: transparent; border: 0; color: #163B50; font-size: 14px; min-height: 44px; }
+.fp-selector-punto .dropdown-menu { width: 350px; min-width: 0; max-width: calc(100vw - 20px); max-height: min(620px, 80vh); overflow-y: auto; border-radius: 12px; padding: 8px; }
+.fp-selector-punto .dropdown-item { white-space: normal; padding: 12px; border-radius: 8px; line-height: 1.5; }
+.fp-selector-punto .dropdown-item strong, .fp-selector-punto .dropdown-item span, .fp-selector-punto .dropdown-item small { display: block; }
+.fp-selector-punto .dropdown-item small { font-size: 12px; }
+.fp-selector-punto .dropdown-item.active { background: #163B50; color: white; }
+.fp-selector-intro { padding: 10px 12px; border-bottom: 1px solid #cbdfe8; }
+.fp-selector-intro p { font-size: 13px; color: #486575; margin: 6px 0; }
+.fp-selector-estado:not(:empty) { padding: 12px; background: #E5F1F6; font-size: 14px; border-radius: 8px; }
+.fp-selector-administrar { display: block; color: #163B50; font-weight: 650; padding: 12px; text-decoration: underline; }
+.fp-punto-emision { padding: 18px; margin: 0 0 22px; background: #f4fafd; border: 1px solid #cbdfe8; border-radius: 12px; color: #163B50; }
+.fp-punto-emision label { display: block; margin-top: 8px; }
+.fp-punto-emision select { font-size: 16px; max-width: 100%; }
+.fp-punto-resumen { margin: 14px 0 8px; overflow-wrap: anywhere; }
+.fp-punto-numero { margin: 0; font-size: 14px; }
+.fp-punto-numero small { display: block; color: #486575; margin-top: 4px; }
+.fp-punto-aviso { margin: 14px 0 0; }
+.fp-puntos .fp-puntos-header img { float: right; margin: 0 0 12px 16px; }
+.fp-puntos-atajos { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 28px; }
+.fp-puntos-atajos a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border: 1px solid #b8d0dc; border-radius: 10px; color: #163B50; background: white; font-weight: 600; }
+.fp-puntos-locales > h2 { font-size: 24px; margin: 0 0 18px; }
+.fp-puntos .fp-local { border-top: 4px solid #44BADD; }
+.fp-puntos .fp-local h3 { font-size: 23px; margin: 6px 0; }
+.fp-punto { border: 1px solid #cbdfe8; border-radius: 10px; padding: 18px; margin-top: 16px; background: #fff; }
+.fp-punto > p:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 17px; }
+.fp-punto .badge { font-size: 12px; line-height: 1.4; white-space: normal; }
+.fp-punto-inactivo { background: #f6f8f9; }
+.fp-punto-numeracion { border-top: 1px solid #e0e9ee; margin: 14px 0; }
+.fp-punto-numeracion summary { cursor: pointer; padding: 14px 0; font-weight: 650; }
+.fp-punto-numeracion section { padding: 16px; background: #f4fafd; border-radius: 10px; margin-bottom: 12px; }
+.fp-punto-numeracion h4 { font-size: 18px; font-weight: 700; }
+.fp-punto-numeracion h4 small { color: #486575; font-size: 13px; }
+.fp-punto-secuencias { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; margin: 16px 0 0; }
+.fp-punto-secuencias dd { margin: 4px 0 0; font-size: 14px; }
+.fp-punto-secuencias dd span, .fp-punto-secuencias dd strong { display: block; overflow-wrap: anywhere; }
+.fp-punto .btn { margin: 8px 6px 0 0; min-height: 44px; }
+.fp-puntos-altas { margin-bottom: 24px; }
+.fp-puntos-altas .fp-config-add { padding: 22px; }
+.fp-puntos-form { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px 24px; }
+.fp-puntos-form [data-campo="n-mode"], .fp-puntos-form [data-campo="n-confirm"] { grid-column: 1 / -1; }
+.fp-puntos-form button { align-self: end; min-height: 44px; }
+.fp-puntos .form-control { font-size: 16px; }
+.fp-puntos .table td { overflow-wrap: anywhere; }
+.fp-lista-local { display: block; margin-top: 5px; color: #486575; font-size: 12px; }
+@media (max-width: 767px) {
+    .fp-cobro-grid, .fp-puntos-form, .fp-punto-secuencias { grid-template-columns: minmax(0,1fr); }
+    .fp-cobro, .fp-cobro-seccion, .fp-cobros-formulario, .fp-punto { padding: 16px; }
+    .fp-cobro-cabecera > i { padding: 9px; }
+    .fp-cobros-panel .modal-dialog { margin: 8px; }
+    .fp-cobros-panel .modal-body, .fp-cobros-panel .modal-header { padding: 16px; }
+    .fp-cobros-acciones .btn { flex: 1 1 130px; }
+    .fp-puntos .fp-tabla-usuarios thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .fp-puntos .fp-tabla-usuarios, .fp-puntos .fp-tabla-usuarios tbody, .fp-puntos .fp-tabla-usuarios tr, .fp-puntos .fp-tabla-usuarios td { display: block; width: 100%; }
+    .fp-puntos .fp-tabla-usuarios tr { border: 1px solid #cbdfe8; border-radius: 10px; margin-bottom: 12px; padding: 12px; }
+    .fp-puntos .fp-tabla-usuarios td { border: 0; padding: 8px 0; }
+    .fp-puntos .fp-tabla-usuarios td::before { content: attr(data-label); display: block; font-size: 12px; color: #486575; font-weight: 650; margin-bottom: 4px; }
+    .fp-puntos-atajos a { flex: 1 1 auto; justify-content: center; }
+    .fp-selector-punto > .nav-link { padding: 8px 5px; font-size: 12px; gap: 5px; }
+}
+@media (prefers-reduced-motion: reduce) { .fp-cobros-panel.fade, .fp-cobros-panel.fade .modal-dialog { transition: none !important; } }
+.fp-selector-punto { flex-shrink: 0; }
+.fp-selector-codigo { white-space: nowrap; }
+.fp-puntos .fp-puntos-header { padding-right: 0; }
+.fp-puntos .badge-success { background: #225e38; color: #fff; }
+.fp-cobros-panel .form-control::placeholder, .fp-cobro .form-control::placeholder { color: #486575; opacity: 1; }

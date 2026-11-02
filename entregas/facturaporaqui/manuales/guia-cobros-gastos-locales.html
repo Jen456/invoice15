@@ -1,0 +1,167 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Guía de cobros, gastos y locales — FacturaPorAquí</title><style>@page {size:A4;margin:18mm 17mm 18mm;@bottom-left{content:"FacturaPorAquí · Guía de revisión · 02/11/2026";font-size:8pt;color:#486575}@bottom-right{content:counter(page);font-size:9pt;color:#163B50}}
+*{box-sizing:border-box}body{font:9.8pt/1.4 "DejaVu Sans",sans-serif;color:#163B50}header{border-bottom:2pt solid #CA462C;padding-bottom:5mm;margin-bottom:8mm}header img{width:12mm;height:12mm;vertical-align:middle;margin-right:4mm}header b{font-size:20pt}h1{font-size:25pt;line-height:1.15;margin:0 0 6mm;letter-spacing:-.5pt}h2{font-size:15pt;margin:6mm 0 3mm;border-bottom:.6pt solid #cbdfe8;padding-bottom:2mm;break-after:avoid}p{margin:0 0 3mm}li{margin:0 0 2mm}strong{font-weight:700}a{color:#a83924}table{width:100%;border-collapse:collapse;font-size:9pt;margin:5mm 0}th{background:#E5F1F6;text-align:left}th,td{border-bottom:.5pt solid #cbdfe8;padding:3mm;vertical-align:top}tr{break-inside:avoid}blockquote{background:#E5F1F6;padding:4mm;margin:4mm 0;border-left:3pt solid #CA462C}h1+p{color:#486575;font-size:9pt}ul,ol{padding-left:6mm}</style></head><body><header><img src="../../../static/img/brand/isotipo-pie.png" alt=""><b>FacturaPorAquí</b></header><h1 id="cobros-gastos-y-locales-guía-de-uso">Cobros, gastos y locales:
+guía de uso</h1>
+<p><strong>Edición de revisión · 2 de noviembre de 2026.</strong>
+Describe la versión integrada y el diseño de esta entrega, todavía
+pendientes de publicación. Úsala para revisar el flujo con empresas
+ficticias; entregar a clientes después de que Claude publique y
+compruebe las pantallas. Complementa el manual general.</p>
+<h2 id="un-respaldo-se-registra-una-sola-vez">Un respaldo se registra
+una sola vez</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Lo que necesitas</th>
+<th>Dónde hacerlo</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Respaldar el pago al contado de una factura</td>
+<td>Facturas emitidas → Opciones → <strong>Cobros y
+respaldos</strong></td>
+</tr>
+<tr class="even">
+<td>Cobrar una factura a crédito</td>
+<td>Cuentas por cobrar → <strong>Cobros y respaldos</strong> o
+<strong>Nuevo registro</strong></td>
+</tr>
+<tr class="odd">
+<td>Adjuntar el recibo de una compra, gasto o pago a proveedor</td>
+<td>En ese documento → <strong>Comprobantes de pago</strong></td>
+</tr>
+<tr class="even">
+<td>Revisar respaldos de todo el mes</td>
+<td>Administrativo → <strong>Comprobantes de pago</strong></td>
+</tr>
+<tr class="odd">
+<td>Incorporar una factura electrónica recibida</td>
+<td><strong>Importación de documentos</strong>, con su XML, RIDE o clave
+según las opciones disponibles</td>
+</tr>
+</tbody>
+</table>
+<p>Un comprobante bancario respalda un movimiento. No reemplaza la
+factura tributaria. Evita subir el mismo archivo otra vez desde otro
+módulo: la consulta mensual reúne los respaldos existentes.</p>
+<h2 id="factura-al-contado">Factura al contado</h2>
+<p>Al crear la factura, elige la condición <strong>Contado</strong> y el
+<strong>medio de cobro</strong>. Efectivo recibido y cambio se usan
+únicamente con efectivo. Para transferencia u otro medio, adjunta el
+comprobante, escribe una nota interna o conserva ambos. En efectivo son
+opcionales.</p>
+<p>Para una factura ya registrada, abre <strong>Opciones → Cobros y
+respaldos → Añadir respaldo</strong>. Comprueba la factura y su total,
+elige el medio, escribe la referencia si la tienes y añade la nota o
+archivo. Pulsa <strong>Revisar antes de guardar</strong> y después
+<strong>Confirmar</strong>. Esta acción documenta el contado; no crea
+otra cuenta por cobrar.</p>
+<p>Se admiten <strong>PDF, JPG y PNG, hasta 5 MB</strong>. La nota
+admite 500 caracteres. Ni la nota ni el archivo se imprimen en el RIDE o
+ticket, ni se incluyen en el XML o correos del comprobante.</p>
+<h2 id="factura-a-crédito-y-abonos">Factura a crédito y abonos</h2>
+<p>Una factura a crédito sin abono no requiere respaldo de cobro al
+emitirla. Cuando recibas dinero:</p>
+<ol type="1">
+<li>Abre su ficha <strong>Cobros y respaldos</strong> desde Facturas
+emitidas o Cuentas por cobrar.</li>
+<li>Pulsa <strong>Registrar cobro</strong>, elige el medio e indica
+importe y fecha.</li>
+<li>Adjunta el comprobante o escribe una nota interna.</li>
+<li>Comprueba los datos y pulsa <strong>Confirmar</strong>.</li>
+</ol>
+<p><strong>Confirmar el cobro crea un abono y reduce el saldo</strong>,
+aunque su respaldo siga pendiente de revisión. No uses esta acción si
+solo deseas consultar. Para revisar un abono ya registrado, utiliza su
+respaldo existente. Una cuenta originada en una nota de débito conserva
+su flujo propio de abonos en Cuentas por cobrar.</p>
+<h2 id="revisar-y-corregir">Revisar y corregir</h2>
+<ul>
+<li><strong>Pendiente de revisión:</strong> falta que el responsable
+compruebe el respaldo.</li>
+<li><strong>Revisado:</strong> el responsable dejó registrada su
+revisión.</li>
+<li><strong>Rechazado:</strong> el responsable detectó un problema y
+escribió el motivo.</li>
+</ul>
+<p>Propietario y Administrador revisan. El Vendedor registra los
+respaldos permitidos y corrige los suyos mientras están pendientes.
+Contador y Consulta los consultan según sus permisos. La pantalla
+muestra únicamente las acciones autorizadas por el servidor.</p>
+<p><strong>Revisar o rechazar un respaldo no cambia el saldo ni revierte
+el abono.</strong> Si el cobro fue registrado por error, debe corregirse
+desde Cuentas por cobrar con el permiso correspondiente. Su historial se
+conserva. «Revisado» tampoco significa conciliado con el banco.</p>
+<p><strong>Corregir respaldo</strong> permite actualizar nota,
+referencia o archivo. Si no eliges otro archivo, se conserva el actual.
+El anterior permanece en el historial al sustituirlo. Un respaldo que
+estaba revisado vuelve a pendiente al corregirse. Puedes consultar
+autor, fecha, revisión y cambios mediante <strong>Ver
+historial</strong>.</p>
+<p>Si una respuesta se pierde, consulta la ficha. <strong>Reintentar el
+mismo envío</strong> conserva la clave del intento mientras permanezcas
+en esa página, para evitar un segundo abono. No recargues ni abras otro
+registro para repetirlo a ciegas. Si ya recargaste, verifica primero el
+saldo y los abonos registrados.</p>
+<h2 id="gastos-cotidianos">Gastos cotidianos</h2>
+<p>En <strong>Compras y gastos → Gastos → Nuevo registro</strong>,
+completa tipo de gasto, fecha, importe y descripción. Puedes escribir en
+la descripción una nota útil, por ejemplo: «Taxi de la oficina a la
+bodega, pagado por Ana».</p>
+<p>Adjunta el recibo si lo tienes. Referencia y datos adicionales se
+muestran aparte. El archivo y el gasto se envían juntos: si el archivo
+no es válido, el registro no se guarda. En gastos, compras y pagos se
+admiten <strong>PDF, JPG, PNG y WEBP, hasta 8 MB por archivo y 10 por
+documento</strong>.</p>
+<p><strong>Límite de esta versión:</strong> todavía no existe una
+bandeja para guardar solo una foto o nota y completar el gasto después.
+Tampoco la descripción del gasto cuenta por sí sola como respaldo en el
+filtro mensual. No inventes importes ni proveedores para eludir los
+campos: esa captura pendiente requiere una entrega de backend.</p>
+<h2 id="revisar-el-mes-y-entregar-al-contador">Revisar el mes y entregar
+al contador</h2>
+<p>En <strong>Administrativo → Comprobantes de pago</strong>, elige el
+mes. La lista reúne compras, gastos, pagos a proveedores, facturas al
+contado y cobros a crédito, según tus permisos. Cada fila identifica su
+origen y permite abrir el respaldo correspondiente.</p>
+<p>Usa los filtros de pendientes, notas y revisión para localizar lo que
+falta. <strong>Descargar ZIP del mes</strong> reúne los archivos y un
+índice CSV con origen, respaldo y revisión. También está disponible
+cuando solo hay notas. Las notas internas se incluyen en el índice;
+comparte la descarga únicamente con las personas autorizadas.</p>
+<p>La lista y el ZIP no constituyen una declaración tributaria ni una
+conciliación bancaria. Adjuntar o quitar un archivo de compra, gasto o
+pago no cambia su importe ni elimina el movimiento.
+<strong>Quitar</strong> conserva autor, fecha y motivo en el
+historial.</p>
+<h2 id="locales-y-puntos-de-emisión">Locales y puntos de emisión</h2>
+<p>Abre <strong>Configuración → Locales y puntos de emisión</strong>. Un
+establecimiento identifica el local registrado para tu RUC; dentro de él
+puedes tener varios puntos, como Caja principal o Ventas web. Ejemplo:
+«Local Norte · Caja principal · 002-001».</p>
+<ol type="1">
+<li><strong>Agregar local:</strong> copia código y dirección del
+establecimiento registrado en el SRI; añade un nombre fácil de
+reconocer. Registrarlo en la aplicación no lo registra en el SRI.</li>
+<li><strong>Agregar punto:</strong> elige el local, su código de tres
+dígitos y una descripción.</li>
+<li><strong>Numeración:</strong> configura cada tipo de documento y
+ambiente. Si vienes de otro sistema, usa el último número realmente
+utilizado. Comprueba antes de confirmar; las numeraciones usadas no se
+reinician.</li>
+<li><strong>Usuarios:</strong> asigna los puntos permitidos cuando
+necesites restringirlos. Sin autorizaciones explícitas, el usuario puede
+usar todos los puntos activos. Propietario y Administrador usan todos.
+<strong>Quitar la última autorización devuelve el acceso a todos; no
+bloquea al usuario.</strong></li>
+</ol>
+<p>El selector de la cabecera guarda tu punto preferido para documentos
+nuevos, por usuario y empresa. Cada formulario abierto conserva su
+propio punto. Si necesitas cambiarlo en esa factura, usa <strong>Local y
+punto de este documento</strong> dentro del formulario y comprueba el
+número mostrado.</p>
+<p>La vista previa no reserva numeración. Si falta configuración,
+aparece el requisito que indica el servidor. En los listados de facturas
+y notas de crédito, el filtro de local/punto sirve para consultar y no
+cambia la preferencia de emisión.</p>
+</body></html>
