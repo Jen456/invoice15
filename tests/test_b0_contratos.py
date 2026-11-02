@@ -186,7 +186,8 @@ class TestMenu:
             ('comprobantes', '/comprobantes/retenciones-recibidas/'),   # Etapa 2 (O2)
             ('configuracion', '/configuracion/puntos/'),   # Locales y puntos de emisión por usuario
             ('adjuntos', '/adjuntos/'),
-            ('adjuntos', '/adjuntos/capturas/')]   # comprobantes de pago adjuntos
+            ('adjuntos', '/adjuntos/capturas/'),
+            ('tributario', '/tributario/libros/')]   # comprobantes de pago adjuntos
 
     def test_importacion_queda_igual_y_se_recrea_igual(self):
         antes = estado_menu()

@@ -51,6 +51,9 @@ ESTRUCTURA = (
         ('/comprobantes/retenciones-recibidas/', 'Retenciones recibidas', 3),   # Etapa 2 (O2)
         ('/adjuntos/', 'Comprobantes de pago', 4),   # comprobantes de pago adjuntos (core/adjuntos)
     )),
+    ('Tributario', 'fas fa-balance-scale', 65, (
+        ('/tributario/libros/', 'Libros mensuales', 1),   # libros de ventas, compras y retenciones (core/tributario)
+    )),
     ('Reportes', 'fas fa-chart-pie', 70, ()),   # sin cambios de nombre
     ('Configuración', 'fas fa-cogs', 80, (
         ('/pos/company/update/', 'Empresa', 1),
@@ -98,6 +101,9 @@ MODULOS_NUEVOS = (
     ('adjuntos', '/adjuntos/capturas/', 'fas fa-camera',
      'Recibos y notas guardados para completar después como gasto o compra (sin efectos contables mientras están pendientes)',
      ('view_captura', 'add_captura', 'change_captura')),
+    # Libros mensuales (core/tributario): lo crea tributario 0003 en instalaciones existentes.
+    ('tributario', '/tributario/libros/', 'fas fa-book',
+     'Libros de ventas, compras y retenciones del mes, por tarifa, exportables a XLSX y CSV', ('view_libros',)),
 )
 
 

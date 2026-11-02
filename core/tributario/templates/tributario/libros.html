@@ -1,0 +1,57 @@
+{% extends 'skin.html' %}
+{# Pantalla funcional «Libros mensuales» (core/tributario). El diseño lo hace Codex sobre el contrato de HANDOFF. #}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page">Libros mensuales</li>{% endblock %}
+{% block content %}
+<div class="fp-libros">
+  <header class="mb-3">
+    <h1 class="h3">Libros mensuales</h1>
+    <p>Ventas, compras y retenciones del mes, por tarifa, con el enlace a cada documento. Solo comprobantes autorizados en
+       producción; lo anulado en el SRI se lista y no suma. No es una declaración: es el detalle para preparar el 104, el 103 y el ATS.</p>
+  </header>
+  <form method="get" class="form-inline mb-3" aria-label="Elegir el mes">
+    <input type="hidden" name="libro" value="{{ clave }}">
+    <label for="fpLibrosMes" class="mr-2">Mes</label>
+    <input type="month" id="fpLibrosMes" name="mes" class="form-control mr-2" value="{{ mes_valor }}" max="{% now 'Y-m' %}">
+    <button type="submit" class="btn btn-primary mr-2">Ver</button>
+    <a class="btn btn-outline-secondary mr-1" href="?libro={{ clave }}&amp;mes={{ anterior }}">Mes anterior</a>
+    {% if siguiente %}<a class="btn btn-outline-secondary" href="?libro={{ clave }}&amp;mes={{ siguiente }}">Mes siguiente</a>{% endif %}
+  </form>
+  {% if mes_invalido %}<div class="alert alert-warning" role="alert">Ese mes no es válido: se muestra el mes actual.</div>{% endif %}
+  <nav class="mb-3" aria-label="Libros">
+    {% for l in libros %}
+    <a class="btn btn-sm {% if l.clave == clave %}btn-secondary{% else %}btn-outline-secondary{% endif %} mb-1" href="?libro={{ l.clave }}&amp;mes={{ mes_valor }}"
+       {% if l.clave == clave %}aria-current="page"{% endif %}>{{ l.nombre }} ({{ l.filas }})</a>
+    {% endfor %}
+  </nav>
+  <p>
+    <a class="btn btn-outline-primary btn-sm" href="/tributario/libros/exportar/?libro={{ clave }}&amp;mes={{ mes_valor }}&amp;formato=xlsx">Descargar este libro (XLSX)</a>
+    <a class="btn btn-outline-primary btn-sm" href="/tributario/libros/exportar/?libro={{ clave }}&amp;mes={{ mes_valor }}&amp;formato=csv">Descargar este libro (CSV)</a>
+    <a class="btn btn-outline-primary btn-sm" href="/tributario/libros/exportar/?libro=todos&amp;mes={{ mes_valor }}&amp;formato=xlsx">Descargar los cuatro libros (XLSX)</a>
+  </p>
+  {% for a in actual.advertencias %}<div class="alert alert-warning" role="status">{{ a.texto }}</div>{% endfor %}
+  {% for grupo, c in actual.excluidos.items %}<p class="text-muted small">Fuera del libro ({{ grupo }}): {{ c.pruebas }} en ambiente de pruebas y {{ c.sin_autorizar }} sin autorizar en el SRI.</p>{% endfor %}
+  <section aria-labelledby="fpLibroTitulo">
+    <h2 id="fpLibroTitulo" class="h5">{{ actual.nombre }} · {{ mes|date:"F Y" }}</h2>
+    {% if actual.total_filas > max_filas %}<p class="alert alert-info">Se muestran {{ max_filas }} de {{ actual.total_filas }} filas: descarga el libro para verlas todas.</p>{% endif %}
+    {% if actual.filas %}
+    <div class="table-responsive" tabindex="0" role="region" aria-label="{{ actual.nombre }}"><table class="table table-sm table-striped">
+      <thead><tr>{% for c in actual.columnas %}<th scope="col">{{ c.encabezado }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for f in actual.filas %}<tr{% if not f.cuenta %} class="text-muted"{% endif %} data-documento="{{ f.id }}">{% for c in f.celdas %}
+        <td>{% if c.clave == 'url' %}<a href="{{ c.valor }}">Ver documento</a>{% else %}{{ c.valor }}{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="text-muted">No hay documentos en este libro para el mes.</p>{% endif %}
+    <h3 class="h6 mt-3">Totales</h3>
+    <dl class="row">
+      <dt class="col-sm-4">Documentos en el libro</dt><dd class="col-sm-8">{{ actual.totales.documentos }} ({{ actual.totales.cuentan }} suman, {{ actual.totales.no_cuentan }} anulados)</dd>
+      {% if actual.totales.bases %}{% for codigo, base in actual.totales.bases.items %}<dt class="col-sm-4">Base {{ codigo }}</dt><dd class="col-sm-8">{{ base }}</dd>{% endfor %}
+      {% for codigo, iva in actual.totales.ivas.items %}<dt class="col-sm-4">IVA {{ codigo }}</dt><dd class="col-sm-8">{{ iva }}</dd>{% endfor %}
+      <dt class="col-sm-4">Total</dt><dd class="col-sm-8">{{ actual.totales.total }}</dd>{% endif %}
+      {% if actual.totales.por_codigo %}{% for nombre, g in actual.totales.por_codigo.items %}<dt class="col-sm-4">{{ nombre }}</dt><dd class="col-sm-8">base {{ g.base }} · retenido {{ g.valor }}</dd>{% endfor %}
+      <dt class="col-sm-4">Renta retenida</dt><dd class="col-sm-8">{{ actual.totales.renta }}</dd><dt class="col-sm-4">IVA retenido</dt><dd class="col-sm-8">{{ actual.totales.iva }}</dd>{% endif %}
+    </dl>
+  </section>
+  {% if exportaciones %}<section aria-labelledby="fpExportTitulo"><h2 id="fpExportTitulo" class="h6">Descargas de este mes</h2><ul>
+    {% for e in exportaciones %}<li>{{ e.get_libro_display }} · {{ e.formato|upper }} · {{ e.filas }} filas · {{ e.generado_por.username|default:"—" }} · {{ e.generado_en|date:"Y-m-d H:i" }} · SHA-256 {{ e.sha256|slice:":12" }}…</li>{% endfor %}
+  </ul></section>{% endif %}
+</div>
+{% endblock %}

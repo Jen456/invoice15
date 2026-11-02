@@ -17,7 +17,7 @@ RUTAS_DE_PAGO = (
     '/pos/sale/', '/pos/credit/note/', '/pos/client/', '/pos/receipt/', '/pos/voucher/errors/',
     '/pos/promotions/', '/pos/ctas/collect/', '/pos/expenses/', '/pos/type/expense/',
     '/reports/sale/', '/reports/expenses/', '/reports/ctas/collect/', '/reports/results/', '/reports/earnings/',
-    '/comprobantes/', '/proformas/', '/cobros/',
+    '/comprobantes/', '/proformas/', '/cobros/', '/tributario/',
 )
 
 # Incluidos solo en los planes ilimitados (Ilimitado y Multiempresa), por decisión comercial del 15/10/2026.
