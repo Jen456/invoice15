@@ -32,6 +32,7 @@ ESTRUCTURA = (
         ('/pos/provider/', 'Proveedores', 3),
         ('/pos/expenses/', 'Gastos', 4),
         ('/pos/type/expense/', 'Tipos de gastos', 5),
+        ('/adjuntos/capturas/', 'Recibos por completar', 6),   # captura rápida de gastos (core/adjuntos)
     )),
     ('Importación de documentos', 'fas fa-file-import', 40, (
         ('/importacion/nueva/', 'Nueva importación XML / RIDE', 1),
@@ -93,6 +94,10 @@ MODULOS_NUEVOS = (
     # Comprobantes de pago adjuntos (core/adjuntos): lo crea adjuntos 0003 en instalaciones existentes.
     ('adjuntos', '/adjuntos/', 'fas fa-paperclip', 'Comprobantes de pago adjuntos a compras, gastos y pagos a proveedores (ventas y cobros: core/cobros)',
      ('view_adjunto', 'add_adjunto', 'delete_adjunto')),
+    # Recibos y notas por completar (captura rápida de gastos): lo crea adjuntos 0006 en instalaciones existentes.
+    ('adjuntos', '/adjuntos/capturas/', 'fas fa-camera',
+     'Recibos y notas guardados para completar después como gasto o compra (sin efectos contables mientras están pendientes)',
+     ('view_captura', 'add_captura', 'change_captura')),
 )
 
 

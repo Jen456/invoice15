@@ -14,19 +14,22 @@ CLIENT_URLS = {'/pos/client/update/profile/', '/pos/sale/client/', '/pos/credit/
 REPORT_URLS = {'/reports/sale/', '/reports/purchase/', '/reports/expenses/', '/reports/debts/pay/',
                '/reports/ctas/collect/', '/reports/results/', '/reports/earnings/'}
 SELLER_URLS = {'/pos/client/', '/pos/sale/admin/', '/pos/credit/note/admin/', '/pos/product/', '/pos/promotions/',
-               '/reports/sale/', '/proformas/'} | PROFILE_URLS
+               '/reports/sale/', '/proformas/', '/adjuntos/capturas/'} | PROFILE_URLS
 ACCOUNTANT_URLS = REPORT_URLS | {'/pos/sale/admin/', '/pos/credit/note/admin/', '/pos/purchase/', '/pos/expenses/',
                                  '/pos/ctas/collect/', '/pos/debts/pay/', '/pos/voucher/errors/', '/pos/client/',
                                  '/pos/provider/', '/comprobantes/retenciones/',
                                  '/comprobantes/liquidaciones/', '/comprobantes/notas-debito/', '/comprobantes/guias/',
                                  '/importacion/lotes/', '/importacion/pendientes/', '/importacion/recibidos/',
-                                 '/proformas/', '/comprobantes/retenciones-recibidas/', '/adjuntos/'} | PROFILE_URLS
+                                 '/proformas/', '/comprobantes/retenciones-recibidas/', '/adjuntos/',
+                                 '/adjuntos/capturas/'} | PROFILE_URLS
 # Permisos que un rol de solo lectura nunca recibe aunque el módulo esté en su menú.
 WRITE_PREFIXES = ('add_', 'change_', 'delete_', 'adjust_')
 SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note', 'add_proforma', 'change_proforma',
-                'add_respaldocobro'}   # registra el respaldo del cobro; revisarlo (change_revision_) es de Propietario/Administrador
-# Escritura que sí recibe el Contador: adjuntar y quitar comprobantes de pago (respaldo contable), nunca documentos.
-ACCOUNTANT_WRITE = {'add_adjunto', 'delete_adjunto'}
+                'add_respaldocobro',   # registra el respaldo del cobro; revisarlo (change_revision_) es de Propietario/Administrador
+                'add_captura', 'change_captura'}   # guarda recibos o notas y completa como gasto los que guardó
+# Escritura que sí recibe el Contador: adjuntar y quitar comprobantes de pago (respaldo contable) y guardar, completar,
+# vincular o descartar recibos por completar (completar crea el gasto que faltaba); ningún otro documento.
+ACCOUNTANT_WRITE = {'add_adjunto', 'delete_adjunto', 'add_captura', 'change_captura'}
 
 
 def role_modules(role, modules):

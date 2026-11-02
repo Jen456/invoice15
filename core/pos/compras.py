@@ -1116,6 +1116,8 @@ def eliminar_compra(compra, usuario, *, request=None):
         detalle = {'compra': compra.pk, 'numero': compra.numero_comprobante, 'total': compra.total, 'origen': compra.origen}
         modificada_id = compra.compra_modificada_id if compra.tipo_comprobante == '04' else None
         company = compra.company
+        from core.adjuntos.servicios import al_eliminar_documento   # respaldos quitados; recibos de vuelta a pendiente
+        al_eliminar_documento('compra', compra.pk, usuario, request, titulo=f'Compra {compra.numero_comprobante}')
         compra.delete()
         if modificada_id:
             cuentas_por_pagar.recalcular_de_compra(modificada_id, company.pk)

@@ -1,12 +1,13 @@
 """Comprobantes de pago adjuntos (compras, gastos y pagos a proveedores) y la consulta mensual común con los respaldos de
-cobros (core/cobros): permisos y plan, alta, baja lógica, listado, resumen del mes y ZIP.
+cobros (core/cobros) y los recibos por completar (capturas): permisos y plan, alta (archivo o nota), baja lógica, listado,
+resumen del mes y ZIP.
 
 Opción A (DECISION-ENTREGA-COMERCIAL-2026-10-31.md): las facturas emitidas al contado y los cobros de cuentas por cobrar se
 respaldan en core/cobros (nota o archivo, revisión, historial e idempotencia); aquí quedan los documentos de egreso. La
 consulta del mes y el ZIP recogen ambos orígenes sin copiar ni duplicar: cada fila dice de dónde viene (`origen`), si su
 respaldo es un archivo o una nota, y su estado de revisión; una nota válida no cuenta como falta de respaldo; el importe
 del abono y el de su respaldo no se suman dos veces. Los permisos son los de cada documento: quien no puede ver ventas o
-cobros no ve esas filas.
+cobros no ve esas filas. Los recibos pendientes de completar van aparte (`resumen.capturas`): no son documentos.
 """
 import csv
 import io
@@ -23,7 +24,7 @@ from django.utils import timezone
 
 from core.adjuntos import archivos
 from core.adjuntos.documentos import DOCUMENTOS, SIN_COMPROBANTE_ESPERADO, TIPOS_EN_COBROS, describir
-from core.adjuntos.models import CLASES, CLASE_POR_MEDIO, Adjunto
+from core.adjuntos.models import CLASE_NOTA, CLASES, CLASE_POR_MEDIO, NOTA_MAX, Adjunto
 from core.pos.models import Expenses, PaymentsCtaCollect, PaymentsDebtsPay, Purchase, Sale
 from core.security.session import get_group
 from core.suscripciones import reglas
@@ -34,6 +35,13 @@ VENTAS_CON_COMPROBANTE = ('authorized', 'authorized_and_sent_by_email')
 # Lo que exige ver cada fila de cobros en la consulta del mes (además de view_adjunto para la página).
 PERMISOS_COBROS = {'venta': ('view_respaldocobro', 'view_sale'), 'cobro': ('view_respaldocobro', 'view_ctas_collect')}
 CARPETAS_COBROS = {'venta': 'facturas-emitidas', 'cobro': 'cobros'}
+CARPETA_CAPTURAS = 'recibos-por-completar'
+
+# Textos exactos (documentados en HANDOFF para el frontend).
+RESPALDO_REQUERIDO = 'Adjunta el recibo o escribe una nota (o ambos).'
+NOTA_LARGA = f'La nota o descripción admite hasta {NOTA_MAX} caracteres.'
+NOTA_DUPLICADA = 'Esta nota ya está registrada en este documento.'
+ARCHIVO_DUPLICADO = 'Este archivo ya está adjunto a este documento.'
 
 
 class ErrorAdjunto(Exception):
@@ -121,10 +129,51 @@ def _importe(valor):
     return importe
 
 
-def adjuntar(company, usuario, tipo, documento, archivo, *, clase='', referencia='', fecha=None, importe=None, descripcion=''):
-    """Guarda un comprobante del documento (ya comprobados los permisos). `archivo`: UploadedFile o bytes."""
+def texto(valor, maximo=NOTA_MAX, codigo='nota_larga', mensaje=NOTA_LARGA):
+    """Texto de una nota o descripción con los espacios normalizados; más largo que `maximo` → error (no se recorta)."""
+    valor = ' '.join((valor or '').split())
+    if len(valor) > maximo:
+        raise ErrorAdjunto(mensaje, codigo)
+    return valor
+
+
+def bloquear_documento(tipo, documento_id):
+    """El documento de la empresa activa con su fila bloqueada hasta el final de la transacción (serializa altas de
+    adjuntos sobre el mismo documento: duplicados y límite por documento), o ErrorAdjunto 404."""
+    documento = DOCUMENTOS[tipo].modelo.objects.select_for_update(of=('self',)).filter(pk=documento_id).first()
+    if documento is None:
+        raise ErrorAdjunto('El documento no existe o es de otra empresa.', 'documento', 404)
+    return documento
+
+
+def comprobar_cupo(tipo, documento_id, nuevos=1):
+    if listar(tipo, documento_id).count() + nuevos > archivos.MAX_POR_DOCUMENTO:
+        raise ErrorAdjunto(f'Un documento admite hasta {archivos.MAX_POR_DOCUMENTO} comprobantes (archivos y notas).', 'limite')
+
+
+def crear_nota(company, usuario, tipo, documento_id, nota, *, captura=None, subido_por=None, subido_en=None):
+    """Nota de respaldo sin archivo (dentro de la transacción y con el documento ya bloqueado por quien llama)."""
+    if listar(tipo, documento_id).filter(archivo='', descripcion=nota).exists():
+        raise ErrorAdjunto(NOTA_DUPLICADA, 'duplicado', 409)
+    comprobar_cupo(tipo, documento_id)
+    autor = subido_por if subido_por is not None else (usuario if getattr(usuario, 'pk', None) else None)
+    return Adjunto.objects.create(company=company, documento_tipo=tipo, documento_id=documento_id, clase=CLASE_NOTA, descripcion=nota,
+                                  captura=captura, subido_por=autor, subido_en=subido_en or timezone.now())
+
+
+def adjuntar(company, usuario, tipo, documento, archivo=None, *, clase='', referencia='', fecha=None, importe=None,
+             descripcion='', nota=''):
+    """Guarda un respaldo del documento (ya comprobados los permisos): un archivo (UploadedFile o bytes) con su descripción,
+    o una nota sin archivo. Con archivo, `nota` sirve de descripción si no llega otra. Sin archivo ni nota: error."""
     if tipo not in DOCUMENTOS:
         raise ErrorAdjunto('Este documento se respalda desde el cobro (core/cobros), no con un adjunto genérico.', 'tipo', 404)
+    nota, descripcion = texto(nota), texto(descripcion)
+    if archivo is None:
+        if not nota:
+            raise ErrorAdjunto(RESPALDO_REQUERIDO, 'respaldo_requerido')
+        with transaction.atomic():
+            bloquear_documento(tipo, documento.pk)
+            return crear_nota(company, usuario, tipo, documento.pk, nota)
     if hasattr(archivo, 'size') and archivo.size > archivos.MAX_BYTES:
         raise ErrorAdjunto(f'El archivo pesa más de {archivos.MAX_BYTES // archivos.MB} MB. Comprime el PDF o reduce la foto.', 'tamano')
     contenido = archivo.read() if hasattr(archivo, 'read') else bytes(archivo)
@@ -132,16 +181,16 @@ def adjuntar(company, usuario, tipo, documento, archivo, *, clase='', referencia
         nombre, tipo_mime, sha256 = archivos.validar(getattr(archivo, 'name', ''), contenido)
     except archivos.ArchivoInvalido as e:
         raise ErrorAdjunto(str(e), 'archivo')
-    if clase not in dict(CLASES):
+    if clase not in dict(CLASES):   # la nota no es una clase de archivo
         clase = clase_sugerida(tipo, documento)
     datos = dict(clase=clase, referencia=' '.join((referencia or '').split())[:100], fecha=_fecha(fecha), importe=_importe(importe),
-                 descripcion=' '.join((descripcion or '').split())[:300])
+                 descripcion=descripcion or nota)
     with transaction.atomic():
+        bloquear_documento(tipo, documento.pk)
         vigentes = listar(tipo, documento.pk)
         if vigentes.filter(sha256=sha256).exists():
-            raise ErrorAdjunto('Este archivo ya está adjunto a este documento.', 'duplicado', 409)
-        if vigentes.count() >= archivos.MAX_POR_DOCUMENTO:
-            raise ErrorAdjunto(f'Un documento admite hasta {archivos.MAX_POR_DOCUMENTO} comprobantes.', 'limite')
+            raise ErrorAdjunto(ARCHIVO_DUPLICADO, 'duplicado', 409)
+        comprobar_cupo(tipo, documento.pk)
         adjunto = Adjunto(company=company, documento_tipo=tipo, documento_id=documento.pk, nombre=nombre, tipo_mime=tipo_mime,
                           tamano=len(contenido), sha256=sha256, subido_por=usuario if getattr(usuario, 'pk', None) else None, **datos)
         adjunto.archivo.save(f'comprobante.{adjunto.extension}', ContentFile(contenido), save=False)
@@ -155,6 +204,8 @@ def adjuntar(company, usuario, tipo, documento, archivo, *, clase='', referencia
 
 def tambien_en(adjunto, limite=5):
     """Otros documentos de la empresa con el mismo archivo vigente (una transferencia que paga varias compras)."""
+    if not adjunto.sha256:
+        return []
     otros = (Adjunto.objects.filter(sha256=adjunto.sha256, eliminado_en__isnull=True).exclude(pk=adjunto.pk)
              .exclude(documento_tipo=adjunto.documento_tipo, documento_id=adjunto.documento_id).order_by('id')[:limite])
     resultado = []
@@ -179,6 +230,19 @@ def quitar(usuario, adjunto, motivo=''):
     return adjunto
 
 
+def al_eliminar_documento(tipo, documento_id, usuario=None, request=None, titulo=''):
+    """Lo llaman, dentro de su transacción y antes de borrar, la eliminación de un gasto, de una compra
+    (compras.eliminar_compra) y de un pago a proveedor (cuentas_por_pagar.eliminar_pago): sus adjuntos vigentes quedan
+    quitados (baja lógica: registro y archivo se conservan) y los recibos que se completaron o vincularon con ese documento
+    vuelven a estar pendientes, para no perder el respaldo (auditado: captura_liberada)."""
+    autor = usuario if getattr(usuario, 'pk', None) else None
+    motivo = f'{titulo or DOCUMENTOS[tipo].nombre} eliminado'[:300]
+    Adjunto.objects.filter(documento_tipo=tipo, documento_id=documento_id, eliminado_en__isnull=True).update(
+        eliminado_en=timezone.now(), eliminado_por=autor, eliminado_motivo=motivo)
+    from core.adjuntos import capturas
+    capturas.liberar(tipo, documento_id, autor, request)
+
+
 # ------------------------------------------------------------------ serialización
 
 def _texto_tamano(tamano):
@@ -188,15 +252,19 @@ def _texto_tamano(tamano):
 
 
 def dict_adjunto(adjunto):
+    """Un adjunto: archivo (con `url`) o nota de respaldo (`nota: true`, sin `url` ni datos de archivo)."""
+    archivo = bool(adjunto.archivo)
+    url = reverse('adjunto_archivo', args=[adjunto.pk]) if archivo else ''
     return {
         'id': adjunto.pk, 'origen': 'adjuntos', 'clase': {'id': adjunto.clase, 'name': adjunto.get_clase_display()}, 'nombre': adjunto.nombre,
-        'tipo_mime': adjunto.tipo_mime, 'extension': adjunto.extension, 'tamano': adjunto.tamano, 'tamano_texto': _texto_tamano(adjunto.tamano),
+        'tipo_mime': adjunto.tipo_mime, 'extension': adjunto.extension, 'tamano': adjunto.tamano,
+        'tamano_texto': _texto_tamano(adjunto.tamano) if archivo else '',
         'sha256': adjunto.sha256, 'referencia': adjunto.referencia, 'fecha': adjunto.fecha.isoformat() if adjunto.fecha else '',
         'importe': f'{adjunto.importe:.2f}' if adjunto.importe is not None else '', 'descripcion': adjunto.descripcion,
         'subido_por': adjunto.subido_por.username if adjunto.subido_por_id else '',
         'subido_en': timezone.localtime(adjunto.subido_en).strftime('%Y-%m-%d %H:%M'),
-        'url': reverse('adjunto_archivo', args=[adjunto.pk]), 'url_descarga': reverse('adjunto_archivo', args=[adjunto.pk]) + '?descargar=1',
-        'nota': False, 'revision': None,
+        'url': url, 'url_descarga': url + '?descargar=1' if archivo else '',
+        'nota': not archivo, 'revision': None, 'captura': adjunto.captura_id,
         'eliminado': adjunto.eliminado_en is not None,
         'eliminado_en': timezone.localtime(adjunto.eliminado_en).strftime('%Y-%m-%d %H:%M') if adjunto.eliminado_en else '',
         'eliminado_por': adjunto.eliminado_por.username if adjunto.eliminado_por_id else '', 'eliminado_motivo': adjunto.eliminado_motivo,
@@ -230,6 +298,7 @@ def dict_respaldo_cobro(respaldo):
         'nota': bool(respaldo.nota) and not archivo,
         'revision': {'id': respaldo.estado, 'name': respaldo.get_estado_display(), 'por': respaldo.revisado_por.username if respaldo.revisado_por_id else '',
                      'motivo': respaldo.motivo_revision},
+        'captura': None,
         'eliminado': False, 'eliminado_en': '', 'eliminado_por': '', 'eliminado_motivo': '',
     }
 
@@ -247,7 +316,7 @@ def _fila_cobros(tipo, obj, respaldos):
                      fecha=obj.date_joined, importe=Decimal(obj.valor), medio_id=medio_id,
                      medio=obj.get_medio_pago_display() if medio_id else 'Sin dato', contado=True,
                      titulo=f'Cobro de {cuenta.documento()["numero"]}', url_cobros=f'/cobros/factura/{cuenta.sale_id}/', abono=obj.tipo)
-    datos.update(tipo=tipo, id=obj.pk, tipo_nombre=TIPOS_EN_COBROS[tipo], origen='cobros')
+    datos.update(tipo=tipo, id=obj.pk, tipo_nombre=TIPOS_EN_COBROS[tipo], origen='cobros', pendiente_completar=False)
     datos['fecha'] = datos['fecha'].isoformat() if datos['fecha'] else ''
     datos['importe'] = f'{datos["importe"]:.2f}'
     datos['clase_sugerida'] = CLASE_POR_MEDIO.get(medio_id, 'transferencia')
@@ -312,7 +381,9 @@ def _documentos_del_mes(inicio):
 
 def resumen_mes(inicio, request=None):
     """Documentos del mes de ambos orígenes con sus respaldos vigentes y los que deberían tener uno y no lo tienen (medio no
-    efectivo). Con `request`, solo las filas que ese rol puede ver. Nunca copia ni crea nada."""
+    efectivo), más los recibos pendientes de completar guardados en el mes. Con `request`, solo lo que ese rol puede ver.
+    Nunca copia ni crea nada."""
+    from core.adjuntos import capturas
     visibles = tipos_visibles(request)
     documentos = _documentos_del_mes(inicio)
     filas = []
@@ -327,16 +398,18 @@ def resumen_mes(inicio, request=None):
             fila = dict_documento(tipo, objeto)
             fila['adjuntos'] = [dict_adjunto(a) for a in adjuntos.get(objeto.pk, [])]
             fila['_adjuntos'] = adjuntos.get(objeto.pk, [])
-            fila['falta'] = fila['requiere'] and not fila['adjuntos']
-            fila.update(con_nota=False, pendientes_revision=0, rechazados=0, url_cobros='')
+            fila['falta'] = fila['requiere'] and not fila['adjuntos']      # una nota de respaldo también cuenta
+            fila.update(con_nota=any(a['nota'] for a in fila['adjuntos']), pendientes_revision=0, rechazados=0, url_cobros='',
+                        pendiente_completar=False)
             filas.append(fila)
     ventas, cobros = _ventas_y_cobros_del_mes(inicio) if visibles & set(TIPOS_EN_COBROS) else ([], [])
     filas += [f for f in ventas if 'venta' in visibles] + [f for f in cobros if 'cobro' in visibles]
     filas.sort(key=lambda f: (f['fecha'], f['tipo'], f['id']))
+    recibos = capturas.filas_del_mes(inicio, request)
     totales = {'documentos': len(filas), 'con_comprobante': 0, 'sin_comprobante': 0, 'adjuntos': 0, 'notas': 0, 'pendientes_revision': 0,
-               'rechazados': 0, 'bytes': 0}
+               'rechazados': 0, 'bytes': 0, 'capturas_del_mes': len(recibos), 'capturas_pendientes': capturas.contar_pendientes(request)}
     for fila in filas:
-        archivos_ = [a for a in fila['adjuntos'] if not a['nota']]
+        archivos_ = [a for a in fila['adjuntos'] if a['url']]
         totales['adjuntos'] += len(archivos_)
         totales['notas'] += sum(1 for a in fila['adjuntos'] if a['nota'])
         totales['bytes'] += sum(a['tamano'] or 0 for a in archivos_)
@@ -346,25 +419,27 @@ def resumen_mes(inicio, request=None):
             totales['con_comprobante'] += 1
         elif fila['falta']:
             totales['sin_comprobante'] += 1
+    totales['bytes'] += sum(r['_captura'].tamano for r in recibos if r['_captura'].archivo)
     totales['bytes_texto'] = _texto_tamano(totales['bytes']) if totales['bytes'] else '0 KB'
-    return {'mes': inicio, 'filas': filas, 'totales': totales, 'tipos_visibles': sorted(visibles),
+    return {'mes': inicio, 'filas': filas, 'totales': totales, 'tipos_visibles': sorted(visibles), 'capturas': recibos,
             'faltantes': [f for f in filas if f['falta']], 'con_adjuntos': [f for f in filas if f['adjuntos']]}
 
 
-def _nombre_seguro(texto):
-    return re.sub(r'[^A-Za-z0-9._-]+', '_', texto).strip('_')[:60] or 'documento'
+def _nombre_seguro(texto_):
+    return re.sub(r'[^A-Za-z0-9._-]+', '_', texto_).strip('_')[:60] or 'documento'
 
 
 def _objetos_con_archivo(fila):
-    """[(objeto, dict)] de los respaldos con archivo de la fila, del origen que sea."""
+    """[(objeto, dict)] de los respaldos con archivo de la fila, del origen que sea (las notas no tienen archivo)."""
     if fila['origen'] == 'cobros':
         return [(r, d) for r, d in zip(fila['_respaldos'], fila['adjuntos']) if r.archivo]
-    return list(zip(fila['_adjuntos'], fila['adjuntos']))
+    return [(a, d) for a, d in zip(fila['_adjuntos'], fila['adjuntos']) if a.archivo]
 
 
 def zip_mes(inicio, resumen=None, request=None):
-    """ZIP con los comprobantes del mes por tipo de documento más `indice.csv` (para el contador y la conciliación). Solo
-    entran archivos que el rol puede ver; las notas y los estados de revisión van en el índice, nunca rutas del disco."""
+    """ZIP con los comprobantes del mes por tipo de documento, los recibos pendientes de completar y `indice.csv` (para el
+    contador y la conciliación). Solo entran archivos que el rol puede ver; las notas, los estados de revisión y los recibos
+    pendientes van en el índice, nunca rutas del disco."""
     resumen = resumen or resumen_mes(inicio, request)
     if resumen['totales']['bytes'] > MAX_ZIP_BYTES:
         raise ErrorAdjunto(f'Los comprobantes del mes pesan más de {MAX_ZIP_BYTES // archivos.MB} MB: descárgalos por documento.', 'zip')
@@ -375,18 +450,22 @@ def zip_mes(inicio, resumen=None, request=None):
                        'referencia', 'fecha_comprobante', 'importe_comprobante', 'descripcion', 'archivo', 'sha256', 'subido_por', 'subido_el',
                        'origen', 'respaldo', 'revision'])
     carpeta_mes = f'{inicio:%Y-%m}'
+
+    def escribir(zf, ruta, objeto):
+        try:
+            with objeto.archivo.open('rb') as f:
+                zf.writestr(ruta, f.read())
+            return ruta
+        except (FileNotFoundError, OSError, ValueError):
+            return 'ARCHIVO NO ENCONTRADO'
+
     with zipfile.ZipFile(salida, 'w', zipfile.ZIP_DEFLATED) as zf:
         for fila in resumen['con_adjuntos']:
             carpeta = CARPETAS_COBROS.get(fila['tipo']) or DOCUMENTOS[fila['tipo']].carpeta
             n = 0
             for objeto, datos in _objetos_con_archivo(fila):
                 n += 1
-                ruta = f'{carpeta_mes}/{carpeta}/{_nombre_seguro(fila["numero"])}_{n}.{datos["extension"]}'
-                try:
-                    with objeto.archivo.open('rb') as f:
-                        zf.writestr(ruta, f.read())
-                except (FileNotFoundError, OSError):
-                    ruta = 'ARCHIVO NO ENCONTRADO'
+                ruta = escribir(zf, f'{carpeta_mes}/{carpeta}/{_nombre_seguro(fila["numero"])}_{n}.{datos["extension"]}', objeto)
                 revision = datos['revision']['name'] if datos['revision'] else ''
                 escritor.writerow([fila['tipo_nombre'], fila['numero'], fila['tercero'], fila['identificacion'], fila['fecha'], fila['importe'],
                                    fila['medio'], datos['clase']['name'], datos['referencia'], datos['fecha'], datos['importe'],
@@ -401,5 +480,13 @@ def zip_mes(inicio, resumen=None, request=None):
         for fila in resumen['faltantes']:
             escritor.writerow([fila['tipo_nombre'], fila['numero'], fila['tercero'], fila['identificacion'], fila['fecha'], fila['importe'],
                                fila['medio'], 'SIN COMPROBANTE', '', '', '', '', '', '', '', '', fila['origen'], '', ''])
+        for fila in resumen['capturas']:
+            captura, datos = fila['_captura'], fila['adjuntos'][0]
+            ruta = ''
+            if captura.archivo:
+                ruta = escribir(zf, f'{carpeta_mes}/{CARPETA_CAPTURAS}/{fila["numero"]}.{captura.extension}', captura)
+            escritor.writerow([fila['tipo_nombre'], fila['numero'], '', '', fila['fecha'], '', fila['medio'], datos['clase']['name'], '', '', '',
+                               datos['descripcion'], ruta, datos['sha256'], datos['subido_por'], datos['subido_en'],
+                               'adjuntos', 'archivo' if captura.archivo else 'nota', ''])
         zf.writestr(f'{carpeta_mes}/indice.csv', '﻿' + indice.getvalue())
     return salida.getvalue()

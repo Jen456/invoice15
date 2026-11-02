@@ -30,6 +30,22 @@ def crear_empresa(nombre='FICTICIA', plan='ilimitado', **extra):
     return empresa
 
 
+def restaurar_planes():
+    """Las pruebas transaccionales (transaction=True) vacían TODA la base al terminar, también los planes, el IVA y la mejora
+    Plan 1000 → ilimitado que crean las migraciones de datos (suscripciones 0002 y 0004): una prueba transaccional posterior
+    que los use fallaba con Plan.DoesNotExist según el orden (test_zz_mejora_concurrencia_pg tras test_zz_cobros…). Planes e
+    IVA se vuelven a crear con la función de 0002; la mejora, con los campos actuales (0005 cambió min_months por min_days, así
+    que la función de 0004 ya no sirve con el modelo de hoy). get_or_create: no cambian nada si ya existen."""
+    import importlib
+
+    from django.apps import apps
+
+    from core.suscripciones.models import Plan, PlanUpgrade
+    importlib.import_module('core.suscripciones.migrations.0002_planes_iniciales').forwards(apps, None)
+    desde, hacia = Plan.objects.filter(code='plan-1000').first(), Plan.objects.filter(code='ilimitado').first()
+    PlanUpgrade.objects.get_or_create(from_plan=desde, to_plan=hacia, defaults={'price_cents': 3500, 'min_days': 30, 'is_active': True})
+
+
 def dar_plan(empresa, codigo='ilimitado', inicio=None, meses=12, **extra):
     """Período pagado vigente sin pasar por PayPhone."""
     from django.utils import timezone

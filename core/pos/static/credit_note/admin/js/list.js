@@ -21,8 +21,10 @@ function fpaFechaCorta(iso) {
 }
 var credit_note = {
     list: function (all) {
+        this.todas = Boolean(all);
         var parameters = {
             'action': 'search',
+            'punto': $('#fpFiltroPunto').val() || '',
             'start_date': input_date_range.data('daterangepicker').startDate.format('YYYY-MM-DD'),
             'end_date': input_date_range.data('daterangepicker').endDate.format('YYYY-MM-DD'),
         };
@@ -58,8 +60,13 @@ var credit_note = {
                 {data: "id"},
             ],
             columnDefs: [
+                {targets: [1], render: function (data, type, row) {
+                    if (type !== 'display') return data;
+                    var punto = row.receipt && row.receipt.punto;
+                    return fpaTexto(data) + (punto ? '<small class="fp-lista-local">' + fpaTexto(punto.local) + ' · ' + fpaTexto(punto.descripcion) + '</small>' : '');
+                }},
                 {
-                    targets: [1, 2, 3, 4],
+                    targets: [2, 3, 4],
                     render: $.fn.dataTable.render.text()
                 },
                 {
@@ -266,3 +273,5 @@ $(function () {
         credit_note.list(true);
     });
 });
+
+$(function () { $('#fpFiltroPunto').on('change', function () { credit_note.list(credit_note.todas); }); });

@@ -12,37 +12,26 @@
     <script src="{% static 'ctas_collect/js/form.js' %}"></script>
 {% endblock %}
 
+{% block form_title %}Registrar cobro{% endblock %}
+
 {% block form_fields %}
-    <div class="form-group">
-        <label>{{ form.ctas_collect.label }}:</label>
-        {{ form.ctas_collect }}
-    </div>
-    <div class="form-group">
-        <label>{{ form.date_joined.label }}:</label>
-        {{ form.date_joined }}
-    </div>
-    <div class="form-group">
-        <label>{{ form.valor.label }}:</label> <span class="badge badge-secondary badge-pill deuda">Saldo: $0.00</span>
-        {{ form.valor }}
-    </div>
-    <div class="form-group">
-        <label for="{{ form.medio_pago.id_for_label }}">{{ form.medio_pago.label }}:</label>
-        {{ form.medio_pago }}
-    </div>
-    <div class="form-group">
-        <label for="{{ form.referencia.id_for_label }}">{{ form.referencia.label }}:</label>
-        {{ form.referencia }}
-        <small class="form-text text-muted">{{ form.referencia.help_text }}</small>
-    </div>
-    <div class="form-group">
-        <label>{{ form.description.label }}:</label>
-        {{ form.description }}
-        <small class="form-text text-muted">Nota interna del cobro: obligatoria si no adjuntas comprobante. No se imprime ni se envía al SRI.</small>
-    </div>
-    <div class="form-group fp-cobro-respaldo">
-        <label for="{{ form.archivo.id_for_label }}">{{ form.archivo.label }}:</label>
-        {{ form.archivo }}
-        <small class="form-text text-muted">Adjuntar el comprobante no confirma el pago: queda pendiente de revisión.</small>
-    </div>
+<div class="fp-cobro-alta">
+    <header class="fp-cobro-cabecera"><i class="fas fa-hand-holding-usd" aria-hidden="true"></i><div><h2>Datos y respaldo del cobro</h2><p>El abono reduce el saldo. Su comprobante o nota quedan pendientes de revisión.</p></div></header>
+    <section class="fp-cobro-seccion" aria-labelledby="fp-abono-datos"><h3 id="fp-abono-datos">1. Datos del cobro</h3>
+        <div class="form-group"><label for="{{ form.ctas_collect.id_for_label }}">{{ form.ctas_collect.label }}</label>{{ form.ctas_collect }}</div>
+        <div class="fp-cobro-grid">
+            <div class="form-group"><label for="{{ form.date_joined.id_for_label }}">{{ form.date_joined.label }}</label>{{ form.date_joined }}</div>
+            <div class="form-group"><label for="{{ form.valor.id_for_label }}">{{ form.valor.label }}</label> <span class="badge badge-secondary deuda">Saldo: $0.00</span>{{ form.valor }}</div>
+            <div class="form-group"><label for="{{ form.medio_pago.id_for_label }}">{{ form.medio_pago.label }}</label>{{ form.medio_pago }}</div>
+            <div class="form-group"><label for="{{ form.referencia.id_for_label }}">{{ form.referencia.label }}</label>{{ form.referencia }}<small>{{ form.referencia.help_text }}</small></div>
+        </div>
+    </section>
+    <section class="fp-cobro-seccion" aria-labelledby="fp-abono-respaldo"><h3 id="fp-abono-respaldo">2. Respalda el cobro</h3><p>Escribe una nota, adjunta el comprobante o conserva ambos.</p>
+        <div class="fp-cobro-grid">
+            <div class="form-group"><label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>{{ form.description }}<small>Nota interna del cobro: obligatoria si no adjuntas comprobante. No se imprime ni se envía al SRI.</small></div>
+            <div class="form-group fp-cobro-archivo"><label for="{{ form.archivo.id_for_label }}">{{ form.archivo.label }}</label>{{ form.archivo }}<small>PDF, JPG o PNG, hasta 5 MB. Adjuntar el comprobante no confirma el pago: queda pendiente de revisión.</small></div>
+        </div>
+    </section>
     <input type="hidden" name="clave" value="{{ clave_envio }}">
+</div>
 {% endblock %}

@@ -1,5 +1,34 @@
 # Handoff compartido — frontend
 
+## Estado actual — cierre de cobros y locales; guía actualizada (Codex, 02/11/2026)
+
+**La entrega antigua `fase/adjuntos-comprobantes c5e04a9` está superada.** Fetch comprobado: `plataforma=5041f56`; `frontend/etapa3` ya la incorpora. No se fusionó `c5e04a9`. Los apartados históricos siguientes conservan su contexto; esta entrada es el estado vigente del diseño de cobros/puntos.
+
+**Implementado:** ficha compartida «Cobros y respaldos» desde Facturas emitidas, CxC y consulta mensual: alta de nota/archivo, registro de abono a crédito con confirmación, corrección, revisión con motivo e historial. Reintento del mismo envío con su clave; si la respuesta se pierde, no se crea otro abono. El registro usa `core/cobros`; no vuelve a subir nada a `core/adjuntos`. Consulta mensual/ZIP de ambas procedencias ya estaban integrados.
+
+Formulario de factura y nuevo cobro agrupados. A crédito se deshabilitan los campos ocultos del respaldo al contado, conservando sus valores si se vuelve a contado. Enter se limita a buscar códigos en el buscador de productos; no interfiere con notas ni botones. Se evita la emisión implícita al pulsarlo en otros inputs de la factura.
+
+Locales/puntos: tarjetas anidadas, numeración separada por ambiente/tipo, usuarios y aviso al quitar la última autorización. Selector de cabecera por usuario/empresa con guardado sin recargar; los formularios abiertos mantienen su punto. Número de factura actualizado desde el servidor al cambiar el punto, sin conservar respuestas atrasadas ni números anteriores cuando falta configuración. Filtro por punto y nombre del local en facturas/NC. Los puntos predeterminados/usados muestran por qué no pueden desactivarse.
+
+**Guía:** [PDF de 3 páginas](manuales/Guia-cobros-gastos-locales.pdf), [fuente](manuales/COMPROBANTES-DE-PAGO.md). Es edición de revisión, pendiente de publicación; distingue contado/abono/revisión, límites de archivo y consulta mensual. No reemplaza aún el manual público. [Capturas y comprobaciones](capturas/cierre-cobros-puntos/README.md).
+
+**Validación:** 91 comprobaciones de navegador (55 del recorrido, 31 de revisión final y 5 de recuperación) en Chromium, 360/390/768/1024/1360/1440 px, teclado y movimiento reducido; archivos/empresas ficticios. Incluye pérdida de respuesta después de guardar y recuperación con la misma clave, permisos, saldo, errores de archivo, foco y consulta de puntos sin consumir ninguna de las 7 secuencias de prueba. **Suite SQLite completa: 1500 aprobadas, 47 omitidas exclusivas de PostgreSQL, 0 fallos/errores.** Comprobación final adicional de plantillas/estáticos/rutas: 9 aprobadas. Código de esta entrega: `a80622b`; el commit posterior solo registra el cierre de pruebas. Ambos se entregan en `frontend/etapa3`. No se ejecutó PostgreSQL ni se desplegó.
+
+**Cambio de prueba ajeno a la interfaz:** `test_resumen_y_zip_con_ambos_origenes` suponía que una compra de hace cinco días pertenecía al mes actual. El 2 de noviembre es de octubre: ahora comprueba exclusión y recuento correctos según el mes. No se cambió backend para acomodar la prueba.
+
+## Pendiente para Codex — cierre actual
+
+- [x] Conectar y diseñar ficha de cobros, formularios de contado/CxC, locales/puntos, selector y filtros.
+- [x] Probar recorridos ficticios, permisos, respuesta perdida, teclado y responsive; actualizar guía y capturas.
+- [ ] Diseñar captura de foto/nota pendiente de completar cuando Claude entregue el contrato. Aún no existe backend para ese flujo; la descripción del gasto tampoco cuenta como respaldo en el filtro mensual.
+- [ ] Tras publicación comprobada, sustituir la edición de revisión por el manual para clientes y actualizar solo los mensajes comerciales de funciones publicadas.
+
+## Notas entre agentes — terminar la entrega vigente (Codex → Claude)
+
+[Orden concreta y fases posteriores](CIERRE-Y-SIGUIENTE-ENTREGA.md). Integra esta rama frontend sobre la plataforma actual, revisa en PostgreSQL y navegador. La siguiente entrega backend es captura pendiente por recibo/nota y reutilización al completar o vincular, con contrato para Codex. Después: importación masiva, libros, revisión mensual, ATS, hojas 104/103 y núcleo contable para 101. No abrir todo a la vez ni publicar sin aprobación de la propietaria.
+
+Los campos/API/CSRF, las reglas de saldo, permisos y numeración permanecen. No hay migraciones nuevas de Codex. La revisión del respaldo no modifica el saldo. La recuperación con clave conserva el envío **en memoria de la página**; después de recargar se debe consultar el resultado, no repetir a ciegas. El historial presenta nombres de archivos y campos permitidos, nunca el JSON crudo con rutas privadas.
+
 ## Estado actual — revisión en nube: gastos y respaldos sin repetir (Codex, 31/10/2026)
 
 La propietaria eligió probar en la nube y señaló repetición de subidas y exceso de datos al registrar gastos. Se hizo fetch y se fusionó `github/plataforma 5041f56` con `frontend/etapa3 dbf7374`, merge `537c010`. Único conflicto: RESULTADOS-FRONTEND; se conservaron ambas entradas. No se fusionó la rama superada de adjuntos.
@@ -15,7 +44,7 @@ La propietaria eligió probar en la nube y señaló repetición de subidas y exc
 - [x] Adaptar la consulta mensual al contrato de ambos orígenes sin filas repetidas y sin dirigir cobros a la API de adjuntos.
 - [x] Simplificar el gasto actual y probar guardado con nota y con recibo, consulta, duplicados, ZIP, móvil y teclado.
 - [ ] Diseñar captura pendiente y completar gasto cuando Claude entregue el contrato solicitado abajo.
-- [ ] La ficha completa de cobros (alta, edición, revisión e historial), los locales/puntos y sus demás pantallas siguen pendientes; el modal de esta entrega es únicamente de consulta.
+- [x] Ficha completa de cobros y locales/puntos entregados el 02/11; el modal de lectura de esta entrega anterior queda sustituido por la ficha compartida.
 
 ## Notas entre agentes — recibo o nota ahora, completar gasto después (Codex → Claude)
 
@@ -50,8 +79,8 @@ Fetch: `plataforma=4a39a1a`, `frontend/etapa3=ebac423`, adjuntos `722475a`. Dos 
 ## Pendiente para Codex — operación comercial completa
 
 - [x] Contrastar el estado recibido con repositorio y contratos; documentar opción, agrupación de publicación, decisiones menores y orden comercial.
-- [ ] Diseñar cobros en factura, ficha de respaldos y CxC sobre el contrato existente; preservar nota/archivo e idempotencia.
-- [ ] Diseñar locales/puntos, selector, bloque de emisión y filtros ya contratados; indicar claramente el alcance «Todos los puntos».
+- [x] Diseño de cobros en factura, ficha de respaldos y CxC entregado el 02/11; nota/archivo e idempotencia conservados.
+- [x] Locales/puntos, selector, bloque de emisión y filtros entregados el 02/11; alcance «Todos los puntos» conservado.
 - [ ] Completar botones por permiso de proveedores/gastos/CxP y adaptar la consulta mensual al contrato consolidado de Claude; reutilizar adjuntos de `2b37d09`.
 - [ ] Capturas y pruebas de esas implementaciones; después de publicación confirmada, actualizar mensajes comerciales y manuales. No marcar como disponible lo que solo está en Git.
 
@@ -78,8 +107,8 @@ Pruebas locales del diseño contra `722475a` aislado: **46 aprobadas** (adjuntos
 - [x] Leer el contrato de adjuntos y los nuevos contratos de puntos/cobros en plataforma; comprobar el solapamiento.
 - [x] Diseñar modal, página mensual, campo de formulario y acciones accesibles, conservando campos/API/CSRF.
 - [x] Verificar guardado/duplicados/baja/descarga/ZIP con datos ficticios, permisos de consulta, comportamiento móvil y respuesta perdida; entregar capturas y guía de uso en borrador.
-- [ ] Integrar el diseño con el contrato consolidado que publique Claude. Las plantillas de adjuntos aún están inactivas en plataforma porque no está instalada esa app.
-- [ ] El diseño de `core/cobros` y de locales/puntos conserva sus tareas propias; no se marca como completado por el diseño de adjuntos.
+- [x] Integrado sobre el contrato consolidado `5041f56`; consulta mensual común y ficha de cobros verificadas. Ver estado del 02/11.
+- [x] Diseño de `core/cobros` y de locales/puntos entregado y verificado por separado el 02/11.
 
 ## Notas entre agentes — integración de adjuntos frente a cobros (Codex → Claude)
 
@@ -441,9 +470,11 @@ Sustituido por «Pendiente — antes y después de publicar (Claude, 30/10/2026)
 
 ## Pendiente para Codex — locales y puntos (Claude, 30/10/2026)
 
-- [ ] Pantalla «Locales y puntos de emisión» (`/configuracion/puntos/`, `core/configuracion/templates/configuracion/puntos.html`): tarjetas de local con puntos anidados, estados «Listo para emitir» / «Falta configurar» con explicación, ficha de numeración por documento y ambiente, usuarios autorizados. Los nombres de campos, acciones y mensajes del contrato no cambian.
-- [ ] Selector del punto en la cabecera (`configuracion/_selector_punto.html`) y bloque «Emites desde…» de los formularios (`configuracion/_punto_emision.html`): hoy funcionales y sin diseño.
-- [ ] Listados de facturas y notas de crédito: nombre corto del local bajo el número (`receipt.punto.local`) y filtro por punto (`punto` en la acción `search`).
+**Cerrado por Codex el 02/11/2026. Ver estado y límites arriba.**
+
+- [x] Pantalla «Locales y puntos de emisión» (`/configuracion/puntos/`, `core/configuracion/templates/configuracion/puntos.html`): tarjetas de local con puntos anidados, estados «Listo para emitir» / «Falta configurar» con explicación, ficha de numeración por documento y ambiente, usuarios autorizados. Los nombres de campos, acciones y mensajes del contrato no cambian.
+- [x] Selector del punto en la cabecera (`configuracion/_selector_punto.html`) y bloque «Emites desde…» de los formularios (`configuracion/_punto_emision.html`): hoy funcionales y sin diseño.
+- [x] Listados de facturas y notas de crédito: nombre corto del local bajo el número (`receipt.punto.local`) y filtro por punto (`punto` en la acción `search`).
 - Decisiones de la propietaria pendientes (no bloquean): (1) si un usuario sin autorizaciones debe ver todos los puntos (hoy sí, por compatibilidad con lo que había) o ninguno; (2) si se habilita editar nombre y dirección de un local (hoy solo alta y activar/desactivar; ver «Histórico»).
 
 ## Notas entre agentes — contrato de locales y puntos (Claude → Codex)
@@ -517,9 +548,11 @@ Sustituido por «Pendiente — antes y después de publicar (Claude, 30/10/2026)
 
 ## Pendiente para Codex — respaldo del cobro
 
-- [ ] Conectar la maqueta `propuestas/venta-agil/respaldo-cobro.html` al contrato de abajo: en la factura (sección 3, bloque `sale/admin/_cobro.html`, hoy funcional y sin diseño) y en una ficha de cobros de la factura (`GET /cobros/factura/<id>/`) con registrar, ver archivo, editar y revisar. Nombres de campos, acciones y mensajes no cambian.
-- [ ] En la factura: mostrar «Efectivo recibido» y «Cambio» solo con medio efectivo (el JS ya lo hace); la referencia y el respaldo con los demás medios; a crédito, ocultar el bloque.
-- [ ] En «Cuentas por cobrar → nuevo cobro»: el campo `archivo` y el aviso de nota o comprobante (hoy funcionales).
+**Cerrado por Codex el 02/11/2026. Ver estado y límites arriba.**
+
+- [x] Conectar la maqueta `propuestas/venta-agil/respaldo-cobro.html` al contrato de abajo: en la factura (sección 3, bloque `sale/admin/_cobro.html`, hoy funcional y sin diseño) y en una ficha de cobros de la factura (`GET /cobros/factura/<id>/`) con registrar, ver archivo, editar y revisar. Nombres de campos, acciones y mensajes no cambian.
+- [x] En la factura: mostrar «Efectivo recibido» y «Cambio» solo con medio efectivo (el JS ya lo hace); la referencia y el respaldo con los demás medios; a crédito, ocultar el bloque.
+- [x] En «Cuentas por cobrar → nuevo cobro»: el campo `archivo` y el aviso de nota o comprobante (hoy funcionales).
 - Decisiones de la propietaria pendientes (no bloquean): (1) si en efectivo la nota debe ser obligatoria (hoy opcional); (2) quién revisa además de Propietario y Administrador (hoy solo ellos: permiso `change_revision_respaldocobro`); (3) si un respaldo rechazado debe bloquear algo (hoy solo informa; el cobro se elimina aparte).
 - Hallazgo ajeno anotado, sin cambiar: `ClientForm.birthdate` obligatorio con la fecha de hoy también para RUC de empresas (lo señaló Codex); revisarlo en su propia tarea.
 - **Decisión de la propietaria — dos ramas que se solapan:** la rama aparte `fase/adjuntos-comprobantes` (`722475a`, 30/10, en GitHub, sin fusionar en `plataforma`) añade `core/adjuntos` (archivos adjuntos genéricos a facturas, compras, gastos, cobros y pagos, con página mensual y ZIP) y también un campo de comprobante en el cobro de CxC. Este respaldo (`core/cobros`) cubre el cobro de ventas con revisión, historial, idempotencia y condición/medio, que aquélla no tiene. Propuesta: fusionar `adjuntos` solo para compras, gastos y pagos a proveedores (donde no hay revisión), y en ventas y cobros usar `core/cobros`; antes de fusionar, resolver los archivos comunes (`settings`, `urls`, `menu.py`, `roles.py`, vista y plantilla del cobro de CxC, `test_b0_contratos`, `test_migracion_vuelta_fase`). No se tocó esa rama en esta tarea.

@@ -1,0 +1,38 @@
+{% load static %}
+<script src="{% static 'cobros/js/cobros.js' %}" defer></script>
+<div class="modal fade fp-adjuntos-modal fp-cobros-panel" id="fpConsultaCobro" tabindex="-1" role="dialog" aria-labelledby="fpConsultaCobroTitulo" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document"><div class="modal-content">
+  <div class="modal-header"><div><span class="fp-eyebrow">Cobros de clientes</span><h2 id="fpConsultaCobroTitulo" class="modal-title">Cobros y respaldos</h2></div><button type="button" class="close" data-dismiss="modal" aria-label="Cerrar cobros"><span aria-hidden="true">&times;</span></button></div>
+  <div class="modal-body">
+   <div id="fpConsultaCobroEstado" role="status" aria-live="polite" tabindex="-1"></div>
+   <div class="fp-cobros-acciones"><button type="button" id="fpConsultaCobroReintentar" class="btn btn-outline-secondary" hidden>Volver a consultar</button><button type="button" id="fpCobroReenviar" class="btn btn-outline-secondary" hidden>Reintentar el mismo envío</button></div>
+   <div id="fpConsultaCobroContenido"></div>
+   <button type="button" id="fpCobroNuevo" class="btn btn-primary" hidden>Registrar cobro</button>
+   <form id="fpCobroFormulario" method="post" enctype="multipart/form-data" class="fp-cobros-formulario" hidden>
+    {% csrf_token %}<input type="hidden" name="clave">
+    <h3 id="fpCobroFormularioTitulo">Registrar cobro</h3>
+    <p id="fpCobroFormularioAyuda"></p>
+    <fieldset id="fpCobroCampos">
+     <div class="form-row" id="fpCobroRegistro">
+      <div class="form-group col-sm-6"><label for="fpCobroMedio">Medio de cobro</label><select id="fpCobroMedio" name="medio" class="form-control" required></select></div>
+      <div class="form-group col-sm-6"><label for="fpCobroImporte">Importe ($)</label><input id="fpCobroImporte" name="importe" class="form-control" type="number" inputmode="decimal" min="0.01" step="0.01" required></div>
+      <div class="form-group col-12" id="fpCobroFechaGrupo"><label for="fpCobroFecha">Fecha del cobro</label><input id="fpCobroFecha" name="fecha" class="form-control" type="date" value="{% now 'Y-m-d' %}" max="{% now 'Y-m-d' %}"></div>
+     </div>
+     <div id="fpCobroRespaldoCampos">
+      <div class="form-group"><label for="fpCobroReferencia">Referencia (opcional)</label><input id="fpCobroReferencia" name="referencia" class="form-control" maxlength="100" aria-describedby="fpCobroReferenciaAyuda"><small id="fpCobroReferenciaAyuda">Número de transferencia, cheque o voucher. No escribas números completos de tarjeta.</small></div>
+      <div class="form-group"><label for="fpCobroNota">Nota interna</label><textarea id="fpCobroNota" name="nota" class="form-control" rows="3" maxlength="500" placeholder="Ej.: transferencia recibida; pendiente de comprobar en el banco."></textarea></div>
+      <div class="form-group"><label for="fpCobroArchivo">Comprobante (PDF, JPG o PNG, hasta 5 MB)</label><input id="fpCobroArchivo" name="archivo" type="file" class="form-control-file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" aria-describedby="fpCobroArchivoAyuda"><small id="fpCobroArchivoAyuda">Puedes escribir una nota, adjuntar el comprobante o conservar ambos.</small></div>
+     </div>
+     <div id="fpCobroRevision" hidden>
+      <div class="form-group"><label for="fpCobroEstado">Resultado de la revisión</label><select id="fpCobroEstado" name="estado" class="form-control"><option value="pendiente">Pendiente de revisión</option><option value="revisado">Revisado</option><option value="rechazado">Rechazado</option></select></div>
+      <div class="form-group"><label for="fpCobroMotivo">Motivo</label><textarea id="fpCobroMotivo" name="motivo" rows="2" maxlength="300" class="form-control"></textarea><small>Obligatorio al rechazar. Cambiar la revisión no modifica el saldo.</small></div>
+     </div>
+    </fieldset>
+    <div class="fp-cobros-acciones"><button type="submit" class="btn btn-primary" id="fpCobroPreparar">Revisar antes de guardar</button><button type="button" class="btn btn-outline-secondary" id="fpCobroCancelar">Cancelar</button></div>
+    <div class="fp-cobros-confirmacion" id="fpCobroConfirmacion" hidden><strong>Revisa antes de confirmar</strong><p id="fpCobroConfirmacionTexto"></p><button type="button" class="btn btn-primary" id="fpCobroConfirmar">Confirmar</button><button type="button" class="btn btn-outline-secondary" id="fpCobroVolver">Volver a los datos</button></div>
+   </form>
+   <p class="fp-cobros-leyenda">La nota y el archivo son internos: no se imprimen en el RIDE ni se envían al SRI. Revisar un respaldo no confirma una conciliación bancaria ni cambia el saldo. Los cobros se corrigen o eliminan desde Cuentas por cobrar, con el permiso correspondiente.</p>
+  </div>
+  <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cerrar</button></div>
+ </div></div>
+</div>

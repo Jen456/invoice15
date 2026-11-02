@@ -85,6 +85,10 @@ var ctas_collect = {
                     class: 'text-center',
                     render: function (data, type, row) {
                         var buttons = '<a rel="payments" data-toggle="tooltip" title="Abonos" class="btn bg-blue btn-xs btn-flat"><i class="fas fa-dollar-sign"></i></a> ';
+                        var permisos = document.getElementById('fp-cobros-permisos');
+                        if (permisos && JSON.parse(permisos.textContent).view_respaldocobro && row.sale && row.documento.tipo !== 'nota_debito') {
+                            buttons += '<button type="button" class="btn btn-outline-secondary btn-sm" data-cobros-url="/cobros/factura/' + parseInt(row.sale.id, 10) + '/">Cobros y respaldos</button> ';
+                        }
                         if (fpPuedeEliminarCobro()) buttons += '<a href="' + pathname + 'delete/' + parseInt(row.id, 10) + '/" data-toggle="tooltip" title="Eliminar" class="btn btn-danger btn-xs btn-flat"><i class="fas fa-trash"></i></a>';
                         return buttons;
                     }
@@ -221,3 +225,5 @@ $(function () {
         tblCtasCollect.ajax.reload();
     });
 });
+
+document.addEventListener('fp-cobros:cerrado', function (e) { if (e.detail.cambios) window.location.reload(); });

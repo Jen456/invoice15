@@ -1,16 +1,12 @@
-{# Medio de cobro y respaldo de una venta al contado (contrato en HANDOFF: core/cobros). Bloque funcional; el diseño lo hace Codex. #}
-<div class="fp-cobro">
-    <div class="fp-sale-grid">
-        <div class="form-group fp-cobro-medio"><label for="{{ form.medio_cobro.id_for_label }}">{{ form.medio_cobro.label }}</label>{{ form.medio_cobro }}
-            <small class="text-muted">Cómo recibiste el dinero. «Efectivo recibido» y «Cambio» solo aplican al efectivo.</small></div>
-        <div class="form-group fp-cobro-referencia"><label for="{{ form.referencia_cobro.id_for_label }}">{{ form.referencia_cobro.label }}</label>{{ form.referencia_cobro }}
-            <small class="text-muted">No escribas números completos de tarjeta.</small></div>
+{# Respaldo interno del contado; nombres del contrato core/cobros. #}
+<section class="fp-cobro" aria-labelledby="fp-cobro-titulo">
+    <div class="fp-cobro-cabecera"><i class="fas fa-receipt" aria-hidden="true"></i><div><h3 id="fp-cobro-titulo">¿Cómo recibiste el pago?</h3><p>Deja el comprobante, una nota interna o ambos junto a esta factura.</p></div></div>
+    <div class="fp-cobro-grid">
+        <div class="form-group"><label for="{{ form.medio_cobro.id_for_label }}">{{ form.medio_cobro.label }}</label>{{ form.medio_cobro }}<small>«Efectivo recibido» y «Cambio» solo aplican al efectivo.</small></div>
+        <div class="form-group"><label for="{{ form.referencia_cobro.id_for_label }}">{{ form.referencia_cobro.label }}</label>{{ form.referencia_cobro }}<small>No escribas números completos de tarjeta.</small></div>
+        <div class="form-group fp-cobro-archivo"><label for="{{ form.respaldo.id_for_label }}">{{ form.respaldo.label }}</label>{{ form.respaldo }}<small>PDF, JPG o PNG, hasta 5 MB. El archivo queda privado.</small></div>
+        <div class="form-group"><label for="{{ form.nota_cobro.id_for_label }}">{{ form.nota_cobro.label }}</label>{{ form.nota_cobro }}<small>Obligatoria si no adjuntas un comprobante, salvo en efectivo.</small></div>
     </div>
-    <div class="fp-cobro-respaldo">
-        <p class="mb-1"><strong>Respaldo del cobro</strong> <small class="text-muted">comprobante, nota interna o ambos; obligatorio salvo en efectivo</small></p>
-        <p class="fp-cobro-efectivo-aviso text-muted small">En efectivo, la nota puede registrar quién recibió el dinero (opcional).</p>
-        <div class="form-group"><label for="{{ form.respaldo.id_for_label }}">{{ form.respaldo.label }}</label>{{ form.respaldo }}</div>
-        <div class="form-group"><label for="{{ form.nota_cobro.id_for_label }}">{{ form.nota_cobro.label }}</label>{{ form.nota_cobro }}
-            <small class="text-muted">La nota es interna: no se imprime en la factura ni se envía al SRI.</small></div>
-    </div>
-</div>
+    <p class="fp-cobro-efectivo-aviso">En efectivo, la nota y el archivo son opcionales.</p>
+    <p class="fp-cobros-leyenda">La nota y el archivo no se imprimen en la factura ni se envían al SRI. El respaldo queda pendiente de revisión.</p>
+</section>
