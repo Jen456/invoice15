@@ -58,7 +58,7 @@ ESTRUCTURA = (
         ('/tributario/formularios/', 'Borradores del 104 y del 103', 4),
         ('/tributario/empresas/', 'Revisión de mis empresas', 5),
     )),
-    ('Contabilidad', 'fas fa-calculator', 66, (
+    ('Contabilidad', 'fas fa-book-open', 66, (   # icono único: fa-calculator es el de «Facturación» desde la instalación
         ('/contabilidad/kardex/', 'Kardex por producto', 1),   # costo promedio ponderado (core/contabilidad)
         ('/contabilidad/inventario/', 'Inventario valorizado', 2),
     )),

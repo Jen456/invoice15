@@ -18,7 +18,7 @@ from core.contabilidad import kardex as kx
 from core.contabilidad.models import AjusteInventario, MovimientoManual
 from core.pos import compras, notas_credito
 from core.pos.models import Product, Purchase, Sale
-from core.security.models import Module
+from core.security.models import Module, ModuleType
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_ACCOUNTANT, ROLE_ADMIN, ROLE_CLIENT, ROLE_OWNER, ROLE_READONLY, ROLE_SELLER
 from tests import ayuda_compras, helpers
@@ -304,6 +304,8 @@ class TestPantallasYApi:
 def test_modulos_del_menu_y_roles():
     kardex = Module.objects.get(url='/contabilidad/kardex/')
     assert (kardex.name, kardex.module_type.name) == ('Kardex por producto', 'Contabilidad')
+    # el icono de un grupo es único: uno repetido renombra el del otro grupo con «-x» (icono roto en el menú)
+    assert kardex.module_type.icon == 'fas fa-book-open' and not ModuleType.objects.filter(icon__endswith='-x').exists()
     assert set(kardex.permissions.values_list('codename', flat=True)) == {'view_kardex', 'add_movimientomanual', 'change_movimientomanual'}
 
     def permisos(rol):
