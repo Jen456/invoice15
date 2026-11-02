@@ -4,8 +4,8 @@ Solo columnas nuevas y opciones: `LoteImportacion.origen` y `.reporte`, `Entrada
 'reporte' de ArchivoImportado, los orígenes 'lista' y 'reporte' de DocumentoImportado y la verificación 'en_proceso_sri'
 (el SRI respondió EN PROCESO: se reintenta, no es un rechazo). Sin tablas nuevas (las políticas de
 seguridad por filas de 0002 y 0006 siguen cubriendo las tablas). Al final, el módulo «Importar por claves o reporte del
-SRI» en instalaciones existentes (core/security/menu.py), como en 0003 y 0004. La vuelta quita las columnas y deja el
-módulo (que apunta a una URL que la versión anterior no sirve: se retira con `organizar_menu` al volver a migrar).
+SRI» en instalaciones existentes (core/security/menu.py), como en 0003 y 0004. La vuelta quita las columnas y el módulo
+(la versión anterior no sirve su URL); sus permisos son los de la importación de siempre y se quedan.
 """
 import django.db.models.deletion
 from django.db import migrations, models
@@ -19,6 +19,10 @@ def menu(apps, schema_editor):
         return
     organizar_menu(apps.get_model("security", "ModuleType"), Module, apps.get_model("auth", "Permission"), apps=apps)
     sync_roles(apps.get_model("auth", "Group"), Module, apps.get_model("security", "GroupModule"))
+
+
+def quitar_menu(apps, schema_editor):
+    apps.get_model("security", "Module").objects.filter(url="/importacion/claves/").delete()   # sus GroupModule caen en cascada
 
 
 class Migration(migrations.Migration):
@@ -80,5 +84,5 @@ class Migration(migrations.Migration):
             name="sugerencias",
             field=models.JSONField(blank=True, default=dict),
         ),
-        migrations.RunPython(menu, migrations.RunPython.noop),
+        migrations.RunPython(menu, quitar_menu),
     ]

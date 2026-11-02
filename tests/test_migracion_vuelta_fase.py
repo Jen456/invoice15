@@ -19,7 +19,8 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 VUELTA = (('tributario', 'zero'), ('adjuntos', 'zero'), ('proformas', 'zero'), ('comprobantes', '0013_modulo_guias'), ('pos', '0019_orden_de_las_lineas'),
           ('importacion', '0004_menu_con_guias'), ('tenancy', '0006_accion_empresa_agregada'))
-NUEVOS = {'/proformas/', '/comprobantes/retenciones-recibidas/', '/adjuntos/', '/adjuntos/capturas/', '/tributario/libros/',
+NUEVOS = {'/proformas/', '/comprobantes/retenciones-recibidas/', '/adjuntos/', '/adjuntos/capturas/', '/importacion/claves/',
+          '/tributario/libros/',
           '/tributario/revision/', '/tributario/empresas/', '/tributario/ats/', '/tributario/formularios/'}
 VERIFICAR = """
 import json
