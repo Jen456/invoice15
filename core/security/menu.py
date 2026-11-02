@@ -53,6 +53,8 @@ ESTRUCTURA = (
     )),
     ('Tributario', 'fas fa-balance-scale', 65, (
         ('/tributario/libros/', 'Libros mensuales', 1),   # libros de ventas, compras y retenciones (core/tributario)
+        ('/tributario/revision/', 'Revisión del mes', 2),
+        ('/tributario/empresas/', 'Revisión de mis empresas', 3),
     )),
     ('Reportes', 'fas fa-chart-pie', 70, ()),   # sin cambios de nombre
     ('Configuración', 'fas fa-cogs', 80, (
@@ -104,6 +106,10 @@ MODULOS_NUEVOS = (
     # Libros mensuales (core/tributario): lo crea tributario 0003 en instalaciones existentes.
     ('tributario', '/tributario/libros/', 'fas fa-book',
      'Libros de ventas, compras y retenciones del mes, por tarifa, exportables a XLSX y CSV', ('view_libros',)),
+    ('tributario', '/tributario/revision/', 'fas fa-clipboard-check',
+     'Lo que conviene revisar del mes antes de declarar, con su causa y el enlace a cada registro', ('view_revision',)),
+    ('tributario', '/tributario/empresas/', 'fas fa-building',
+     'Resumen de tus empresas: pendientes de la revisión del mes y acceso a cada una', ('view_revision',)),
 )
 
 

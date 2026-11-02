@@ -1,0 +1,28 @@
+{% extends 'skin.html' %}
+{# Pantalla funcional «Revisión de mis empresas» (resumen del contador). El diseño lo hace Codex sobre el contrato de HANDOFF. #}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page">Revisión de mis empresas</li>{% endblock %}
+{% block content %}
+<div class="fp-empresas-revision">
+  <header class="mb-3">
+    <h1 class="h3">Revisión de mis empresas</h1>
+    <p>Las empresas en las que tienes una membresía activa con acceso a la revisión, con lo pendiente del mes. Al abrir una,
+       la aplicación cambia de empresa y vuelve a comprobar tu acceso.</p>
+  </header>
+  <form method="get" class="form-inline mb-3" aria-label="Elegir el mes">
+    <label for="fpEmpresasMes" class="mr-2">Mes</label>
+    <input type="month" id="fpEmpresasMes" name="mes" class="form-control mr-2" value="{{ mes_valor }}" max="{% now 'Y-m' %}">
+    <button type="submit" class="btn btn-primary">Ver</button>
+  </form>
+  {% if mes_invalido %}<div class="alert alert-warning" role="alert">Ese mes no es válido: se muestra el mes actual.</div>{% endif %}
+  <div class="table-responsive" tabindex="0" role="region" aria-label="Empresas"><table class="table table-sm">
+    <thead><tr><th scope="col">Empresa</th><th scope="col">RUC</th><th scope="col">Rol</th><th scope="col">Mes</th><th scope="col">Por revisar</th><th scope="col">Informativas</th><th scope="col">Acción</th></tr></thead>
+    <tbody>{% for e in empresas %}<tr data-empresa="{{ e.empresa_id }}">
+      <td>{{ e.empresa }}{% if e.empresa_id == activa %} <small>(activa)</small>{% endif %}</td><td>{{ e.ruc }}</td><td>{{ e.rol }}</td><td>{{ e.mes }}</td>
+      <td>{{ e.pendientes }}</td><td>{{ e.informativas }}</td>
+      <td><form method="post" action="/empresas/cambiar/" class="m-0">{% csrf_token %}<input type="hidden" name="company" value="{{ e.empresa_id }}">
+        <input type="hidden" name="next" value="/tributario/revision/?mes={{ e.mes }}">
+        <button type="submit" class="btn btn-outline-primary btn-sm">Abrir su revisión</button></form></td>
+    </tr>{% empty %}<tr><td colspan="7">No tienes empresas con acceso a la revisión.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

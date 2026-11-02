@@ -6,4 +6,8 @@ urlpatterns = [
     path('libros/', views.LibrosPagina.as_view(), name='tributario_libros'),
     path('libros/exportar/', views.ExportarLibro.as_view(), name='tributario_libros_exportar'),
     path('api/libros/<str:libro>/', views.LibroApi.as_view(), name='tributario_api_libro'),
+    path('revision/', views.RevisionPagina.as_view(), name='tributario_revision'),
+    path('api/revision/', views.RevisionApi.as_view(), name='tributario_api_revision'),
+    path('empresas/', views.EmpresasPagina.as_view(), name='tributario_empresas'),
+    path('api/empresas/', views.EmpresasApi.as_view(), name='tributario_api_empresas'),
 ]

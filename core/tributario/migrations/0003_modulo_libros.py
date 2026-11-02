@@ -1,11 +1,12 @@
-"""Módulo «Libros mensuales» (/tributario/libros/) en el grupo «Tributario» del menú, con su permiso, para instalaciones
+"""Módulos «Libros mensuales», «Revisión del mes» y «Revisión de mis empresas» (/tributario/…) en el grupo «Tributario» del
+menú, con sus permisos, para instalaciones
 existentes (las nuevas lo crea start_installation). Mismo patrón que adjuntos 0003: se crea el permiso de la app,
 organizar_menu solo crea el módulo si la app ya está migrada y sync_roles reparte (roles.py): Propietario, Administrador,
 Contador y Consulta lo ven; Vendedor y Cliente no.
 """
 from django.db import migrations
 
-URL = '/tributario/libros/'
+URLS = ('/tributario/libros/', '/tributario/revision/', '/tributario/empresas/')
 
 
 def forwards(apps, schema_editor):
@@ -28,7 +29,7 @@ def forwards(apps, schema_editor):
 
 
 def backwards(apps, schema_editor):
-    apps.get_model('security', 'Module').objects.filter(url=URL).delete()   # sus GroupModule caen en cascada
+    apps.get_model('security', 'Module').objects.filter(url__in=URLS).delete()   # sus GroupModule caen en cascada
     Group = apps.get_model('auth', 'Group')
     Group.permissions.through.objects.filter(permission__content_type__app_label='tributario').delete()
 

@@ -187,7 +187,8 @@ class TestMenu:
             ('configuracion', '/configuracion/puntos/'),   # Locales y puntos de emisión por usuario
             ('adjuntos', '/adjuntos/'),
             ('adjuntos', '/adjuntos/capturas/'),
-            ('tributario', '/tributario/libros/')]   # comprobantes de pago adjuntos
+            ('tributario', '/tributario/libros/'), ('tributario', '/tributario/revision/'),
+            ('tributario', '/tributario/empresas/')]   # comprobantes de pago adjuntos
 
     def test_importacion_queda_igual_y_se_recrea_igual(self):
         antes = estado_menu()

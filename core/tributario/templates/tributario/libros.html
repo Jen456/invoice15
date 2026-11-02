@@ -24,9 +24,9 @@
     {% endfor %}
   </nav>
   <p>
-    <a class="btn btn-outline-primary btn-sm" href="/tributario/libros/exportar/?libro={{ clave }}&amp;mes={{ mes_valor }}&amp;formato=xlsx">Descargar este libro (XLSX)</a>
-    <a class="btn btn-outline-primary btn-sm" href="/tributario/libros/exportar/?libro={{ clave }}&amp;mes={{ mes_valor }}&amp;formato=csv">Descargar este libro (CSV)</a>
-    <a class="btn btn-outline-primary btn-sm" href="/tributario/libros/exportar/?libro=todos&amp;mes={{ mes_valor }}&amp;formato=xlsx">Descargar los cuatro libros (XLSX)</a>
+    <a class="btn btn-outline-primary btn-sm" href="/tributario/libros/exportar/?libro={{ clave }}&amp;mes={{ mes_valor }}&amp;formato=xlsx&amp;empresa={{ request.company.pk }}">Descargar este libro (XLSX)</a>
+    <a class="btn btn-outline-primary btn-sm" href="/tributario/libros/exportar/?libro={{ clave }}&amp;mes={{ mes_valor }}&amp;formato=csv&amp;empresa={{ request.company.pk }}">Descargar este libro (CSV)</a>
+    <a class="btn btn-outline-primary btn-sm" href="/tributario/libros/exportar/?libro=todos&amp;mes={{ mes_valor }}&amp;formato=xlsx&amp;empresa={{ request.company.pk }}">Descargar los cuatro libros (XLSX)</a>
   </p>
   {% for a in actual.advertencias %}<div class="alert alert-warning" role="status">{{ a.texto }}</div>{% endfor %}
   {% for grupo, c in actual.excluidos.items %}<p class="text-muted small">Fuera del libro ({{ grupo }}): {{ c.pruebas }} en ambiente de pruebas y {{ c.sin_autorizar }} sin autorizar en el SRI.</p>{% endfor %}

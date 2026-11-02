@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
@@ -48,4 +49,9 @@ def company_switch(request):
     request.session.pop('url_last', None)
     set_module(request, None)
     audit(request, action, company=company)
-    return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
+    # `next` (opcional): solo una ruta interna de este sitio, p. ej. la revisión del mes desde el resumen del contador.
+    destino = request.POST.get('next', '')
+    if not (destino.startswith('/') and not destino.startswith('//') and url_has_allowed_host_and_scheme(
+            destino, allowed_hosts={request.get_host()}, require_https=request.is_secure())):
+        destino = settings.LOGIN_REDIRECT_URL
+    return HttpResponseRedirect(destino)

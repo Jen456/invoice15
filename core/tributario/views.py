@@ -48,6 +48,16 @@ def libro_json(libro, totales, columnas, limite=None):
             'advertencias': libro.advertencias}
 
 
+EMPRESA_CAMBIADA = ('La empresa activa cambió en otra pestaña: vuelve a cargar la página para ver los datos de la empresa '
+                    'que tienes abierta ahora.')
+
+
+def empresa_cambiada(request):
+    """True si el enlace se armó para otra empresa (`empresa=<id>`) que ya no es la activa (otra pestaña la cambió)."""
+    pedida = request.GET.get('empresa')
+    return bool(pedida) and str(getattr(request, 'company', None) and request.company.pk) != pedida
+
+
 class LibroApi(GroupPermissionMixin, View):
     """GET /tributario/api/libros/<libro>/?mes=AAAA-MM → el libro completo con columnas, filas, totales y exclusiones."""
     permission_required = VER
@@ -55,6 +65,8 @@ class LibroApi(GroupPermissionMixin, View):
     def get(self, request, libro):
         if libro not in lb.LIBROS:
             return JsonResponse({'error': 'Libro desconocido.', 'codigo': 'libro'}, status=404)
+        if empresa_cambiada(request):
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
         inicio, _ = mes_de(request.GET.get('mes'))
         return JsonResponse(libro_json(*lb.construir(libro, inicio)))
 
@@ -87,6 +99,8 @@ class ExportarLibro(GroupPermissionMixin, View):
     permission_required = VER
 
     def get(self, request):
+        if empresa_cambiada(request):
+            return HttpResponse(EMPRESA_CAMBIADA, status=409, content_type='text/plain; charset=utf-8')
         inicio, valido = mes_de(request.GET.get('mes'))
         if request.GET.get('mes') and not valido:
             raise Http404
@@ -104,8 +118,84 @@ class ExportarLibro(GroupPermissionMixin, View):
                                         totales={li.clave: _json(t) for li, t, _ in construidos}, sha256=exportar.huella(contenido),
                                         generado_por=request.user)
         respuesta = HttpResponse(contenido, content_type=tipo)
-        nombre = f'libros-{inicio:%Y-%m}' if clave == 'todos' else f'libro-{clave.replace("_", "-")}-{inicio:%Y-%m}'
+        nombre = (f'libros-{request.company.ruc}-{inicio:%Y-%m}' if clave == 'todos'
+                  else f'libro-{clave.replace("_", "-")}-{request.company.ruc}-{inicio:%Y-%m}')
         respuesta['Content-Disposition'] = f'attachment; filename="{nombre}.{formato}"'
         respuesta['Cache-Control'] = 'private, no-store'
         respuesta['X-Content-Type-Options'] = 'nosniff'
         return respuesta
+
+
+# ---------------------------------------------------------------- revisión del mes (entrega C)
+
+class RevisionPagina(GroupPermissionMixin, TemplateView):
+    """Observaciones del mes con su causa y enlace. No es un cierre ni bloquea nada (el diseño lo hace Codex)."""
+    template_name = 'tributario/revision.html'
+    permission_required = 'view_revision'
+
+    def get_context_data(self, **kwargs):
+        from core.tributario import revision
+        context = super().get_context_data(**kwargs)
+        inicio, valido = mes_de(self.request.GET.get('mes'))
+        anterior = (inicio - timedelta(days=1)).replace(day=1)
+        siguiente = lb.siguiente_mes(inicio)
+        context.update({'title': 'Revisión del mes', 'mes': inicio, 'mes_valor': f'{inicio:%Y-%m}',
+                        'mes_invalido': bool(self.request.GET.get('mes')) and not valido, 'anterior': f'{anterior:%Y-%m}',
+                        'siguiente': f'{siguiente:%Y-%m}' if siguiente <= timezone.localdate() else '',
+                        'revision': revision.revisar(inicio, self.request.company, self.request),
+                        'empresa_cambiada': empresa_cambiada(self.request)})
+        return context
+
+
+class RevisionApi(GroupPermissionMixin, View):
+    """GET /tributario/api/revision/?mes=AAAA-MM[&empresa=<id>] → {mes, corte, observaciones, por_categoria, pendientes, …}."""
+    permission_required = 'view_revision'
+
+    def get(self, request):
+        from core.tributario import revision
+        if empresa_cambiada(request):
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
+        inicio, _ = mes_de(request.GET.get('mes'))
+        return JsonResponse(revision.revisar(inicio, request.company, request))
+
+
+def resumen_de_empresas(usuario, inicio):
+    """[{empresa, ruc, rol, mes, pendientes, informativas, por_categoria}] de las membresías ACTIVAS del usuario cuyo rol
+    puede ver la revisión. Cada empresa se lee dentro de su propio contexto (gestor por empresa y RLS): nunca con un acceso
+    global. Una membresía revocada o una empresa inactiva no aparecen."""
+    from core.tenancy.context import company_context
+    from core.tenancy.models import Membership
+    from core.tributario import revision
+    filas = []
+    for membresia in (Membership.objects.active().filter(user=usuario, group__permissions__codename='view_revision')
+                      .select_related('company', 'group').order_by('company__business_name', 'company_id').distinct()):
+        with company_context(membresia.company):
+            datos = revision.revisar(inicio, membresia.company)
+        filas.append({'empresa_id': membresia.company_id, 'empresa': membresia.company.business_name, 'ruc': membresia.company.ruc,
+                      'rol': membresia.group.name, 'mes': datos['mes'], 'pendientes': datos['pendientes'],
+                      'informativas': datos['informativas'],
+                      'por_categoria': {c: v['revisar'] for c, v in datos['por_categoria'].items()}})
+    return filas
+
+
+class EmpresasPagina(GroupPermissionMixin, TemplateView):
+    """Resumen del contador: sus empresas, el mes, los pendientes y el acceso a la revisión de cada una (cambiar de
+    empresa pasa por /empresas/cambiar/, que vuelve a comprobar la membresía)."""
+    template_name = 'tributario/empresas.html'
+    permission_required = 'view_revision'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        inicio, valido = mes_de(self.request.GET.get('mes'))
+        context.update({'title': 'Revisión de mis empresas', 'mes': inicio, 'mes_valor': f'{inicio:%Y-%m}',
+                        'mes_invalido': bool(self.request.GET.get('mes')) and not valido,
+                        'empresas': resumen_de_empresas(self.request.user, inicio), 'activa': self.request.company.pk})
+        return context
+
+
+class EmpresasApi(GroupPermissionMixin, View):
+    permission_required = 'view_revision'
+
+    def get(self, request):
+        inicio, _ = mes_de(request.GET.get('mes'))
+        return JsonResponse({'mes': f'{inicio:%Y-%m}', 'empresas': resumen_de_empresas(request.user, inicio), 'activa': request.company.pk})

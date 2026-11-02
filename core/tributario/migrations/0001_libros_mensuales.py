@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                 'verbose_name': 'Exportación de un libro mensual',
                 'verbose_name_plural': 'Exportaciones de libros mensuales',
                 'ordering': ('-generado_en', '-id'),
-                'permissions': (('view_libros', 'Puede ver y exportar los libros mensuales'),),
+                'permissions': (('view_libros', 'Puede ver y exportar los libros mensuales'), ('view_revision', 'Puede ver la revisión del mes y el resumen de sus empresas')),
                 'default_permissions': (),
             },
             managers=[
