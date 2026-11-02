@@ -1,0 +1,233 @@
+{
+ "formulario": "104",
+ "mes": "2026-10",
+ "aviso": "Borrador para que lo revise tu contador. FacturaPorAquí no presenta declaraciones: la presentas tú en el portal del SRI. Los criterios marcados «por confirmar» no se asignaron a ningún casillero.",
+ "casilleros": [
+  {
+   "casillero": "401",
+   "descripcion": "Ventas locales gravadas con tarifa diferente de 0 (sin activos fijos): valor bruto",
+   "valor": "30.00",
+   "confirmado": true,
+   "fuente": "Guía para el llenado del Formulario de IVA (SRI) — NORMA-CONTABLE-TRIBUTARIA-2026-10.md §1, fuente 6",
+   "documentos": [
+    {
+     "libro": "ventas",
+     "id": 1,
+     "tipo": "factura",
+     "numero": "001-002-000000271",
+     "url": "/pos/sale/admin/print/a4/1/",
+     "importe": "20.00"
+    },
+    {
+     "libro": "ventas",
+     "id": 1,
+     "tipo": "nota_debito",
+     "numero": "001-002-000000004",
+     "url": "/comprobantes/notas-debito/",
+     "importe": "10.00"
+    }
+   ]
+  },
+  {
+   "casillero": "411",
+   "descripcion": "Ventas locales gravadas con tarifa diferente de 0 (sin activos fijos): valor neto",
+   "valor": "10.00",
+   "confirmado": true,
+   "fuente": "Guía para el llenado del Formulario de IVA (SRI) — NORMA-CONTABLE-TRIBUTARIA-2026-10.md §1, fuente 6",
+   "documentos": [
+    {
+     "libro": "ventas",
+     "id": 1,
+     "tipo": "factura",
+     "numero": "001-002-000000271",
+     "url": "/pos/sale/admin/print/a4/1/",
+     "importe": "20.00"
+    },
+    {
+     "libro": "ventas",
+     "id": 1,
+     "tipo": "nota_credito",
+     "numero": "001-002-000000005",
+     "url": "/pos/credit/note/admin/",
+     "importe": "-20.00"
+    },
+    {
+     "libro": "ventas",
+     "id": 1,
+     "tipo": "nota_debito",
+     "numero": "001-002-000000004",
+     "url": "/comprobantes/notas-debito/",
+     "importe": "10.00"
+    }
+   ]
+  },
+  {
+   "casillero": "421",
+   "descripcion": "Ventas locales gravadas con tarifa diferente de 0 (sin activos fijos): impuesto generado",
+   "valor": "1.50",
+   "confirmado": true,
+   "fuente": "Guía para el llenado del Formulario de IVA (SRI) — NORMA-CONTABLE-TRIBUTARIA-2026-10.md §1, fuente 6",
+   "documentos": [
+    {
+     "libro": "ventas",
+     "id": 1,
+     "tipo": "factura",
+     "numero": "001-002-000000271",
+     "url": "/pos/sale/admin/print/a4/1/",
+     "importe": "3.00"
+    },
+    {
+     "libro": "ventas",
+     "id": 1,
+     "tipo": "nota_credito",
+     "numero": "001-002-000000005",
+     "url": "/pos/credit/note/admin/",
+     "importe": "-3.00"
+    },
+    {
+     "libro": "ventas",
+     "id": 1,
+     "tipo": "nota_debito",
+     "numero": "001-002-000000004",
+     "url": "/comprobantes/notas-debito/",
+     "importe": "1.50"
+    }
+   ]
+  }
+ ],
+ "por_confirmar": [
+  {
+   "clave": "ventas_contado",
+   "concepto": "Ventas gravadas a contado (base gravada)",
+   "valor": "20.00",
+   "casilleros_posibles": [
+    "480"
+   ],
+   "motivo": "Qué importe exacto va en 480/481 (bruto o neto y cómo se reparten las notas de crédito) está sin confirmar.",
+   "documentos": [
+    {
+     "libro": "ventas",
+     "id": 1,
+     "tipo": "factura",
+     "numero": "001-002-000000271",
+     "url": "/pos/sale/admin/print/a4/1/",
+     "importe": "20.00"
+    },
+    {
+     "libro": "ventas",
+     "id": 2,
+     "tipo": "factura",
+     "numero": "001-002-000000272",
+     "url": "/pos/sale/admin/print/a4/2/",
+     "importe": "0.00"
+    }
+   ]
+  },
+  {
+   "clave": "ventas_0",
+   "concepto": "Ventas con tarifa 0 % (valor neto)",
+   "valor": "12.00",
+   "casilleros_posibles": [
+    "403/413",
+    "405/415",
+    "406/416"
+   ],
+   "motivo": "El casillero depende de si la venta con tarifa 0 % da derecho a crédito tributario: lo decide el contador.",
+   "documentos": [
+    {
+     "libro": "ventas",
+     "id": 2,
+     "tipo": "factura",
+     "numero": "001-002-000000272",
+     "url": "/pos/sale/admin/print/a4/2/",
+     "importe": "12.00"
+    }
+   ]
+  },
+  {
+   "clave": "ajustes_nc",
+   "concepto": "Notas de crédito del mes (base total)",
+   "valor": "20.00",
+   "casilleros_posibles": [
+    "423",
+    "424"
+   ],
+   "motivo": "Los ajustes por notas de crédito ya restan en el valor neto; su registro en 423/424 está sin confirmar.",
+   "documentos": [
+    {
+     "libro": "ventas",
+     "id": 1,
+     "tipo": "nota_credito",
+     "numero": "001-002-000000005",
+     "url": "/pos/credit/note/admin/",
+     "importe": "20.00"
+    }
+   ]
+  },
+  {
+   "clave": "compras_sin_tarifa",
+   "concepto": "Compras antiguas sin tarifa registrada",
+   "valor": "50.00",
+   "casilleros_posibles": [],
+   "motivo": "No se sabe su tarifa: complétalas antes de declarar.",
+   "documentos": [
+    {
+     "libro": "compras",
+     "id": 2,
+     "tipo": "",
+     "numero": "00000002",
+     "url": "/pos/purchase/complete/2/",
+     "importe": "50.00"
+    }
+   ]
+  },
+  {
+   "clave": "compras_06",
+   "concepto": "Compras con tarifa diferente de 0 — sustento: Inventario - Crédito tributario para declaración de IVA (base neta)",
+   "valor": "100.00",
+   "casilleros_posibles": [
+    "500/510/520",
+    "501/511/521",
+    "502",
+    "540/550/560"
+   ],
+   "motivo": "Con o sin derecho a crédito tributario y si son activos fijos depende del sustento y del contador.",
+   "documentos": [
+    {
+     "libro": "compras",
+     "id": 1,
+     "tipo": "01",
+     "numero": "001-002-000000101",
+     "url": "/pos/purchase/complete/1/",
+     "importe": "100.00"
+    }
+   ]
+  }
+ ],
+ "no_calculados": [
+  "605/606 saldos de crédito del mes anterior",
+  "615/617 saldos de crédito para el mes siguiente",
+  "563 factor de proporcionalidad",
+  "564/565 crédito aplicable",
+  "902/903/904 total a pagar, intereses y multas"
+ ],
+ "advertencias": [
+  {
+   "codigo": "activos_fijos",
+   "texto": "La aplicación no distingue ventas ni compras de activos fijos: todas las ventas gravadas van en 401–421; si vendiste activos fijos, corrígelo en 402–422."
+  },
+  {
+   "codigo": "excluidos",
+   "texto": "Fuera del borrador (facturas): 1 en pruebas y 1 sin autorizar."
+  },
+  {
+   "codigo": "compras_incompletas",
+   "texto": "1 compras tienen datos por completar (sustento, forma de pago, parte relacionada o comprobante): revísalas antes de declarar."
+  },
+  {
+   "codigo": "compras_sin_tarifa",
+   "texto": "1 compras antiguas no tienen la tarifa de IVA de sus líneas: su base va en «sin tarifa» y su IVA no se calcula (no se recalculan)."
+  }
+ ],
+ "vigente_desde": "2024-04-01"
+}

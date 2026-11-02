@@ -123,3 +123,18 @@ Todo texto de terceros (nombre del archivo, descripción, razón social) **se di
 - **DA-4** Quitar = baja lógica con motivo opcional; sin borrado físico (una orden de limpieza puede llegar después).
 - **DA-5** Se espera comprobante cuando el medio no es efectivo; con medio sin dato (compras y cobros anteriores a la Etapa 2) no se exige.
 - **DA-6** La factura **a crédito** no pide comprobante: lo piden sus cobros. La de contado, sí.
+
+## 6. Recibos por completar y notas de respaldo (02/11/2026)
+
+Contrato completo en HANDOFF («Notas entre agentes — contrato de la captura rápida de gastos»). Resumen de lo que cambia en este contrato:
+
+- Un adjunto de compra, gasto o pago puede ser **una nota de respaldo sin archivo** (`nota: true`, `clase` `nota` «Nota de respaldo»,
+  texto en `descripcion`, sin `url`). `POST /adjuntos/api/<tipo>/<id>/` admite `archivo` y/o `nota` (≤ 500); sin ninguno, 400
+  `respaldo_requerido`; la misma nota vigente otra vez, 409 `duplicado`. `descripcion` admite 500. La nota cuenta en el límite de 10.
+- Formularios de gasto y de pago a proveedor: `nota_respaldo` (opcional, ≤ 500) en la misma transacción. La descripción del gasto no es
+  un respaldo.
+- `GET /adjuntos/api/<tipo>/<id>/` trae además `capturas_pendientes` y `limites.nota_max`. Cada adjunto trae `captura` (id o `null`).
+- Recibos por completar: `/adjuntos/capturas/` y `/adjuntos/api/capturas/…`. En la consulta del mes, `resumen.capturas` y los totales
+  `capturas_del_mes` y `capturas_pendientes`; en el ZIP, `AAAA-MM/recibos-por-completar/`.
+- Borrar una compra, un gasto o un pago deja sus adjuntos quitados (baja lógica con motivo «… eliminado») y devuelve a pendiente los
+  recibos con los que se completó o vinculó.

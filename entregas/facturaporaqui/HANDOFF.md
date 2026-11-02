@@ -1,5 +1,199 @@
 # Handoff compartido — frontend
 
+## Estado actual — entrega integrada: captura rápida y backend contable A–E, sin publicar (Claude, 02/11/2026)
+
+- **Línea integrada**, de la más antigua a la más nueva: `plataforma 5041f56` → `frontend/etapa3 f711eb5` (avance rápido; el diseño de Codex queda intacto) → captura rápida (`fase/captura-gastos`) → importación masiva (`fase/importacion-masiva`) → libros, revisión, ATS y borradores (`fase/libros-mensuales`). `plataforma` en GitHub apunta al final de esta línea. `c5e04a9` no se fusionó.
+- **Cerrado en backend**, con su contrato más abajo: captura rápida de gastos; A importación masiva; B libros mensuales; C revisión del mes y resumen del contador por empresas; D ATS; E borradores del 104 y del 103. Falta el diseño de Codex en todas. D y E, además, esperan la revisión del contador: paquete ficticio en `revision-contador/` con sus preguntas.
+- **Corregido al cerrar:** en el 103, el casillero del valor de los códigos de 4 dígitos (+500, como 3030→3530); la vuelta documentada no deshacía tributario; la vuelta de `importacion 0007` dejaba su módulo en el menú.
+- **Pruebas sobre el código final:** SQLite completa: 1623 aprobadas y 51 omitidas (exclusivas de PostgreSQL), sin fallos. PostgreSQL completa: 1674 aprobadas, sin fallos ni omisiones. Al cerrar aparecieron dos fallos de pruebas, no de código, ya corregidos en `f05b24f`: la prueba de la captura refrescaba un registro fuera de su empresa (la seguridad por filas de PostgreSQL lo oculta) y la del orden del menú no esperaba el grupo «Tributario».
+- **Ensayo de migraciones** sobre una copia del respaldo diario: 41 migraciones; ida en 96,7 s; vuelta en 120,9 s hasta un esquema idéntico al publicado y sin los módulos nuevos; segunda ida idéntica (código `32c20d8`; lo posterior solo cambia pruebas y documentos).
+- **F. Bancos y núcleo contable, bloqueados:** D5 (plan de cuentas y catálogo Supercias transcrito) bloquea plan de cuentas, diario, mayor, balance de comprobación y estados financieros. D7 (contador que valide la matriz de asientos) bloquea los asientos desde operaciones. D6 (extractos anonimizados) y D9 (reglas del complemento) bloquean Bancos y la conciliación. Lo único independiente es el kardex (D3 decidido): entrega aparte, `fase/kardex`.
+- **Sin publicar.** Publicación solo con aprobación de la propietaria, respaldo de base y archivos privados, y el ensayo de migraciones.
+
+## Estado actual — libros, revisión del mes, empresas del contador, ATS y borradores del 104/103 (entregas B–E), sin publicar (Claude, 02/11/2026)
+
+- **B. Libros mensuales** (`core/tributario/libros.py`): ventas, compras, retenciones efectuadas y retenciones recibidas del mes. Solo cuentan los comprobantes **autorizados en producción**, por fecha de emisión; los de pruebas y los no autorizados se cuentan aparte (`excluidos`); los anulados en el SRI se listan y no suman; las notas de crédito restan. Compras por **fecha de registro**, como el ATS. Columnas por tarifa (15 %, 5 %, 0 %, no objeto, exento; las antiguas solo si hay importes). Los totales cuadran al centavo con los documentos y cada fila enlaza al suyo. XLSX sin fórmulas y CSV (`;`, UTF-8 con BOM, celdas protegidas contra fórmulas), cada exportación registrada con su huella (`ExportacionLibro`).
+- **C. Revisión del mes** (`revision.py`): observaciones con su causa y su enlace en seis categorías: devueltos o sin autorizar, datos del ATS incompletos, respaldos pendientes (incluye recibos por completar), saltos de numeración, cuentas vencidas (informativas) y compras sin retención (solo si la empresa es agente de retención). Una retención que falta o un salto de numeración quedan como «Revisar», nunca como incumplimiento. No marca nada como revisado ni bloquea nada.
+- **Revisión de mis empresas** (vista del contador): una fila por cada membresía **activa** con permiso de revisión. Muestra empresa, RUC, rol, mes, pendientes e informativas por categoría, y un botón que cambia de empresa por `/empresas/cambiar/` (revalida la membresía) y abre su revisión. Cada empresa se lee en su propio contexto (gestor por empresa y RLS). Una membresía revocada o una empresa inactiva no aparecen. Pestañas abiertas: las API y descargas con `?empresa=<id>` responden 409 `empresa_cambiada` si la empresa activa ya es otra.
+- **D. ATS** (`ats.py`): XML validado con lxml contra el **`ats.xsd` oficial** guardado en `core/tributario/esquemas/` con su huella y su fuente (`ats.FUENTE_ESQUEMA`: publicado el 02/12/2020, descargado el 02/11/2026). Lleva la cabecera y las compras registradas en el mes con datos completos. Las incompletas quedan fuera con su motivo; no se inventa nada. `ATmmaaaa.zip` se descarga solo si el XML valida; si no, 409 con los errores. La validación es técnica: no equivale a la aceptación del SRI.
+- **E. Borradores del 104 y del 103** (`formularios.py`): por casillero, cada uno con su descripción, su fuente, su criterio y los documentos que lo componen. Lo que depende de un criterio sin confirmar va en «por confirmar», con su importe, los casilleros posibles y el motivo, sin casillero. Vigencia por formulario (104 desde 04/2024, 103 desde 01/2024). XLSX registrado. Aviso fijo: lo revisa el contador y lo presenta el contribuyente en el portal del SRI. **No hay presentación automática ni botón para ello.**
+- **Regla del 103 corregida antes de cerrar:** el casillero del valor suma 50 en la segunda cifra, como los ejemplos verificados de la norma: 303→353, 3030→3530 y 3480→3980 (+500 en los de 4 dígitos).
+- **Acceso:** `view_libros` (libros, ATS, borradores) y `view_revision` (revisión y empresas): Propietario, Administrador, Contador y Consulta. Vendedor y Cliente no. Requiere plan pagado vigente (regla de `/tributario/`).
+- **Migraciones** `tributario 0001–0003` (sin publicar). La vuelta documentada empieza ahora por `migrate tributario zero` (`MIGRACIONES-FASE-CONTABLE.md`).
+- **Pruebas:** `test_libros` (17), `test_revision` (21), `test_ats` (10) y `test_formularios` (18), dentro de las suites completas del código final (resumen de arriba).
+
+**Criterios sin confirmar** (no se calculan ni se asignan; quedan a la vista para el contador):
+- ATS: ventas, `ventasEstablecimiento` y `totalVentas`; anulados electrónicos; retenciones electrónicas en compras (van en 0.00, según la norma registrada). Las compras con pago al exterior quedan fuera: la aplicación no registra esos datos.
+- 104: ventas con tarifa 0 (403/405/406), ajustes por notas de crédito (423/424), contado y crédito (480/481), compras gravadas según el sustento (con o sin crédito), activos fijos, arrastres 605/606 y proporcionalidad 563.
+- 103: códigos con letra salvo 303A→3030 (el Catálogo ATS solo trae código, concepto y porcentaje) y pagos al exterior (5xx, 498).
+- **Complemento:** el plan aprobado (§3.8) pone `/tributario/` bajo el complemento con precio aparte. Hoy lo ven todos los planes pagados porque el complemento depende de D9. Antes de publicar hay que decidirlo.
+
+## Pendiente para Codex — libros, revisión, empresas del contador, ATS y borradores
+
+- [ ] `tributario/libros.html`: selector de mes y de libro, totales por tarifa, filas con enlace, exclusiones y advertencias, descargas (XLSX de los cuatro, XLSX o CSV de uno) e historial de exportaciones. Hoy es funcional y sin diseño.
+- [ ] `tributario/revision.html`: contadores por categoría, filtros por categoría y nivel, cada observación con su causa y su enlace. Sin botones de «Revisado» ni de cierre: no hay backend.
+- [ ] `tributario/empresas.html`: tabla o tarjetas por empresa, con su botón «Abrir su revisión» (formulario POST ya funcional). En móvil, sin desplazamiento horizontal.
+- [ ] `tributario/ats.html`: estado de validación, compras incluidas y excluidas con sus motivos y enlace a «Completar datos», advertencias y descarga (deshabilitada si no valida).
+- [ ] `tributario/formularios.html`: elegir 104 o 103 y mes, casilleros con sus documentos, bloque «Por confirmar» destacado, «No calculados», advertencias y descarga XLSX. Mantener el aviso fijo. Sin botones de presentar o enviar al SRI.
+- [ ] Al recibir 409 `empresa_cambiada` en cualquier API o descarga: mostrar el texto y ofrecer recargar.
+
+## Notas entre agentes — contrato de libros, revisión, empresas del contador, ATS y borradores (Claude → Codex)
+
+Todo es GET salvo el cambio de empresa. `mes=AAAA-MM`: si falta, no es válido o es futuro, se usa el mes actual (las páginas reciben `mes_invalido`). `empresa=<id>` es opcional en API y descargas: si no es la empresa activa, 409 `{error, codigo: 'empresa_cambiada'}` en las API, o texto plano en las descargas. Sin permiso: 302, como el resto de pantallas. Plan gratuito o vencido: 302 a `/suscripcion/`. Importes como texto con dos decimales.
+
+| Ruta | Permiso | Parámetros | Respuesta |
+|---|---|---|---|
+| `/tributario/libros/` | `view_libros` | `mes`, `libro` (`ventas` por defecto, `compras`, `retenciones_efectuadas`, `retenciones_recibidas`) | página; contexto `libros` (resumen de los cuatro), `actual` (el elegido, hasta 500 filas), `exportaciones` (las 10 últimas del mes) |
+| `/tributario/api/libros/<libro>/` | `view_libros` | `mes`, `empresa` | `{libro, nombre, mes, columnas [{clave, encabezado, tipo: texto\|importe\|porcentaje}], filas [fila + celdas [{clave, valor}]], total_filas, totales, excluidos, advertencias}`; 404 `libro` |
+| `/tributario/libros/exportar/` | `view_libros` | `mes`, `libro` (`todos` por defecto), `formato` (`xlsx` por defecto; `csv` solo con un libro), `empresa` | `libros-<RUC>-<AAAA-MM>.xlsx` o `libro-<libro>-<RUC>-<AAAA-MM>.<formato>`; 404 si el mes, el libro o el formato no valen |
+| `/tributario/revision/` | `view_revision` | `mes` | página; contexto `revision` (como la API) y `empresa_cambiada` |
+| `/tributario/api/revision/` | `view_revision` | `mes`, `empresa` | `{mes, corte, observaciones [observación], por_categoria {clave: {nombre, revisar, informativo}}, pendientes, informativas, agente_retencion}` |
+| `/tributario/empresas/` | `view_revision` | `mes` | página; contexto `empresas` y `activa` |
+| `/tributario/api/empresas/` | `view_revision` | `mes` | `{mes, activa, empresas [{empresa_id, empresa, ruc, rol, mes, pendientes, informativas, por_categoria {clave: número}}]}` |
+| `/empresas/cambiar/` (POST) | membresía activa | `company` (id), `next` (ruta local) | redirige a `next` si es una ruta local del mismo sitio; si no, al inicio. 404 sin membresía |
+| `/tributario/ats/` | `view_libros` | `mes` | página; contexto `ats` (como la API) |
+| `/tributario/api/ats/` | `view_libros` | `mes`, `empresa` | `{mes, nombre: 'ATmmaaaa', valido, errores_xsd [{linea, mensaje}], incluidas [{id, numero, proveedor, fecha_registro, url}], excluidas [ídem + motivos [texto]], advertencias [{codigo, texto}], esquema {url, publicado, descargado, sha256, …}}`, sin el XML |
+| `/tributario/ats/descargar/` | `view_libros` | `mes`, `empresa` | `ATmmaaaa.zip` con `ATmmaaaa.xml`; 409 `{error, codigo: 'ats_invalido', errores_xsd}` si no valida |
+| `/tributario/formularios/` | `view_libros` | `formulario` (`104` por defecto o `103`), `mes` | página; contexto `hoja` (como la API) o `error` |
+| `/tributario/api/formularios/` | `view_libros` | `formulario`, `mes`, `empresa` | `{formulario, mes, aviso, vigente_desde, casilleros [{casillero, descripcion, valor, confirmado, fuente, documentos [{libro, id, tipo, numero, url, importe}]}], por_confirmar [{clave, concepto, valor, casilleros_posibles, motivo, documentos}], no_calculados [texto], advertencias [{codigo, texto}]}`; 400 `{error, codigo: 'sin_vigencia'}` |
+| `/tributario/formularios/exportar/` | `view_libros` | `formulario`, `mes`, `empresa` | `borrador-<104\|103>-<RUC>-<AAAA-MM>.xlsx` (hojas «Borrador 104», «Por confirmar», «Documentos»); 404 sin vigencia o con mes inválido |
+
+**Observación:** `{categoria, categoria_nombre, codigo, nivel (revisar | informativo), nivel_nombre, titulo, causa, documento {tipo, id, numero, url} | null, fecha, importe}`. Códigos por categoría: `devueltos`: el estado del SRI (`returned`, `not_authorized`, `in_process`, `without_authorizing`, `sequential_registered_error`); `datos_ats`: `compra_incompleta`, `proveedor_incompleto`; `respaldos`: `sin_respaldo`, `respaldo_rechazado`, `respaldo_por_revisar`, `recibo_por_completar`; `numeracion`: `salto`; `vencidas`: `cxc_vencida`, `cxp_vencida` (informativas); `retenciones`: `compra_sin_retencion`.
+
+**Textos exactos:** `empresa_cambiada` «La empresa activa cambió en otra pestaña: vuelve a cargar la página para ver los datos de la empresa que tienes abierta ahora.»; `ats_invalido` «El ATS no valida contra el esquema oficial: corrige los errores antes de descargarlo.»; `sin_vigencia` «No hay un mapa de casilleros del 104 vigente para 03/2024: el borrador cubre desde 04/2024.»; `libro` «Libro desconocido.»; aviso de los borradores: `formularios.AVISO`; motivos del 103: `formularios.MOTIVO_LETRA` y `MOTIVO_EXTERIOR`; advertencias fijas del ATS: `ats.ADVERTENCIAS_FIJAS`.
+
+**Ejemplos ficticios** (empresa de prueba):
+
+```
+GET /tributario/api/formularios/?formulario=103&mes=2026-10
+→ 200 {"formulario": "103", "mes": "2026-10", "vigente_desde": "2024-01-01", "aviso": "Borrador para que lo revise tu contador. …",
+       "casilleros": [{"casillero": "312", "descripcion": "Base imponible — código 312", "valor": "100.00", "confirmado": true,
+                       "fuente": "Regla de casilleros verificada en una declaración real (mayo de 2024) — …",
+                       "documentos": [{"libro": "retenciones_efectuadas", "id": 7, "tipo": "", "numero": "001-002-000000041",
+                                       "url": "/comprobantes/retenciones/", "importe": "100.00"}]},
+                      {"casillero": "349", "valor": "100.00", …}, {"casillero": "362", "valor": "2.00", …},
+                      {"casillero": "399", "valor": "2.00", …}, {"casillero": "499", "valor": "2.00", …}],
+       "por_confirmar": [], "no_calculados": ["498 pagos al exterior (no se registran retenciones al exterior)", "…"], "advertencias": []}
+GET /tributario/api/revision/?mes=2026-10&empresa=3        (otra pestaña cambió a la empresa 5)
+→ 409 {"error": "La empresa activa cambió en otra pestaña: …", "codigo": "empresa_cambiada"}
+GET /tributario/ats/descargar/?mes=2026-10                  (las compras excluidas no impiden la descarga; un XML inválido sí)
+→ 409 {"error": "El ATS no valida contra el esquema oficial: …", "codigo": "ats_invalido", "errores_xsd": [{"linea": 3, "mensaje": "…"}]}
+```
+
+## Estado actual — importación masiva de comprobantes recibidos (entrega A), sin publicar (Claude, 02/11/2026)
+
+- **Integrada** la rama `fase/importacion-masiva` (`f397970`, 01/11, sin documentación ni subida a GitHub) con la captura rápida y `plataforma`: merge `f8fec5d`. Al verificarla se encontró un fallo propio de esa rama (las API de lotes por claves y por reporte solo admiten POST y `test_rutas` las recorría con GET): corregido en las pruebas (`615bb82`).
+- **Qué hace** (reutiliza lotes, entradas, la consulta de autorización del SRI y el importador XML existentes): pegar claves de acceso (varias por línea, con ruido) o subir el reporte del portal del SRI (TXT tabulado, CSV con `;` en UTF-8 o Windows-1252, XLSX leído como texto). Hasta 500 claves por lote, 5 MB de reporte, 200 000 caracteres pegados. Cada fila rechazada dice por qué (clave alterada por la hoja de cálculo, longitud, varias claves, RUC del receptor que no coincide…). Duplicados (repetida en la lista o ya importada) sin consultar al SRI.
+- **Consulta y reanudación:** cada clave se consulta al SRI por partes; «SRI no disponible» y «en proceso» se reintentan sin duplicar (botón y tarea programada `procesar_importaciones`); «no encontrada» se reintenta solo a pedido. Lo que el SRI no entrega queda como pendiente: no se inventa.
+- **Vista previa y confirmación:** por documento, emisor y totales del XML, verificación en el SRI, pendientes de revisión ATS, proveedor existente o nuevo (pide celular y correo), bloqueos y confirmaciones. Confirmar crea compras con los importes del XML y los datos tributarios pendientes de «Completar datos» (sustento, parte relacionada y forma de pago no se deciden solos), registra retenciones recibidas o vincula la venta con la misma clave. Por partes (25 por petición); repetir no duplica; en PostgreSQL, dos confirmaciones simultáneas crean una compra y un proveedor.
+- **Migración** `importacion 0007_lotes_de_claves` (columnas y opciones nuevas, sin tablas; módulo «Importar por claves o reporte del SRI»). Su vuelta dejaba el módulo en el menú: desde `b64e156` lo quita. Conteos del candidato final (41) en `MIGRACIONES-FASE-CONTABLE.md`.
+- **Pruebas:** `tests/test_importacion_masiva.py` (22 pruebas), dentro de las suites completas del código final (resumen de arriba).
+- **Sin publicar.** Requiere el plan Ilimitado o Multiempresa (regla de `/importacion/`), como el resto de la importación.
+
+## Pendiente para Codex — importación masiva
+
+- [ ] Diseñar `importacion/claves.html` (pegar claves o subir reporte, con el resumen de filas rechazadas y su motivo) e `importacion/incorporar.html` (vista previa por documento con estado, bloqueos, confirmaciones y datos de proveedores nuevos; confirmación por partes con progreso). Hoy son funcionales y sin diseño. Campos, rutas y mensajes no cambian.
+- [ ] En la ficha del lote: «Reintentar consultas» cuando `reintentables > 0` y el aviso de lo que quedó sin XML.
+
+## Notas entre agentes — contrato de la importación masiva (Claude → Codex)
+
+Permisos: importar `add_documentoimportado`; incorporar `change_documentoimportado` y además `add_purchase` (compras) o `add_retencionrecibida` (retenciones). Plan: Ilimitado o Multiempresa. Errores: `{error}` (400; 413 si el reporte pesa más de 5 MB).
+
+| Ruta | Método | Campos | Respuesta |
+|---|---|---|---|
+| `/importacion/claves/` | GET / POST | `texto` (claves pegadas) o `reporte` (archivo) | página; el POST redirige al lote con «Lote #N: X claves en cola, Y rechazadas.» o vuelve con el error |
+| `/importacion/api/lotes/claves/` | POST (JSON o formulario) | `texto` | **201** `{lote, lista}` |
+| `/importacion/api/lotes/reporte/` | POST multipart | `reporte` (TXT, CSV o XLSX) | **201** `{lote, lista}` |
+| `/importacion/api/lotes/<id>/procesar/` | POST | `reintentar` (opcional, `1`) | `{lote, reencoladas}`: avanza la consulta por partes |
+| `/importacion/lotes/<id>/incorporar/` | GET / POST | `documentos[]`, `confirmar_plazo_ats`, `confirmar_sin_verificar`, `confirmar_no_duplicada`, `type_expense`, `date_joined`, `proveedor-<ruc>-mobile`, `proveedor-<ruc>-email`, `proveedor-<ruc>-parte_relacionada` | página de vista previa; el POST vuelve a ella con el resultado en mensajes |
+| `/importacion/api/lotes/<id>/incorporar/` | GET | — | `{lote, plan, opciones}` |
+| `/importacion/api/lotes/<id>/incorporar/` | POST JSON | `{documentos: [ids], opciones: {confirmar_…: true, type_expense, date_joined}, proveedores: {ruc: {mobile, email, parte_relacionada}}}` | `{resultados, restantes, tratados, plan}` |
+
+- `lista` (resumen de lo leído): `{formato: texto|txt|csv|xlsx, filas, con_clave, rechazadas, omitidas, columnas, columnas_desconocidas, columnas_texto}`.
+- `lote`: lo de siempre más `origen {id: archivos|claves|reporte, nombre}`, `reporte` (archivo), `sin_xml`, `reintentables`, `urls {detalle, incorporar, api_incorporar}`; cada entrada trae además `clave` y `sugerencias` (datos del reporte para comparar con el XML).
+- `plan`: `{lote_id, items, proveedores_nuevos [{ruc, razon_social, requiere, documentos}], resumen {por_estado, estados, total, incorporables}}`. Cada item: `{entrada_id, orden, clave, entrada_estado, sugerencias, documento_id, numero, cod_doc, tipo_documento, emisor {ruc, razon_social}, fecha_emision, importe_total, clasificacion, verificacion, revision, compra_id, venta_vinculada_id, accion (crear_compra | registrar_retencion | vincular_venta | null), estado, bloqueos [{codigo, texto}], confirmaciones, pendientes_revision, proveedor, proveedor_nuevo, venta_id, permiso, errores, advertencias}`.
+- Estados del item: `listo` «Listo para incorporar», `requiere_datos` «Requiere datos o confirmación», `bloqueado` «No se puede incorporar», `ya_incorporado` «Ya incorporado», `sin_xml` «Sin XML autorizado», `no_aplica` «Se revisa a mano», `rechazado` «Rechazado», `duplicado` «Duplicado».
+- `resultados[]`: `{documento_id, numero, resultado: compra_creada | retencion_registrada | venta_vinculada | ya_incorporado | error, mensaje, codigo?, compra_id?, retenciones?, venta_id?}`. `restantes`: ids que faltan; volver a confirmar continúa.
+- Mensajes de la lista: «Pega como máximo 200.000 caracteres por vez.», «Un lote admite hasta 500 claves: divide la lista.», «No se encontró ninguna clave de acceso.», «El archivo es un XLS antiguo: guárdalo como XLSX o descarga el reporte en TXT.», «Ese archivo no es el reporte del portal (TXT, CSV o XLSX): los XML y PDF se importan en «Nueva importación».», «El reporte está vacío.», «No se pudo leer el archivo XLSX (¿está dañado o protegido con contraseña?).». Incorporación: «Elige al menos un documento.», «Alguno de los documentos elegidos no pertenece a este lote.».
+- Ejemplo ficticio: pegar una clave válida de 49 dígitos (dígito verificador módulo 11, como las de `tests/test_importacion_masiva.py`) y una línea `abc` → `lista.con_clave = 1`, `rechazadas = 1`; el lote queda con una entrada en cola y, tras procesarla (SRI simulado en las pruebas), el plan muestra la compra `listo`, o `requiere_datos` si el proveedor es nuevo (pide celular y correo).
+
+## Estado actual — captura rápida de gastos (recibo o nota ahora, completar después), sin publicar (Claude, 02/11/2026)
+
+- **Integrado `frontend/etapa3` `f711eb5` en `plataforma`** por avance rápido (ya contenía `plataforma 5041f56`; se conservan las secciones de ambos agentes). Diseño de cobros, locales/puntos, formularios y la corrección del aviso de solicitud de factura, intactos. Suite PostgreSQL completa sobre `f711eb5`: 1546 aprobadas y 1 fallo (`test_zz_mejora_concurrencia_pg`, abajo).
+- **Captura rápida** (`core/adjuntos/capturas.py`, modelo `Captura`): recibo (PDF/JPG/PNG/WEBP, 8 MB, contenido comprobado) y/o nota (≤ 500) guardados sin importe, categoría, proveedor ni medio de pago. Mientras está pendiente **no crea gasto, compra, pago, cuenta por pagar, asiento ni crédito tributario** (prueba de conteos). Después se **completa como gasto** (mismas validaciones que «Nuevo gasto»), **como compra** (pantalla de Compras con `?captura=`) o se **vincula** a una compra, un gasto o un pago existentes. El adjunto que nace reutiliza el **mismo archivo físico** (no se copia ni se vuelve a subir). Empresa, autor y fecha salen del servidor; historial en auditoría.
+- **Sin duplicados:** `clave` por envío (doble clic o reintento con el mismo contenido → la misma captura; otro contenido → `clave_usada`); toda transición bloquea la captura (`select_for_update`) y, si ya no está pendiente, no crea nada (`captura_usada`, 409). Si el archivo ya estaba en el documento, no se duplica (`ya_adjunto`). Borrar después el gasto, la compra o el pago devuelve la captura a pendiente y deja sus adjuntos quitados (archivo conservado).
+- **Respaldo por nota en egresos:** un adjunto puede ser una nota sin archivo (`clase` `nota`, texto, autor y fecha). Se registra en el modal (`nota`), al crear un gasto o un pago (`nota_respaldo`) o al completar una captura. La descripción del gasto **no** se convierte en respaldo y los históricos no cambian ni se marcan revisados.
+- **Consulta mensual y ZIP:** los recibos pendientes guardados en el mes van aparte (`resumen.capturas`, `totales.capturas_del_mes`, `totales.capturas_pendientes`), no cuentan como documentos ni como respaldo; el ZIP los incluye en `AAAA-MM/recibos-por-completar/` y el índice los marca «Recibo por completar». Las notas de egresos cuentan como respaldo (`con_nota`) y van al índice como `respaldo=nota`. Corregido: el ZIP ya no intenta abrir un archivo inexistente para una nota.
+- **Roles (decisión aplicada según el encargo de la propietaria del 02/11, revertible en `roles.py`):** guardar, completar como gasto y descartar: Propietario, Administrador, Contador y Vendedor (`add_captura`, `change_captura`); el Vendedor solo ve y gestiona los recibos que guardó. Vincular exige además poder adjuntar en ese documento (Propietario, Administrador, Contador). Registrar como compra exige `add_purchase`. Consulta solo ve. Cliente nada. Guardar no exige plan; completar como gasto exige el plan pagado vigente (como Gastos).
+- **Prueba intermitente investigada:** `test_zz_mejora_concurrencia_pg` no era intermitente sino dependiente del orden: las pruebas transaccionales vacían la base al terminar (también los planes que crean las migraciones `suscripciones 0002/0004`) y desde que `test_zz_cobros_…` corre antes, la de mejora fallaba con `Plan.DoesNotExist`. Reproducido en `f711eb5` (cobros → mejora: falla; mejora sola: pasa). Corregido solo en pruebas (`helpers.restaurar_planes()`, mismas funciones de esas migraciones). Sin cambios de código de producción.
+- **Migraciones nuevas** (sin publicar): `adjuntos 0004_capturas_y_notas`, `0005_rls_capturas`, `0006_modulo_capturas` y `tenancy 0010_acciones_capturas`. Detalle, vuelta y restauración en `MIGRACIONES-ADJUNTOS.md`. Con ellas el candidato pasaba de 33 a 37 migraciones; el final tiene 41 (`MIGRACIONES-FASE-CONTABLE.md`).
+- **Pruebas:** SQLite completa sobre `e26b584`: 1535 aprobadas y 50 omitidas (exclusivas de PostgreSQL), sin fallos. PostgreSQL completa sobre `e26b584`: 1584 aprobadas y 1 fallo de la propia prueba (refrescaba la captura fuera de su empresa y la seguridad por filas la ocultaba), corregido en `f05b24f`. Navegador, en una vista previa local con SQLite y datos ficticios: 15 pasos sin errores de JavaScript ni fallos inesperados (guardar, doble envío, completar como gasto con el mismo archivo, segunda conversión rechazada, vincular a un pago con nota, consulta del mes, ZIP, cobros con la misma clave, dos formularios con puntos distintos, separación entre empresas, vendedor y móvil sin desplazamiento horizontal). El resultado sobre el código final está en el resumen de arriba.
+- **Sin publicar.** Publicación solo con aprobación de la propietaria, respaldo de base y archivos privados, y ensayo de migraciones.
+
+## Pendiente para Codex — captura rápida de gastos
+
+- [ ] Rediseñar la pantalla funcional `/adjuntos/capturas/` (`core/adjuntos/templates/adjuntos/capturas.html` + `static/adjuntos/js/capturas.js`, hoy sin diseño): acceso «Guardar recibo o nota» desde Gastos y móvil (hoy un enlace en `expenses/list.html`), captura breve, bandeja de pendientes, completar como gasto con los datos disponibles (sin otro selector de archivo), registrar como compra (enlace a `/pos/purchase/add/?tipo=gasto&captura=<id>`), vincular, corregir nota y descartar. Acciones según `capacidades`.
+- [ ] Modal de adjuntos (`adjuntos.js`): admitir nota sin archivo (`nota`, ≤ 500; quitar `required` del archivo), dibujar los elementos con `nota: true` como texto (sin enlace) y, si `capturas_pendientes` trae elementos, ofrecer «Usar un recibo pendiente» que llame a `POST /adjuntos/api/capturas/<id>/vincular/`. `descripcion` admite 500.
+- [ ] Formulario de gasto (y de pago a proveedor): campo opcional de nota de respaldo (`nota_respaldo`). Si la «Nota del gasto» debe contar como respaldo, enviar su texto también en `nota_respaldo` (decisión de interfaz; el servidor no la copia).
+- [ ] Consulta mensual: dibujar `resumen.capturas` (pendientes de completar) separado de los documentos, con enlace a `url_captura`; hoy hay un bloque funcional mínimo en `mes.html`.
+- [ ] Pantalla de compra con `?captura=`: el aviso funcional (`fp-captura-aviso`) y el JSON `fp-captura` ya están; ocultar el selector de archivo del recibo.
+
+## Notas entre agentes — contrato de la captura rápida de gastos (Claude → Codex)
+
+Todas las rutas de API responden JSON. Errores: `{error, codigo}` y, según el caso, `captura` (la afectada) o `errores` (por campo). Sin sesión o sin empresa activa: 403. Sin `view_captura`: 403 `sin_permiso_ver`. Fechas y horas: `AAAA-MM-DD` y `AAAA-MM-DD HH:MM` (hora local); usuarios por `username`.
+
+| Ruta | Método | Permiso | Campos | Respuesta |
+|---|---|---|---|---|
+| `/adjuntos/capturas/` | GET | `view_captura` | `?estado=pendiente` (defecto) \| `completada` \| `vinculada` \| `descartada` \| `todas`; `?captura=<id>` resalta una | pantalla funcional; contexto `capturas`, `capacidades`, `limites`, `clave_sugerida`, `opciones` (si puede completar), `pendientes`, `estado`, `seleccionada` |
+| `/adjuntos/api/capturas/` | GET | `view_captura` | `?estado=` como arriba | `{estado, capturas: [captura], pendientes, capacidades, limites, clave_sugerida}` (máximo 300, más recientes primero) |
+| `/adjuntos/api/capturas/` | POST multipart | `add_captura` | `clave` (8–40, letras, números, `-` o `_`; una por envío), `archivo` (opcional), `nota` (opcional, ≤ 500) — al menos uno | **201** `{captura, repetido: false, clave_sugerida}`; **200** `repetido: true` con la misma captura si la clave ya se usó con el mismo contenido; **409** `clave_usada` si se usó con otro |
+| `/adjuntos/api/capturas/<id>/` | GET | `view_captura` | — | `{captura (con mismo_archivo), opciones?: {categorias [{id, nombre}], medios [{id, nombre}], hoy}, sugerencias?: {date_joined, description}}` (`opciones` y `sugerencias` solo si puede completar como gasto) |
+| `/adjuntos/api/capturas/<id>/completar/` | POST | `change_captura` + plan pagado vigente | los de «Nuevo gasto»: `type_expense`, `date_joined`, `valor` (> 0), `medio_pago`, `referencia` (obligatoria con cheque), `description` | **201** `{captura, gasto: {id, titulo}, adjuntos: [adjunto]}`; 400 `datos` (con `errores` por campo) o `valor`; 403 `plan`; 409 `captura_usada` |
+| `/adjuntos/api/capturas/<id>/vincular/` | POST | `change_captura` + adjuntar en el documento | `tipo` (`compra` \| `gasto` \| `pago`), `documento_id` | **201** `{captura, adjuntos: [creados], ya_adjunto: adjunto \| null, tambien_en}`; 400 `tipo`; 403 `permiso`; 404 `documento`; 409 `captura_usada` |
+| `/adjuntos/api/capturas/documentos/` | GET | `view_captura` + adjuntar en ese tipo | `tipo` (obligatorio), `q` (proveedor, RUC, número, referencia, descripción o `#<id>` de gasto) | `{documentos: [documento]}` (máximo 20, más recientes); 400 `tipo`; 403 `permiso` |
+| `/adjuntos/api/capturas/<id>/descartar/` | POST | `change_captura` | `motivo` (opcional, ≤ 300) | `{captura}`; 400 `motivo_largo`; 409 `captura_usada` |
+| `/adjuntos/api/capturas/<id>/nota/` | POST | `change_captura`, o `add_captura` si la guardó quien la corrige | `nota` (≤ 500) | `{captura}`; 400 `nada_que_cambiar`, `respaldo_requerido`, `nota_larga`; 409 `captura_usada` |
+| `/adjuntos/capturas/<id>/archivo/` | GET | `view_captura` + visibilidad | `?descargar=1` | el archivo con `Cache-Control: private, no-store`, `nosniff` y CSP `sandbox`; 404 sin archivo, ajena o no visible; nunca por `/media/` |
+| `/pos/purchase/add/` | GET `?tipo=gasto&captura=<id>` | `add_purchase` | — | contexto `captura` (JSON en `fp-captura`, campo oculto `captura`) o `captura_aviso` si no es usable |
+| `/pos/purchase/add/` | POST `action=add` + `captura` | `add_purchase` + `change_captura` | los de la compra | `{id, advertencias}`; `{error, codigo: 'captura_usada', captura}` sin crear la compra |
+| `/adjuntos/api/<tipo>/<id>/` | POST | como hoy | ahora `archivo` **o** `nota` (≤ 500), o ambos (la nota pasa a ser la descripción del archivo) | 201 como hoy; 400 `respaldo_requerido`; 409 `duplicado` (mismo archivo o misma nota vigente) |
+| `/adjuntos/api/<tipo>/<id>/` | GET | como hoy | — | como hoy más `capturas_pendientes: [captura]` (si puede adjuntar y gestionar capturas) y `limites.nota_max` |
+| `/pos/expenses/add/`, `/pos/debts/pay/add/` | POST `action=add` | como hoy | además `nota_respaldo` (opcional, ≤ 500) | como hoy; si la nota no vale, no se registra el gasto ni el pago |
+
+**Captura JSON:** `{id, numero ('C-<id>'), clave, estado {id, name}, archivo {nombre, tipo_mime, extension, tamano, tamano_texto, sha256, url, url_descarga} | null, nota, creado_por, creado_en, fecha, completado_por, completado_en, motivo, documento {tipo, tipo_nombre, id, titulo, existe, url_adjuntos} | null, adjuntos [ids], capacidades?, mismo_archivo? [{tipo, id, titulo}]}`. `mismo_archivo` solo avisa (otras capturas pendientes o documentos con la misma foto); nunca bloquea.
+
+**Estados:** `pendiente` «Pendiente de completar», `completada` «Completada: registró el documento», `vinculada` «Vinculada a un documento existente», `descartada` «Descartada». Borrar el documento devuelve la captura a `pendiente` (`documento` vacío).
+
+**Capacidades** (ya cruzadas con el estado y el autor cuando vienen en una captura): `{ver, ver_todas, registrar, gestionar, completar_gasto, registrar_compra, vincular {compra, gasto, pago}, descartar, editar_nota, bloqueos {gasto, compra, pago}}`. Con el plan gratuito o vencido, `completar_gasto` es `false` y `bloqueos.gasto` trae el texto del plan.
+
+**Adjunto JSON** (modal y consulta): como antes más `captura` (id de origen o `null`). Una nota: `nota: true`, `clase {id: 'nota', name: 'Nota de respaldo'}`, `url`, `url_descarga`, `extension`, `tamano_texto` vacíos; el texto va en `descripcion`. La lista `clases` del GET no incluye `nota`.
+
+**Consulta mensual** (`resumen`): `capturas` = filas con las mismas claves que las de documentos más `pendiente_completar: true`, `tipo: 'captura'`, `numero 'C-<id>'`, `url_captura`; `adjuntos[0]` describe el archivo (`clase` «Recibo») o la nota (`clase` «Nota»). Totales nuevos: `capturas_del_mes`, `capturas_pendientes` (todas las de la empresa visibles). En las filas de egresos, `con_nota` ya refleja las notas de respaldo. ZIP: `AAAA-MM/recibos-por-completar/C-<id>.<ext>`; índice: tipo «Recibo por completar», documento `C-<id>`, `respaldo` `archivo` o `nota`.
+
+**Textos de error exactos** (`core/adjuntos/capturas.MENSAJES` y `servicios`): `respaldo_requerido` «Adjunta el recibo o escribe una nota (o ambos).»; `clave` «Falta la clave del envío: vuelve a abrir el formulario.»; `clave_usada` «Esta clave ya se usó para guardar otro recibo o nota: vuelve a abrir el formulario e inténtalo de nuevo.»; `nota_larga` «La nota admite hasta 500 caracteres.» (en adjuntos: «La nota o descripción admite hasta 500 caracteres.»); `motivo_largo` «El motivo admite hasta 300 caracteres.»; `captura` «El recibo no existe o es de otra empresa.»; `tipo` «Elige si es una compra, un gasto o un pago a proveedor.»; `documento` «El documento no existe o es de otra empresa.»; `datos` «Revisa los datos del gasto.»; `valor` «Escribe el valor del gasto, mayor que cero.»; `sin_permiso` «Tu perfil no puede guardar recibos ni notas.»; `sin_permiso_gestionar` «Tu perfil no puede completar, vincular ni descartar recibos.»; `sin_permiso_compra` «Tu perfil no puede registrar compras.»; `nada_que_cambiar` «No hay cambios que guardar.»; `captura_usada` «Este recibo ya se registró como Gasto #41 · MOVILIZACIÓN (ana, 02/11/2026 10:12). No se creó otro registro.» o «Este recibo se descartó el 02/11/2026 10:12 (ana): no se puede completar ni vincular. Motivo: …»; `duplicado` «Este archivo ya está adjunto a este documento.» / «Esta nota ya está registrada en este documento.»; `archivo`, `tamano` y `plan` llevan el texto del caso.
+
+**Ejemplos ficticios** (empresa de prueba, usuario `ana.prueba`):
+
+```
+POST /adjuntos/api/capturas/   clave=7f3c9a1e2b4d4c0f  nota=Taxi al banco  archivo=recibo-taxi.jpg
+→ 201 {"captura": {"id": 12, "numero": "C-12", "estado": {"id": "pendiente", "name": "Pendiente de completar"},
+       "archivo": {"nombre": "recibo-taxi.jpg", "tipo_mime": "image/jpeg", "extension": "jpg", "tamano": 48213,
+                   "tamano_texto": "47 KB", "url": "/adjuntos/capturas/12/archivo/", ...},
+       "nota": "Taxi al banco", "creado_por": "ana.prueba", "creado_en": "2026-11-02 10:05", "documento": null, ...},
+       "repetido": false, "clave_sugerida": "c1d0e9..."}
+POST /adjuntos/api/capturas/12/completar/   type_expense=3 date_joined=2026-11-02 valor=8.50 medio_pago=transferencia
+     referencia=T-55 description=Taxi al banco
+→ 201 {"captura": {"id": 12, "estado": {"id": "completada", ...}, "documento": {"tipo": "gasto", "id": 41,
+       "titulo": "Gasto #41 · MOVILIZACIÓN", "existe": true, ...}}, "gasto": {"id": 41, "titulo": "Gasto #41 · MOVILIZACIÓN"},
+       "adjuntos": [{"id": 77, "clase": {"id": "recibo", "name": "Recibo"}, "nombre": "recibo-taxi.jpg",
+                     "descripcion": "Taxi al banco", "importe": "8.50", "captura": 12, ...}]}
+POST /adjuntos/api/capturas/12/completar/   (otra pestaña)
+→ 409 {"error": "Este recibo ya se registró como Gasto #41 · MOVILIZACIÓN (ana.prueba, 02/11/2026 10:07). No se creó otro registro.",
+       "codigo": "captura_usada", "captura": {...}}
+POST /adjuntos/api/capturas/13/vincular/   tipo=pago documento_id=5
+→ 201 {"captura": {"estado": {"id": "vinculada", ...}}, "adjuntos": [...], "ya_adjunto": null, "tambien_en": []}
+```
+
 ## Estado actual — cierre de cobros y locales; guía actualizada (Codex, 02/11/2026)
 
 **La entrega antigua `fase/adjuntos-comprobantes c5e04a9` está superada.** Fetch comprobado: `plataforma=5041f56`; `frontend/etapa3` ya la incorpora. No se fusionó `c5e04a9`. Los apartados históricos siguientes conservan su contexto; esta entrada es el estado vigente del diseño de cobros/puntos.

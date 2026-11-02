@@ -1,0 +1,90 @@
+{
+ "formulario": "103",
+ "mes": "2026-10",
+ "aviso": "Borrador para que lo revise tu contador. FacturaPorAquí no presenta declaraciones: la presentas tú en el portal del SRI. Los criterios marcados «por confirmar» no se asignaron a ningún casillero.",
+ "casilleros": [
+  {
+   "casillero": "312",
+   "descripcion": "Base imponible — código 312",
+   "valor": "100.00",
+   "confirmado": true,
+   "fuente": "Regla de casilleros verificada en una declaración real (mayo de 2024) — NORMA-CONTABLE-TRIBUTARIA-2026-10.md §2",
+   "documentos": [
+    {
+     "libro": "retenciones_efectuadas",
+     "id": 1,
+     "tipo": "",
+     "numero": "001-002-000000041",
+     "url": "/comprobantes/retenciones/",
+     "importe": "100.00"
+    }
+   ]
+  },
+  {
+   "casillero": "349",
+   "descripcion": "Subtotal operaciones efectuadas en el país: base",
+   "valor": "100.00",
+   "confirmado": true,
+   "fuente": "Regla de casilleros verificada en una declaración real (mayo de 2024) — NORMA-CONTABLE-TRIBUTARIA-2026-10.md §2",
+   "documentos": [
+    {
+     "libro": "retenciones_efectuadas",
+     "id": 1,
+     "tipo": "",
+     "numero": "001-002-000000041",
+     "url": "/comprobantes/retenciones/",
+     "importe": "100.00"
+    }
+   ]
+  },
+  {
+   "casillero": "362",
+   "descripcion": "Valor retenido — código 312",
+   "valor": "2.00",
+   "confirmado": true,
+   "fuente": "Regla de casilleros verificada en una declaración real (mayo de 2024) — NORMA-CONTABLE-TRIBUTARIA-2026-10.md §2",
+   "documentos": [
+    {
+     "libro": "retenciones_efectuadas",
+     "id": 1,
+     "tipo": "",
+     "numero": "001-002-000000041",
+     "url": "/comprobantes/retenciones/",
+     "importe": "2.00"
+    }
+   ]
+  },
+  {
+   "casillero": "399",
+   "descripcion": "Subtotal operaciones efectuadas en el país: valor retenido",
+   "valor": "2.00",
+   "confirmado": true,
+   "fuente": "Regla de casilleros verificada en una declaración real (mayo de 2024) — NORMA-CONTABLE-TRIBUTARIA-2026-10.md §2",
+   "documentos": [
+    {
+     "libro": "retenciones_efectuadas",
+     "id": 1,
+     "tipo": "",
+     "numero": "001-002-000000041",
+     "url": "/comprobantes/retenciones/",
+     "importe": "2.00"
+    }
+   ]
+  },
+  {
+   "casillero": "499",
+   "descripcion": "Total de retención de impuesto a la renta (399 + 498; el 498 no se calcula)",
+   "valor": "2.00",
+   "confirmado": true,
+   "fuente": "Regla de casilleros verificada en una declaración real (mayo de 2024) — NORMA-CONTABLE-TRIBUTARIA-2026-10.md §2",
+   "documentos": []
+  }
+ ],
+ "por_confirmar": [],
+ "no_calculados": [
+  "498 pagos al exterior (no se registran retenciones al exterior)",
+  "890/902/903/904 pago, intereses y multas"
+ ],
+ "advertencias": [],
+ "vigente_desde": "2024-01-01"
+}

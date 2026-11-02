@@ -179,3 +179,34 @@ zero`, `cobros zero`, `configuracion zero`, `proformas zero`, `comprobantes 0013
 `Permission` y `ContentType` (como en la fase) y el orden de «Reglas de importación» (3→4) y «Numeraciones registradas» (4→5) en
 el menú, que `organizar_menu` reordena en la ida y la vuelta no deshace. `tests/test_migracion_vuelta_fase.py` espera 27 pendientes
 tras la vuelta documentada de la fase (que no deshace configuracion ni cobros).
+
+## Nota (02/11/2026) — candidato con recibos por completar: 37 migraciones
+
+Frente a lo publicado (`98cfa20`) quedan 37: las 33 del candidato de la entrega 1 más `adjuntos 0004–0006` y `tenancy 0010`
+(ver `MIGRACIONES-ADJUNTOS.md`). La vuelta documentada no cambia de orden (`adjuntos zero` primero; `tenancy 0006` deshace 0010).
+`tests/test_migracion_vuelta_fase.py` espera 31 pendientes tras la vuelta de la fase. Ensayo sobre copia del respaldo: abajo.
+
+## Nota (02/11/2026) — candidato con importación por claves y tributario: 41 migraciones
+
+Frente a lo publicado (`98cfa20`) quedan 41: las 37 de la nota anterior, `importacion 0007` y `tributario 0001–0003`.
+
+| Migración | Qué hace | Vuelta |
+|---|---|---|
+| `importacion/0007_lotes_de_claves` | columnas y opciones nuevas en lotes, entradas, archivos y documentos importados (origen por claves o reporte, clave, sugerencias, «en proceso en el SRI»); módulo «Importar por claves o reporte del SRI» | quita las columnas y, desde `b64e156`, también el módulo (sus permisos son los de la importación de siempre y se quedan) |
+| `tributario/0001_libros_mensuales` | tabla `tributario_exportacionlibro` (registro de cada exportación: libro, mes, formato, filas, totales, huella y autor) y permisos `view_libros` y `view_revision` | borra la tabla |
+| `tributario/0002_seguridad_por_filas` | RLS `fpa_empresa` en esa tabla (solo PostgreSQL), como `adjuntos 0002` | quita la política |
+| `tributario/0003_modulo_libros` | grupo «Tributario» del menú con cinco módulos (libros, revisión, ATS, borradores y empresas del contador) y `sync_roles` | quita los cinco módulos, los permisos de la app en los grupos y el grupo si queda vacío |
+
+Dependencias: `tributario 0001` cuelga de `pos 0019` (la empresa existe desde antes) y `0003` de `importacion 0004`. Por eso
+la vuelta de la fase no la arrastraba: dejaba los cinco módulos con rutas que el código anterior no sirve. **La vuelta empieza
+ahora por `tributario zero`**. Orden completo hacia lo publicado: `tributario zero`, `adjuntos zero`, `cobros zero`,
+`configuracion zero`, `proformas zero`, `comprobantes 0013_modulo_guias`, `pos 0019_orden_de_las_lineas`,
+`importacion 0004_menu_con_guias` y `tenancy 0006_accion_empresa_agregada`. `tests/test_migracion_vuelta_fase.py` espera
+35 pendientes tras la vuelta de la fase (que no deshace configuracion ni cobros) y comprueba que no quedan los módulos nuevos.
+
+**Ensayo** con `ensayo_migraciones_candidato.sh` sobre una copia del respaldo diario, código `32c20d8`: 41 pendientes; ida en 96,7 s en un solo `migrate`; vuelta en el orden de arriba en 120,9 s hasta un esquema **idéntico** al publicado, sin los módulos de tributario ni «Importar por claves»; segunda ida idéntica a la primera (menú, roles y permisos: 1138 filas iguales). Residuos de la vuelta, inocuos: filas nuevas de `Permission` y `ContentType`, `pos.change_purchase` en Propietario, Administrador y el módulo de Compras (como en la fase) y el orden de cuatro módulos del menú (Lotes 2→3, Pendientes 3→4, Reglas 3→4 y Numeraciones 4→5), que `organizar_menu` reordena en la ida. Lo posterior a `32c20d8` solo cambia pruebas y documentos.
+
+**Restauración:** si ya se registraron datos con la versión nueva (recibos por completar, notas de respaldo, lotes por claves,
+exportaciones registradas), revertir = restaurar el volcado previo de la base y la carpeta `privado/` de `FPA_ARCHIVOS` (ya en el
+respaldo diario) y volver al código anterior, no `migrate` hacia atrás. Las exportaciones de libros, ATS y borradores no guardan
+archivos: solo su registro y su huella.
