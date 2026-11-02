@@ -518,4 +518,5 @@ def test_modulo_del_menu_y_roles():
     # El Contador no gana ninguna otra escritura por el cambio de roles.py (más las de los recibos por completar).
     contador = Group.objects.get(name=ROLE_ACCOUNTANT)
     escritura = set(contador.permissions.filter(codename__regex=r'^(add|change|delete|adjust)_').values_list('codename', flat=True))
-    assert escritura == {'add_adjunto', 'delete_adjunto', 'add_captura', 'change_captura'}
+    assert escritura == {'add_adjunto', 'delete_adjunto', 'add_captura', 'change_captura',
+                         'add_movimientomanual', 'change_movimientomanual'}   # y los movimientos manuales del kardex
