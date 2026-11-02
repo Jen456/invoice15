@@ -2,7 +2,7 @@
 
 Fecha: 02/11/2026. Este documento sustituye la lista de pendientes del informe antiguo de `fase/adjuntos-comprobantes c5e04a9`, no los contratos vigentes.
 
-> **Estado (Claude, 02/11/2026):** integración, verificación y captura rápida cerradas. Entregas 1 a 5 cerradas en backend, con su contrato en HANDOFF; la 4 (ATS) y la 5 (104/103) esperan la revisión del contador con el paquete ficticio de `revision-contador/`. Vista del contador: `/tributario/empresas/`. De la 6, solo el kardex es independiente de D5, D6, D7 y D9 (entrega aparte). Nada publicado.
+> **Estado (Claude, 02/11/2026):** integración, verificación y captura rápida cerradas. Entregas 1 a 5 cerradas en backend, con su contrato en HANDOFF; la 4 (ATS) y la 5 (104/103) esperan la revisión del contador con el paquete ficticio de `revision-contador/`. Vista del contador: `/tributario/empresas/`. De la 6, solo el kardex es independiente de D5, D6, D7 y D9: entregado (kardex por producto e inventario valorizado, contrato en HANDOFF). Nada publicado.
 
 ## Punto de partida comprobado
 

@@ -1,5 +1,63 @@
 # Handoff compartido — frontend
 
+## Estado actual — kardex con costo promedio ponderado e inventario valorizado (entrega F, parte independiente), sin publicar (Claude, 02/11/2026)
+
+- **Qué hace** (`core/contabilidad/kardex.py`): kardex por producto calculado desde los documentos al consultarlo, con las mismas reglas con que hoy cambia el stock. Compras: entrada al costo de la línea sin IVA. Ventas: salida al promedio. Notas de crédito: reingreso al costo con que salió la venta. Facturas y notas anuladas en el SRI con ajuste de inventario: el movimiento contrario. Ajustes de stock: **ahora quedan registrados** (pantalla «Ajuste de stock» e importación de productos desde Excel), antes sobrescribían el número. Un documento corregido o borrado recalcula todo lo posterior.
+- **Completable a mano** (D3): saldo inicial (reinicia el kardex en su fecha), entradas con su costo y salidas al promedio, cada una con su documento de respaldo. No cambian el stock: completan la historia que no está en el sistema. Se anulan con motivo; nada se borra.
+- **Sin inventar costos:** una salida sin saldo o una entrada sin costo deja el costo «desconocido» hasta que el saldo vuelve a cero o se registra un saldo inicial. El kardex compara su saldo con el stock del producto y avisa la diferencia.
+- **Inventario valorizado** a una fecha: valor de lo que tiene costo conocido y cuántos productos no lo tienen.
+- **Sin duplicados:** clave por envío; anular bloquea la fila; dos ajustes de stock simultáneos quedan encadenados (prueba PostgreSQL).
+- **Acceso:** ver (`view_kardex`): Propietario, Administrador, Contador y Consulta. Registrar y anular movimientos manuales: Propietario, Administrador y Contador. Vendedor y Cliente no. Plan pagado vigente (regla de `/contabilidad/`).
+- **Migraciones** `contabilidad 0001–0003` y `tenancy 0011` (`MIGRACIONES-FASE-CONTABLE.md`). La vuelta empieza por `contabilidad zero`.
+- **No incluido:** PDF del kardex (solo XLSX); asientos de costo (bloqueados por D5 y D7); el costo guardado en cada línea de venta (`SaleDetail.costo`), que hará falta con la contabilización: hoy se calcula al consultar.
+- **Criterios por confirmar con el contador:** si el IVA sin crédito tributario forma parte del costo (hoy el costo es siempre sin IVA); las notas de crédito del proveedor con productos, que hoy suman al stock como una compra (el kardex lo avisa); el orden dentro de un mismo día (entradas antes que salidas, devoluciones y anulaciones al final).
+- **Pruebas:** `tests/test_kardex.py` (22) y `tests/test_zz_kardex_concurrencia_pg.py` (3, PostgreSQL). Suites completas sobre `53e5297`: SQLite 1645 aprobadas y 54 omitidas (exclusivas de PostgreSQL), sin fallos; PostgreSQL 1699 aprobadas, sin fallos ni omisiones. El ensayo de migraciones mostró que el grupo «Contabilidad» repetía el icono de «Comprobantes Electrónicos», que quedaba roto (`fas fa-calculator-x`): corregido en `53e5297`, con su prueba. Una primera ejecución del archivo de pruebas dio 2 errores de preparación que no se repitieron en tres ejecuciones más ni en las suites completas; no se encontró la causa.
+
+## Pendiente para Codex — kardex e inventario valorizado
+
+- [ ] `contabilidad/kardex.html`: buscador de producto (`/contabilidad/api/kardex/productos/?q=`), período, tabla con saldo corrido y costo promedio, avisos, descarga, movimientos manuales con «Anular» (pide motivo) y alta. Hoy es funcional y sin diseño, con formularios POST.
+- [ ] `contabilidad/inventario.html`: fecha, totales, tabla con enlace al kardex de cada producto y descarga.
+- [ ] Pantalla «Ajuste de stock»: avisar que el cambio queda registrado en el kardex.
+
+## Notas entre agentes — contrato del kardex (Claude → Codex)
+
+Fechas `AAAA-MM-DD`: vacías, inválidas o futuras toman el valor por defecto (hasta = hoy, desde = primer día de ese mes; la página recibe `rango_invalido`). `empresa=<id>` en API y descargas: 409 `empresa_cambiada` si ya no es la empresa activa. Sin `view_kardex`: 302, como el resto. Costos unitarios como texto con 6 decimales; importes con 2; lo desconocido, `null`.
+
+| Ruta | Método | Permiso | Campos | Respuesta |
+|---|---|---|---|---|
+| `/contabilidad/kardex/` | GET | `view_kardex` | `producto`, `desde`, `hasta` | página; contexto `kardex`, `manuales`, `capacidades`, `productos` (hasta 500), `tipos`, `clave_sugerida` |
+| `/contabilidad/kardex/` | POST | `view_kardex` + alta o anulación | `accion=registrar` y los campos del movimiento, o `accion=anular`, `movimiento` y `motivo`; además `producto`, `desde`, `hasta` para volver | 302 a la misma pantalla, con el resultado en mensajes |
+| `/contabilidad/api/kardex/<producto_id>/` | GET | `view_kardex` | `desde`, `hasta`, `empresa` | `{producto {id, codigo, nombre, stock_actual}, desde, hasta, saldo_anterior, movimientos [movimiento], saldo_final, advertencias [{codigo, fecha, texto}], diferencia_stock, manuales [manual], capacidades}`; 404 `producto` |
+| `/contabilidad/api/kardex/productos/` | GET | `view_kardex` | `q` (código o nombre) | `{productos [{id, codigo, nombre, stock}]}`, máximo 50 |
+| `/contabilidad/api/kardex/movimientos/` | GET | `view_kardex` | `producto` | `{movimientos [manual], capacidades}`; 404 `producto` |
+| `/contabilidad/api/kardex/movimientos/` | POST (formulario o JSON) | `add_movimientomanual` | `clave` (8–40: letras, números, `-`, `_`), `producto`, `tipo` (`saldo_inicial` \| `entrada` \| `salida`), `fecha` (no futura), `cantidad` (entero > 0), `costo_unitario` (sin IVA, ≥ 0, hasta 6 decimales; obligatorio en saldo inicial y entrada, vacío en salida), `documento` (≤ 120), `nota` (≤ 300) | **201** `{movimiento, repetido: false}`; **200** `repetido: true` (misma clave y mismo contenido); 400 `{error, codigo, errores}`; 403 `sin_permiso`; 404 `producto`; 409 `clave_usada` |
+| `/contabilidad/api/kardex/movimientos/<id>/anular/` | POST | `change_movimientomanual` | `motivo` (≤ 300) | 200 `{movimiento}`; 400 `motivo`; 403 `sin_permiso_anular`; 404 `movimiento`; 409 `ya_anulado` |
+| `/contabilidad/kardex/exportar/` | GET | `view_kardex` | `producto`, `desde`, `hasta`, `empresa` | `kardex-<código>-<RUC>-<desde>-<hasta>.xlsx` (hojas del kardex y de avisos); 404 sin producto |
+| `/contabilidad/inventario/` | GET | `view_kardex` | `fecha` | página; contexto `inventario` y `fecha_invalida` |
+| `/contabilidad/api/inventario/` | GET | `view_kardex` | `fecha`, `empresa` | `{fecha, filas [{producto {id, codigo, nombre}, cantidad, costo_promedio, valor, conocido, stock_actual, diferencia_stock, advertencias [codigo]}], totales {productos, valor_conocido, sin_costo, con_diferencia}}` |
+| `/contabilidad/inventario/exportar/` | GET | `view_kardex` | `fecha`, `empresa` | `inventario-<RUC>-<AAAAMMDD>.xlsx` |
+
+**Movimiento del kardex:** `{fecha, tipo, tipo_nombre, documento {tipo, id, numero, url}, entrada, salida, costo_unitario, costo_total, saldo_cantidad, saldo_valor, costo_promedio, conocido, observacion}`. Tipos: `saldo_inicial`, `compra`, `entrada_manual`, `ajuste_entrada`, `venta`, `salida_manual`, `ajuste_salida`, `devolucion`, `anulacion_venta`, `anulacion_nota`. Saldos (`saldo_anterior`, `saldo_final`): `{cantidad, valor, costo_promedio, conocido}`.
+
+**Movimiento manual:** `{id, clave, producto {id, codigo, nombre}, tipo {id, name}, fecha, cantidad, costo_unitario, documento, nota, creado_por, creado_en, anulado, anulado_en, anulado_por, motivo_anulacion}`. **Capacidades:** `{ver, registrar, anular}`. **Avisos:** `saldo_negativo`, `costo_desconocido`, `diferencia_stock`, `nc_proveedor`. Textos exactos en `core/contabilidad/servicios.MENSAJES` y en `kardex.py`.
+
+**Ejemplo ficticio:**
+
+```
+POST /contabilidad/api/kardex/movimientos/   clave=4d1f6a0c9b2e  producto=12  tipo=saldo_inicial  fecha=2026-10-01
+     cantidad=7  costo_unitario=4.00  documento=Inventario físico al 30/09/2026
+→ 201 {"movimiento": {"id": 3, "tipo": {"id": "saldo_inicial", "name": "Saldo inicial"}, "cantidad": 7,
+       "costo_unitario": "4.000000", "documento": "Inventario físico al 30/09/2026", "anulado": false, …}, "repetido": false}
+GET /contabilidad/api/kardex/12/?desde=2026-10-01
+→ 200 {"saldo_anterior": {"cantidad": 0, "valor": "0.00", "costo_promedio": null, "conocido": true},
+       "movimientos": [{"tipo": "saldo_inicial", "entrada": 7, "costo_unitario": "4.000000", "saldo_cantidad": 7, "saldo_valor": "28.00", …},
+                       {"tipo": "compra", "entrada": 10, "costo_unitario": "3.000000", "saldo_cantidad": 17, "saldo_valor": "58.00",
+                        "costo_promedio": "3.411765", …}],
+       "saldo_final": {"cantidad": 17, "valor": "58.00", "costo_promedio": "3.411765", "conocido": true}, "diferencia_stock": 0, …}
+POST /contabilidad/api/kardex/movimientos/3/anular/   motivo=Conteo repetido   (otra pestaña ya lo anuló)
+→ 409 {"error": "Este movimiento ya estaba anulado: no se cambió nada.", "codigo": "ya_anulado", "movimiento": {…}}
+```
+
 ## Estado actual — entrega integrada: captura rápida y backend contable A–E, sin publicar (Claude, 02/11/2026)
 
 - **Línea integrada**, de la más antigua a la más nueva: `plataforma 5041f56` → `frontend/etapa3 f711eb5` (avance rápido; el diseño de Codex queda intacto) → captura rápida (`fase/captura-gastos`) → importación masiva (`fase/importacion-masiva`) → libros, revisión, ATS y borradores (`fase/libros-mensuales`). `plataforma` en GitHub apunta al final de esta línea. `c5e04a9` no se fusionó.

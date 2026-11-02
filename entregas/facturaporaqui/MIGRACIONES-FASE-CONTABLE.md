@@ -210,3 +210,22 @@ ahora por `tributario zero`**. Orden completo hacia lo publicado: `tributario ze
 exportaciones registradas), revertir = restaurar el volcado previo de la base y la carpeta `privado/` de `FPA_ARCHIVOS` (ya en el
 respaldo diario) y volver al código anterior, no `migrate` hacia atrás. Las exportaciones de libros, ATS y borradores no guardan
 archivos: solo su registro y su huella.
+
+## Nota (02/11/2026) — kardex: 45 migraciones
+
+Frente a lo publicado (`98cfa20`) quedan 45: las 41 de la nota anterior, `contabilidad 0001–0003` y `tenancy 0011`.
+
+| Migración | Qué hace | Vuelta |
+|---|---|---|
+| `contabilidad/0001_kardex` | tablas `contabilidad_movimientomanual` (clave única por empresa, cantidad > 0, costo obligatorio en saldo inicial y entrada y vacío en salida) y `contabilidad_ajusteinventario`; permisos `view_kardex`, `add_movimientomanual` y `change_movimientomanual` | borra las tablas |
+| `contabilidad/0002_seguridad_por_filas` | RLS `fpa_empresa` en las dos tablas (solo PostgreSQL) | quita las políticas |
+| `contabilidad/0003_modulo_kardex` | grupo «Contabilidad» del menú con «Kardex por producto» e «Inventario valorizado» y `sync_roles` | quita los dos módulos, los permisos de la app en los grupos y el grupo si queda vacío |
+| `tenancy/0011_acciones_kardex` | dos acciones de auditoría `kardex_*` (solo `choices`) | solo `choices` |
+
+`contabilidad 0001` cuelga de `pos 0034`: la vuelta a `pos 0019` también la deshace, pero la vuelta documentada empieza por
+`contabilidad zero` y sigue como en la nota anterior. `tests/test_migracion_vuelta_fase.py` espera 39 pendientes tras la vuelta
+de la fase. `ensayo_migraciones_candidato.sh` añade `contabilidad zero` cuando el candidato trae la app. Ensayo sobre una copia
+del respaldo diario, código `53e5297`: 45 pendientes; ida en 63,1 s en un solo `migrate`; vuelta en 113,7 s (empieza por `contabilidad zero`) hasta un esquema **idéntico** al publicado, sin grupos ni módulos nuevos; segunda ida idéntica a la primera (menú, roles y permisos: 1172 filas iguales). Residuos de la vuelta, los mismos de la nota anterior.
+
+**Restauración:** la vuelta pierde los ajustes de stock registrados y los movimientos manuales del kardex (el stock de los
+productos no cambia). Con datos reales nuevos, revertir = restaurar el volcado previo, no `migrate` hacia atrás.
