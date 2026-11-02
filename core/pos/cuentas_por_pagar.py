@@ -114,6 +114,8 @@ def eliminar_pago(request, pago_id):
             raise ErrorPago('El pago no existe.')
         _auditar(request, 'debt_payment_delete', deuda.company, deuda=deuda.pk, pago=pago.pk, valor=Decimal(pago.valor),
                  fecha=pago.date_joined, medio_pago=pago.medio_pago, referencia=pago.referencia)
+        from core.adjuntos.servicios import al_eliminar_documento   # respaldos quitados; recibos de vuelta a pendiente
+        al_eliminar_documento('pago', pago.pk, getattr(request, 'user', None), request, titulo=f'Pago #{pago.pk}')
         pago.delete()
         deuda.recalcular()
 

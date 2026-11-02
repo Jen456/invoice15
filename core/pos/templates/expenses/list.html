@@ -25,6 +25,8 @@
 {% endblock %}
 
 {% block content_list_before %}
+    {# Acceso funcional a la captura rápida (core/adjuntos/capturas.py); el diseño lo hace Codex. #}
+    <p><a class="btn btn-outline-primary btn-flat" href="/adjuntos/capturas/"><i class="fas fa-camera" aria-hidden="true"></i> Guardar recibo o nota para completar después</a></p>
     <div class="alert alert-info" role="note">
         ¿Tienes factura? <a href="{{ url_gasto }}">Regístrala en Compras como compra de gasto</a> (sustenta el IVA y el ATS).
     </div>

@@ -253,7 +253,8 @@ class TestApi:
         url = api('gasto', gasto.pk)
         assert client.get(url).status_code == 403   # sin sesión: JSON, no redirección
         helpers.iniciar_sesion(client, admin, empresa=empresa)
-        assert client.post(url, {}).json()['error'] == 'Elige el archivo del comprobante.'
+        vacio = client.post(url, {}).json()   # sin archivo ni nota
+        assert vacio['error'] == 'Adjunta el recibo o escribe una nota (o ambos).' and vacio['codigo'] == 'respaldo_requerido'
         respuesta = client.post(url, {'archivo': subido('nota.txt', b'hola')})
         assert respuesta.status_code == 400 and 'Solo se admiten' in respuesta.json()['error'] and respuesta.json()['codigo'] == 'archivo'
         assert client.get(api('cheque', 1)).status_code == 404
@@ -411,7 +412,8 @@ class TestMes:
                 assert ('compra', compra.pk) not in filas   # al principio del mes, la compra es del mes anterior
             totales = {k: v for k, v in resumen['totales'].items() if k != 'bytes_texto'}
             assert totales == {'documentos': 8 if compra_en_mes else 7, 'con_comprobante': 3, 'sin_comprobante': 3, 'adjuntos': 2, 'notas': 1, 'pendientes_revision': 1,
-                               'rechazados': 0, 'bytes': len(PDF) + con_archivo.archivo_bytes}
+                               'rechazados': 0, 'bytes': len(PDF) + con_archivo.archivo_bytes,
+                               'capturas_del_mes': 0, 'capturas_pendientes': 0}
             assert sorted((f['tipo'], f['id']) for f in resumen['faltantes']) == sorted([('gasto', gasto.pk), ('cobro', cobro.pk), ('cobro', sin_respaldo.pk)])
             contenido = sv.zip_mes(MES)
         with zipfile.ZipFile(io.BytesIO(contenido)) as zf:
@@ -508,11 +510,12 @@ def test_modulo_del_menu_y_roles():
     def de(rol):
         grupo = Group.objects.get(name=rol)
         return (grupo.groupmodule_set.filter(module=modulo).exists(),
-                set(grupo.permissions.filter(content_type__app_label='adjuntos').values_list('codename', flat=True)))
+                set(grupo.permissions.filter(content_type__app_label='adjuntos', codename__endswith='_adjunto')
+                    .values_list('codename', flat=True)))
     assert de(ROLE_OWNER) == de(ROLE_ADMIN) == de(ROLE_ACCOUNTANT) == (True, todos)
     assert de(ROLE_READONLY) == (True, {'view_adjunto'})
     assert de(ROLE_SELLER) == de(ROLE_CLIENT) == (False, set())
-    # El Contador no gana ninguna otra escritura por el cambio de roles.py.
+    # El Contador no gana ninguna otra escritura por el cambio de roles.py (más las de los recibos por completar).
     contador = Group.objects.get(name=ROLE_ACCOUNTANT)
     escritura = set(contador.permissions.filter(codename__regex=r'^(add|change|delete|adjust)_').values_list('codename', flat=True))
-    assert escritura == {'add_adjunto', 'delete_adjunto'}
+    assert escritura == {'add_adjunto', 'delete_adjunto', 'add_captura', 'change_captura'}

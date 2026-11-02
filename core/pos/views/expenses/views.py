@@ -6,6 +6,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView, FormView
 
 from core.adjuntos import registro as adjuntos
+from core.adjuntos.servicios import al_eliminar_documento
 from core.pos.forms import ExpensesForm, Expenses
 from core.reports.forms import ReportForm
 from core.security.mixins import GroupPermissionMixin
@@ -121,7 +122,11 @@ class ExpensesDeleteView(GroupPermissionMixin, DeleteView):
     def post(self, request, *args, **kwargs):
         data = {}
         try:
-            self.get_object().delete()
+            with transaction.atomic():
+                gasto = self.get_object()
+                # Sus respaldos se conservan quitados y los recibos con los que se completó vuelven a estar pendientes.
+                al_eliminar_documento('gasto', gasto.pk, request.user, request, titulo=f'Gasto #{gasto.pk}')
+                gasto.delete()
         except Exception as e:
             data['error'] = str(e)
         return HttpResponse(json.dumps(data), content_type='application/json')

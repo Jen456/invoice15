@@ -13,6 +13,7 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.generic import DeleteView, FormView, TemplateView
 
+from core.adjuntos import capturas
 from core.pos import compras
 from core.pos.catalogos_sri import SUSTENTOS, nombre
 from core.pos.forms import (IMPORTES_DE_LA_FACTURA, CompletarCompraForm, CompraForm, DebtsPay, Product, Provider,
@@ -148,7 +149,12 @@ class PurchaseCreateView(GroupPermissionMixin, TemplateView):
                 data = compras.calcular(request.company, datos, lineas)
             elif action == 'add':
                 datos, lineas = self.datos_de_la_peticion()
-                compra = compras.crear_compra(request.company, request.user, datos, lineas)
+                captura_id = (request.POST.get('captura') or '').strip()
+                if captura_id:   # recibo por completar: la compra y su respaldo, juntos y sin volver a subir el archivo
+                    _, compra, _ = capturas.completar_compra(
+                        request, captura_id, lambda: compras.crear_compra(request.company, request.user, datos, lineas))
+                else:
+                    compra = compras.crear_compra(request.company, request.user, datos, lineas)
                 messages.success(request, f'Compra #{compra.pk} registrada.')
                 data = {'id': compra.pk, 'advertencias': [{'codigo': c, 'texto': t} for c, t in compra.advertencias]}
             elif action == 'validate_comprobante':
@@ -197,6 +203,10 @@ class PurchaseCreateView(GroupPermissionMixin, TemplateView):
                 data = [{'id': c.pk, 'text': _texto_compra(c)} for c in queryset[0:20]]
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
+        except capturas.ErrorCaptura as e:
+            data = {'error': str(e), 'codigo': e.codigo}
+            if e.captura is not None:
+                data['captura'] = capturas.dict_captura(e.captura)
         except compras.ErrorCompra as e:
             data = {'error': str(e)}
             if e.codigo in ('confirmar_iva', 'confirmar_plazo_ats'):
@@ -244,6 +254,8 @@ class PurchaseCreateView(GroupPermissionMixin, TemplateView):
             'sustento_gasto_sugerido': sugerido, 'nombre_sustento_sugerido': nombre(SUSTENTOS, sugerido),
             'hoy': timezone.localdate().isoformat(),
         })
+        captura, aviso = capturas.para_formulario(self.request, self.request.GET.get('captura'))
+        context.update({'captura': captura, 'captura_aviso': aviso})
         return context
 
 

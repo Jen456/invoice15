@@ -1,0 +1,121 @@
+{% extends 'skin.html' %}{% load static %}
+{# Pantalla funcional «Recibos por completar» (core/adjuntos/capturas.py). El diseño lo hace Codex sobre el contrato de HANDOFF: #}
+{# campos, rutas, capacidades y mensajes no cambian. #}
+{% block assets_body %}{{ block.super }}
+<script src="{% static 'adjuntos/js/capturas.js' %}" defer></script>
+{% endblock %}
+{% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page">Recibos por completar</li>{% endblock %}
+{% block content %}
+<div class="fp-capturas" data-api="/adjuntos/api/capturas/">
+  {{ capacidades|json_script:"fp-capturas-capacidades" }}
+  {{ opciones|json_script:"fp-capturas-opciones" }}
+  <header class="mb-3">
+    <h1 class="h3">Recibos por completar</h1>
+    <p>Guarda la foto o el PDF del recibo, una nota o ambos ahora, y completa el gasto después. Mientras está pendiente no se
+       registra ningún gasto, compra, pago, asiento ni crédito tributario.</p>
+    <p><strong>{{ pendientes }}</strong> pendiente{{ pendientes|pluralize }} de completar.</p>
+  </header>
+  <div id="fpCapturasMensaje" role="status" aria-live="polite"></div>
+
+  {% if capacidades.registrar %}
+  <section class="card mb-3" aria-labelledby="fpCapturaNuevaTitulo"><div class="card-body">
+    <h2 id="fpCapturaNuevaTitulo" class="h5">Guardar recibo o nota</h2>
+    <form id="fpCapturaNueva" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="clave" value="{{ clave_sugerida }}">
+      <div class="form-group">
+        <label for="fpCapturaArchivo">Recibo o comprobante (opcional)</label>
+        <input type="file" id="fpCapturaArchivo" name="archivo" class="form-control-file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" capture="environment" aria-describedby="fpCapturaArchivoAyuda">
+        <small id="fpCapturaArchivoAyuda" class="form-text">{{ limites.formatos }}, hasta {% widthratio limites.max_bytes 1048576 1 %} MB.</small>
+      </div>
+      <div class="form-group">
+        <label for="fpCapturaNota">Nota (opcional)</label>
+        <textarea id="fpCapturaNota" name="nota" class="form-control" rows="2" maxlength="{{ limites.nota_max }}" placeholder="Ej.: taxi al banco, pagado por Ana."></textarea>
+        <small class="form-text">Adjunta el recibo, escribe una nota o ambos.</small>
+      </div>
+      <button type="submit" class="btn btn-primary">Guardar para completar después</button>
+    </form>
+  </div></section>
+  {% endif %}
+
+  <nav class="mb-2" aria-label="Filtrar por estado">
+    <a href="?estado=pendiente" class="btn btn-sm {% if estado == 'pendiente' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Pendientes</a>
+    <a href="?estado=completada" class="btn btn-sm {% if estado == 'completada' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Completados</a>
+    <a href="?estado=vinculada" class="btn btn-sm {% if estado == 'vinculada' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Vinculados</a>
+    <a href="?estado=descartada" class="btn btn-sm {% if estado == 'descartada' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Descartados</a>
+    <a href="?estado=todas" class="btn btn-sm {% if estado == 'todas' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Todos</a>
+  </nav>
+
+  <section aria-labelledby="fpCapturasListaTitulo">
+    <h2 id="fpCapturasListaTitulo" class="h5">Recibos y notas</h2>
+    {% for c in capturas %}
+    <article class="card mb-2 fp-captura" data-captura="{{ c.id }}" id="captura-{{ c.id }}"><div class="card-body">
+      <h3 class="h6">{{ c.numero }} · {{ c.estado.name }}</h3>
+      <p class="mb-1 small">Guardado por {{ c.creado_por|default:"—" }} el {{ c.creado_en }}{% if c.completado_en %} · {{ c.estado.name }} por {{ c.completado_por|default:"—" }} el {{ c.completado_en }}{% endif %}</p>
+      {% if c.archivo %}<p class="mb-1"><a href="{{ c.archivo.url }}" target="_blank" rel="noopener">Ver {{ c.archivo.nombre }}</a> ({{ c.archivo.tamano_texto }})</p>{% endif %}
+      {% if c.nota %}<p class="mb-1">Nota: {{ c.nota }}</p>{% endif %}
+      {% if c.motivo %}<p class="mb-1">Motivo: {{ c.motivo }}</p>{% endif %}
+      {% if c.documento %}<p class="mb-1">Documento: {% if c.documento.existe %}{{ c.documento.titulo }}{% else %}{{ c.documento.tipo_nombre }} #{{ c.documento.id }} (ya no existe){% endif %}</p>{% endif %}
+      {% if c.capacidades.completar_gasto %}
+      <details class="mb-2"><summary>Completar como gasto</summary>
+        <form class="fp-captura-completar mt-2" data-url="/adjuntos/api/capturas/{{ c.id }}/completar/" novalidate>
+          <div class="form-row">
+            <div class="form-group col-md-4"><label for="fpTipo{{ c.id }}">Categoría</label>
+              <select id="fpTipo{{ c.id }}" name="type_expense" class="form-control" required><option value="">Elige la categoría</option>{% for t in opciones.categorias %}<option value="{{ t.id }}">{{ t.nombre }}</option>{% endfor %}</select></div>
+            <div class="form-group col-md-4"><label for="fpFecha{{ c.id }}">Fecha del gasto</label>
+              <input id="fpFecha{{ c.id }}" type="date" name="date_joined" class="form-control" value="{{ c.fecha }}" max="{{ opciones.hoy }}" required></div>
+            <div class="form-group col-md-4"><label for="fpValor{{ c.id }}">Importe ($)</label>
+              <input id="fpValor{{ c.id }}" type="number" name="valor" class="form-control" min="0.01" step="0.01" inputmode="decimal" required></div>
+            <div class="form-group col-md-6"><label for="fpMedio{{ c.id }}">¿Cómo pagaste?</label>
+              <select id="fpMedio{{ c.id }}" name="medio_pago" class="form-control" required><option value="">Elige el medio de pago</option>{% for m in opciones.medios %}<option value="{{ m.id }}">{{ m.nombre }}</option>{% endfor %}</select></div>
+            <div class="form-group col-md-6"><label for="fpRef{{ c.id }}">Referencia (obligatoria con cheque)</label>
+              <input id="fpRef{{ c.id }}" name="referencia" class="form-control" maxlength="100"></div>
+            <div class="form-group col-12"><label for="fpDesc{{ c.id }}">Descripción del gasto</label>
+              <textarea id="fpDesc{{ c.id }}" name="description" class="form-control" rows="2" maxlength="500">{{ c.nota }}</textarea></div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Registrar el gasto con este recibo</button>
+        </form>
+      </details>
+      {% endif %}
+      {% if c.capacidades.registrar_compra %}<p class="mb-1"><a class="btn btn-outline-secondary btn-sm" href="/pos/purchase/add/?tipo=gasto&amp;captura={{ c.id }}">Registrar como compra (factura del proveedor)</a></p>{% endif %}
+      {% if c.capacidades.vincular.compra or c.capacidades.vincular.gasto or c.capacidades.vincular.pago %}
+      <details class="mb-2"><summary>Vincular a un documento ya registrado</summary>
+        <form class="fp-captura-vincular mt-2" data-url="/adjuntos/api/capturas/{{ c.id }}/vincular/" novalidate>
+          <div class="form-row">
+            <div class="form-group col-md-3"><label for="fpVTipo{{ c.id }}">Tipo</label>
+              <select id="fpVTipo{{ c.id }}" name="tipo" class="form-control">{% if c.capacidades.vincular.gasto %}<option value="gasto">Gasto</option>{% endif %}{% if c.capacidades.vincular.compra %}<option value="compra">Compra</option>{% endif %}{% if c.capacidades.vincular.pago %}<option value="pago">Pago a proveedor</option>{% endif %}</select></div>
+            <div class="form-group col-md-4"><label for="fpVBuscar{{ c.id }}">Buscar</label>
+              <input id="fpVBuscar{{ c.id }}" class="form-control fp-captura-buscar" placeholder="Proveedor, número o descripción"></div>
+            <div class="form-group col-md-5"><label for="fpVDoc{{ c.id }}">Documento</label>
+              <select id="fpVDoc{{ c.id }}" name="documento_id" class="form-control" required><option value="">Busca y elige el documento</option></select></div>
+          </div>
+          <button type="submit" class="btn btn-outline-primary btn-sm">Vincular este recibo</button>
+        </form>
+      </details>
+      {% endif %}
+      {% if c.capacidades.editar_nota %}
+      <details class="mb-2"><summary>Corregir la nota</summary>
+        <form class="fp-captura-nota mt-2" data-url="/adjuntos/api/capturas/{{ c.id }}/nota/" novalidate>
+          <label for="fpNota{{ c.id }}" class="sr-only">Nota</label>
+          <textarea id="fpNota{{ c.id }}" name="nota" class="form-control mb-2" rows="2" maxlength="{{ limites.nota_max }}">{{ c.nota }}</textarea>
+          <button type="submit" class="btn btn-outline-secondary btn-sm">Guardar nota</button>
+        </form>
+      </details>
+      {% endif %}
+      {% if c.capacidades.descartar %}
+      <details><summary>Descartar</summary>
+        <form class="fp-captura-descartar mt-2" data-url="/adjuntos/api/capturas/{{ c.id }}/descartar/" novalidate>
+          <label for="fpMotivo{{ c.id }}">Motivo (opcional)</label>
+          <input id="fpMotivo{{ c.id }}" name="motivo" class="form-control mb-2" maxlength="300">
+          <button type="submit" class="btn btn-outline-danger btn-sm">Descartar este recibo</button>
+          <small class="d-block">El registro y el archivo se conservan.</small>
+        </form>
+      </details>
+      {% endif %}
+    </div></article>
+    {% empty %}
+    <p class="text-muted">No hay recibos en este estado.</p>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

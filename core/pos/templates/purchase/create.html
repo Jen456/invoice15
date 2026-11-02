@@ -13,6 +13,14 @@
 
 {% block form_fields %}
     {{ opciones|json_script:"fp-compra-opciones" }}
+    {% if captura %}
+        {# Recibo por completar (core/adjuntos/capturas.py): el diseño lo hace Codex sobre el contrato de HANDOFF. #}
+        {{ captura|json_script:"fp-captura" }}
+        <input type="hidden" name="captura" value="{{ captura.id }}">
+        <div class="alert alert-info fp-captura-aviso" role="status">Registras el recibo {{ captura.numero }}{% if captura.archivo %} ({{ captura.archivo.nombre }}){% endif %}{% if captura.nota %}: «{{ captura.nota }}»{% endif %}. Al guardar la compra, el archivo queda como su respaldo; no hace falta volver a subirlo.</div>
+    {% elif captura_aviso %}
+        <div class="alert alert-warning" role="alert">{{ captura_aviso }}</div>
+    {% endif %}
     {{ tipo_inicial|json_script:"fp-compra-tipo-inicial" }}
     {{ sustento_gasto_sugerido|json_script:"fp-compra-sustento-sugerido" }}
     {% if tipo_inicial == 'gasto' %}

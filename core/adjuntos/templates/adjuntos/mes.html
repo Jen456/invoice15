@@ -26,6 +26,17 @@
     <div class="fp-adjuntos-falta"><i class="fas fa-clock" aria-hidden="true"></i><span>Sin respaldo asociado</span><strong>{{ resumen.totales.sin_comprobante }}</strong></div>
     <div><i class="fas fa-clipboard-check" aria-hidden="true"></i><span>Respaldos de cobro por revisar</span><strong>{{ resumen.totales.pendientes_revision }}</strong><small>{{ resumen.totales.rechazados }} rechazados</small></div>
   </div>
+  {# Recibos y notas por completar (core/adjuntos/capturas.py): bloque funcional; el diseño lo hace Codex (contrato en HANDOFF). #}
+  <section class="fp-adjuntos-panel fp-capturas-mes" aria-labelledby="fp-capturas-mes">
+    <header><span class="fp-eyebrow">Pendientes de completar</span><h2 id="fp-capturas-mes">Recibos y notas por completar</h2>
+      <p>Guardados en este mes y todavía sin gasto ni compra: no cuentan como documentos ni como respaldo. {{ resumen.totales.capturas_pendientes }} pendiente{{ resumen.totales.capturas_pendientes|pluralize }} en total. <a href="{{ url_capturas }}">Completarlos</a></p></header>
+    {% if resumen.capturas %}<ul class="fp-adjuntos-lista">{% for c in resumen.capturas %}<li data-captura="{{ c.id }}">
+      <strong>{{ c.numero }}</strong> · {{ c.fecha }} · {{ c.adjuntos.0.subido_por }}
+      {% if c.adjuntos.0.url %}<a href="{{ c.adjuntos.0.url }}" target="_blank" rel="noopener">{{ c.adjuntos.0.nombre }}</a>{% else %}<span>Nota por completar</span>{% endif %}
+      {% if c.adjuntos.0.descripcion %}<small>{{ c.adjuntos.0.descripcion }}</small>{% endif %}
+      <a href="{{ c.url_captura }}">Completar</a></li>{% endfor %}</ul>
+    {% else %}<p class="fp-adjuntos-muted">No hay recibos pendientes guardados en este mes.</p>{% endif %}
+  </section>
   <section class="fp-adjuntos-panel" aria-labelledby="fp-adjuntos-todos">
     <header><span class="fp-eyebrow">Una sola consulta</span><h2 id="fp-adjuntos-todos">Documentos del mes y sus respaldos</h2><p>Facturas al contado, cobros, compras, gastos y pagos a proveedores. Cada registro aparece una sola vez.</p></header>
     {% if resumen.filas %}
@@ -53,7 +64,7 @@
     <p id="fpRespaldosSinResultados" class="fp-adjuntos-empty" hidden>No hay documentos que coincidan con este filtro.</p>
     {% else %}<div class="fp-adjuntos-empty"><i class="far fa-folder-open" aria-hidden="true"></i><div><strong>Este mes aún no tiene documentos.</strong><p>Puedes consultar otro período.</p></div></div>{% endif %}
   </section>
-  <aside class="fp-adjuntos-ayuda"><i class="fas fa-circle-info" aria-hidden="true"></i><div><strong>Cada respaldo, en su registro de origen</strong><p>Las notas de cobros se incluyen sin exigir un archivo. Las notas descriptivas de gastos todavía no cuentan como respaldo en esta consulta.</p><p>Adjuntar o revisar un respaldo no confirma el pago en el banco ni modifica el saldo. La importación de XML/RIDE registra documentos tributarios y es un proceso distinto.</p></div></aside>
+  <aside class="fp-adjuntos-ayuda"><i class="fas fa-circle-info" aria-hidden="true"></i><div><strong>Cada respaldo, en su registro de origen</strong><p>Las notas de cobros se incluyen sin exigir un archivo. La descripción de un gasto no cuenta como respaldo; una nota de respaldo sí.</p><p>Adjuntar o revisar un respaldo no confirma el pago en el banco ni modifica el saldo. La importación de XML/RIDE registra documentos tributarios y es un proceso distinto.</p></div></aside>
 </div>
 {% include 'adjuntos/_modal.html' %}
 {% include 'adjuntos/_consulta_cobro.html' %}

@@ -107,6 +107,13 @@ class AuditLog(models.Model):
         ('cobro_respaldo_registro', 'Cobro: respaldo registrado'),
         ('cobro_respaldo_cambio', 'Cobro: respaldo modificado'),
         ('cobro_respaldo_revision', 'Cobro: respaldo revisado'),
+        # Recibos y notas por completar (core/adjuntos/capturas.py)
+        ('captura_registro', 'Recibo o nota guardado para completar'),
+        ('captura_completada', 'Recibo completado como gasto o compra'),
+        ('captura_vinculada', 'Recibo vinculado a un documento existente'),
+        ('captura_descartada', 'Recibo descartado'),
+        ('captura_nota', 'Nota de un recibo pendiente corregida'),
+        ('captura_liberada', 'Recibo devuelto a pendiente al eliminar su documento'),
     )
     created_at = models.DateTimeField(default=timezone.now, db_index=True, verbose_name='Fecha')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
