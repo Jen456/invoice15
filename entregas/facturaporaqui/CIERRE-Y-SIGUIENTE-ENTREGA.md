@@ -6,7 +6,7 @@ Fecha: 02/11/2026. Este documento sustituye la lista de pendientes del informe a
 
 - GitHub `plataforma`: `5041f56`. Ya incluye reparto de adjuntos/cobros, consulta mensual y ZIP comunes, nacimiento opcional y correcciones de concurrencia de la Entrega 1.
 - El informe que sitúa `plataforma` en `4a39a1a` y pide fusionar `c5e04a9` está desactualizado. **No fusionar la rama superada.**
-- `frontend/etapa3` ya contiene `5041f56`, la corrección de los mensajes de solicitud de factura y la mejora de gastos/consulta mensual. Esta entrega añade la ficha completa de cobros, locales/puntos, filtros y guía PDF. Hash de cierre en HANDOFF y RESULTADOS-FRONTEND.
+- `frontend/etapa3` ya contiene `5041f56`, la corrección de los mensajes de solicitud de factura y la mejora de gastos/consulta mensual. Esta entrega añade la ficha completa de cobros, locales/puntos, filtros y guía PDF. Código de esta entrega: `a80622b`; cierre de pruebas en HANDOFF y RESULTADOS-FRONTEND.
 - Nada de esta entrega se ha publicado. Codex no opera producción.
 
 ## Orden inmediata para Claude

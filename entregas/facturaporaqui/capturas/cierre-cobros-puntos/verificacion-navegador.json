@@ -105,5 +105,18 @@
     "Cerrar y abrir conserva el envío pendiente en esta página",
     "Confirmar el reintento no crea otro registro",
     "Formulario declara POST además del envío por fetch"
-  ]
+  ],
+  "commit_codigo": "a80622b",
+  "pytest_sqlite_completo": {
+    "aprobadas": 1500,
+    "omitidas_postgresql": 47,
+    "fallos": 0,
+    "errores": 0,
+    "exit_code": 0
+  },
+  "pytest_final_frontend": {
+    "aprobadas": 9,
+    "fallos": 0,
+    "errores": 0
+  }
 }
