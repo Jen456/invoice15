@@ -12,6 +12,9 @@ ESPERADOS = {
     '/empresas/cambiar/': 405,   # solo POST (cambio de empresa con CSRF)
     '/suscripcion/pagar/': 405,  # solo POST (inicia el cobro en PayPhone)
     '/configuracion/puntos/seleccionar/': 405,   # solo POST (elige el punto de emisión del usuario)
+    '/adjuntos/api/capturas/documentos/': 400,   # exige ?tipo=compra|gasto|pago (JSON con codigo «tipo»)
+    '/importacion/api/lotes/claves/': 405,    # solo POST (crea un lote con las claves pegadas)
+    '/importacion/api/lotes/reporte/': 405,   # solo POST (crea un lote con el reporte del portal del SRI)
 }
 
 
