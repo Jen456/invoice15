@@ -404,6 +404,7 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 @media(max-width:575px){.fp-sale-grid,.fp-product-fields{grid-template-columns:1fr}.fp-sale-section{padding:20px 0}.fp-sale-section legend{font-size:20px}.fp-sale-search>.btn{margin:0 0 16px;width:100%}.fp-sale-tools .btnRemoveAllProducts{margin-left:0}.fp-sale-summary{padding:16px}.fp-product-dialog{padding:20px;max-width:calc(100% - 16px);max-height:calc(100dvh - 16px);border-radius:16px}.fp-product-heading h2{font-size:23px}.fp-product-footer{flex-direction:column-reverse}.fp-product-dialog input,.fp-product-dialog select,.fp-product-dialog textarea{font-size:16px}.fp-sale-lines #tblProducts tbody tr{grid-template-columns:1fr}}
 
 .fp-sale-lines #tblProducts td:nth-child(6),.fp-sale-lines #tblProducts td:nth-child(8){white-space:nowrap}.fp-sale-editor #fp-product-status{background:#e5f1f6;color:#163b50;border-color:#87bacc}.fp-responsive-form:has(.fp-sale-editor)>.card>.fp-form-actions{position:static}.fp-stage .fp-sale-editor .fp-sale-section legend{font-size:21px}
+#frmForm:has(.fp-sale-editor) :focus-visible{outline:3px solid #163B50;outline-offset:3px}
 
 /* Cliente dentro de la factura: un solo formulario, con errores y búsqueda contextual. */
 .fp-client-modal { color: #163B50; }

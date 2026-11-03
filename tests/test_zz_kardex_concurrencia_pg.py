@@ -19,6 +19,7 @@ from core.pos.models import Category, Company, Product
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_OWNER, Membership
 from core.user.models import User
+from tests import helpers
 
 pytestmark = [
     pytest.mark.skipif(connection.vendor != 'postgresql', reason='Bloqueos reales solo en PostgreSQL'),
@@ -33,6 +34,8 @@ def preparar():
                                      special_taxpayer='000', mobile='0990000000', phone='042000000', email='e@example.com',
                                      website='https://example.com', electronic_signature_key='', email_host_user='',
                                      email_host_password='')
+    helpers.restaurar_planes()   # una prueba transaccional anterior vació la base (planes de las migraciones incluidos)
+    helpers.dar_plan(empresa)    # el kardex solo guarda y anula con un plan pagado vigente
     grupo, _ = Group.objects.get_or_create(name=ROLE_OWNER)
     grupo.permissions.add(*Permission.objects.filter(codename__in=CODIGOS))
     usuarios = []

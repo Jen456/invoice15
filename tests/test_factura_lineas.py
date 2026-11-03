@@ -17,6 +17,7 @@ from django.test import Client as ClienteWeb
 from core.pos import lineas_venta, notas_credito
 from core.pos.forms import ProductForm
 from core.pos.models import Category, Product, Receipt, Sale, SaleDetail
+from core.pos.views.sale.views import PLAZO_CREDITO
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_SELLER
 from tests import helpers
@@ -150,6 +151,13 @@ class TestLineasInvalidas:
         assert r['error'] == 'Elige la condición de pago: contado o crédito.'
         r = web.post(f'{VENTAS}add/', datos(comprador, [linea(producto)], payment_method='99')).json()
         assert r['error'] == 'Elige la forma de pago del SRI.'
+        assert foto(empresa, producto) == antes
+
+    @pytest.mark.parametrize('plazo', ['', 'mañana', '2026-02-30'])
+    def test_credito_exige_fecha_de_plazo(self, web, empresa, comprador, producto, plazo):
+        antes = foto(empresa, producto)
+        r = web.post(f'{VENTAS}add/', datos(comprador, [linea(producto)], payment_type='credito', end_credit=plazo, cash='0')).json()
+        assert r['error'] == PLAZO_CREDITO
         assert foto(empresa, producto) == antes
 
 

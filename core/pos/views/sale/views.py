@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import date
 from decimal import Decimal
 
 from django.contrib import messages
@@ -31,6 +32,9 @@ from core.security.session import get_group
 
 
 logger = logging.getLogger(__name__)
+
+
+PLAZO_CREDITO = 'Indica la fecha de plazo del crédito (AAAA-MM-DD).'
 
 
 class SaleListView(GroupPermissionMixin, FormView):
@@ -199,7 +203,10 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     elif sale.payment_type == PAYMENT_TYPE[1][0]:
                         if nota_cobro or respaldo is not None:
                             raise ValueError(cobros.MENSAJES['credito_sin_abono'])
-                        sale.end_credit = request.POST['end_credit']
+                        try:   # obligatoria y AAAA-MM-DD, con un mensaje claro en lugar del de DateField
+                            sale.end_credit = date.fromisoformat(request.POST.get('end_credit', '').strip())
+                        except ValueError:
+                            raise ValueError(PLAZO_CREDITO) from None
                     sale.save()
                     # Precio distinto del catálogo: con permiso o desde la proforma que se factura (core/pos/lineas_venta.py).
                     lineas_venta.comprobar_precios(request, lineas, proforma)
