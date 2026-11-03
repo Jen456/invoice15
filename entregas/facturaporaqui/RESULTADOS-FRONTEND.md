@@ -1660,7 +1660,7 @@ Base real: fetch de `plataforma 5041f56` y `frontend/etapa3 dbf7374`; merge `537
 
 ## 02/11/2026 — captura rápida, importación masiva y revisión contable: diseño integrado en nube, sin publicar
 
-Base: `plataforma 69cdca3`, integrada por avance rápido en `frontend/etapa3`. Se conservaron historia y documentos; no se fusionó la rama antigua `c5e04a9`. El hash de entrega subido se registra al cerrar esta sección.
+Base: `plataforma 69cdca3`, integrada por avance rápido en `frontend/etapa3`. Se conservaron historia y documentos; no se fusionó la rama antigua `c5e04a9`. **Entrega de código y evidencia subida: `9b694d125eae0d46ef1dd5a0c605394648d11ee3`**, verificada con `git ls-remote` en `frontend/etapa3`. La actualización documental posterior registra este resultado; no cambia código.
 
 ### Resultado visible
 

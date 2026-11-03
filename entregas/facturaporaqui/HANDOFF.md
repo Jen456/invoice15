@@ -2,6 +2,7 @@
 
 ## Estado actual — diseño de captura rápida, importación masiva y revisión contable (Codex, 02/11/2026; sin publicar)
 
+- **Entrega de código y evidencia subida a GitHub:** `frontend/etapa3` = `9b694d125eae0d46ef1dd5a0c605394648d11ee3` (verificada con `git ls-remote`). El commit documental posterior solo registra este resultado.
 - Integrado `plataforma 69cdca3` por avance rápido en `frontend/etapa3`; se conserva toda la historia. La rama antigua de adjuntos no se fusionó.
 - Diseño en las pantallas reales: recibos por completar; nota sola y recibo pendiente en el modal de egresos; consulta mensual; claves/reporte y confirmación por partes; libros, revisión del mes, empresas del contador, ATS y borradores 104/103; kardex e inventario. Tema compartido en `static/css/facturaporaqui.css`, sin librerías nuevas ni CDN.
 - Captura con reintento del mismo contenido/clave ante respuesta perdida; completar y vincular no piden otra subida. La lista refresca solo el recibo afectado. Advierte si el archivo ya aparece en otro documento al abrir sus acciones.
