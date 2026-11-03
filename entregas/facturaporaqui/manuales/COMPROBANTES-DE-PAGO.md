@@ -8,6 +8,7 @@
 | --- | --- |
 | Respaldar el pago al contado de una factura | Facturas emitidas → Opciones → **Cobros y respaldos** |
 | Cobrar una factura a crédito | Cuentas por cobrar → **Cobros y respaldos** o **Nuevo registro** |
+| Guardar un recibo o nota sin completar datos todavía | Compras y gastos → **Recibos por completar** |
 | Adjuntar el recibo de una compra, gasto o pago a proveedor | En ese documento → **Comprobantes de pago** |
 | Revisar respaldos de todo el mes | Administrativo → **Comprobantes de pago** |
 | Incorporar una factura electrónica recibida | **Importación de documentos**, con su XML, RIDE o clave según las opciones disponibles |
@@ -47,19 +48,34 @@ Propietario y Administrador revisan. El Vendedor registra los respaldos permitid
 
 Si una respuesta se pierde, consulta la ficha. **Reintentar el mismo envío** conserva la clave del intento mientras permanezcas en esa página, para evitar un segundo abono. No recargues ni abras otro registro para repetirlo a ciegas. Si ya recargaste, verifica primero el saldo y los abonos registrados.
 
-## Gastos cotidianos
+## Cuando solo tienes un recibo o una nota
 
-En **Compras y gastos → Gastos → Nuevo registro**, completa tipo de gasto, fecha, importe y descripción. Puedes escribir en la descripción una nota útil, por ejemplo: «Taxi de la oficina a la bodega, pagado por Ana».
+Abre **Compras y gastos → Recibos por completar**. Elige un PDF o una foto, escribe una nota o conserva ambos y pulsa **Guardar para completar después**. Puedes arrastrar un archivo desde el computador. En el teléfono, el selector permite elegir la foto o tomarla según el dispositivo. No necesitas importe, proveedor ni categoría para este primer paso.
 
-Adjunta el recibo si lo tienes. Referencia y datos adicionales se muestran aparte. El archivo y el gasto se envían juntos: si el archivo no es válido, el registro no se guarda. En gastos, compras y pagos se admiten **PDF, JPG, PNG y WEBP, hasta 8 MB por archivo y 10 por documento**.
+**Guardar el recibo no registra un gasto, compra, pago, asiento ni crédito tributario.** Queda en la bandeja de pendientes. Allí, según tus permisos, puedes:
 
-**Límite de esta versión:** todavía no existe una bandeja para guardar solo una foto o nota y completar el gasto después. Tampoco la descripción del gasto cuenta por sí sola como respaldo en el filtro mensual. No inventes importes ni proveedores para eludir los campos: esa captura pendiente requiere una entrega de backend.
+- **Completar como gasto:** elegir categoría, fecha, importe y medio de pago. La referencia es obligatoria con cheque. Conserva el mismo archivo y la nota; no los subas otra vez.
+- **Registrar como compra:** si tienes la factura del proveedor, completa sus datos tributarios en Compras.
+- **Vincular a un documento ya registrado:** busca la compra, gasto o pago existente para usar ese mismo respaldo. No crea otro documento.
+- **Corregir la nota** o **Descartar:** el registro y el archivo permanecen en el historial.
+
+Si la conexión se interrumpe al guardar, usa **Confirmar el envío pendiente** sin cerrar la página. Conserva la clave y el contenido del intento. Si ya cerraste la página, revisa primero la bandeja.
+
+El Vendedor ve sus propios recibos. Las acciones disponibles dependen del perfil y del plan; tener permiso para guardar un recibo no da permiso para consultar documentos ajenos.
+
+## Gastos cotidianos con todos los datos
+
+En **Compras y gastos → Gastos → Nuevo registro**, completa categoría, fecha, importe y medio de pago. Escribe la nota una sola vez: en un gasto nuevo también se conserva como respaldo con tu usuario y fecha. Las descripciones de gastos anteriores no se convierten automáticamente en respaldos.
+
+Adjunta el recibo si lo tienes. Referencia y datos adicionales se muestran aparte. El archivo y el gasto se envían juntos: si el archivo no es válido, el registro no se guarda. En gastos, compras y pagos se admiten **PDF, JPG, PNG y WEBP, hasta 8 MB por archivo y 10 respaldos por documento**.
+
+Desde **Comprobantes de pago** del documento también puedes guardar una nota sin archivo o elegir **Usar un recibo pendiente**. Confirma el documento al que lo vinculas. No hace falta volver a cargarlo en la consulta mensual.
 
 ## Revisar el mes y entregar al contador
 
 En **Administrativo → Comprobantes de pago**, elige el mes. La lista reúne compras, gastos, pagos a proveedores, facturas al contado y cobros a crédito, según tus permisos. Cada fila identifica su origen y permite abrir el respaldo correspondiente.
 
-Usa los filtros de pendientes, notas y revisión para localizar lo que falta. **Descargar ZIP del mes** reúne los archivos y un índice CSV con origen, respaldo y revisión. También está disponible cuando solo hay notas. Las notas internas se incluyen en el índice; comparte la descarga únicamente con las personas autorizadas.
+Usa los filtros de pendientes, notas y revisión para localizar lo que falta. **Descargar ZIP del mes** reúne los archivos y un índice CSV con origen, respaldo y revisión. También está disponible cuando solo hay notas o recibos pendientes. Los recibos sin completar aparecen en un bloque separado y en su propia carpeta del ZIP; no cuentan como gastos registrados. Las notas internas se incluyen en el índice; comparte la descarga únicamente con las personas autorizadas.
 
 La lista y el ZIP no constituyen una declaración tributaria ni una conciliación bancaria. Adjuntar o quitar un archivo de compra, gasto o pago no cambia su importe ni elimina el movimiento. **Quitar** conserva autor, fecha y motivo en el historial.
 
@@ -75,3 +91,19 @@ Abre **Configuración → Locales y puntos de emisión**. Un establecimiento ide
 El selector de la cabecera guarda tu punto preferido para documentos nuevos, por usuario y empresa. Cada formulario abierto conserva su propio punto. Si necesitas cambiarlo en esa factura, usa **Local y punto de este documento** dentro del formulario y comprueba el número mostrado.
 
 La vista previa no reserva numeración. Si falta configuración, aparece el requisito que indica el servidor. En los listados de facturas y notas de crédito, el filtro de local/punto sirve para consultar y no cambia la preferencia de emisión.
+
+## Importación y revisión contable del mes
+
+**Importar por claves o reporte del SRI** admite una lista de hasta 500 claves de acceso, o el reporte TXT, CSV o XLSX del portal (hasta 5 MB). Revisa el resumen de rechazadas y sus motivos. Continúa en el lote, consulta los XML y abre **Incorporar en lote**. Comprueba la selección, los proveedores nuevos y las advertencias antes de confirmar. El avance indica el resultado de cada documento y permite pausar entre partes. Las confirmaciones especiales no se marcan automáticamente.
+
+**Libros mensuales** muestra ventas, compras y retenciones, con los documentos de origen y totales por tarifa. Descarga un libro en XLSX/CSV o los cuatro en XLSX. **Revisión del mes** permite filtrar causas y abrir cada documento pendiente. Es una lista de controles: no cierra ni bloquea el mes. **Revisión de mis empresas** permite al contador abrir las empresas de sus membresías; al hacerlo cambia la empresa activa.
+
+**ATS y borradores del 104 y 103:** funciones pendientes de revisión del contador antes de su publicación. El ATS solo permite descargar el ZIP cuando el XML valida técnicamente. Esa validación no confirma la aceptación del SRI ni la integridad tributaria del período. Revisa compras excluidas, advertencias, casilleros y documentos de origen. Los conceptos **Por confirmar** no se asignaron a casilleros. FacturaPorAquí prepara información; el contribuyente presenta en SRI en Línea.
+
+## Kardex e inventario valorizado
+
+Busca un producto y elige el período para consultar entradas, salidas, saldo y costo promedio ponderado. Lo que no tiene costo conocido se identifica; no lo interpretes como costo cero. El inventario valorizado muestra por separado esos productos y las diferencias frente al stock.
+
+Los movimientos manuales **completan la historia del kardex y no cambian el stock**. Un saldo inicial reinicia la historia en su fecha: revisa producto, cantidad, costo y respaldo antes de registrar. Anular exige motivo y conserva el historial. El ajuste de stock sí modifica existencias y deja un movimiento registrado.
+
+La corrección de notas de crédito del proveedor y las reglas de acceso al complemento Contable siguen pendientes de backend. Estas pantallas no sustituyen un diario, mayor ni estados financieros, y no generan el 101.

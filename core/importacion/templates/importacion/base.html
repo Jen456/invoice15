@@ -1,2 +1,2 @@
-{% extends 'skin.html' %}{% load static %}
-{% block assets_body %}{{ block.super }}<script src="{% static 'js/importacion.js' %}" defer></script>{% endblock %}
+{% extends 'fp_contable_base.html' %}{% load static %}
+{% block assets_body %}{{ block.super }}<script src="{% static 'js/importacion.js' %}" defer></script><script src="{% static 'js/importacion-masiva.js' %}" defer></script>{% endblock %}

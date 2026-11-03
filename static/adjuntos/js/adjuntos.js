@@ -47,14 +47,14 @@
         estado.ocupado = valor;
         el('fpAdjuntosCampos').disabled = valor;
         el('fpAdjuntosForm').setAttribute('aria-busy', String(valor));
-        el('fpAdjuntosModal').querySelectorAll('[data-dismiss], [data-quitar], #fpAdjuntosQuitar button, #fpAdjMotivo, #fpAdjuntosRecargar').forEach(function (n) { n.disabled = valor; });
+        el('fpAdjuntosModal').querySelectorAll('[data-dismiss], [data-quitar], #fpAdjuntosQuitar button, #fpAdjMotivo, #fpAdjuntosRecargar, #fpAdjuntosCapturaCampos').forEach(function (n) { n.disabled = valor; });
     }
     function tarjeta(a, permisos) {
         var item = nodo('article', null, {class: 'fp-adjuntos-file' + (a.eliminado ? ' fp-adjuntos-eliminado' : '')});
         var head = nodo('div', null, {class: 'fp-adjuntos-file-head'});
-        head.appendChild(nodo('i', null, {class: 'fas ' + (a.tipo_mime === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image'), 'aria-hidden': 'true'}));
-        var nombre = nodo('div'); nombre.appendChild(enlaceArchivo(a, false));
-        nombre.appendChild(nodo('small', a.clase.name + ' · ' + a.tamano_texto));
+        head.appendChild(nodo('i', null, {class: 'fas ' + (a.nota ? 'fa-note-sticky' : (a.tipo_mime === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image')), 'aria-hidden': 'true'}));
+        var nombre = nodo('div'); nombre.appendChild(a.nota ? nodo('strong', 'Nota de respaldo') : enlaceArchivo(a, false));
+        nombre.appendChild(nodo('small', a.clase.name + (a.tamano_texto ? ' · ' + a.tamano_texto : '')));
         head.appendChild(nombre);
         if (a.eliminado) head.appendChild(nodo('span', 'Quitado', {class: 'fp-adjuntos-tag'}));
         item.appendChild(head);
@@ -67,7 +67,7 @@
         item.appendChild(nodo('p', 'Subido por ' + (a.subido_por || '—') + ' · ' + a.subido_en, {class: 'fp-adjuntos-muted'}));
         if (a.eliminado) item.appendChild(nodo('p', 'Quitado el ' + a.eliminado_en + (a.eliminado_por ? ' por ' + a.eliminado_por : '') + (a.eliminado_motivo ? '. Motivo: ' + a.eliminado_motivo : ''), {class: 'fp-adjuntos-file-history'}));
         var acciones = nodo('div', null, {class: 'fp-adjuntos-actions'});
-        acciones.appendChild(enlaceArchivo(a, true));
+        if (!a.nota) acciones.appendChild(enlaceArchivo(a, true));
         if (!a.eliminado && permisos.quitar) acciones.appendChild(nodo('button', 'Quitar', {type: 'button', class: 'btn btn-outline-danger', 'data-quitar': a.id, 'aria-label': 'Quitar ' + a.nombre}));
         item.appendChild(acciones);
         return item;
@@ -88,7 +88,7 @@
         var lista = el('fpAdjuntosLista'), historial = el('fpAdjuntosListaHistorial');
         lista.textContent = ''; historial.textContent = '';
         el('fpAdjuntosCuenta').textContent = activos.length + ' de ' + datos.limites.max_por_documento;
-        if (!activos.length) lista.appendChild(nodo('p', 'Sin comprobantes adjuntos. Los archivos que subas aparecerán aquí.', {class: 'fp-adjuntos-empty'}));
+        if (!activos.length) lista.appendChild(nodo('p', 'Sin respaldos todavía. Guarda un archivo, una nota o usa un recibo pendiente.', {class: 'fp-adjuntos-empty'}));
         datos.adjuntos.forEach(function (a) { (a.eliminado ? historial : lista).appendChild(tarjeta(a, datos.permisos)); });
         var quitados = datos.adjuntos.length - activos.length;
         el('fpAdjuntosHistorial').hidden = !quitados;
@@ -102,6 +102,11 @@
         }
         el('fpAdjLimites').textContent = datos.limites.formatos + ' · Hasta ' + Math.round(datos.limites.max_bytes / 1048576) + ' MB por archivo · Máximo ' + datos.limites.max_por_documento + ' por documento.';
         el('fpAdjuntosRecargar').hidden = true;
+        var pendientes = datos.capturas_pendientes || [], selector = el('fpAdjuntosCaptura');
+        selector.textContent = ''; selector.appendChild(nodo('option', 'Elige el recibo guardado', {value: ''}));
+        pendientes.forEach(function (c) { selector.appendChild(nodo('option', c.numero + ' · ' + (c.archivo ? c.archivo.nombre : c.nota) + ' · ' + c.creado_en, {value: c.id})); });
+        el('fpAdjuntosUsarCaptura').hidden = !datos.permisos.subir || !pendientes.length;
+        el('fpAdjuntosCapturaDetalle').textContent = '';
     }
     async function cargar(inicial) {
         var version = estado.version, url = API + estado.tipo + '/' + estado.id + '/';
@@ -135,7 +140,19 @@
         evento.preventDefault();
         if (estado.ocupado || !estado.datos || !estado.datos.permisos.subir) return;
         var archivos = Array.prototype.slice.call(el('fpAdjArchivo').files || []), limites = estado.datos.limites;
-        if (!archivos.length) { mostrar('fpAdjuntosError', 'Elige el archivo del comprobante.'); return; }
+        var nota = el('fpAdjDescripcion').value.trim();
+        if (!archivos.length && !nota) { mostrar('fpAdjuntosError', 'Adjunta el recibo o escribe una nota (o ambos).'); return; }
+        if (!archivos.length) {
+            var datosNota = new FormData(); datosNota.append('nota', nota);
+            ['referencia', 'fecha', 'importe'].forEach(function (c) { datosNota.append(c, el('fpAdjuntosForm').elements[c].value); });
+            ocupado(true); mostrar('fpAdjuntosError', ''); mostrar('fpAdjuntosAviso', '');
+            try {
+                await fetch(API + estado.tipo + '/' + estado.id + '/', {method: 'POST', credentials: 'same-origin', headers: {'X-CSRFToken': csrf()}, body: datosNota}).then(leer);
+                estado.cambios = true; el('fpAdjDescripcion').value = ''; await cargar(false); mostrar('fpAdjuntosAviso', 'Nota de respaldo guardada.');
+            } catch (e) {mostrar('fpAdjuntosError', mensajeError(e, 'No se pudo confirmar la nota. Consulta la lista antes de repetir.')); el('fpAdjuntosRecargar').hidden = false;}
+            finally {ocupado(false);}
+            return;
+        }
         var usados = estado.datos.adjuntos.filter(function (a) { return !a.eliminado; }).length;
         if (usados + archivos.length > limites.max_por_documento) { mostrar('fpAdjuntosError', 'Puedes adjuntar hasta ' + limites.max_por_documento + ' archivos por documento. Selecciona menos archivos.'); return; }
         if (archivos.some(function (a) { return a.size > limites.max_bytes; })) { mostrar('fpAdjuntosError', 'Hay archivos que superan ' + Math.round(limites.max_bytes / 1048576) + ' MB. Selecciona archivos más pequeños.'); return; }
@@ -195,7 +212,7 @@
         estado.version++; estado.tipo = tipo; estado.id = Number(id); estado.datos = null; estado.cambios = false; estado.quitar = null;
         estado.disparador = disparador || document.activeElement;
         el('fpAdjuntosForm').reset(); el('fpAdjuntosForm').hidden = true;
-        ['fpAdjuntosQuitar', 'fpAdjuntosHistorial', 'fpAdjuntosBarra', 'fpAdjuntosRecargar'].forEach(function (k) { el(k).hidden = true; });
+        ['fpAdjuntosQuitar', 'fpAdjuntosHistorial', 'fpAdjuntosBarra', 'fpAdjuntosRecargar', 'fpAdjuntosUsarCaptura'].forEach(function (k) { el(k).hidden = true; });
         el('fpAdjuntosHistorial').open = false;
         ['fpAdjuntosDocumento', 'fpAdjuntosCuenta', 'fpAdjuntosCola', 'fpAdjuntosListaHistorial', 'fpAdjuntosProgreso'].forEach(function (k) { el(k).textContent = ''; });
         mostrar('fpAdjuntosError', ''); mostrar('fpAdjuntosAviso', ''); mostrar('fpAdjuntosBloqueo', '');
@@ -209,6 +226,21 @@
         if (!modal) return;
         el('fpAdjuntosForm').addEventListener('submit', subir);
         el('fpAdjuntosQuitar').addEventListener('submit', quitar);
+        el('fpAdjuntosCaptura').addEventListener('change', function () {
+            var captura = (estado.datos.capturas_pendientes || []).find(function (c) { return String(c.id) === el('fpAdjuntosCaptura').value; });
+            el('fpAdjuntosCapturaDetalle').textContent = captura ? (captura.nota || 'Sin nota') + ' · guardado por ' + captura.creado_por : '';
+        });
+        el('fpAdjuntosUsarCaptura').addEventListener('submit', async function (e) {
+            e.preventDefault(); if (estado.ocupado || !estado.datos || !estado.datos.permisos.subir) return;
+            var id = el('fpAdjuntosCaptura').value; if (!id) return;
+            var cuerpo = new FormData(); cuerpo.append('tipo', estado.tipo); cuerpo.append('documento_id', estado.id);
+            ocupado(true); mostrar('fpAdjuntosError', ''); mostrar('fpAdjuntosAviso', '');
+            try {
+                var d = await fetch(API + 'capturas/' + id + '/vincular/', {method: 'POST', credentials: 'same-origin', headers: {'X-CSRFToken': csrf()}, body: cuerpo}).then(leer);
+                estado.cambios = true; await cargar(false); mostrar('fpAdjuntosAviso', d.ya_adjunto ? 'Recibo vinculado: el archivo ya estaba adjunto y no se duplicó.' : 'Recibo vinculado con su mismo archivo o nota.');
+            } catch (e) {mostrar('fpAdjuntosError', mensajeError(e, 'No se pudo confirmar el vínculo. Vuelve a consultar.')); el('fpAdjuntosRecargar').hidden = false;}
+            finally {ocupado(false);}
+        });
         el('fpAdjuntosCancelarQuitar').addEventListener('click', cancelarQuitar);
         el('fpAdjuntosRecargar').addEventListener('click', function () {
             if (estado.ocupado) return;

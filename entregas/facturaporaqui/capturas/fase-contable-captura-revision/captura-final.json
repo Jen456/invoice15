@@ -1,0 +1,14 @@
+{
+  "checks": [
+    {
+      "name": "Recuperación de respuesta perdida en la bandeja pendiente final: una sola captura"
+    },
+    {
+      "name": "Refresco del mismo filtro conserva el recibo y permite usar sus acciones"
+    },
+    {
+      "name": "Descartar retira solo la fila afectada del filtro de pendientes"
+    }
+  ],
+  "errors": []
+}

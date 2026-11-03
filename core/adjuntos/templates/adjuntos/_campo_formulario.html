@@ -13,6 +13,7 @@
       <label for="id_comprobante_clase">Clase de comprobante</label>
       <select name="comprobante_clase" id="id_comprobante_clase" class="form-control"><option value="">Según el medio de pago</option>{% for codigo, nombre in clases_comprobante %}<option value="{{ codigo }}">{{ nombre }}</option>{% endfor %}</select>
     </div>
+    <div class="form-group col-12"><label for="id_nota_respaldo">Nota de respaldo (opcional)</label><textarea id="id_nota_respaldo" name="nota_respaldo" class="form-control" maxlength="500" rows="2" placeholder="Quién pagó y a qué corresponde este pago"></textarea><small>Se guarda con tu usuario y la fecha. Puedes usar una nota, un archivo o ambos.</small></div>
   </div>
 </fieldset>
 {% endif %}

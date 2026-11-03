@@ -1,0 +1,72 @@
+{
+  "checks": [
+    {
+      "name": "Respuesta perdida: reintento conserva una sola captura"
+    },
+    {
+      "name": "Completar gasto: mismo archivo, sin pedir otra subida"
+    },
+    {
+      "name": "Modal guarda nota sin archivo y no dibuja descargas vacías"
+    },
+    {
+      "name": "Usar recibo pendiente desde documento sin nueva subida"
+    },
+    {
+      "name": "Corregir nota conserva el mensaje y refresca solo el recibo"
+    },
+    {
+      "name": "Cambiar tipo de vínculo invalida la selección anterior"
+    },
+    {
+      "name": "Descarte conserva historial y motivo"
+    },
+    {
+      "name": "Gasto nuevo envía la misma nota como respaldo"
+    },
+    {
+      "name": "Importación pide confirmación antes de incorporar"
+    },
+    {
+      "name": "Incorporación muestra un resultado por documento"
+    },
+    {
+      "name": "Vista posterior impide incorporar otra vez los mismos documentos"
+    },
+    {
+      "name": "Lista de claves crea lote con resumen de rechazos y procesa por partes con SRI simulado"
+    },
+    {
+      "name": "Revisión filtra por nivel sin marcar un cierre"
+    },
+    {
+      "name": "Descarga real XLSX del libro"
+    },
+    {
+      "name": "Borrador conserva aviso y documentos de origen accesibles"
+    },
+    {
+      "name": "ATS descarga ZIP únicamente con XML válido"
+    },
+    {
+      "name": "Buscador de producto usa API y conserva el producto actual"
+    },
+    {
+      "name": "Movimiento manual y salida sin costo editable"
+    },
+    {
+      "name": "Anular movimiento exige motivo y conserva historial"
+    },
+    {
+      "name": "Consulta sin formularios de escritura"
+    },
+    {
+      "name": "Vendedor ve solo sus capturas"
+    },
+    {
+      "name": "Cambio de empresa: descarga bloqueada con 409 y opción de recargar"
+    }
+  ],
+  "errors": [],
+  "bad": []
+}

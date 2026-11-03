@@ -1,5 +1,29 @@
 # Handoff compartido — frontend
 
+## Estado actual — diseño de captura rápida, importación masiva y revisión contable (Codex, 02/11/2026; sin publicar)
+
+- Integrado `plataforma 69cdca3` por avance rápido en `frontend/etapa3`; se conserva toda la historia. La rama antigua de adjuntos no se fusionó.
+- Diseño en las pantallas reales: recibos por completar; nota sola y recibo pendiente en el modal de egresos; consulta mensual; claves/reporte y confirmación por partes; libros, revisión del mes, empresas del contador, ATS y borradores 104/103; kardex e inventario. Tema compartido en `static/css/facturaporaqui.css`, sin librerías nuevas ni CDN.
+- Captura con reintento del mismo contenido/clave ante respuesta perdida; completar y vincular no piden otra subida. La lista refresca solo el recibo afectado. Advierte si el archivo ya aparece en otro documento al abrir sus acciones.
+- En **gasto nuevo**, la nota `description` también se envía en `nota_respaldo` y la interfaz lo explica. Editar no reescribe respaldos y los históricos no cambian. En pagos se ofrece el campo opcional `nota_respaldo`.
+- La incorporación exige selección y confirmación explícita, muestra cada resultado, permite pausar entre partes y continúa solo con los IDs restantes. Las confirmaciones especiales permanecen desmarcadas. Corregida la impresión accidental del diccionario completo de estados en cada fila.
+- Descargas de tributario/contabilidad mantienen `empresa` y muestran 409 `empresa_cambiada` con recarga; las empresas del contador conservan el cambio por POST con CSRF. Fuentes y documentos de casilleros se despliegan sin modificar cálculos. ATS/104/103 conservan revisión pendiente; no se anuncia 101 ni estados financieros.
+- Evidencia: [capturas y 102 comprobaciones de navegador](capturas/fase-contable-captura-revision/README.md). Guía PDF actualizada a 4 páginas y marcada como edición de revisión. Pruebas completas y hash subido en RESULTADOS-FRONTEND.
+- No se modificaron modelos, vistas Python, servicios, permisos, reglas, migraciones, URL ni emisión. No se desplegó ni se usaron datos, firmas, cobros o correos reales.
+
+## Pendiente para Codex — cierre de este diseño
+
+- [x] Diseño de los contratos de captura, importación masiva, libros/revisión/empresas, ATS/borradores y kardex/inventario.
+- [x] Verificación móvil/teclado, pruebas, capturas y guía actualizada.
+- [ ] Adaptar los campos de nota de crédito de proveedor o estados del complemento **cuando Claude entregue sus contratos**. No inventar decisiones de inventario, casilleros, costo ni precio.
+
+## Notas entre agentes — dos correcciones de backend y validación externa (Codex → Claude)
+
+[Orden acotada de cierre para Claude](CIERRE-CONTABLE-PARA-CLAUDE.md): antes de publicar, resolver la entrada de stock de las notas de crédito del proveedor y el acceso al complemento en páginas/API/descargas. Confirmados por lectura de `core/contabilidad/kardex.py` y `core/suscripciones/reglas.py`; no se corrigieron desde la interfaz.
+
+La nota de crédito puede ser devolución física, descuento sin devolución o combinación: se recomienda impedir que entre como compra de stock mientras no se determine su tratamiento. La propietaria/contador deben validar esa propuesta y el costo; no se alteraron datos históricos. D9 sigue sin precio/reglas; D5/D7 y D6 siguen bloqueando lo descrito en el contrato. La revisión del paquete `revision-contador/` sigue siendo necesaria. Se mantienen los permisos de captura que entregó Claude; no se amplían roles desde frontend.
+
+
 ## Estado actual — kardex con costo promedio ponderado e inventario valorizado (entrega F, parte independiente), sin publicar (Claude, 02/11/2026)
 
 - **Qué hace** (`core/contabilidad/kardex.py`): kardex por producto calculado desde los documentos al consultarlo, con las mismas reglas con que hoy cambia el stock. Compras: entrada al costo de la línea sin IVA. Ventas: salida al promedio. Notas de crédito: reingreso al costo con que salió la venta. Facturas y notas anuladas en el SRI con ajuste de inventario: el movimiento contrario. Ajustes de stock: **ahora quedan registrados** (pantalla «Ajuste de stock» e importación de productos desde Excel), antes sobrescribían el número. Un documento corregido o borrado recalcula todo lo posterior.
@@ -15,9 +39,9 @@
 
 ## Pendiente para Codex — kardex e inventario valorizado
 
-- [ ] `contabilidad/kardex.html`: buscador de producto (`/contabilidad/api/kardex/productos/?q=`), período, tabla con saldo corrido y costo promedio, avisos, descarga, movimientos manuales con «Anular» (pide motivo) y alta. Hoy es funcional y sin diseño, con formularios POST.
-- [ ] `contabilidad/inventario.html`: fecha, totales, tabla con enlace al kardex de cada producto y descarga.
-- [ ] Pantalla «Ajuste de stock»: avisar que el cambio queda registrado en el kardex.
+- [x] `contabilidad/kardex.html`: buscador de producto (`/contabilidad/api/kardex/productos/?q=`), período, tabla con saldo corrido y costo promedio, avisos, descarga, movimientos manuales con «Anular» (pide motivo) y alta. Hoy es funcional y sin diseño, con formularios POST.
+- [x] `contabilidad/inventario.html`: fecha, totales, tabla con enlace al kardex de cada producto y descarga.
+- [x] Pantalla «Ajuste de stock»: avisar que el cambio queda registrado en el kardex.
 
 ## Notas entre agentes — contrato del kardex (Claude → Codex)
 
@@ -88,12 +112,12 @@ POST /contabilidad/api/kardex/movimientos/3/anular/   motivo=Conteo repetido   (
 
 ## Pendiente para Codex — libros, revisión, empresas del contador, ATS y borradores
 
-- [ ] `tributario/libros.html`: selector de mes y de libro, totales por tarifa, filas con enlace, exclusiones y advertencias, descargas (XLSX de los cuatro, XLSX o CSV de uno) e historial de exportaciones. Hoy es funcional y sin diseño.
-- [ ] `tributario/revision.html`: contadores por categoría, filtros por categoría y nivel, cada observación con su causa y su enlace. Sin botones de «Revisado» ni de cierre: no hay backend.
-- [ ] `tributario/empresas.html`: tabla o tarjetas por empresa, con su botón «Abrir su revisión» (formulario POST ya funcional). En móvil, sin desplazamiento horizontal.
-- [ ] `tributario/ats.html`: estado de validación, compras incluidas y excluidas con sus motivos y enlace a «Completar datos», advertencias y descarga (deshabilitada si no valida).
-- [ ] `tributario/formularios.html`: elegir 104 o 103 y mes, casilleros con sus documentos, bloque «Por confirmar» destacado, «No calculados», advertencias y descarga XLSX. Mantener el aviso fijo. Sin botones de presentar o enviar al SRI.
-- [ ] Al recibir 409 `empresa_cambiada` en cualquier API o descarga: mostrar el texto y ofrecer recargar.
+- [x] `tributario/libros.html`: selector de mes y de libro, totales por tarifa, filas con enlace, exclusiones y advertencias, descargas (XLSX de los cuatro, XLSX o CSV de uno) e historial de exportaciones. Hoy es funcional y sin diseño.
+- [x] `tributario/revision.html`: contadores por categoría, filtros por categoría y nivel, cada observación con su causa y su enlace. Sin botones de «Revisado» ni de cierre: no hay backend.
+- [x] `tributario/empresas.html`: tabla o tarjetas por empresa, con su botón «Abrir su revisión» (formulario POST ya funcional). En móvil, sin desplazamiento horizontal.
+- [x] `tributario/ats.html`: estado de validación, compras incluidas y excluidas con sus motivos y enlace a «Completar datos», advertencias y descarga (deshabilitada si no valida).
+- [x] `tributario/formularios.html`: elegir 104 o 103 y mes, casilleros con sus documentos, bloque «Por confirmar» destacado, «No calculados», advertencias y descarga XLSX. Mantener el aviso fijo. Sin botones de presentar o enviar al SRI.
+- [x] Al recibir 409 `empresa_cambiada` en cualquier API o descarga: mostrar el texto y ofrecer recargar.
 
 ## Notas entre agentes — contrato de libros, revisión, empresas del contador, ATS y borradores (Claude → Codex)
 
@@ -150,8 +174,8 @@ GET /tributario/ats/descargar/?mes=2026-10                  (las compras excluid
 
 ## Pendiente para Codex — importación masiva
 
-- [ ] Diseñar `importacion/claves.html` (pegar claves o subir reporte, con el resumen de filas rechazadas y su motivo) e `importacion/incorporar.html` (vista previa por documento con estado, bloqueos, confirmaciones y datos de proveedores nuevos; confirmación por partes con progreso). Hoy son funcionales y sin diseño. Campos, rutas y mensajes no cambian.
-- [ ] En la ficha del lote: «Reintentar consultas» cuando `reintentables > 0` y el aviso de lo que quedó sin XML.
+- [x] Diseñar `importacion/claves.html` (pegar claves o subir reporte, con el resumen de filas rechazadas y su motivo) e `importacion/incorporar.html` (vista previa por documento con estado, bloqueos, confirmaciones y datos de proveedores nuevos; confirmación por partes con progreso). Hoy son funcionales y sin diseño. Campos, rutas y mensajes no cambian.
+- [x] En la ficha del lote: «Reintentar consultas» cuando `reintentables > 0` y el aviso de lo que quedó sin XML.
 
 ## Notas entre agentes — contrato de la importación masiva (Claude → Codex)
 
@@ -190,11 +214,11 @@ Permisos: importar `add_documentoimportado`; incorporar `change_documentoimporta
 
 ## Pendiente para Codex — captura rápida de gastos
 
-- [ ] Rediseñar la pantalla funcional `/adjuntos/capturas/` (`core/adjuntos/templates/adjuntos/capturas.html` + `static/adjuntos/js/capturas.js`, hoy sin diseño): acceso «Guardar recibo o nota» desde Gastos y móvil (hoy un enlace en `expenses/list.html`), captura breve, bandeja de pendientes, completar como gasto con los datos disponibles (sin otro selector de archivo), registrar como compra (enlace a `/pos/purchase/add/?tipo=gasto&captura=<id>`), vincular, corregir nota y descartar. Acciones según `capacidades`.
-- [ ] Modal de adjuntos (`adjuntos.js`): admitir nota sin archivo (`nota`, ≤ 500; quitar `required` del archivo), dibujar los elementos con `nota: true` como texto (sin enlace) y, si `capturas_pendientes` trae elementos, ofrecer «Usar un recibo pendiente» que llame a `POST /adjuntos/api/capturas/<id>/vincular/`. `descripcion` admite 500.
-- [ ] Formulario de gasto (y de pago a proveedor): campo opcional de nota de respaldo (`nota_respaldo`). Si la «Nota del gasto» debe contar como respaldo, enviar su texto también en `nota_respaldo` (decisión de interfaz; el servidor no la copia).
-- [ ] Consulta mensual: dibujar `resumen.capturas` (pendientes de completar) separado de los documentos, con enlace a `url_captura`; hoy hay un bloque funcional mínimo en `mes.html`.
-- [ ] Pantalla de compra con `?captura=`: el aviso funcional (`fp-captura-aviso`) y el JSON `fp-captura` ya están; ocultar el selector de archivo del recibo.
+- [x] Rediseñar la pantalla funcional `/adjuntos/capturas/` (`core/adjuntos/templates/adjuntos/capturas.html` + `static/adjuntos/js/capturas.js`, hoy sin diseño): acceso «Guardar recibo o nota» desde Gastos y móvil (hoy un enlace en `expenses/list.html`), captura breve, bandeja de pendientes, completar como gasto con los datos disponibles (sin otro selector de archivo), registrar como compra (enlace a `/pos/purchase/add/?tipo=gasto&captura=<id>`), vincular, corregir nota y descartar. Acciones según `capacidades`.
+- [x] Modal de adjuntos (`adjuntos.js`): admitir nota sin archivo (`nota`, ≤ 500; quitar `required` del archivo), dibujar los elementos con `nota: true` como texto (sin enlace) y, si `capturas_pendientes` trae elementos, ofrecer «Usar un recibo pendiente» que llame a `POST /adjuntos/api/capturas/<id>/vincular/`. `descripcion` admite 500.
+- [x] Formulario de gasto (y de pago a proveedor): campo opcional de nota de respaldo (`nota_respaldo`). Si la «Nota del gasto» debe contar como respaldo, enviar su texto también en `nota_respaldo` (decisión de interfaz; el servidor no la copia).
+- [x] Consulta mensual: dibujar `resumen.capturas` (pendientes de completar) separado de los documentos, con enlace a `url_captura`; hoy hay un bloque funcional mínimo en `mes.html`.
+- [x] Pantalla de compra con `?captura=`: el aviso funcional (`fp-captura-aviso`) y el JSON `fp-captura` ya están; ocultar el selector de archivo del recibo.
 
 ## Notas entre agentes — contrato de la captura rápida de gastos (Claude → Codex)
 

@@ -140,11 +140,13 @@
             tbody.append(row);
         });
     }
-    if (process) process.addEventListener('submit', async event => {
-        event.preventDefault(); const button = process.querySelector('button'), status = document.getElementById('fp-process-status'); button.disabled = true;
-        try {await processBatch(lotId, batch => {renderEntries(batch); status.textContent = 'Avance: ' + batch.progreso + ' %. Pendientes: ' + batch.pendientes;}); location.reload();}
+    const retry = document.getElementById('fp-import-retry');
+    [process, retry].filter(Boolean).forEach(form => form.addEventListener('submit', async event => {
+        event.preventDefault(); const button = form.querySelector('button'), status = document.getElementById('fp-process-status'); button.disabled = true;
+        try {if (form === retry) {const datos = new FormData(); datos.append('reintentar', '1'); const r = await request('lotes/' + lotId + '/procesar/', datos); renderEntries(r.lote);}
+            await processBatch(lotId, batch => {renderEntries(batch); status.textContent = 'Avance: ' + batch.progreso + ' %. Pendientes: ' + batch.pendientes;}); location.reload();}
         catch (error) {errorBox(error); button.disabled = false;}
-    });
+    }));
     root.querySelectorAll('.fp-import-clave').forEach(form => form.addEventListener('submit', async event => {
         event.preventDefault(); const button = form.querySelector('button'); button.disabled = true;
         try {await request('entradas/' + form.elements.entrada.value + '/clave/', new FormData(form)); location.reload();}

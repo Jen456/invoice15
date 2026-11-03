@@ -1,0 +1,393 @@
+{
+  "checks": [
+    {
+      "name": "captura",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "claves",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "incorporar",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "libros",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "revision",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "ats",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "borrador104",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "borrador103",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "kardex",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "inventario",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "respaldos",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "empresas-contador",
+      "width": 360,
+      "overflow": false
+    },
+    {
+      "name": "captura",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "claves",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "incorporar",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "libros",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "revision",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "ats",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "borrador104",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "borrador103",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "kardex",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "inventario",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "respaldos",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "empresas-contador",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "captura",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "claves",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "incorporar",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "libros",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "revision",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "ats",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "borrador104",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "borrador103",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "kardex",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "inventario",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "respaldos",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "empresas-contador",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "name": "captura",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "claves",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "incorporar",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "libros",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "revision",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "ats",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "borrador104",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "borrador103",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "kardex",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "inventario",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "respaldos",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "empresas-contador",
+      "width": 1024,
+      "overflow": false
+    },
+    {
+      "name": "captura",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "claves",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "incorporar",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "libros",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "revision",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "ats",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "borrador104",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "borrador103",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "kardex",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "inventario",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "respaldos",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "empresas-contador",
+      "width": 1360,
+      "overflow": false
+    },
+    {
+      "name": "captura",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "claves",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "incorporar",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "libros",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "revision",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "ats",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "borrador104",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "borrador103",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "kardex",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "inventario",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "respaldos",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "empresas-contador",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "Teclado: Tab desde nota al botón y foco visible",
+      "width": 390
+    },
+    {
+      "name": "Contraste: encabezado, etiquetas, botón y ayuda",
+      "ratios": [
+        {
+          "sel": ".fp-work-header h1",
+          "ratio": 11.827401742336304
+        },
+        {
+          "sel": "#fpCapturaNueva label",
+          "ratio": 11.827401742336304
+        },
+        {
+          "sel": "#fpCapturaNueva button[type=submit]",
+          "ratio": 5.555709222237293
+        },
+        {
+          "sel": ".fp-capture-help",
+          "ratio": 11.827401742336304
+        }
+      ]
+    },
+    {
+      "name": "Movimiento reducido sin animación del área de trabajo"
+    }
+  ],
+  "errors": []
+}

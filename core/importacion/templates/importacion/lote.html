@@ -8,6 +8,7 @@
     {% if resumen.pendientes and puede_importar %}
         <form method="post" class="mb-3" id="fp-import-process">{% csrf_token %}<button type="submit" name="action" value="procesar" class="btn fpa-btn-pagar">Procesar los pendientes ({{ resumen.pendientes }})</button></form>
     {% endif %}
+    {% if resumen.sin_xml %}<p class="alert alert-warning" role="status">{{ resumen.sin_xml }} entradas quedaron sin XML autorizado. Revisa los motivos de cada fila; aún no se pueden incorporar.</p>{% endif %}
     {% if resumen.reintentables and puede_importar %}
         <form method="post" class="mb-3" id="fp-import-retry">{% csrf_token %}<button type="submit" name="action" value="reintentar" class="btn btn-outline-secondary">Volver a consultar en el SRI las claves sin XML ({{ resumen.reintentables }})</button></form>
     {% endif %}

@@ -1657,3 +1657,43 @@ Base real: fetch de `plataforma 5041f56` y `frontend/etapa3 dbf7374`; merge `537
 [Capturas a 360/768/1360 px y resultados JSON](capturas/cierre-cobros-puntos/README.md). Quince JPEG, cada uno menor de 150 KB. PDF de 3 páginas revisado por extracción de texto y rasterización; sin llamadas a la app ni a datos de producción.
 
 **Límites y siguiente paso:** no PostgreSQL, publicación ni teléfono físico en esta entrega. La captura solo por foto/nota para completar el gasto después necesita el contrato/backend de Claude; la descripción del gasto aún no cuenta como respaldo en el filtro mensual. El reintento conserva el envío en memoria de la página: después de recargar hay que consultar los cobros antes de volver a registrar. Los filtros de punto usan los elegibles del contexto existente; «Todos los puntos» mantiene la consulta completa permitida. No se anuncia ninguna función futura como publicada.
+
+## 02/11/2026 — captura rápida, importación masiva y revisión contable: diseño integrado en nube, sin publicar
+
+Base: `plataforma 69cdca3`, integrada por avance rápido en `frontend/etapa3`. Se conservaron historia y documentos; no se fusionó la rama antigua `c5e04a9`. El hash de entrega subido se registra al cerrar esta sección.
+
+### Resultado visible
+
+- **Recibos por completar:** guardar recibo, nota o ambos; archivo arrastrable, límites visibles, bandeja por estado y formularios desplegables. Completar, vincular, corregir y descartar respetan capacidades. No se pide otra subida al convertir. Se avisa del mismo archivo en otros registros y del plan cuando bloquea completar. Ante respuesta perdida se conserva la clave y el cuerpo del envío en memoria. El refresco usa el filtro actual, actualiza solo la fila afectada y espera esa actualización antes del aviso de éxito.
+- **Respaldos de egresos:** nota sola sin enlace de descarga inexistente; selección de recibo pendiente con confirmación de vínculo; historial intacto. El nuevo gasto envía su nota también en `nota_respaldo`, avisándolo; editar e históricos no se reinterpretan. Pago a proveedor con nota opcional. Consulta mensual separa recibos por completar, y permite ZIP aunque solo existan capturas.
+- **Importación:** lista de claves o reporte con resumen de rechazadas, vista previa de estados y verificaciones, selección explícita, confirmación, avance por partes, pausa y continuidad con los restantes. Las excepciones tributarias/duplicados no se confirman automáticamente. Reintento de consultas por partes y aviso sin XML en lote. Se quitó el diccionario de estados que aparecía impreso por error en todas las filas.
+- **Revisión del mes:** categorías y nivel filtrables, causas y enlaces; empresas del contador en tarjetas, con cambio por POST y CSRF. Libros con totales por tarifa tomados de las etiquetas del servidor, tablas desplazables y descargas.
+- **ATS y 104/103:** estado de validación, excluidas y motivos, fuentes y documentos desplegables, conceptos por confirmar y no calculados. Descarga ATS solo si valida; avisos de borrador y revisión contable pendiente conservados. Descargas detectan el cambio de empresa y ofrecen recargar.
+- **Kardex e inventario:** búsqueda de producto por API, fechas, saldos, advertencias y exportación; alta manual separada del ajuste de stock, costo no editable en salidas, anulación con motivo/historial. El ajuste de stock avisa que deja un registro.
+
+### Archivos
+
+- `core/adjuntos/templates/adjuntos/{capturas,_modal,_campo_formulario,mes}.html`; `static/adjuntos/js/{capturas,adjuntos}.js`.
+- `core/pos/templates/expenses/create.html`, `core/pos/static/expenses/js/form.js`, `core/pos/templates/product/stock_adjustment.html`.
+- `core/importacion/templates/importacion/{base,claves,incorporar,lote}.html`; `static/js/importacion.js`, `static/js/importacion-masiva.js`.
+- `core/tributario/templates/tributario/{libros,revision,empresas,ats,formularios}.html`; `core/contabilidad/templates/contabilidad/{kardex,inventario}.html`.
+- `templates/fp_contable_base.html`, `static/js/fp-contable.js`, tema compartido `static/css/facturaporaqui.css`. Sin librerías nuevas, sin CDN.
+- [Guía PDF actualizada, 4 páginas](manuales/Guia-cobros-gastos-locales.pdf), fuente Markdown, HTML imprimible y README. Mantiene «edición de revisión», sin publicar.
+- [Orden propuesta de cierre para Claude](CIERRE-CONTABLE-PARA-CLAUDE.md), HANDOFF y [evidencia de navegador](capturas/fase-contable-captura-revision/README.md).
+
+### Verificación realizada
+
+- Suite completa **SQLite: 1645 aprobadas, 54 omitidas (exclusivas de PostgreSQL), 0 fallos**, 609,31 s.
+- Pruebas dirigidas de captura, importación masiva, libros, revisión, ATS, formularios, kardex, estáticos y rutas: **148 aprobadas**. Tras el último ajuste del refresco se repitieron sus tres casos de navegador; estáticos/rutas se comprobaron al cierre: **3 aprobadas**.
+- **102 comprobaciones de navegador:** 22 de flujo, dos de lotes/plan, 75 de pantallas/anchos/accesibilidad y tres finales de captura. El lote de 27 documentos reales de la base ficticia se incorporó en **25 + 2**, con pausa entre partes y sin repetir IDs. Las consultas al SRI usaron un simulador local; el error de plan se simuló para verificar su presentación.
+- Anchos **360/390/768/1024/1360/1440**, teclado, foco visible y movimiento reducido. Contraste comprobado en encabezado, etiquetas, botón y ayuda; no se afirma una auditoría WCAG completa. Sin errores de JavaScript, respuestas 5xx ni desbordes de página en las comprobaciones finales. Regiones de tablas desplazables enfocables, con celdas originales.
+- **31 JPEG**, 360/768/1360 y detalles, cada uno menor de 150 KB. PDF revisado y ajustado a cuatro páginas; texto seleccionable, sin página final casi vacía.
+- Compilación de templates, sintaxis de los seis JavaScript modificados/nuevos y `git diff --check` correctos. Durante la revisión se corrigió una carrera entre el aviso de éxito y el refresco de la nota. Las primeras corridas del guion de navegador necesitaron esperar las redirecciones AJAX y añadir detalle a una venta ficticia; no se cuentan como verificaciones aprobadas.
+
+### Límites y pendientes concretos
+
+No cambió Python, modelos, servicios, permisos, reglas de acceso, migraciones, URL, nombres de campos ni acciones. Tampoco se cambiaron cálculos fiscales o stock desde JavaScript. No hubo despliegue, emisiones, pagos, correos reales, secretos ni datos de clientes. La vista de pruebas en la nube utiliza SQLite y conexiones externas bloqueadas, no producción.
+
+Claude debe corregir stock/kardex de notas de crédito del proveedor y acceso al complemento en el servidor antes de publicar; la [orden de cierre](CIERRE-CONTABLE-PARA-CLAUDE.md) separa devolución física de descuento y marca las decisiones pendientes. No se considera aprobado el tratamiento contable ni el precio D9. El contador debe revisar ATS/104/103. Diario, mayor, bancos, estados financieros y 101 siguen sujetos a D5/D7/D6/D9; no se anuncian como terminados.
+
+PostgreSQL, ensayo sobre respaldo de producción y publicación corresponden a Claude sobre el resultado integrado; no se ejecutaron aquí. La cámara y el teclado virtual requieren comprobación en un teléfono físico.

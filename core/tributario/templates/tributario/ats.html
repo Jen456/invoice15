@@ -1,13 +1,12 @@
-{% extends 'skin.html' %}
-{# Pantalla funcional «ATS del mes» (core/tributario/ats.py). El diseño lo hace Codex sobre el contrato de HANDOFF. #}
+{% extends 'fp_contable_base.html' %}{% load static %}
 {% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page">ATS del mes</li>{% endblock %}
 {% block content %}
-<div class="fp-ats">
-  <header class="mb-3">
+<div class="fp-ats fp-workspace">
+  <header class="fp-work-header"><div><span class="fp-eyebrow">Tu revisión contable · paso a paso</span>
     <h1 class="h3">ATS del mes</h1>
     <p>Genera el Anexo Transaccional Simplificado con las compras registradas en el mes y lo valida contra el esquema oficial del
-       SRI. La validación es técnica: no equivale a la aceptación del SRI. Revísalo con tu contador antes de presentarlo.</p>
-  </header>
+       SRI. La validación es técnica: no equivale a la aceptación del SRI. Revísalo con tu contador antes de presentarlo. La revisión contable de esta función está pendiente.</p>
+  </div><img src="{% static 'img/brand/isotipo-pie.png' %}" width="56" height="56" alt=""></header>
   <form method="get" class="form-inline mb-3" aria-label="Elegir el mes">
     <label for="fpAtsMes" class="mr-2">Mes</label>
     <input type="month" id="fpAtsMes" name="mes" class="form-control mr-2" value="{{ mes_valor }}" max="{% now 'Y-m' %}">
@@ -15,16 +14,16 @@
   </form>
   {% if mes_invalido %}<div class="alert alert-warning" role="alert">Ese mes no es válido: se muestra el mes actual.</div>{% endif %}
   {% if ats.valido %}
-    <p class="alert alert-success">El XML valida contra el esquema ({{ ats.incluidas|length }} compras). <a class="btn btn-primary btn-sm" href="/tributario/ats/descargar/?mes={{ mes_valor }}&amp;empresa={{ request.company.pk }}">Descargar {{ ats.nombre }}.zip</a></p>
+    <div class="fp-work-stats"><div><span>Incluidas</span><strong>{{ ats.incluidas|length }}</strong></div><div><span>Excluidas · revisar motivos</span><strong>{{ ats.excluidas|length }}</strong></div></div><p class="alert alert-success">El XML valida contra el esquema ({{ ats.incluidas|length }} compras). <a data-fp-download class="btn btn-primary btn-sm" href="/tributario/ats/descargar/?mes={{ mes_valor }}&amp;empresa={{ request.company.pk }}">Descargar {{ ats.nombre }}.zip</a></p>
   {% else %}
-    <div class="alert alert-danger" role="alert"><p>El XML no valida contra el esquema oficial:</p><ul>{% for e in ats.errores_xsd %}<li>Línea {{ e.linea }}: {{ e.mensaje }}</li>{% endfor %}</ul></div>
+    <div class="alert alert-danger" role="alert"><p>El XML no valida contra el esquema oficial:</p><button class="btn btn-secondary mb-2" disabled>Descarga no disponible</button><ul>{% for e in ats.errores_xsd %}<li>Línea {{ e.linea }}: {{ e.mensaje }}</li>{% endfor %}</ul></div>
   {% endif %}
   {% for a in ats.advertencias %}<p class="alert alert-warning" role="status">{{ a.texto }}</p>{% endfor %}
-  <section aria-labelledby="fpAtsExcluidas"><h2 id="fpAtsExcluidas" class="h6">Compras que quedaron fuera ({{ ats.excluidas|length }})</h2>
-    <ul>{% for c in ats.excluidas %}<li>{{ c.numero }} · {{ c.proveedor }} · registrada {{ c.fecha_registro }} · <a href="{{ c.url }}">Completar</a>
+  <section class="fp-work-section" aria-labelledby="fpAtsExcluidas"><h2 id="fpAtsExcluidas" class="h6">Compras que quedaron fuera ({{ ats.excluidas|length }})</h2>
+    <ul class="fp-work-list">{% for c in ats.excluidas %}<li>{{ c.numero }} · {{ c.proveedor }} · registrada {{ c.fecha_registro }} · <a href="{{ c.url }}">Completar datos</a>
       <ul>{% for m in c.motivos %}<li>{{ m }}</li>{% endfor %}</ul></li>{% empty %}<li>Ninguna.</li>{% endfor %}</ul></section>
-  <section aria-labelledby="fpAtsIncluidas"><h2 id="fpAtsIncluidas" class="h6">Compras incluidas ({{ ats.incluidas|length }})</h2>
-    <ul>{% for c in ats.incluidas %}<li>{{ c.numero }} · {{ c.proveedor }} · registrada {{ c.fecha_registro }} · <a href="{{ c.url }}">Ver</a></li>{% empty %}<li>Ninguna.</li>{% endfor %}</ul></section>
-  <p class="small text-muted">Esquema: {{ ats.esquema.url }} · publicado {{ ats.esquema.publicado }} · descargado {{ ats.esquema.descargado }} · SHA-256 {{ ats.esquema.sha256 }}</p>
+  <section class="fp-work-section" aria-labelledby="fpAtsIncluidas"><h2 id="fpAtsIncluidas" class="h6">Compras incluidas ({{ ats.incluidas|length }})</h2>
+    <ul class="fp-work-list">{% for c in ats.incluidas %}<li>{{ c.numero }} · {{ c.proveedor }} · registrada {{ c.fecha_registro }} · <a href="{{ c.url }}">Ver</a></li>{% empty %}<li>Ninguna.</li>{% endfor %}</ul></section>
+  <details class="fp-work-section fp-work-source"><summary>Esquema utilizado en la validación</summary><p>Esquema: {{ ats.esquema.url }} · publicado {{ ats.esquema.publicado }} · descargado {{ ats.esquema.descargado }} · SHA-256 {{ ats.esquema.sha256 }}</p></details>
 </div>
 {% endblock %}

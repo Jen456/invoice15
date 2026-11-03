@@ -32,11 +32,11 @@ Para compartir con clientes, descargar el PDF y enviarlo por el canal de atenci�
 
 ## Complemento de revisión: cobros, gastos y locales (02/11/2026)
 
-- [Guía PDF de 3 páginas](Guia-cobros-gastos-locales.pdf).
+- [Guía PDF de 4 páginas](Guia-cobros-gastos-locales.pdf).
 - [Texto fuente y alcance](COMPROBANTES-DE-PAGO.md).
 - [HTML imprimible](guia-cobros-gastos-locales.html).
 
-Describe la versión integrada y esta entrega frontend **aún sin publicar**. No reemplaza el manual público anterior hasta que Claude integre y verifique el despliegue. Incluye una sola ruta por respaldo, revisión y saldos, límites distintos de archivos, consulta mensual, gastos y puntos por usuario. Declara explícitamente que la captura solo por foto/nota pendiente de completar aún requiere backend.
+Describe la versión integrada y esta entrega frontend **aún sin publicar**. No reemplaza el manual público anterior hasta que Claude integre y verifique el despliegue. Incluye una sola ruta por respaldo, revisión y saldos, límites distintos de archivos, consulta mensual, gastos y puntos por usuario. Incluye ya el flujo de recibo o nota ahora y completar después, la reutilización sin otra subida, los libros, la revisión, la importación masiva y el kardex. El ATS y los borradores conservan el aviso de validación contable pendiente.
 
 Regeneración sin servidor ni base de datos, con WeasyPrint instalado:
 

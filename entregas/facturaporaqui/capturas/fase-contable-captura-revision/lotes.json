@@ -1,0 +1,23 @@
+{
+  "checks": [
+    {
+      "name": "Lote real de prueba: 25 + 2; pausa y continuación conservan selección",
+      "partes": [
+        {
+          "enviados": 27,
+          "tratados": 25,
+          "restantes": 2
+        },
+        {
+          "enviados": 2,
+          "tratados": 2,
+          "restantes": 0
+        }
+      ]
+    },
+    {
+      "name": "Aviso de plan ilimitado conserva el error y acceso a Plan y pagos (respuesta simulada)"
+    }
+  ],
+  "errors": []
+}

@@ -1,13 +1,12 @@
-{% extends 'skin.html' %}
-{# Pantalla funcional «Revisión del mes» (core/tributario/revision.py). El diseño lo hace Codex sobre el contrato de HANDOFF. #}
+{% extends 'fp_contable_base.html' %}{% load static %}
 {% block breadcrumb_li %}<li class="breadcrumb-item active" aria-current="page">Revisión del mes</li>{% endblock %}
 {% block content %}
-<div class="fp-revision" data-empresa="{{ request.company.pk }}">
-  <header class="mb-3">
+<div class="fp-revision fp-workspace" data-empresa="{{ request.company.pk }}">
+  <header class="fp-work-header"><div><span class="fp-eyebrow">Tu revisión contable · paso a paso</span>
     <h1 class="h3">Revisión del mes</h1>
     <p>Lo que conviene mirar antes de declarar, con su causa y el enlace a cada registro. No es un cierre contable, no certifica
        nada y no bloquea ninguna operación. «Revisar» no significa incumplimiento: confírmalo con tu contador.</p>
-  </header>
+  </div><img src="{% static 'img/brand/isotipo-pie.png' %}" width="56" height="56" alt=""></header>
   <form method="get" class="form-inline mb-3" aria-label="Elegir el mes">
     <label for="fpRevisionMes" class="mr-2">Mes</label>
     <input type="month" id="fpRevisionMes" name="mes" class="form-control mr-2" value="{{ mes_valor }}" max="{% now 'Y-m' %}">
@@ -17,16 +16,23 @@
   </form>
   {% if mes_invalido %}<div class="alert alert-warning" role="alert">Ese mes no es válido: se muestra el mes actual.</div>{% endif %}
   {% if empresa_cambiada %}<div class="alert alert-warning" role="alert">La empresa activa cambió en otra pestaña: esta página muestra la empresa activa ahora.</div>{% endif %}
-  <p><strong>{{ revision.pendientes }}</strong> por revisar · {{ revision.informativas }} informativas · cuentas vencidas al {{ revision.corte }}.
-     {% if not revision.agente_retencion %}La empresa no está marcada como agente de retención: no se revisan compras sin retención.{% endif %}</p>
+  <div class="fp-work-stats"><div><span>Observaciones por revisar</span><strong>{{ revision.pendientes }}</strong></div><div><span>Informativas</span><strong>{{ revision.informativas }}</strong></div><div><span>Cuentas vencidas al</span><strong class="h5">{{ revision.corte }}</strong></div></div>
+  {% if not revision.agente_retencion %}<p class="alert alert-info">La empresa no está marcada como agente de retención: no se revisan compras sin retención.</p>{% endif %}
+  <div class="fp-work-section" id="fpRevisionFiltros" hidden>
+    <div class="fp-work-form"><div class="form-group"><label for="fpRevisionCategoria">Categoría</label><select id="fpRevisionCategoria" class="form-control"><option value="">Todas las categorías</option>{% for clave,c in revision.por_categoria.items %}<option value="{{ clave }}">{{ c.nombre }} · {{ c.revisar }} por revisar</option>{% endfor %}</select></div>
+    <div class="form-group"><label for="fpRevisionNivel">Nivel</label><select id="fpRevisionNivel" class="form-control"><option value="">Todos los niveles</option><option value="revisar">Por revisar</option><option value="informativo">Informativas</option></select></div></div><p id="fpRevisionResultado" class="small mt-3 mb-0" role="status"></p>
+  </div>
   {% for clave, c in revision.por_categoria.items %}
-  <section class="mb-3" aria-labelledby="fp-rev-{{ clave }}">
-    <h2 id="fp-rev-{{ clave }}" class="h6">{{ c.nombre }} ({{ c.revisar }} por revisar{% if c.informativo %}, {{ c.informativo }} informativas{% endif %})</h2>
-    <ul>{% for o in revision.observaciones %}{% if o.categoria == clave %}
-      <li data-codigo="{{ o.codigo }}" data-nivel="{{ o.nivel }}"><strong>{{ o.nivel_nombre }}:</strong> {{ o.titulo }}{% if o.importe %} · ${{ o.importe }}{% endif %}{% if o.fecha %} · {{ o.fecha }}{% endif %}
-        <br><small>{{ o.causa }}</small>{% if o.documento.url %} <a href="{{ o.documento.url }}">Abrir</a>{% endif %}</li>
-    {% endif %}{% empty %}{% endfor %}</ul>
+  <section class="fp-work-section fp-work-review" data-categoria="{{ clave }}" aria-labelledby="fp-rev-{{ clave }}">
+    <div class="fp-capture-heading"><h2 id="fp-rev-{{ clave }}">{{ c.nombre }}</h2><span class="fp-work-tag">{{ c.revisar }} por revisar · {{ c.informativo }} informativas</span></div>
+    <ul class="fp-work-list">{% for o in revision.observaciones %}{% if o.categoria == clave %}
+      <li data-codigo="{{ o.codigo }}" data-nivel="{{ o.nivel }}"><span class="fp-work-tag" data-state="{{ o.nivel }}">{{ o.nivel_nombre }}</span><h3 class="mt-2">{{ o.titulo }}</h3>
+        <p class="mb-1">{{ o.causa }}</p><small>{% if o.fecha %}{{ o.fecha }}{% endif %}{% if o.importe %} · ${{ o.importe }}{% endif %}</small>
+        {% if o.documento.url %}<a href="{{ o.documento.url }}">Abrir {{ o.documento.numero|default:'documento' }} <i class="fas fa-arrow-right ml-2" aria-hidden="true"></i></a>{% endif %}</li>
+    {% endif %}{% endfor %}</ul>
+    {% if not c.revisar and not c.informativo %}<p class="small mb-0">Sin observaciones en esta categoría.</p>{% endif %}
   </section>
   {% endfor %}
+  <p id="fpRevisionVacio" class="fp-work-empty" hidden>No hay observaciones con estos filtros.</p>
 </div>
 {% endblock %}

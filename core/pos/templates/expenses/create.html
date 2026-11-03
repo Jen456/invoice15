@@ -23,7 +23,7 @@
         <div class="form-group">
           <label for="{{ form.description.id_for_label }}">Nota del gasto <span class="fp-gasto-opcional">(opcional)</span></label>
           {{ form.description|add_class:'form-control'|attr:'placeholder:Ej.: taxi para entregar un pedido. Pagado por Ana.'|attr:'aria-describedby:fpGastoNotaAyuda' }}
-          <small id="fpGastoNotaAyuda" class="form-text">La nota queda guardada con el gasto.</small>
+          <small id="fpGastoNotaAyuda" class="form-text">{% if action == 'add' %}Al guardar también se conserva como nota de respaldo con tu usuario y la fecha.{% else %}La descripción se actualiza; los respaldos anteriores se conservan en su historial.{% endif %}</small>
           {% for error in form.description.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
         </div>
         {% if action == 'add' %}

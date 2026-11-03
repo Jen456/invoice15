@@ -1,9 +1,9 @@
 {% extends 'importacion/base.html' %}
 {% block breadcrumb_li %}<li class="breadcrumb-item"><a href="{% url 'importacion_lotes' %}"><i class="fas fa-layer-group"></i> Lotes</a></li><li class="breadcrumb-item"><a href="{% url 'importacion_lote' lote.pk %}">Lote #{{ lote.pk }}</a></li><li class="breadcrumb-item active" aria-current="page">Incorporar</li>{% endblock %}
 {% block content %}
-<div class="fp-comprobantes fp-importacion fp-importacion-incorporar" data-lote="{{ lote.pk }}">
-    <header class="fp-welcome"><span class="fp-eyebrow">Importación de documentos</span><h1>Incorporar documentos del lote #{{ lote.pk }}</h1>
-        <p>{{ plan.resumen.incorporables }} de {{ plan.resumen.total }} se pueden incorporar ahora. Las compras se crean agrupadas por tarifa con los importes del XML; el sustento tributario, la parte relacionada y la forma de pago que el XML no trae quedan <b>pendientes de revisión</b> en la compra (no se deciden aquí). Confirmar otra vez no duplica compras, proveedores ni movimientos.</p></header>
+<div class="fp-workspace fp-comprobantes fp-importacion fp-importacion-incorporar" data-lote="{{ lote.pk }}">
+    <header class="fp-work-header"><div><span class="fp-eyebrow">Importación de documentos</span><h1>Incorporar documentos del lote #{{ lote.pk }}</h1>
+        <p>{{ plan.resumen.incorporables }} de {{ plan.resumen.total }} se pueden incorporar ahora. Las compras se crean agrupadas por tarifa con los importes del XML; el sustento tributario, la parte relacionada y la forma de pago que el XML no trae quedan <b>pendientes de revisión</b> en la compra (no se deciden aquí). Confirmar otra vez no duplica compras, proveedores ni movimientos.</p></div></header>
     {% include 'importacion/_mensajes.html' %}
     <form method="post" id="fp-incorporar">{% csrf_token %}
         <fieldset class="card fp-retencion-panel mb-3"><div class="card-body">
@@ -31,17 +31,18 @@
             {% endfor %}
         </div></fieldset>
         {% endif %}
-        <div class="table-responsive fp-retencion-listado"><table class="table table-sm table-bordered bg-white fp-retencion-tabla">
+        <div class="fp-work-actions" id="fpIncorporarSeleccion" hidden><button type="button" class="btn btn-outline-secondary" data-seleccion="listos">Elegir los listos</button><button type="button" class="btn btn-outline-secondary" data-seleccion="ninguno">Limpiar selección</button><span id="fpIncorporarCuenta" role="status"></span></div>
+        <div class="table-responsive fp-retencion-listado"><table class="table table-sm bg-white fp-retencion-tabla fp-work-cards">
             <thead><tr><th scope="col"><span class="sr-only">Elegir</span></th><th scope="col">Comprobante</th><th scope="col">Emisor</th><th scope="col" class="text-right">Total</th><th scope="col">Acción</th><th scope="col">Estado</th><th scope="col">Detalle</th></tr></thead>
             <tbody id="fp-incorporar-items">
             {% for i in plan.items %}
             <tr data-estado="{{ i.estado }}">
-                <td>{% if i.estado == 'listo' or i.estado == 'requiere_datos' %}<input type="checkbox" name="documentos" value="{{ i.documento_id }}" aria-label="Incorporar {{ i.tipo_documento }} {{ i.numero }}" {% if i.estado == 'listo' %}checked{% endif %}>{% endif %}</td>
-                <td data-label="Comprobante">{% if i.documento_id %}<a href="{% url 'importacion_documento' i.documento_id %}">{{ i.tipo_documento }} {{ i.numero }}</a>{% if i.fecha_emision %}<br><small class="text-muted">{{ i.fecha_emision }}</small>{% endif %}{% else %}<span class="text-break">{{ i.clave|default:'—' }}</span>{% endif %}</td>
+                <td data-label="Selección">{% if i.estado == 'listo' or i.estado == 'requiere_datos' %}<input type="checkbox" name="documentos" value="{{ i.documento_id }}" aria-label="Incorporar {{ i.tipo_documento }} {{ i.numero }}" {% if i.estado == 'listo' %}checked{% endif %}>{% endif %}</td>
+                <td data-label="Comprobante"><span class="fp-work-tag">{% if i.clasificacion.id %}{{ i.clasificacion.nombre }}{% elif i.clasificacion == 'recibido' %}Recibido{% elif i.clasificacion == 'emitido' %}Emitido{% endif %}</span>{% if i.documento_id %}<a href="{% url 'importacion_documento' i.documento_id %}">{{ i.tipo_documento }} {{ i.numero }}</a>{% if i.fecha_emision %}<br><small class="text-muted">{{ i.fecha_emision }}</small>{% endif %}{% else %}<span class="text-break">{{ i.clave|default:'—' }}</span>{% endif %}</td>
                 <td data-label="Emisor">{% if i.emisor %}{{ i.emisor.razon_social|default:i.emisor.ruc }}<br><small class="text-muted">{{ i.emisor.ruc }}</small>{% endif %}</td>
                 <td data-label="Total" class="text-right">{% if i.importe_total %}${{ i.importe_total }}{% endif %}</td>
                 <td data-label="Acción">{% if i.accion == 'crear_compra' %}Crear compra{% elif i.accion == 'registrar_retencion' %}Registrar retención recibida{% elif i.accion == 'vincular_venta' %}Vincular con la venta{% else %}—{% endif %}</td>
-                <td data-label="Estado"><span class="fp-import-tag" data-state="{{ i.estado }}">{{ plan.resumen.estados|default_if_none:''|default:'' }}{% for k, v in plan.resumen.estados.items %}{% if k == i.estado %}{{ v }}{% endif %}{% endfor %}</span></td>
+                <td data-label="Estado"><small>{% if i.verificacion.nombre %}{{ i.verificacion.nombre }}{% else %}{{ i.verificacion }}{% endif %}</small><span class="fp-import-tag" data-state="{{ i.estado }}">{% for k, v in plan.resumen.estados.items %}{% if k == i.estado %}{{ v }}{% endif %}{% endfor %}</span></td>
                 <td data-label="Detalle">
                     {% for b in i.bloqueos %}<div class="text-danger">{{ b.texto }}</div>{% endfor %}
                     {% for e in i.errores %}<div class="text-danger">{{ e.texto }}</div>{% endfor %}
@@ -57,5 +58,11 @@
         {% if puede_revisar %}<button type="submit" class="btn fpa-btn-pagar">Incorporar los elegidos</button>{% endif %}
         <a href="{% url 'importacion_lote' lote.pk %}" class="btn btn-link">Volver al lote</a>
     </form>
+    <section class="fp-incorporar-bar" id="fpIncorporarConfirmacion" hidden tabindex="-1" aria-live="polite">
+      <h2>Revisa antes de incorporar</h2><p id="fpIncorporarResumen"></p><p>Se registrarán únicamente los documentos seleccionados. Los datos tributarios pendientes se revisan después en cada compra.</p>
+      <div class="fp-work-actions"><button type="button" class="btn btn-primary" id="fpIncorporarConfirmar">Confirmar incorporación</button><button type="button" class="btn btn-outline-secondary" id="fpIncorporarVolver">Volver a revisar</button><button type="button" class="btn btn-outline-secondary" id="fpIncorporarPausa" hidden>Pausar después de esta parte</button></div>
+      <progress id="fpIncorporarProgreso" max="1" value="0" aria-label="Documentos tratados" hidden></progress><p id="fpIncorporarAvance" role="status"></p><ul id="fpIncorporarResultados" class="fp-work-list"></ul>
+      <a href="" class="btn btn-outline-secondary" id="fpIncorporarRecargar" hidden>Actualizar vista previa</a>
+    </section>
 </div>
 {% endblock %}

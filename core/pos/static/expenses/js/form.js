@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 'params': new FormData(fv.form),
                 'form': fv.form
             };
+            if (fv.form.elements.action.value === 'add') args.params.set('nota_respaldo', fv.form.elements.description.value);
             submit_with_formdata(args);
         });
 });
