@@ -48,14 +48,7 @@ def libro_json(libro, totales, columnas, limite=None):
             'advertencias': libro.advertencias}
 
 
-EMPRESA_CAMBIADA = ('La empresa activa cambió en otra pestaña: vuelve a cargar la página para ver los datos de la empresa '
-                    'que tienes abierta ahora.')
-
-
-def empresa_cambiada(request):
-    """True si el enlace se armó para otra empresa (`empresa=<id>`) que ya no es la activa (otra pestaña la cambió)."""
-    pedida = request.GET.get('empresa')
-    return bool(pedida) and str(getattr(request, 'company', None) and request.company.pk) != pedida
+from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada  # noqa: E402,F401 - también los usa core/contabilidad
 
 
 class LibroApi(GroupPermissionMixin, View):
@@ -163,12 +156,16 @@ def resumen_de_empresas(usuario, inicio):
     """[{empresa, ruc, rol, mes, pendientes, informativas, por_categoria}] de las membresías ACTIVAS del usuario cuyo rol
     puede ver la revisión. Cada empresa se lee dentro de su propio contexto (gestor por empresa y RLS): nunca con un acceso
     global. Una membresía revocada o una empresa inactiva no aparecen."""
+    from core.suscripciones.reglas import complemento_habilitado
+    from core.suscripciones.servicios import estado_empresa
     from core.tenancy.context import company_context
     from core.tenancy.models import Membership
     from core.tributario import revision
     filas = []
     for membresia in (Membership.objects.active().filter(user=usuario, group__permissions__codename='view_revision')
                       .select_related('company', 'group').order_by('company__business_name', 'company_id').distinct()):
+        if not complemento_habilitado(membresia.company) or estado_empresa(membresia.company).gratuito:
+            continue   # sin el Complemento Contable o sin plan pagado, esa empresa no se resume (ni se abre su revisión)
         with company_context(membresia.company):
             datos = revision.revisar(inicio, membresia.company)
         filas.append({'empresa_id': membresia.company_id, 'empresa': membresia.company.business_name, 'ruc': membresia.company.ruc,

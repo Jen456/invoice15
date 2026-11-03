@@ -690,6 +690,9 @@ def _vincular(documento, accion, registro_id):
         if compra.version_datos == 2 and compra.tipo_comprobante != documento.cod_doc:
             raise ErrorImportacion('La compra es de otro tipo de comprobante '
                                    f'({compra.get_tipo_comprobante_display() or "sin tipo"}): no es este documento.')
+        if documento.cod_doc in ('04', '05') and compra.purchasedetail_set.filter(product__isnull=False).exists():
+            raise ErrorImportacion(f'La compra #{compra.pk} tiene productos y movió el stock: una nota del proveedor no se vincula con '
+                                   'ella. Regístrala desde el XML (con líneas de gasto) y revisa el inventario con tu contador.')
         if DocumentoImportado.objects.filter(compra=compra).exclude(pk=documento.pk).exists():
             raise ErrorImportacion('Esa compra ya está vinculada con otro documento importado.')
         documento.compra, documento.proveedor = compra, compra.provider
@@ -872,7 +875,9 @@ def _plan_documento(entrada, documento, permisos):
                  'emisor': {'ruc': documento.emisor_ruc, 'razon_social': documento.emisor_razon_social},
                  'fecha_emision': documento.fecha_emision.isoformat() if documento.fecha_emision else None,
                  'importe_total': f'{documento.importe_total:.2f}', 'clasificacion': documento.clasificacion,
-                 'verificacion': documento.estado_verificacion, 'revision': documento.estado_revision,
+                 'clasificacion_nombre': documento.get_clasificacion_display(),
+                 'verificacion': documento.estado_verificacion, 'verificacion_nombre': documento.get_estado_verificacion_display(),
+                 'revision': documento.estado_revision,
                  'compra_id': documento.compra_id, 'venta_vinculada_id': documento.venta_id})
     if documento.estado_procesamiento != 'procesado':
         item['estado'] = 'sin_xml'
@@ -913,6 +918,8 @@ def _plan_documento(entrada, documento, permisos):
         if documento.estado_verificacion != 'verificada_sri' and reglas_de(documento.company).exigir_verificacion:
             item['confirmaciones'] = ['confirmar_sin_verificar']
         item['permiso'] = 'change_documentoimportado' in permisos
+    if not item['permiso']:   # la vista previa no ofrece lo que el rol no puede incorporar
+        item['bloqueos'].append({'codigo': 'sin_permiso', 'texto': 'Tu perfil no puede incorporar este documento.'})
     if item['bloqueos']:
         item['estado'] = 'bloqueado'
     elif item['confirmaciones'] or item['proveedor_nuevo']:

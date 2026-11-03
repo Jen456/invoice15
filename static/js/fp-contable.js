@@ -23,7 +23,8 @@
             if (r.redirected) {error('Tu sesión, acceso o plan cambió. Recarga la página para continuar.', true); return;}
             if (!r.ok) {
                 const isJson = (r.headers.get('Content-Type') || '').includes('json');
-                const d = isJson ? await r.json() : {error: await r.text()};
+                const plano = (r.headers.get('Content-Type') || '').startsWith('text/plain');
+                const d = isJson ? await r.json() : {error: plano ? await r.text() : 'No se pudo descargar (HTTP ' + r.status + '). Recarga la página.'};
                 error(d.error || 'No se pudo descargar.', d.codigo === 'empresa_cambiada' || (r.status === 409 && !isJson)); return;
             }
             const disposition = r.headers.get('Content-Disposition') || '';
@@ -65,6 +66,7 @@
                 try {
                     const r = await fetch('/contabilidad/api/kardex/productos/?' + new URLSearchParams({q: buscar.value, empresa: root.dataset.empresa}), {credentials: 'same-origin', signal: control.signal});
                     if (r.redirected) throw new Error('Recarga la página para comprobar tu acceso.');
+                    if (!(r.headers.get('Content-Type') || '').includes('json')) throw new Error('No se pudo buscar (HTTP ' + r.status + '). Recarga la página.');
                     const d = await r.json(); if (actual !== version) return;
                     if (!r.ok) {error(d.error || 'No se pudo buscar.', d.codigo === 'empresa_cambiada'); aviso.textContent = 'No se pudo buscar.'; return;}
                     const elegido = selector.selectedOptions[0]?.cloneNode(true);

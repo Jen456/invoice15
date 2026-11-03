@@ -11,7 +11,8 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.utils import timezone
 
 from core.security.session import get_group
-from core.suscripciones.reglas import MENSAJE_SOLO_ILIMITADO, URL_SUSCRIPCION, es_emision, requiere_ilimitado, requiere_plan
+from core.suscripciones.reglas import (MENSAJE_COMPLEMENTO, MENSAJE_SOLO_ILIMITADO, URL_SUSCRIPCION, complemento_habilitado,
+                                      es_emision, requiere_complemento, requiere_ilimitado, requiere_plan)
 from core.suscripciones.servicios import estado_de_peticion
 
 ESCRITURA = ('/add/', '/update/', '/delete/')
@@ -49,6 +50,11 @@ class PlanMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        # Primero el Complemento Contable: sin habilitar, no hay plan que lo abra (D9 pendiente); habilitado para revisión,
+        # sigue la regla del plan pagado de abajo (rutas en RUTAS_DE_PAGO: plan base y solo consulta si venció).
+        if getattr(request, 'company', None) is not None and request.user.is_authenticated \
+                and requiere_complemento(request.path) and not complemento_habilitado(request.company):
+            return self.bloquear(request, MENSAJE_COMPLEMENTO, plan='complemento_contable')
         if getattr(request, 'company', None) is not None and request.user.is_authenticated \
                 and requiere_plan(request.path):
             estado = estado_de_peticion(request)
@@ -66,6 +72,15 @@ class PlanMiddleware:
         return self.get_response(request)
 
     def bloquear(self, request, mensaje, plan='requerido'):
+        if plan == 'complemento_contable':
+            # No se contrata todavía (D9): las páginas vuelven al inicio con el aviso; API, descargas y envíos, 403 en JSON.
+            if request.method == 'GET' and not any(p in request.path for p in ('/api/', '/exportar/', '/descargar/')):
+                messages.warning(request, mensaje, extra_tags='complemento')
+                return HttpResponseRedirect('/dashboard/')
+            from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada
+            if empresa_cambiada(request):   # pestaña abierta con otra empresa: primero eso, para que recargue
+                return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
+            return JsonResponse({'error': mensaje, 'plan': plan, 'codigo': 'complemento_pendiente'}, status=403)
         if request.method == 'GET' and '/api/' not in request.path:   # las API responden siempre JSON
             if puede_gestionar_plan(request):
                 messages.warning(request, mensaje, extra_tags='plan')

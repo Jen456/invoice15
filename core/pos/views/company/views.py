@@ -11,7 +11,7 @@ from core.security.mixins import GroupPermissionMixin
 from core.suscripciones.servicios import tiene_plan
 
 # Etapa 2 (O2): datos tributarios que se auditan con company_change al cambiar y días que cubre el calendario.
-CAMPOS_TRIBUTARIOS = ('tipo_contribuyente', 'periodicidad_iva')
+CAMPOS_TRIBUTARIOS = ('tipo_contribuyente', 'periodicidad_iva', 'ruc')   # el cambio de RUC también queda auditado
 DIAS_VENCIMIENTOS = 90
 
 

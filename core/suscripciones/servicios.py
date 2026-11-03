@@ -93,6 +93,7 @@ class EstadoPlan:
     produccion: bool = False
     ahora: object = None
     titular: object = None      # empresa que paga, si esta es una adicional de un plan multiempresa
+    complemento: bool = False   # Complemento Contable habilitado para revisión (reglas.complemento_habilitado)
 
     @property
     def pagado(self):
@@ -159,8 +160,11 @@ def estado_empresa(company, ahora=None):
 def estado_de_peticion(request):
     """Estado de la empresa activa, calculado una vez por petición."""
     if not hasattr(request, '_fpa_estado_plan'):
+        from core.suscripciones.reglas import complemento_habilitado
         company = getattr(request, 'company', None)
         request._fpa_estado_plan = estado_empresa(company) if company is not None else None
+        if request._fpa_estado_plan is not None:
+            request._fpa_estado_plan.complemento = complemento_habilitado(company)
     return request._fpa_estado_plan
 
 

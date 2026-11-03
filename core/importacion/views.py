@@ -19,6 +19,7 @@ from core.importacion.models import ArchivoImportado, DocumentoImportado, Entrad
 from core.importacion.xml_sri import _serializable
 from core.security.mixins import GroupPermissionMixin
 from core.security.session import get_group
+from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada
 
 VER, IMPORTAR, REVISAR = 'view_documentoimportado', 'add_documentoimportado', 'change_documentoimportado'
 CREAR_COMPRA = (REVISAR, 'add_purchase')
@@ -240,6 +241,8 @@ class ClavesLoteApi(ApiMixin, View):
     permission_required = IMPORTAR
 
     def post(self, request):
+        if empresa_cambiada(request):
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
         try:
             lista = reporte_sri.filas_de_texto(str(datos_peticion(request).get('texto') or ''))
             lote = sv.crear_lote_de_claves(request.company, request.user, lista, 'claves')
@@ -253,6 +256,8 @@ class ReporteLoteApi(ApiMixin, View):
     permission_required = IMPORTAR
 
     def post(self, request):
+        if empresa_cambiada(request):
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
         archivo = request.FILES.get('reporte')
         if archivo is None:
             return error('Sube el reporte del portal del SRI (TXT, CSV o XLSX).')
@@ -460,6 +465,9 @@ class ImportarClaves(Pagina):
     titulo = 'Importar por claves o reporte del SRI'
 
     def post(self, request):
+        if empresa_cambiada(request):
+            messages.error(request, EMPRESA_CAMBIADA)
+            return HttpResponseRedirect(reverse('importacion_claves'))
         try:
             archivo = request.FILES.get('reporte')
             if archivo is not None:

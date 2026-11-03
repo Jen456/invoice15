@@ -1,4 +1,5 @@
 from django import forms
+from django.db import IntegrityError
 
 from .models import *
 from core.pos.clientes import correo_valido, separar_correos, validar_identificacion
@@ -123,6 +124,15 @@ class ProductForm(forms.ModelForm):
         }
         exclude = ['stock', 'barcode', 'with_tax']
 
+    def clean_code(self):
+        codigo = (self.cleaned_data.get('code') or '').strip()
+        repetido = Product.objects.filter(code__iexact=codigo)
+        if self.instance.pk:
+            repetido = repetido.exclude(pk=self.instance.pk)
+        if codigo and repetido.exists():
+            raise forms.ValidationError('Ya existe un producto con este código en tu empresa: búscalo en el catálogo.')
+        return codigo
+
     def save(self, commit=True):
         data = {}
         try:
@@ -130,6 +140,8 @@ class ProductForm(forms.ModelForm):
                 super().save()
             else:
                 data['error'] = self.errors
+        except IntegrityError:
+            raise   # la vista responde con un mensaje claro (código o nombre repetido en otra pestaña)
         except Exception as e:
             data['error'] = str(e)
         return data
@@ -589,6 +601,13 @@ class CompanyForm(forms.ModelForm):
             actual = getattr(self.instance, name)
             return '' if actual is None else actual   # conserva también una clave guardada que no se pudo descifrar
         return valor
+
+    def clean_ruc(self):
+        # El mismo control del registro: una empresa no puede tomar el RUC o la cédula de otra.
+        ruc = (self.cleaned_data.get('ruc') or '').strip()
+        if ruc and Company.objects.filter(ruc=ruc).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError('Ya existe una empresa con este RUC o cédula. Pide acceso a su propietario.')
+        return ruc
 
     def clean_electronic_signature_key(self):
         return self._conservar_secreto('electronic_signature_key')

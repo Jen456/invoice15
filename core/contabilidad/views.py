@@ -133,6 +133,8 @@ class ProductosApi(GroupPermissionMixin, View):
         from django.db.models import Q
 
         from core.pos.models import Product
+        if empresa_cambiada(request):
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
         q = (request.GET.get('q') or '').strip()[:60]
         productos = Product.objects.filter(inventoried=True)
         if q:

@@ -25,7 +25,7 @@
   {% if producto_pedido %}<div class="alert alert-warning" role="alert">El producto no existe, es de otra empresa o no es inventariado.</div>{% endif %}
   {% if kardex %}
   <p class="fp-work-actions"><a data-fp-download class="btn btn-outline-primary btn-sm" href="/contabilidad/kardex/exportar/?producto={{ producto.pk }}&amp;desde={{ desde }}&amp;hasta={{ hasta }}&amp;empresa={{ request.company.pk }}">Descargar el kardex (XLSX)</a></p>
-  {% for a in kardex.advertencias %}<p class="alert alert-warning" role="status" data-aviso="{{ a.codigo }}">{{ a.texto }}</p>{% endfor %}
+  {% for a in kardex.advertencias %}<p class="alert alert-warning" role="status" data-aviso="{{ a.codigo }}">{{ a.texto }}{% if a.documentos %} {% for d in a.documentos %}<a href="{{ d.url }}">{{ d.numero }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</p>{% endfor %}
   <p>Saldo anterior: <strong>{{ kardex.saldo_anterior.cantidad }}</strong>{% if kardex.saldo_anterior.valor %} · valor {{ kardex.saldo_anterior.valor }}{% endif %}
     · Saldo final: <strong data-saldo-final="{{ kardex.saldo_final.cantidad }}">{{ kardex.saldo_final.cantidad }}</strong>
     {% if kardex.saldo_final.conocido %}· valor {{ kardex.saldo_final.valor }} · costo promedio {{ kardex.saldo_final.costo_promedio|default:'—' }}{% else %}· costo desconocido{% endif %}
@@ -48,6 +48,7 @@
         <button type="submit" class="btn btn-outline-danger btn-sm">Confirmar anulación</button></form></details>{% endif %}</li>
       {% empty %}<li>Ninguno.</li>{% endfor %}</ul>
   </section>
+  {% if capacidades.bloqueo %}<p class="alert alert-warning" role="status">{{ capacidades.bloqueo }}</p>{% endif %}
   {% if capacidades.registrar %}
   <section class="fp-work-section" aria-labelledby="fpKNuevo" ><h2 id="fpKNuevo">Completar la historia del producto</h2><p class="alert alert-info">Este registro completa el kardex y no cambia el stock. Un saldo inicial reinicia la historia en su fecha. Revisa el producto, la fecha y el respaldo antes de guardar.</p>
     <form method="post" class="fp-work-form" data-fp-kardex-manual><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"><input type="hidden" name="accion" value="registrar">

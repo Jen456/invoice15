@@ -7,14 +7,14 @@
     {% include 'importacion/_mensajes.html' %}
     <ol class="fp-import-steps" aria-label="Etapas de importación"><li><b>1</b> Pega las claves o sube el reporte</li><li><b>2</b> Se consultan al SRI por partes</li><li><b>3</b> Revisa e incorpora en lote</li></ol>
     <div class="fp-work-grid">
-    <form method="post" class="fp-work-section" id="fp-claves-texto"><div class="p-0">{% csrf_token %}
+    <form method="post" class="fp-work-section" id="fp-claves-texto"><div class="p-0">{% csrf_token %}<input type="hidden" name="empresa" value="{{ request.company.pk }}">
         <h2 class="h5">Lista de claves de acceso</h2>
         <label for="id_texto" class="font-weight-bold">Una clave por línea (49 dígitos)</label>
         <textarea name="texto" id="id_texto" class="form-control" rows="6" maxlength="200000" inputmode="numeric" spellcheck="false" placeholder="Pega aquí las claves de acceso de tus comprobantes" required></textarea>
         <small class="form-text text-muted">Hasta {{ limites.MAX_CLAVES_POR_LOTE }} claves por lote. Se admiten facturas, notas de crédito, notas de débito y retenciones (01, 04, 05 y 07); las claves repetidas o ya importadas no se duplican.</small>
         <button type="submit" class="btn fpa-btn-pagar mt-3">Consultar en el SRI</button>
     </div></form>
-    <form method="post" enctype="multipart/form-data" class="fp-work-section" id="fp-claves-reporte"><div class="p-0">{% csrf_token %}
+    <form method="post" enctype="multipart/form-data" class="fp-work-section" id="fp-claves-reporte"><div class="p-0">{% csrf_token %}<input type="hidden" name="empresa" value="{{ request.company.pk }}">
         <h2 class="h5">Reporte del portal del SRI</h2>
         <div class="fp-capture-drop" id="fpReporteDrop"><i class="fas fa-file-import" aria-hidden="true"></i><label for="id_reporte" class="font-weight-bold">Archivo TXT, CSV o XLSX exportado de «Comprobantes electrónicos recibidos»</label>
         <input type="file" name="reporte" id="id_reporte" class="form-control" accept=".txt,.csv,.xlsx,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>

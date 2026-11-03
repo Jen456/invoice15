@@ -1828,8 +1828,7 @@ class CreditNote(TenantModel):
     def delete(self, using=None, keep_parents=False):
         try:
             for i in self.creditnotedetail_set.filter(product__inventoried=True):
-                i.product.stock -= i.cant
-                i.product.save()
+                Product.all_companies.filter(pk=i.product_id).update(stock=models.F('stock') - i.cant)   # sin pisar otra venta
                 i.delete()
         except:
             pass

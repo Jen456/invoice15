@@ -19,6 +19,8 @@ if os.path.isfile(_env_file):
     environ.Env.read_env(_env_file)
 
 FPA_ENTORNO = env('FPA_ENTORNO', default='desarrollo')
+# Empresas (RUC) que pueden revisar el Complemento Contable mientras D9 está pendiente; vacío = nadie (core/suscripciones/reglas.py).
+FPA_COMPLEMENTO_CONTABLE_REVISION = env.list('FPA_COMPLEMENTO_CONTABLE_REVISION', default=[])
 
 SECRET_KEY = env('SECRET_KEY')
 # Llaves Fernet de los secretos guardados en la base (core/tenancy/cifrado.py); la primera cifra, las demás descifran.

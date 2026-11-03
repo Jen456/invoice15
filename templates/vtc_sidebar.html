@@ -31,7 +31,7 @@
                                     <li class="nav-item">
                                         <a href="{{ module.url }}" class="nav-link" data-name="submodule" data-id="{{ forloop.counter }}">
                                             <i class="{{ module.icon }} nav-icon"></i>
-                                            <p>{{ module.name }}{% if module.url|bloqueado_por_plan:fpa_plan %}<i class="fas fa-lock fpa-candado" aria-hidden="true"></i><span class="sr-only"> (requiere plan)</span>{% endif %}</p>
+                                            <p>{{ module.name }}{% if module.url|bloqueado_por_plan:fpa_plan %}<i class="fas fa-lock fpa-candado" aria-hidden="true"></i><span class="sr-only"> {% if module.url|es_complemento_contable %}(Complemento Contable, por anunciar){% else %}(requiere plan){% endif %}</span>{% endif %}</p>
                                         </a>
                                     </li>
                                 {% endfor %}
@@ -43,7 +43,7 @@
                     <li class="nav-item">
                         <a href="{{ module.url }}" class="nav-link" data-name="single_module" data-id="{{ forloop.counter }}">
                             <i class="nav-icon {{ module.icon }}"></i>
-                            <p>{{ module.name }}{% if module.url|bloqueado_por_plan:fpa_plan %}<i class="fas fa-lock fpa-candado" aria-hidden="true"></i><span class="sr-only"> (requiere plan)</span>{% endif %}</p>
+                            <p>{{ module.name }}{% if module.url|bloqueado_por_plan:fpa_plan %}<i class="fas fa-lock fpa-candado" aria-hidden="true"></i><span class="sr-only"> {% if module.url|es_complemento_contable %}(Complemento Contable, por anunciar){% else %}(requiere plan){% endif %}</span>{% endif %}</p>
                         </a>
                     </li>
                 {% endfor %}

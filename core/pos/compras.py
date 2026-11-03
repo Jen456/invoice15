@@ -732,6 +732,10 @@ def crear_compra(company, usuario, datos, lineas, *, origen='manual', importes=N
         for l in plan.lineas:
             if l['product'] is not None and l['product'].inventoried:
                 stock[l['product'].pk] = stock.get(l['product'].pk, 0) + l['cant']
+        if stock and compra.tipo_comprobante in cat.TIPOS_CON_DOC_MODIFICADO:
+            # Defensa en profundidad: _preparar ya rechaza notas con productos. Se lanza el error (la transacción deshace todo)
+            # en vez de saltar las líneas, que dejaría a Purchase.delete restando un stock que nunca se sumó.
+            raise ErrorCompra('Las notas de crédito y débito del proveedor no mueven stock: regístralas con líneas de gasto.')
         for producto_id in sorted(stock):
             Product.objects.filter(pk=producto_id).update(stock=F('stock') + stock[producto_id])
         if compra.payment_type == 'credito':

@@ -1,6 +1,8 @@
 """Comprobantes de pago adjuntos (compras, gastos y pagos a proveedores): API JSON por documento (archivo o nota), archivo
 protegido, página «Comprobantes de pago» del mes (que recoge también los respaldos de cobros de core/cobros y los recibos
 por completar) y recibos o notas guardados para completar después (capturas: API, archivo y página)."""
+import re
+
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -205,6 +207,9 @@ class CapturasApi(CapturaApiBase):
                              'limites': limites(), 'clave_sugerida': cp.clave_sugerida()})
 
     def post(self, request):
+        from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada
+        if empresa_cambiada(request):   # el formulario se abrió con otra empresa: no se guarda en la nueva
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
         try:
             captura, repetida = cp.registrar(request, clave=request.POST.get('clave', ''), archivo=request.FILES.get('archivo'),
                                              nota=request.POST.get('nota', ''))
@@ -308,13 +313,17 @@ class CapturasPagina(GroupPermissionMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        from core.suscripciones.middleware import puede_gestionar_plan
         estado = self.request.GET.get('estado') or 'pendiente'
+        pedida = (self.request.GET.get('captura') or '').strip()
+        seleccionada = int(pedida) if re.fullmatch(r'[0-9]{1,12}', pedida) else None   # la tarjeta se resalta comparando enteros
         lista = [cp.dict_captura(c, self.request) for c in cp.listar(self.request, estado)]
         capacidades = cp.capacidades(self.request)
         context.update({'title': 'Recibos por completar', 'estado': estado if estado in cp.ESTADOS_FILTRO else 'pendiente',
                         'capturas': lista, 'capacidades': capacidades, 'limites': limites(), 'clave_sugerida': cp.clave_sugerida(),
                         'opciones': cp.opciones_gasto() if capacidades['completar_gasto'] else None,
-                        'pendientes': cp.contar_pendientes(self.request), 'seleccionada': self.request.GET.get('captura', '')})
+                        'pendientes': cp.contar_pendientes(self.request), 'seleccionada': seleccionada,
+                        'puede_gestionar_plan': puede_gestionar_plan(self.request)})
         return context
 
 

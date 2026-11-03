@@ -20,6 +20,16 @@ RUTAS_DE_PAGO = (
     '/comprobantes/', '/proformas/', '/cobros/', '/tributario/', '/contabilidad/',
 )
 
+# Complemento Contable (plan §3.8): libros, revisión del mes, ATS, borradores del 104/103 y kardex. Su precio, vigencia y
+# cobertura (D9) no están aprobados: no se habilita comercialmente. Además del plan pagado, la empresa debe estar en
+# FPA_COMPLEMENTO_CONTABLE_REVISION (RUC), la lista de revisión que fija la plataforma; vacía, nadie lo abre. «*» (todas)
+# vale solo en desarrollo y en las pruebas automáticas, nunca en un despliegue.
+RUTAS_COMPLEMENTO_CONTABLE = ('/tributario/', '/contabilidad/')
+MENSAJE_COMPLEMENTO = ('El Complemento Contable (libros, revisión del mes, ATS, borradores del 104 y del 103, kardex e '
+                       'inventario valorizado) todavía no está disponible: su precio y sus condiciones están por anunciar.')
+ENTORNOS_LOCALES = ('desarrollo', 'pruebas_automaticas')
+
+
 # Incluidos solo en los planes ilimitados (Ilimitado y Multiempresa), por decisión comercial del 15/10/2026.
 # No consumen cupo de emisión.
 RUTAS_ILIMITADAS = ('/importacion/',)
@@ -48,6 +58,25 @@ def requiere_plan(path):
 
 def requiere_ilimitado(path):
     return path.startswith(RUTAS_ILIMITADAS)
+
+
+def requiere_complemento(path):
+    return path.startswith(RUTAS_COMPLEMENTO_CONTABLE)
+
+
+def complemento_habilitado(company):
+    """La empresa puede abrir el Complemento Contable: está en la lista de revisión (el plan pagado se exige aparte)."""
+    from django.conf import settings
+    if company is None:
+        return False
+    lista = {str(x).strip() for x in getattr(settings, 'FPA_COMPLEMENTO_CONTABLE_REVISION', None) or [] if str(x).strip()}
+    if '*' in lista and getattr(settings, 'FPA_ENTORNO', '') in ENTORNOS_LOCALES:
+        return True
+    if not company.ruc or company.ruc not in lista:
+        return False
+    from core.pos.models import Company
+    # Un RUC de la lista que comparte otra empresa no abre nada (nadie se cubre copiando el RUC de una empresa cubierta).
+    return not Company.objects.filter(ruc=company.ruc).exclude(pk=company.pk).exists()
 
 
 def es_emision(request):

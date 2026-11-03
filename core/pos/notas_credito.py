@@ -95,9 +95,11 @@ def crear(company, venta_id, lineas, motivo, punto=None):
     for detalle, cantidad in a_acreditar:
         CreditNoteDetail.objects.create(credit_note=nota, sale_detail=detalle, product=detalle.product, cant=cantidad,
                                         price=detalle.price, dscto=detalle.dscto)
-        if detalle.product.inventoried:   # devolución de mercadería
-            detalle.product.stock += cantidad
-            detalle.product.save(update_fields=['stock'])
+        if detalle.product.inventoried:   # devolución de mercadería: con F(), sin reescribir el producto ni pisar otra venta
+            from django.db.models import F
+
+            from core.pos.models import Product
+            Product.objects.filter(pk=detalle.product_id, inventoried=True).update(stock=F('stock') + cantidad)
     nota.calculate_detail()
     nota.calculate_invoice()
     return nota

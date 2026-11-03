@@ -28,15 +28,15 @@
         </div>
         <input type="hidden" name="proforma_id" value="{{ proforma_facturar.id }}">
     {% endif %}
-    {% permisos_de 'add_product' as fp_alta %}
-    <div class="fp-sale-editor" data-company="{{ company.pk }}">
+    {% permisos_de 'add_product' 'add_client' 'change_product' as fp_alta %}
+    <div class="fp-sale-editor" data-company="{{ company.pk }}" data-precio-editable="{% if fp_alta.change_product %}1{% else %}0{% endif %}">
     <p class="fp-sale-intro">Completa el cliente, añade los productos y revisa el pago.{% if fp_alta.add_product %} Puedes crear productos sin salir de esta factura.{% endif %}</p>
     <fieldset class="fp-sale-section">
         <legend><span>1</span> Cliente y documento</legend>
         <div class="fp-sale-grid">
             <div class="form-group fp-sale-client"><label for="{{ form.client.id_for_label }}">{{ form.client.label }}</label>
                 {{ form.client }}
-                <button type="button" class="btn btn-link btnAddClient fp-inline-action" aria-haspopup="dialog" aria-controls="myModalClient"><i class="fas fa-plus" aria-hidden="true"></i> Crear cliente aquí</button>
+                {% if fp_alta.add_client %}<button type="button" class="btn btn-link btnAddClient fp-inline-action" aria-haspopup="dialog" aria-controls="myModalClient"><i class="fas fa-plus" aria-hidden="true"></i> Crear cliente aquí</button>{% endif %}
                 <p id="fp-client-status" class="fp-client-status" role="status" hidden></p>
             </div>
             <div class="form-group"><label for="{{ form.date_joined.id_for_label }}">{{ form.date_joined.label }}</label>{{ form.date_joined }}</div>
@@ -50,7 +50,7 @@
         <div class="fp-sale-search">
             <div class="form-group"><label for="fp-sale-search">Busca por nombre o código</label>
                 <input id="fp-sale-search" type="text" class="form-control" autocomplete="off" name="search_product" placeholder="Escribe para buscar un producto" aria-describedby="fp-search-help">
-                <small id="fp-search-help" class="text-muted">Selecciona un resultado para agregarlo. Después puedes cambiar la cantidad y el descuento.</small>
+                <small id="fp-search-help" class="text-muted">Selecciona un resultado para agregarlo. Después puedes cambiar la cantidad{% if fp_alta.change_product %}, el precio de esta factura (no cambia el catálogo){% endif %} y el descuento.</small>
             </div>
             {% if fp_alta.add_product %}<button type="button" class="btn btn-primary fp-open-product" data-product-url="{% url 'product_create' %}" aria-haspopup="dialog" aria-controls="fp-product-dialog"><i class="fas fa-plus" aria-hidden="true"></i> Crear producto aquí</button>{% endif %}
         </div>

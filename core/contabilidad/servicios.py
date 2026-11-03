@@ -51,9 +51,21 @@ def codigos(request):
     return set(grupo.permissions.values_list('codename', flat=True)) if grupo is not None else set()
 
 
+def _bloqueo_plan(request):
+    """Mensaje si el plan solo deja consultar (vencido) o no abre el módulo (gratuito), o None."""
+    from core.suscripciones.servicios import estado_de_peticion
+    estado = estado_de_peticion(request)
+    if estado is None or not (estado.gratuito or estado.vencido):
+        return None
+    from core.suscripciones.middleware import mensaje_de_bloqueo
+    return mensaje_de_bloqueo(estado)
+
+
 def capacidades(request):
     tiene = codigos(request)
-    return {'ver': VER in tiene, 'registrar': VER in tiene and REGISTRAR in tiene, 'anular': VER in tiene and ANULAR in tiene}
+    bloqueo = _bloqueo_plan(request)
+    return {'ver': VER in tiene, 'registrar': VER in tiene and REGISTRAR in tiene and bloqueo is None,
+            'anular': VER in tiene and ANULAR in tiene and bloqueo is None, 'bloqueo': bloqueo}
 
 
 def _costo(texto):
@@ -137,6 +149,9 @@ def registrar(request, datos):
     """Registra un movimiento manual. Devuelve (movimiento, repetido)."""
     if REGISTRAR not in codigos(request) or VER not in codigos(request):
         raise ErrorKardex('sin_permiso', estado=403)
+    bloqueo = _bloqueo_plan(request)
+    if bloqueo:   # el plan solo deja consultar: no depende de cómo llegó el envío
+        raise ErrorKardex('plan', bloqueo, estado=403)
     clave = str(datos.get('clave') or '').strip()
     if not CLAVE.match(clave):
         raise ErrorKardex('clave')
@@ -161,6 +176,9 @@ def registrar(request, datos):
 def anular(request, pk, motivo):
     if ANULAR not in codigos(request) or VER not in codigos(request):
         raise ErrorKardex('sin_permiso_anular', estado=403)
+    bloqueo = _bloqueo_plan(request)
+    if bloqueo:
+        raise ErrorKardex('plan', bloqueo, estado=403)
     motivo = ' '.join(str(motivo or '').split())
     if not motivo or len(motivo) > MOTIVO_MAX:
         raise ErrorKardex('motivo', errores={'motivo': MENSAJES['motivo']})

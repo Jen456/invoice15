@@ -19,23 +19,32 @@ var sale = {
     },
     calculateInvoice: function () {
         var tax = this.detail.iva / 100;
-        // Tarifa de cada producto (15 %, 5 %, 0 %, exento o no objeto); el servidor recalcula y manda.
-        var redondear = function (valor) { return Math.round((valor + Number.EPSILON) * 100) / 100; };
-        this.detail.products.forEach(function (value, index, array) {
+        // Tarifa de cada producto (15 %, 5 %, 0 %, exento o no objeto); el servidor recalcula y manda. En centavos enteros y con
+        // redondeo a la mitad hacia arriba, como calcular_linea_iva: la pantalla muestra el mismo total que se emite.
+        var mitadArriba = function (numerador) { return Math.floor((numerador + 50) / 100); };
+        var gravado = 0, cero = 0, descuentos = 0, ivas = 0;
+        this.detail.products.forEach(function (value) {
             value.iva = value.tarifa !== undefined ? parseFloat(value.tarifa) / 100 : (value.with_tax ? parseFloat(tax) : 0);
+            var tarifa = Math.round(value.iva * 100);
+            var sub = Math.round(value.price_current * 100) * value.cant;
+            var desc = mitadArriba(sub * (parseInt(value.dscto, 10) || 0));
+            var base = sub - desc;
+            var iva = mitadArriba(base * tarifa);
             value.price_with_vat = value.price_current + (value.price_current * value.iva);
-            value.subtotal = redondear(value.price_current * value.cant);
-            value.total_dscto = redondear(value.subtotal * parseFloat((value.dscto / 100)));
-            value.total = value.subtotal - value.total_dscto;
-            value.total_iva = redondear(value.total * value.iva);
+            value.subtotal = sub / 100;
+            value.total_dscto = desc / 100;
+            value.total = base / 100;
+            value.total_iva = iva / 100;
+            if (tarifa > 0) { gravado += base; } else { cero += base; }
+            descuentos += desc;
+            ivas += iva;
         });
-        this.detail.subtotal_0 = this.detail.products.filter(value => !value.iva).reduce((a, b) => a + (b.total || 0), 0);
-        this.detail.subtotal_12 = this.detail.products.filter(value => value.iva > 0).reduce((a, b) => a + (b.total || 0), 0);
-        this.detail.total_dscto = this.detail.products.reduce((a, b) => a + (b.total_dscto || 0), 0);
-        this.detail.subtotal = parseFloat(this.detail.subtotal_0) + parseFloat(this.detail.subtotal_12);
-        this.detail.total_iva = this.detail.products.reduce((a, b) => a + (b.total_iva || 0), 0);
-        this.detail.total = this.detail.subtotal + this.detail.total_iva;
-        this.detail.total = parseFloat(this.detail.total.toFixed(2));
+        this.detail.subtotal_0 = cero / 100;
+        this.detail.subtotal_12 = gravado / 100;
+        this.detail.total_dscto = descuentos / 100;
+        this.detail.subtotal = (cero + gravado) / 100;
+        this.detail.total_iva = ivas / 100;
+        this.detail.total = (cero + gravado + ivas) / 100;
 
         $('input[name="subtotal_0"]').val(this.detail.subtotal_0.toFixed(2));
         $('input[name="subtotal_12"]').val(this.detail.subtotal_12.toFixed(2));
@@ -104,7 +113,18 @@ var sale = {
                     }
                 },
                 {
-                    targets: [-1, -3],
+                    targets: [-3],
+                    class: 'text-center',
+                    render: function (data, type, row) {
+                        // Precio de esta factura: no cambia el catálogo; el servidor lo valida y recalcula los importes.
+                        if (sale.precioEditable()) {
+                            return '<input type="text" inputmode="decimal" class="form-control fp-precio-linea" autocomplete="off" name="price_current" aria-label="Precio unitario sin IVA" value="' + parseFloat(data).toFixed(2) + '">';
+                        }
+                        return '$' + data.toFixed(2);
+                    }
+                },
+                {
+                    targets: [-1],
                     class: 'text-center',
                     render: function (data, type, row) {
                         return '$' + data.toFixed(2);
@@ -132,17 +152,25 @@ var sale = {
 
                 tr.find('input[name="dscto_unitary"]')
                     .TouchSpin({
-                        min: 0.00,
+                        min: 0,
                         max: 100,
-                        step: 0.01,
-                        decimals: 2,
+                        step: 1,
+                        decimals: 0,   // porcentaje entero, como lo guarda y valida el servidor
                         boostat: 5,
                         maxboostedstep: 10,
                         postfix: "0.00"
                     })
                     .on('keypress', function (e) {
-                        return validate_text_box({'event': e, 'type': 'decimals'});
+                        var tecla = e.which || e.keyCode;
+                        if (tecla === 44 || tecla === 46) {   // sin borrar el separador en silencio (2.5 no puede volverse 25)
+                            message_error('El descuento es un porcentaje entero de 0 a 100, sin decimales.');
+                            return false;
+                        }
+                        return validate_text_box({'event': e, 'type': 'numbers'});
                     });
+                tr.find('input[name="price_current"]').on('keypress', function (e) {
+                    return (e.which || e.keyCode) === 44 || validate_text_box({'event': e, 'type': 'decimals'});   // coma o punto
+                });
             },
             initComplete: function (settings, json) {
                 if (!$(this).parent().hasClass('dataTables_scroll')) { $(this).wrap('<div class="dataTables_scroll"></div>'); }
@@ -151,6 +179,9 @@ var sale = {
     },
     getProductsIds: function () {
         return this.detail.products.map(value => value.id);
+    },
+    precioEditable: function () {
+        return $('.fp-sale-editor').attr('data-precio-editable') === '1';
     },
     addProduct: function (item) {
         var index = this.detail.products.findIndex(value => value.code === item.code);
@@ -309,7 +340,11 @@ var sale = {
                 formulario.find('select[name="identification_type"]').val('04').trigger('change');
             }
             input_birthdate.datetimepicker('clear');   // sin fecha de nacimiento inventada
-            $('#myModalClient').modal('show');
+            if ($('.btnAddClient').length) {
+                $('#myModalClient').modal('show');
+            } else {   // sin add_client el alta no se ofrece
+                message_error('La proforma es para un prospecto: elige un cliente registrado antes de emitir.');
+            }
         }
     }
 };
@@ -702,9 +737,25 @@ $(function () {
             sale.calculateInvoice();
             $('td:last', tblProducts.row(tr.row).node()).html('$' + sale.detail.products[tr.row].total.toFixed(2));
         })
+        .on('change', 'input[name="price_current"]', function () {
+            var tr = tblProducts.cell($(this).closest('td, li')).index();
+            var producto = sale.detail.products[tr.row];
+            var texto = String($(this).val()).replace(',', '.').trim();
+            if (!/^\d{1,6}(\.\d{1,2})?$/.test(texto)) {
+                message_error('El precio va de 0 a 999999,99, con hasta 2 decimales.');
+                $(this).val(producto.price_current.toFixed(2));
+                return;
+            }
+            producto.price_current = parseFloat(texto);
+            $(this).val(producto.price_current.toFixed(2));
+            sale.calculateInvoice();
+            $('td:last', tblProducts.row(tr.row).node()).html('$' + producto.total.toFixed(2));
+            $('input[name="dscto_unitary"]', tblProducts.row(tr.row).node()).closest('.bootstrap-touchspin')
+                .find('.bootstrap-touchspin-postfix').children().html(producto.total_dscto.toFixed(2));
+        })
         .on('change', 'input[name="dscto_unitary"]', function () {
             var tr = tblProducts.cell($(this).closest('td, li')).index();
-            sale.detail.products[tr.row].dscto = parseFloat($(this).val());
+            sale.detail.products[tr.row].dscto = parseInt($(this).val(), 10) || 0;
             sale.calculateInvoice();
             var parent = $(this).closest('.bootstrap-touchspin');
             parent.find('.bootstrap-touchspin-postfix').children().html(sale.detail.products[tr.row].total_dscto.toFixed(2));

@@ -454,3 +454,39 @@ def test_modulo_del_menu_y_roles():
     assert de(ROLE_CLIENT) == (False, set())
     vendedor = Group.objects.get(name=ROLE_SELLER)
     assert not vendedor.permissions.filter(codename__in=('add_expenses', 'view_expenses', 'view_adjunto')).exists()
+
+
+class TestIntegracionDelDiseno:
+
+    def test_resalta_la_captura_pedida(self, entrar):
+        datos = guardar(entrar, nota='Peaje').json()['captura']
+        pagina = entrar.get(f'/adjuntos/capturas/?captura={datos["id"]}').content.decode()
+        assert f'id="captura-{datos["id"]}" data-selected="true"' in pagina
+
+    def test_token_y_enlaces_segun_el_rol(self, client, empresa):
+        grupo = helpers.crear_grupo('REVISOR DE RECIBOS', ['view_captura', 'change_captura'])
+        revisor = helpers.crear_usuario('revisor.recibos', empresa, grupo)
+        helpers.iniciar_sesion(client, revisor, empresa=empresa)
+        pagina = client.get('/adjuntos/capturas/').content.decode()
+        assert 'csrfmiddlewaretoken' in pagina                 # completar, vincular o descartar sin poder guardar
+        assert 'Ver respaldos del mes' not in pagina           # sin view_adjunto no abre la página del mes
+
+    def test_enlace_del_plan_solo_para_quien_lo_gestiona(self, client):
+        gratuita = helpers.crear_empresa('GRATIS RECIBOS', plan=None)
+        vendedor = helpers.crear_usuario('vendedor.recibos.gratis', gratuita, ROLE_SELLER)
+        helpers.iniciar_sesion(client, vendedor, empresa=gratuita)
+        assert guardar(client, nota='Taxi').status_code == 201
+        pagina = client.get('/adjuntos/capturas/').content.decode()
+        assert 'Pide al propietario de la empresa que active el plan.' in pagina and 'href="/suscripcion/">Ver mi plan' not in pagina
+
+    def test_formulario_de_otra_empresa_no_guarda(self, entrar, empresa):
+        respuesta = entrar.post(API, {'clave': cp.clave_sugerida(), 'nota': 'Peaje', 'empresa': empresa.pk + 999})
+        assert respuesta.status_code == 409 and respuesta.json()['codigo'] == 'empresa_cambiada'
+        assert leer(empresa, lambda: Captura.objects.count()) == 0
+        assert entrar.post(API, {'clave': cp.clave_sugerida(), 'nota': 'Peaje', 'empresa': empresa.pk}).status_code == 201
+        assert 'name="empresa" value="%d"' % empresa.pk in entrar.get('/adjuntos/capturas/').content.decode()
+
+
+def test_captura_pedida_con_digitos_raros_no_rompe_la_pagina(entrar):
+    assert entrar.get('/adjuntos/capturas/?captura=%C2%B2').status_code == 200
+    assert entrar.get('/adjuntos/capturas/?captura=' + '1' * 5000).status_code == 200

@@ -43,8 +43,11 @@ TIPOS = {
     'anulacion_venta': ('Factura anulada en el SRI: vuelve al inventario', 4, 1),
     'anulacion_nota': ('Nota de crédito anulada en el SRI: sale del inventario', 5, -1),
 }
-NC_PROVEEDOR = ('Nota de crédito del proveedor: hoy suma al stock como una compra. Si fue una devolución, el inventario '
-                'debería bajar: revísalo con tu contador.')
+NC_PROVEEDOR = ('Nota de crédito del proveedor registrada con productos fuera de la regla actual (hoy se registran con líneas de '
+                'gasto): sumó al stock como una compra. Si fue una devolución, el inventario debería bajar: revísalo con tu contador.')
+NC_POR_REVISAR = ('Hay notas de crédito del proveedor sobre compras de este producto. Se registran sin mover el stock: si alguna '
+                  'fue una devolución física, el inventario todavía no lo refleja. Revísalas con tu contador; cómo se registra la '
+                  'devolución (cantidades y costo) está pendiente de decisión.')
 
 
 def _d(valor):
@@ -200,6 +203,14 @@ def kardex(producto, desde, hasta):
     anterior = ({'cantidad': anteriores[-1]['saldo_cantidad'], 'valor': anteriores[-1]['saldo_valor'],
                  'costo_promedio': anteriores[-1]['costo_promedio'], 'conocido': anteriores[-1]['conocido']}
                 if anteriores else {'cantidad': 0, 'valor': CERO.quantize(DOS), 'costo_promedio': None, 'conocido': True})
+    from core.pos.models import Purchase
+    notas = (Purchase.objects.filter(tipo_comprobante='04', date_joined__lte=hasta, compra_modificada__purchasedetail__product_id=producto.pk)
+             .distinct().order_by('date_joined', 'id'))
+    lista_notas = list(notas[:20])   # una sola consulta
+    if lista_notas:
+        advertencias.append({'codigo': 'nc_proveedor_por_revisar', 'fecha': lista_notas[0].date_joined.isoformat(), 'texto': NC_POR_REVISAR,
+                             'documentos': [{'tipo': 'compra', 'id': n.pk, 'numero': n.numero_comprobante or f'#{n.pk}',
+                                             'url': f'/pos/purchase/complete/{n.pk}/'} for n in lista_notas]})
     hoy = timezone.localdate()
     resultado = {'producto': {'id': producto.pk, 'codigo': producto.code, 'nombre': producto.name, 'stock_actual': producto.stock},
                  'desde': desde, 'hasta': hasta, 'saldo_anterior': anterior, 'movimientos': [f for f in filas if f['fecha'] >= desde],

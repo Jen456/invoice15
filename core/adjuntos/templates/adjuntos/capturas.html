@@ -17,11 +17,12 @@
   </header>
   <div id="fpCapturasMensaje" role="status" aria-live="polite" tabindex="-1" hidden></div>
   <div class="fp-work-grid fp-capture-top">
+  <div hidden>{% csrf_token %}</div>
   {% if capacidades.registrar %}
   <section class="fp-work-section" aria-labelledby="fpCapturaNuevaTitulo"><div>
     <h2 id="fpCapturaNuevaTitulo" class="h5">Guardar recibo o nota</h2>
     <form id="fpCapturaNueva" enctype="multipart/form-data" novalidate>
-      {% csrf_token %}
+      {% csrf_token %}<input type="hidden" name="empresa" value="{{ request.company.pk }}">
       <input type="hidden" name="clave" value="{{ clave_sugerida }}"><fieldset id="fpCapturaCampos">
       <div class="fp-capture-drop" id="fpCapturaDrop">
         <i class="fas fa-camera" aria-hidden="true"></i><label for="fpCapturaArchivo">Recibo o comprobante (opcional)</label>
@@ -49,7 +50,7 @@
     <a href="?estado=todas" class="btn btn-sm {% if estado == 'todas' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">Todos</a>
   </nav>
 
-  <section aria-labelledby="fpCapturasListaTitulo"><div class="fp-work-actions"><h2 id="fpCapturasListaTitulo" class="h5 mb-0">Recibos y notas</h2><a href="/adjuntos/" class="btn btn-outline-secondary ml-auto">Ver respaldos del mes</a></div><div id="fpCapturasLista">
+  <section aria-labelledby="fpCapturasListaTitulo"><div class="fp-work-actions"><h2 id="fpCapturasListaTitulo" class="h5 mb-0">Recibos y notas</h2>{% if capacidades.ver_todas %}<a href="/adjuntos/" class="btn btn-outline-secondary ml-auto">Ver respaldos del mes</a>{% endif %}</div><div id="fpCapturasLista">
 
     {% for c in capturas %}
     <article class="card mb-2 fp-captura" data-captura="{{ c.id }}" id="captura-{{ c.id }}" data-selected="{% if c.id == seleccionada %}true{% else %}false{% endif %}"><div class="card-body">
@@ -59,7 +60,7 @@
       {% if c.nota %}<p class="fp-capture-note">{{ c.nota }}</p>{% endif %}
       {% if c.motivo %}<p class="mb-1">Motivo: {{ c.motivo }}</p>{% endif %}
       {% if c.documento %}<p class="mb-1">Documento: {% if c.documento.existe %}{{ c.documento.titulo }}{% else %}{{ c.documento.tipo_nombre }} #{{ c.documento.id }} (ya no existe){% endif %}</p>{% endif %}
-      {% if c.estado.id == 'pendiente' and c.capacidades.bloqueos.gasto %}<p class="alert alert-warning">{{ c.capacidades.bloqueos.gasto }} <a href="/suscripcion/">Ver mi plan</a></p>{% endif %}
+      {% if c.estado.id == 'pendiente' and c.capacidades.bloqueos.gasto %}<p class="alert alert-warning">{{ c.capacidades.bloqueos.gasto }} {% if puede_gestionar_plan %}<a href="/suscripcion/">Ver mi plan</a>{% else %}Pide al propietario de la empresa que active el plan.{% endif %}</p>{% endif %}
       {% if c.capacidades.completar_gasto %}
       <details class="mb-2"><summary>Completar como gasto</summary><p class="small">El recibo o la nota guardados serán el respaldo de este gasto.</p>
         <form class="fp-captura-completar mt-2" data-url="/adjuntos/api/capturas/{{ c.id }}/completar/" novalidate>

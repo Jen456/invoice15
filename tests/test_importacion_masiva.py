@@ -17,6 +17,8 @@ from core.pos.compras import faltantes
 from core.pos.models import Provider, Purchase
 from core.tenancy.context import company_context, platform_scope
 from core.tenancy.models import ROLE_ACCOUNTANT, ROLE_OWNER
+from django.core.files.uploadedfile import SimpleUploadedFile
+
 from tests import ayuda_compras as ayuda, fabricas_recibidos as r, fabricas_sri as f, helpers
 from tests.test_importacion_recibidos import ErrorDeVentas, ServicioDeVentas
 from tests.test_importacion_xml_pdf import SRISimulado
@@ -446,3 +448,28 @@ class TestIncorporacion:
             content_type='application/json').json()
         assert api['resultados'][0]['resultado'] == 'compra_creada' and api['plan']['resumen']['por_estado'] == {'ya_incorporado': 2}
         assert leer(empresa, lambda: Provider.objects.get(ruc=RUC_OTRO_PROVEEDOR).parte_relacionada) is False
+
+
+class TestIntegracionDelDiseno:
+
+    def test_lote_con_formulario_de_otra_empresa(self, web, empresa):
+        ajena = empresa.pk + 999
+        r = web.post('/importacion/api/lotes/claves/', {'texto': A, 'empresa': ajena})
+        assert r.status_code == 409 and r.json()['codigo'] == 'empresa_cambiada'
+        archivo = SimpleUploadedFile('reporte.txt', reporte(fila(A)), content_type='text/plain')
+        assert web.post('/importacion/api/lotes/reporte/', {'reporte': archivo, 'empresa': ajena}).status_code == 409
+        nativo = web.post('/importacion/claves/', {'texto': A, 'empresa': ajena})
+        assert nativo.status_code == 302 and nativo['Location'].endswith('/importacion/claves/')
+        assert leer(empresa, lambda: LoteImportacion.objects.count()) == 0
+        assert web.post('/importacion/api/lotes/claves/', {'texto': A, 'empresa': empresa.pk}).status_code == 201
+
+    def test_plan_con_estados_legibles_y_sin_permiso_bloqueado(self, empresa, dueno, sri):
+        ayuda.crear_proveedor(empresa, tipo='04', ruc=f.RUC_EMISOR, nombre='PROVEEDOR FICTICIO S.A.')
+        lote, docs = lote_procesado(empresa, dueno, sri, {A: r.factura()})
+        item = plan_de(empresa, lote, dueno)['items'][0]
+        assert item['verificacion_nombre'] and item['verificacion_nombre'] != item['verificacion']
+        assert item['clasificacion_nombre'].startswith('Recibido') and item['estado'] == 'listo'
+        grupo = helpers.crear_grupo('REVISOR DE IMPORTACIONES', ['view_documentoimportado', 'change_documentoimportado'])
+        revisor = helpers.crear_usuario('revisor.importaciones', empresa, grupo)
+        sin_permiso = plan_de(empresa, lote, revisor)['items'][0]
+        assert sin_permiso['estado'] == 'bloqueado' and sin_permiso['bloqueos'][-1]['codigo'] == 'sin_permiso'

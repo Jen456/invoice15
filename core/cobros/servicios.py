@@ -59,7 +59,9 @@ MENSAJES = {
     'motivo_rechazo': 'Escribe el motivo del rechazo.',
     'nada_que_cambiar': 'No hay cambios que guardar.',
     'factura_anulada': 'Esta factura está anulada en el SRI: no se registran cobros.',
+    'clave_usada': 'Esta clave ya se usó para el cobro de otra factura: vuelve a abrir el formulario e inténtalo de nuevo.',
 }
+
 
 
 class ErrorCobro(Exception):
@@ -200,6 +202,8 @@ def _clave(valor):
     valor = (valor or '').strip()
     if not 8 <= len(valor) <= 40 or not all(c.isalnum() or c in '-_' for c in valor):
         raise ErrorCobro('clave')
+    if valor.lower().startswith('venta-'):   # reservada para el respaldo que nace al emitir la factura (registrar_al_emitir)
+        raise ErrorCobro('clave')
     return valor
 
 
@@ -228,6 +232,8 @@ def registrar(request, venta, *, clave, medio, importe=None, referencia='', nota
         tipo, sha256 = validar_archivo(archivo)
     existente = RespaldoCobro.objects.filter(clave=clave).first()
     if existente is not None:
+        if existente.sale_id != venta.pk:
+            raise ErrorCobro('clave_usada')
         return existente, True
     usuario, company = request.user, request.company
     try:
@@ -255,7 +261,10 @@ def registrar(request, venta, *, clave, medio, importe=None, referencia='', nota
             _cambio(respaldo, usuario, 'registro', importe=str(importe), medio=medio, referencia=referencia, nota=bool(nota),
                     archivo=respaldo.archivo_nombre, abono=abono.pk if abono else None)
     except _Repetido:
-        return RespaldoCobro.objects.get(clave=clave), True
+        existente = RespaldoCobro.objects.get(clave=clave)
+        if existente.sale_id != venta.pk:
+            raise ErrorCobro('clave_usada')
+        return existente, True
     audit(request, 'cobro_respaldo_registro', company=company, factura=venta.voucher_number_full, respaldo=respaldo.pk,
           abono=abono.pk if abono else None, origen=origen, importe=str(importe), medio=medio, archivo=bool(archivo), nota=bool(nota))
     return respaldo, False

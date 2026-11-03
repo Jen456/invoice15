@@ -207,7 +207,7 @@ class TestPantallasYApi:
         assert pagina.status_code == 200 and 'data-tipo="devolucion"' in pagina.content.decode()
         datos = client.get(f'/contabilidad/api/kardex/{producto.pk}/?desde={D1 - timedelta(days=5)}').json()
         assert datos['saldo_final']['cantidad'] == 19 and datos['movimientos'][0]['costo_unitario'] == '1.000000'
-        assert datos['capacidades'] == {'ver': True, 'registrar': True, 'anular': True}
+        assert datos['capacidades'] == {'ver': True, 'registrar': True, 'anular': True, 'bloqueo': None}
         archivo = client.get(f'/contabilidad/kardex/exportar/?producto={producto.pk}&desde={D1 - timedelta(days=5)}&empresa={empresa.pk}')
         assert archivo.status_code == 200 and archivo['Content-Disposition'].startswith('attachment; filename="kardex-KDX1-')
         libro = openpyxl.load_workbook(io.BytesIO(archivo.content))
@@ -312,3 +312,32 @@ def test_modulos_del_menu_y_roles():
         return set(Group.objects.get(name=rol).permissions.filter(content_type__app_label='contabilidad').values_list('codename', flat=True))
     assert permisos(ROLE_ACCOUNTANT) == permisos(ROLE_OWNER) == {'view_kardex', 'add_movimientomanual', 'change_movimientomanual'}
     assert permisos(ROLE_READONLY) == {'view_kardex'} and permisos(ROLE_SELLER) == set() == permisos(ROLE_CLIENT)
+
+
+class TestPlanYPestanas:
+
+    def test_plan_vencido_solo_consulta(self, client, empresa, admin, producto):
+        from core.suscripciones.models import SubscriptionPeriod
+        SubscriptionPeriod.objects.filter(company=empresa).update(ends_at=timezone.now() - timedelta(days=1))
+        helpers.iniciar_sesion(client, admin, empresa=empresa)
+        pagina = client.get(f'/contabilidad/kardex/?producto={producto.pk}')
+        assert pagina.status_code == 200
+        capacidades = pagina.context['capacidades']
+        assert capacidades['registrar'] is False and capacidades['anular'] is False and 'venció' in capacidades['bloqueo']
+        assert capacidades['bloqueo'] in pagina.content.decode() and 'name="accion" value="registrar"' not in pagina.content.decode()
+
+    def test_busqueda_de_productos_con_pestana_de_otra_empresa(self, client, empresa, admin):
+        helpers.iniciar_sesion(client, admin, empresa=empresa)
+        respuesta = client.get(f'/contabilidad/api/kardex/productos/?q=K&empresa={empresa.pk + 999}')
+        assert respuesta.status_code == 409 and respuesta.json()['codigo'] == 'empresa_cambiada'
+
+
+def test_plan_vencido_tampoco_guarda_con_action_search(client, empresa, admin, producto):
+    from core.suscripciones.models import SubscriptionPeriod
+    SubscriptionPeriod.objects.filter(company=empresa).update(ends_at=timezone.now() - timedelta(days=1))
+    helpers.iniciar_sesion(client, admin, empresa=empresa)
+    datos = {'action': 'search', 'clave': 'plan-vencido-001', 'producto': producto.pk, 'tipo': 'entrada', 'fecha': D1.isoformat(),
+             'cantidad': '1', 'costo_unitario': '1.00', 'documento': 'Prueba'}
+    r = client.post('/contabilidad/api/kardex/movimientos/', datos)
+    assert r.status_code == 403 and r.json()['codigo'] == 'plan'
+    assert en(empresa, lambda: MovimientoManual.objects.count()) == 0

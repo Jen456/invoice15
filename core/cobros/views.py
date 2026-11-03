@@ -45,7 +45,7 @@ class RegistrarView(GroupPermissionMixin, View):
                 importe=request.POST.get('importe') or None, referencia=request.POST.get('referencia', ''),
                 nota=request.POST.get('nota', ''), archivo=request.FILES.get('archivo'), fecha=request.POST.get('fecha') or None)
         except (sv.ErrorCobro, cxc.ErrorCxC) as e:
-            return _error(e)
+            return _error(e, 409 if getattr(e, 'codigo', '') == 'clave_usada' else 400)
         datos = sv.factura_json(request, venta)
         datos.update(respaldo=sv.respaldo_json(respaldo, request), repetido=repetido)
         return JsonResponse(datos, status=200 if repetido else 201)

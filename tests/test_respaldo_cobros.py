@@ -375,3 +375,16 @@ class TestPrivacidadYPantallaCxC:
             Sale.objects.filter(pk=credito.pk).update(anulado_sri_fecha=credito.date_joined)
         r = registrar(web, credito, nota='x')
         assert r.status_code == 400 and r.json()['codigo'] == 'factura_anulada'
+
+
+class TestClavesDelCobro:
+    """La clave del envío no reutiliza el espacio reservado del respaldo de emisión ni el de otra factura."""
+
+    def test_clave_reservada_y_clave_de_otra_factura(self, web, empresa, comprador, dueno, producto, credito):  # noqa: F811
+        assert registrar(web, credito, nota='x', clave='venta-12345678').json()['codigo'] == 'clave'
+        assert registrar(web, credito, nota='Abono 1', clave='abono-clave-0001').status_code == 201
+        otra = factura_autorizada(empresa, comprador, dueno, producto, credito=True)
+        repetida = registrar(web, otra, nota='Abono 2', clave='abono-clave-0001')
+        assert repetida.status_code == 409 and repetida.json()['codigo'] == 'clave_usada'
+        assert registrar(web, credito, nota='Abono 1', clave='abono-clave-0001').status_code == 200   # el mismo envío otra vez
+        assert leer(empresa, lambda: PaymentsCtaCollect.objects.count()) == 1 and saldo(empresa, otra) == Decimal('23.00')

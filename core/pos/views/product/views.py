@@ -154,7 +154,11 @@ class ProductUpdateView(GroupPermissionMixin, UpdateView):
         action = request.POST['action']
         try:
             if action == 'edit':
-                data = self.get_form().save()
+                try:   # dentro de una transacción: un código repetido a la vez no deja nada a medias
+                    with transaction.atomic():
+                        data = self.get_form().save()
+                except IntegrityError:
+                    data = {'error': 'Ya existe un producto con ese código o nombre en esta empresa: búscalo en el catálogo.'}
             elif action == 'validate_data':
                 data = {'valid': True}
                 id = self.get_object().id

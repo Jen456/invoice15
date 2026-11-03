@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Group
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse_lazy
@@ -15,11 +15,11 @@ from django.views.generic import CreateView, DeleteView, FormView
 
 from config import settings
 from core.pos.forms import SaleForm, ClientForm, ClientUserForm, Sale, SaleDetail, Client, Product, Company, Receipt, CreditNote, CreditNoteDetail, CtasCollect, INVOICE_STATUS, PAYMENT_TYPE, VOUCHER_TYPE
-from core.pos.choices import MEDIOS_DE_PAGO
+from core.pos.choices import MEDIOS_DE_PAGO, PAYMENT_METHOD
 from core.cobros import servicios as cobros
 from core.configuracion import puntos as pt
 from core.configuracion.servicios import requisitos_de_emision, secuencia_configurada
-from core.pos import emision
+from core.pos import emision, lineas_venta
 from core.pos.clientes import consumidor_final, unir_correos, usuario_de_cliente
 from core.pos.notas_credito import crear as crear_nota_credito, es_consumidor_final
 from core.pos.utilities import printer
@@ -155,11 +155,16 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     electronica = request.POST['receipt'] == VOUCHER_TYPE[0][0]
                     # Punto de emisión fijado al formulario (`punto`), validado otra vez para este usuario; sin él, su punto activo.
                     sale.receipt = pt.receipt_para_emitir(request, request.POST['receipt'], electronica, request.POST.get('punto'))
+                    # Líneas validadas antes de reservar el número; un error deshace todo (número incluido). Va después del punto:
+                    # un formulario de otra empresa avisa primero del punto de emisión.
+                    lineas = lineas_venta.validar(request.POST.get('products', ''))
                     sale.voucher_number = sale.generate_voucher_number()
                     sale.voucher_number_full = sale.get_voucher_number_full()
                     sale.employee_id = request.user.id
                     sale.client_id = int(request.POST['client'])
-                    sale.payment_type = request.POST['payment_type']
+                    sale.payment_type = request.POST.get('payment_type', '')
+                    if sale.payment_type not in dict(PAYMENT_TYPE):
+                        raise ValueError('Elige la condición de pago: contado o crédito.')
                     additional_info = [
                         {'name': 'Dirección', 'value': sale.client.address},
                         {'name': 'Teléfono', 'value': sale.client.mobile},
@@ -173,7 +178,9 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     sale.create_electronic_invoice = False
                     if sale.receipt.voucher_type == VOUCHER_TYPE[0][0]:
                         sale.time_limit = int(request.POST['time_limit'])
-                        sale.payment_method = request.POST['payment_method']
+                        sale.payment_method = request.POST.get('payment_method', '')
+                        if sale.payment_method not in dict(PAYMENT_METHOD):
+                            raise ValueError('Elige la forma de pago del SRI.')
                         sale.create_electronic_invoice = True
                     # Condición de pago (contado 'efectivo' / crédito) aparte del medio de cobro (core/cobros). Sin el campo
                     # medio_cobro (formularios anteriores) se asume efectivo; con él vacío o inválido, se rechaza.
@@ -194,18 +201,13 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                             raise ValueError(cobros.MENSAJES['credito_sin_abono'])
                         sale.end_credit = request.POST['end_credit']
                     sale.save()
-                    for i in json.loads(request.POST['products']):
-                        product = Product.objects.get(pk=i['id'])
-                        detail = SaleDetail()
-                        detail.sale_id = sale.id
-                        detail.product_id = product.id
-                        detail.cant = int(i['cant'])
-                        detail.price = float(i['price_current'])
-                        detail.dscto = float(i['dscto']) / 100
-                        detail.save()
-                        if detail.product.inventoried:
-                            detail.product.stock -= detail.cant
-                            detail.product.save()
+                    # Precio distinto del catálogo: con permiso o desde la proforma que se factura (core/pos/lineas_venta.py).
+                    lineas_venta.comprobar_precios(request, lineas, proforma)
+                    for linea in lineas:   # las líneas, en el orden de la factura (XML y RIDE)
+                        SaleDetail.objects.create(sale=sale, product=linea['producto'], cant=linea['cant'], price=linea['precio'],
+                                                  dscto=linea['dscto'])
+                    for linea in sorted(lineas, key=lambda x: x['producto'].pk):   # orden fijo: dos ventas no se interbloquean
+                        lineas_venta.descontar_stock(linea)   # F() y stock suficiente: no pisa el catálogo ni otra venta
                     sale.calculate_detail()
                     sale.calculate_invoice()
                     if sale.create_electronic_invoice:
@@ -294,20 +296,24 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                 elif pattern == 'email':
                     data['valid'] = not queryset.filter(user__email=parameter).exists()
             elif action == 'create_client':
-                with transaction.atomic():
-                    form1 = ClientUserForm(self.request.POST, self.request.FILES)
-                    form2 = ClientForm(request.POST)
-                    if form1.is_valid() and form2.is_valid():
-                        user = usuario_de_cliente(form1, form2.cleaned_data['dni'])
-                        form_client = form2.save(commit=False)
-                        form_client.user = user
-                        form_client.save()
-                        data = Client.objects.get(pk=form_client.id).toJSON()
+                grupo = get_group(request)
+                if grupo is None or not grupo.permissions.filter(codename='add_client').exists():
+                    raise ValueError('Tu perfil no puede crear clientes.')
+                form1 = ClientUserForm(self.request.POST, self.request.FILES)
+                form2 = ClientForm(request.POST)
+                if form1.is_valid() and form2.is_valid():
+                    try:
+                        with transaction.atomic():
+                            user = usuario_de_cliente(form1, form2.cleaned_data['dni'])
+                            form_client = form2.save(commit=False)
+                            form_client.user = user
+                            form_client.save()
+                    except IntegrityError:   # misma identificación guardada en otra pestaña: mensaje junto al campo
+                        data['error'] = {'dni': ['Ya existe un cliente con esta identificación. Puedes buscarlo aquí.']}
                     else:
-                        if not form1.is_valid():
-                            data['error'] = form1.errors
-                        elif not form2.is_valid():
-                            data['error'] = form2.errors
+                        data = Client.objects.get(pk=form_client.id).toJSON()
+                else:
+                    data['error'] = {**form1.errors, **form2.errors}   # los de los dos formularios a la vez
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
         except Exception as e:

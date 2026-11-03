@@ -38,11 +38,11 @@
             {% for i in plan.items %}
             <tr data-estado="{{ i.estado }}">
                 <td data-label="Selección">{% if i.estado == 'listo' or i.estado == 'requiere_datos' %}<input type="checkbox" name="documentos" value="{{ i.documento_id }}" aria-label="Incorporar {{ i.tipo_documento }} {{ i.numero }}" {% if i.estado == 'listo' %}checked{% endif %}>{% endif %}</td>
-                <td data-label="Comprobante"><span class="fp-work-tag">{% if i.clasificacion.id %}{{ i.clasificacion.nombre }}{% elif i.clasificacion == 'recibido' %}Recibido{% elif i.clasificacion == 'emitido' %}Emitido{% endif %}</span>{% if i.documento_id %}<a href="{% url 'importacion_documento' i.documento_id %}">{{ i.tipo_documento }} {{ i.numero }}</a>{% if i.fecha_emision %}<br><small class="text-muted">{{ i.fecha_emision }}</small>{% endif %}{% else %}<span class="text-break">{{ i.clave|default:'—' }}</span>{% endif %}</td>
+                <td data-label="Comprobante"><span class="fp-work-tag">{{ i.clasificacion_nombre|default:i.clasificacion }}</span>{% if i.documento_id %}<a href="{% url 'importacion_documento' i.documento_id %}">{{ i.tipo_documento }} {{ i.numero }}</a>{% if i.fecha_emision %}<br><small class="text-muted">{{ i.fecha_emision }}</small>{% endif %}{% else %}<span class="text-break">{{ i.clave|default:'—' }}</span>{% endif %}</td>
                 <td data-label="Emisor">{% if i.emisor %}{{ i.emisor.razon_social|default:i.emisor.ruc }}<br><small class="text-muted">{{ i.emisor.ruc }}</small>{% endif %}</td>
                 <td data-label="Total" class="text-right">{% if i.importe_total %}${{ i.importe_total }}{% endif %}</td>
                 <td data-label="Acción">{% if i.accion == 'crear_compra' %}Crear compra{% elif i.accion == 'registrar_retencion' %}Registrar retención recibida{% elif i.accion == 'vincular_venta' %}Vincular con la venta{% else %}—{% endif %}</td>
-                <td data-label="Estado"><small>{% if i.verificacion.nombre %}{{ i.verificacion.nombre }}{% else %}{{ i.verificacion }}{% endif %}</small><span class="fp-import-tag" data-state="{{ i.estado }}">{% for k, v in plan.resumen.estados.items %}{% if k == i.estado %}{{ v }}{% endif %}{% endfor %}</span></td>
+                <td data-label="Estado"><small>{{ i.verificacion_nombre|default:i.verificacion }}</small><span class="fp-import-tag" data-state="{{ i.estado }}">{% for k, v in plan.resumen.estados.items %}{% if k == i.estado %}{{ v }}{% endif %}{% endfor %}</span></td>
                 <td data-label="Detalle">
                     {% for b in i.bloqueos %}<div class="text-danger">{{ b.texto }}</div>{% endfor %}
                     {% for e in i.errores %}<div class="text-danger">{{ e.texto }}</div>{% endfor %}

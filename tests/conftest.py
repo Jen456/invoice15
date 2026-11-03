@@ -16,6 +16,13 @@ def django_db_setup(django_db_setup, django_db_blocker, tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
+def complemento_en_revision(settings):
+    """Las pruebas abren el Complemento Contable con «*» (solo vale en local y en pruebas automáticas);
+    tests/test_complemento_contable.py comprueba el cierre por defecto y la lista de revisión."""
+    settings.FPA_COMPLEMENTO_CONTABLE_REVISION = ['*']
+
+
+@pytest.fixture(autouse=True)
 def limpiar_cache(request):
     if 'django_db' not in request.keywords and 'db' not in request.fixturenames:
         yield
