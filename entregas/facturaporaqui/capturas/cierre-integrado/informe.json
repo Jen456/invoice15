@@ -1,0 +1,272 @@
+{
+ "pasos": [
+  {
+   "nombre": "cliente: errores dentro del diálogo",
+   "ok": true,
+   "abierto": true,
+   "textos": [
+    "Revisa los campos señalados antes de guardar.",
+    "Este campo es obligatorio",
+    "Este campo es obligatorio"
+   ]
+  },
+  {
+   "nombre": "cliente: alta desde la factura y queda elegido",
+   "ok": true,
+   "elegido": "CLIENTE DE VISTA PREVIA (0912345675)"
+  },
+  {
+   "nombre": "cliente: el alta no se presenta en una ventana «Error»",
+   "ok": true,
+   "tituloAlta": ""
+  },
+  {
+   "nombre": "precio: el propietario ve el campo del precio de la línea",
+   "ok": true
+  },
+  {
+   "nombre": "precio: la coma decimal se acepta (8,75 → 8.75)",
+   "ok": true,
+   "precioComa": "8.75"
+  },
+  {
+   "nombre": "precio: total recalculado en pantalla (2 × 8,75 − 10 % + IVA)",
+   "ok": true,
+   "total": "18.11"
+  },
+  {
+   "nombre": "descuento: el punto decimal se avisa y el porcentaje no cambia",
+   "ok": true,
+   "avisoDescuento": "El descuento es un porcentaje entero de 0 a 100, sin decimales.",
+   "descuentoTras": "10"
+  },
+  {
+   "nombre": "producto: código repetido avisado dentro del diálogo",
+   "ok": true,
+   "abierto": true,
+   "texto": "Revisa los campos indicados. Tu factura sigue abierta. Revisa los campos indicados. Tu factura sigue abierta. Este código ya existe. Busca el producto en el cat"
+  },
+  {
+   "nombre": "producto: cerrar el diálogo conserva la factura",
+   "ok": true,
+   "precioTrasCerrar": "8.75"
+  },
+  {
+   "nombre": "efectivo: el cambio se muestra (20 − 18,11)",
+   "ok": true,
+   "cambioPantalla": "1.89"
+  },
+  {
+   "nombre": "factura: guardada con presentación de éxito (no «Error»)",
+   "ok": true,
+   "titulo": "Confirmación"
+  },
+  {
+   "nombre": "redondeo: 13,70 + 15 % (2,055 → 2,06) muestra 15,76 como el servidor",
+   "ok": true,
+   "total1370": "15.76"
+  },
+  {
+   "nombre": "otro medio: sin nota ni comprobante se rechaza",
+   "ok": true,
+   "error": "Adjunta el comprobante del cobro o escribe una nota interna (o ambos)."
+  },
+  {
+   "nombre": "otro medio: con nota se guarda",
+   "ok": true
+  },
+  {
+   "nombre": "crédito: sin fecha de plazo, mensaje claro",
+   "ok": true,
+   "error": "Indica la fecha de plazo del crédito (AAAA-MM-DD)."
+  },
+  {
+   "nombre": "crédito: se guarda sin respaldo de dinero",
+   "ok": true
+  },
+  {
+   "nombre": "complemento en revisión: /tributario/libros/ abre",
+   "ok": true
+  },
+  {
+   "nombre": "complemento en revisión: /tributario/revision/ abre",
+   "ok": true
+  },
+  {
+   "nombre": "complemento en revisión: /contabilidad/kardex/ abre",
+   "ok": true
+  },
+  {
+   "nombre": "complemento en revisión: /contabilidad/inventario/ abre",
+   "ok": true
+  },
+  {
+   "nombre": "precio: el vendedor ve el precio del catálogo sin campo",
+   "ok": true
+  },
+  {
+   "nombre": "cliente: el vendedor puede crear clientes aquí",
+   "ok": true
+  },
+  {
+   "nombre": "captura: el vendedor abre sus recibos sin el enlace del mes",
+   "ok": true
+  },
+  {
+   "nombre": "captura: guardar solo la nota se confirma como éxito (no «Error»)",
+   "ok": true,
+   "estado": 201,
+   "texto": "Guardado: C-1. Puedes completar sus datos después."
+  },
+  {
+   "nombre": "contador: con dos empresas, el ingreso pide elegir una",
+   "ok": true,
+   "url": "http://127.0.0.1:8768/empresas/"
+  },
+  {
+   "nombre": "contador: el resumen solo trae la empresa cubierta",
+   "ok": true,
+   "filas": [
+    "1"
+   ]
+  },
+  {
+   "nombre": "pestaña de otra empresa: la captura responde 409 y lo explica",
+   "ok": true,
+   "estado": 409,
+   "aviso": "La empresa activa cambió en otra pestaña: vuelve a cargar la página para ver los datos de la empresa"
+  },
+  {
+   "nombre": "complemento cerrado: la página vuelve al inicio con el aviso",
+   "ok": true,
+   "url": "http://127.0.0.1:8768/dashboard/"
+  },
+  {
+   "nombre": "avisos del servidor (cambio de empresa y complemento): no salen en una ventana «Error»",
+   "ok": true,
+   "ventana": {
+    "abierta": false,
+    "titulo": ""
+   },
+   "avisos": [
+    "Revisa este avisoEl Complemento Contable (libros, revisión del mes, AT"
+   ]
+  },
+  {
+   "nombre": "menú: el complemento cerrado se anuncia «por anunciar», no «requiere plan»",
+   "ok": true
+  },
+  {
+   "nombre": "complemento cerrado: la API responde 403 complemento_pendiente",
+   "ok": true
+  },
+  {
+   "nombre": "complemento cerrado: la descarga responde 403",
+   "ok": true
+  },
+  {
+   "nombre": "complemento cerrado: la captura de recibos sigue abierta",
+   "ok": true
+  },
+  {
+   "nombre": "ancho 360: sin desplazamiento horizontal de la página",
+   "ok": true,
+   "ancho": 360,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  },
+  {
+   "nombre": "ancho 390: sin desplazamiento horizontal de la página",
+   "ok": true,
+   "ancho": 390,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  },
+  {
+   "nombre": "ancho 768: sin desplazamiento horizontal de la página",
+   "ok": true,
+   "ancho": 768,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  },
+  {
+   "nombre": "ancho 1024: sin desplazamiento horizontal de la página",
+   "ok": true,
+   "ancho": 1024,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  },
+  {
+   "nombre": "ancho 1360: sin desplazamiento horizontal de la página",
+   "ok": true,
+   "ancho": 1360,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  },
+  {
+   "nombre": "ancho 1440: sin desplazamiento horizontal de la página",
+   "ok": true,
+   "ancho": 1440,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "anchos": [
+  {
+   "ancho": 360,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  },
+  {
+   "ancho": 390,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  },
+  {
+   "ancho": 768,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  },
+  {
+   "ancho": 1024,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  },
+  {
+   "ancho": 1360,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  },
+  {
+   "ancho": 1440,
+   "factura": true,
+   "capturas": true,
+   "libros": true,
+   "kardex": true
+  }
+ ]
+}

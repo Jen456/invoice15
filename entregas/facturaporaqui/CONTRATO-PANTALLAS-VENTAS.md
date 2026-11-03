@@ -877,3 +877,11 @@ La ficha de la retención (pantalla 7) enlaza al documento con la ruta `importac
 10. Reporte de cuentas por cobrar: columnas nuevas (documento, fecha de emisión, estado como texto); con `todos`, fecha efectiva calculada en la vista.
 11. 07 importado: error nuevo `sustento_repetido`.
 12. Importes de los mensajes: punto en retenciones recibidas y coma en la marca de anulado (la especificación usaba los dos sin decidir).
+
+## Líneas de la factura y precio de la línea (03/11/2026)
+
+El servidor valida cada línea de `products` con las reglas de las proformas y calcula los importes; nunca toma totales del
+navegador. `price_current` es el precio de esa línea (hasta 2 decimales) y no cambia el catálogo; `dscto` es un porcentaje
+entero. Cambiar el precio exige `change_product`; una factura que sale de una proforma conserva su precio. La pantalla
+muestra el campo de precio solo con `data-precio-editable="1"` en `.fp-sale-editor`. Mensajes exactos y ejemplos en HANDOFF
+(«Notas entre agentes — contrato del cierre integrado»).

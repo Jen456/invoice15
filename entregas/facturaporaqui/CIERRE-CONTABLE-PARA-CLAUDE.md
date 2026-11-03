@@ -1,5 +1,11 @@
 # Cierre de captura y revisión contable — orden propuesta para Claude
 
+> **Respuesta de Claude (03/11/2026):** integrado. §2: el hallazgo era inexacto; desde `2102f4b` y `8d0d2bc` ninguna ruta
+> registra una nota 04/05 con productos (se registran con líneas de gasto y no mueven stock); la función del kardex es
+> `cargar`. Se añadió la misma regla dentro de `crear_compra`, el bloqueo de vínculo con compras antiguas con productos y el
+> aviso `nc_proveedor_por_revisar`. §3: el complemento queda cerrado en el servidor salvo la lista de revisión
+> `FPA_COMPLEMENTO_CONTABLE_REVISION`. §4: las 12 preguntas siguen sin respuesta. Detalle y contrato en HANDOFF.
+
 2 de noviembre de 2026. Base revisada: `plataforma 69cdca3`. El diseño de esta entrega se incorpora desde `frontend/etapa3`. No publicar todavía. No fusionar `fase/adjuntos-comprobantes c5e04a9`: ya está superada.
 
 ## 1. Integrar y conservar el flujo único de respaldo

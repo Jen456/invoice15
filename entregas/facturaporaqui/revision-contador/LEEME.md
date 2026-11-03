@@ -25,6 +25,14 @@ equivale a la aceptación del SRI.
 - **Compras:** una completa de 100.00 más IVA (sustento 06), con retención de renta código 312 (2 %). Una antigua de 50.00
   sin tarifa registrada, que queda fuera del ATS con sus motivos.
 
+## Respuestas registradas
+
+Al 03/11/2026 no hay respuestas. Anota aquí cada una (y el ejemplo con el que se contrastó) antes de cambiar un criterio:
+
+| N.º | Responsable | Fecha | Respuesta | Ejemplo contrastado |
+|---|---|---|---|---|
+| | | | | |
+
 ## Preguntas (cada respuesta desbloquea una parte)
 
 **ATS**

@@ -1,0 +1,42 @@
+{
+ "/pos/sale/admin/add/": {
+  "recorridos": 39,
+  "sin_senal": [],
+  "ejemplos": [
+   "a: outlineStyle,outlineWidth,outlineColor",
+   "a: outlineStyle,outlineWidth,outlineColor",
+   "a.fpa-aviso-accion: outlineStyle,outlineWidth,outlineColor",
+   "span.select2-selection.select2-selection--single: outlineStyle,outlineWidth,boxShadow,borderTopColor,borderBottomColor"
+  ]
+ },
+ "/adjuntos/capturas/": {
+  "recorridos": 39,
+  "sin_senal": [],
+  "ejemplos": [
+   "a: outlineStyle,outlineWidth,outlineColor",
+   "a.fpa-aviso-accion: outlineStyle,outlineWidth,outlineColor",
+   "input#fpCapturaArchivo[name=archivo].form-control-file: outlineStyle,outlineWidth,outlineColor",
+   "textarea#fpCapturaNota[name=nota].form-control: outlineStyle,outlineWidth,outlineColor,boxShadow"
+  ]
+ },
+ "/tributario/libros/": {
+  "recorridos": 40,
+  "sin_senal": [],
+  "ejemplos": [
+   "a: outlineStyle,outlineWidth,outlineColor",
+   "a.fpa-aviso-accion: outlineStyle,outlineWidth,outlineColor",
+   "input#fpLibrosMes[name=mes].form-control.mr-2: outlineStyle,outlineWidth,outlineColor,boxShadow",
+   "input#fpLibrosMes[name=mes].form-control.mr-2: outlineStyle,outlineWidth,outlineColor,boxShadow"
+  ]
+ },
+ "/contabilidad/kardex/": {
+  "recorridos": 40,
+  "sin_senal": [],
+  "ejemplos": [
+   "a: outlineStyle,outlineWidth,outlineColor",
+   "a.fpa-aviso-accion: outlineStyle,outlineWidth,outlineColor",
+   "input#fpKBusqueda.form-control: outlineStyle,outlineWidth,outlineColor,boxShadow",
+   "select#fpKProducto[name=producto].form-control.mr-2: outlineStyle,outlineWidth,outlineColor,boxShadow"
+  ]
+ }
+}

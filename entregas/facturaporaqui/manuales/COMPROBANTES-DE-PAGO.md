@@ -15,6 +15,12 @@
 
 Un comprobante bancario respalda un movimiento. No reemplaza la factura tributaria. Evita subir el mismo archivo otra vez desde otro módulo: la consulta mensual reúne los respaldos existentes.
 
+## Precio y descuento de la factura
+
+Propietario y Administrador pueden cambiar el **precio unitario de una línea solo para esa factura**: el catálogo no cambia.
+El Vendedor factura al precio del catálogo, o al de la proforma que está facturando. El descuento es un **porcentaje entero**
+de 0 a 100. Si la cantidad supera el stock o un dato no es válido, la factura no se guarda y el aviso dice qué línea revisar.
+
 ## Factura al contado
 
 Al crear la factura, elige la condición **Contado** y el **medio de cobro**. Efectivo recibido y cambio se usan únicamente con efectivo. Para transferencia u otro medio, adjunta el comprobante, escribe una nota interna o conserva ambos. En efectivo son opcionales.
@@ -106,4 +112,4 @@ Busca un producto y elige el período para consultar entradas, salidas, saldo y 
 
 Los movimientos manuales **completan la historia del kardex y no cambian el stock**. Un saldo inicial reinicia la historia en su fecha: revisa producto, cantidad, costo y respaldo antes de registrar. Anular exige motivo y conserva el historial. El ajuste de stock sí modifica existencias y deja un movimiento registrado.
 
-La corrección de notas de crédito del proveedor y las reglas de acceso al complemento Contable siguen pendientes de backend. Estas pantallas no sustituyen un diario, mayor ni estados financieros, y no generan el 101.
+Las notas de crédito del proveedor se registran con líneas de gasto y no mueven el stock; si alguna fue una devolución física, el kardex lo avisa para revisarla con tu contador. El **Complemento Contable** (libros, revisión del mes, ATS, borradores del 104 y 103, kardex e inventario) todavía no está disponible: solo se abre para revisión en las empresas que habilite la plataforma. Estas pantallas no sustituyen un diario, mayor ni estados financieros, y no generan el 101.

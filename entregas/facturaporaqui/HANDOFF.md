@@ -1,5 +1,95 @@
 # Handoff compartido — frontend
 
+## Estado actual — cierre integrado: factura, respaldos, notas del proveedor y acceso al Complemento Contable, sin publicar (Claude, 03/11/2026)
+
+- **Integración:** `frontend/etapa3 60e1f11` (código de Codex `9b694d1`) entró en `plataforma` por avance rápido sobre `69cdca3`; se conservan ambas historias y todas las secciones. `c5e04a9` sigue sin fusionar. Código en `c7675ec` y `0fb9167` (correcciones de la vista previa y de la suite PostgreSQL); código probado `0fb9167`; esta documentación va en el commit siguiente.
+- **Propuesta de `Jen456/facturacion15` (PR 1): no se pudo revisar su código.** La página del PR y la del repositorio responden 404 sin sesión, no hay `gh` autenticado y las llaves de despliegue del servidor solo abren `invoice15`. La clasificación de abajo compara lo que la propuesta dice traer con lo que invoice15 ya tiene; no se incorporó nada de ese repositorio.
+- **Factura:** el servidor valida cada línea con las reglas de las proformas (cantidad entera de 1 a 999 999, precio de 0 a 999 999,99 con 2 decimales, descuento entero de 0 a 100, sin productos repetidos ni de otra empresa) y rechaza en vez de redondear. Un error no crea la venta, no consume el número ni toca el stock. El stock baja con `F()` y solo si alcanza, en orden fijo de producto (dos ventas a la vez no se interbloquean); ya no se reescribe el producto. La condición (`payment_type`) y la forma de pago del SRI (`payment_method`) se validan contra sus opciones, y a crédito la fecha de plazo es obligatoria con un mensaje claro (antes salía el error en bruto de la fecha). Las notas de crédito de venta suben y bajan el stock también con `F()`, sin pisar una venta simultánea.
+- **Precio de la línea:** se guarda en la línea y va al XML, RIDE y ticket; nunca cambia `Product`. Lo cambia quien ya puede fijar precios en el catálogo (`change_product`: Propietario y Administrador). Una factura que sale de una proforma conserva el precio de la proforma aunque la emita el Vendedor, como hasta ahora. El resto factura al precio vigente del catálogo o de la promoción. La pantalla muestra el campo solo con ese permiso (`data-precio-editable`) y acepta coma o punto decimal; el descuento pasa a porcentaje entero, como lo valida el servidor, y escribir un separador avisa en vez de convertir 2,5 en 25. El total de la pantalla se calcula en centavos con redondeo a la mitad hacia arriba, como `calcular_linea_iva` (13,70 + 15 % muestra 15,76, igual que el comprobante).
+- **Altas desde la factura:** crear un cliente exige `add_client` (antes bastaba `add_sale`) y devuelve juntos los errores de los dos formularios; una identificación repetida en otra pestaña da un mensaje junto al campo. Un código de producto repetido (sin distinguir mayúsculas) da un mensaje claro en el campo; si otra pestaña lo creó o lo editó a la vez, el mensaje que ya existía en la vista (antes se veía el error crudo de la base). Una proforma para un prospecto, en un perfil sin `add_client`, avisa que hay que elegir un cliente registrado en lugar de abrir un alta que no se ofrece.
+- **Cobros y respaldos:** se conserva el contrato (condición, medio de cobro y forma de pago del SRI separados; efectivo recibido y cambio solo en efectivo, validados y calculados en el servidor; otro medio exige nota o comprobante; crédito sin abono no pide respaldo). Se endureció la clave del envío: las que empiezan por `venta-` quedan reservadas al respaldo de la emisión y una clave usada en otra factura responde 409 `clave_usada`. Los permisos del Vendedor y del Contador no cambian (decisiones de la propietaria del 31/10 y del 02/11).
+- **Notas de crédito del proveedor:** el hallazgo de `CIERRE-CONTABLE-PARA-CLAUDE.md` §2 era inexacto. Desde `2102f4b` y `8d0d2bc` ninguna ruta registra ni convierte una nota 04/05 con productos (formulario, captura completada como compra, XML importado, lote y «Completar datos»): se registran con líneas de gasto y no mueven stock. Añadido: la misma regla dentro de la transacción de `crear_compra` (por si una ruta futura la saltara), el bloqueo de vincular el XML de una nota con una compra antigua con productos y un aviso calculado en el kardex (`nc_proveedor_por_revisar`) cuando hay notas sobre compras de ese producto. Si quedara una nota con productos de antes de esa regla, el kardex la marca como fuera de la regla. La frase de la sección del kardex del 02/11 («hoy suman al stock como una compra») tenía el mismo error. La base publicada aún no tiene tipos de comprobante en compras: no hay datos históricos que corregir.
+- **Complemento Contable:** `/tributario/` y `/contabilidad/` quedan cerrados en el servidor salvo para las empresas (RUC) de `FPA_COMPLEMENTO_CONTABLE_REVISION`, la lista de revisión que fija la plataforma; vacía, nadie entra. `*` solo vale en desarrollo y pruebas automáticas. El sitio publicado se llama `pruebas` pero es el que usan los clientes: ese nombre no abre nada. Las páginas vuelven al inicio con el aviso; las API, descargas y envíos responden 403 `complemento_pendiente`. Un RUC de la lista que comparte otra empresa no habilita el complemento en ninguna; además, una empresa ya no puede tomar el RUC de otra al editar sus datos y el cambio de RUC queda en la auditoría tributaria. El resumen del contador solo lista empresas cubiertas y con plan pagado; el menú muestra el candado y, para lectores de pantalla, «Complemento Contable, por anunciar». Con la lista habilitada, el kardex tampoco guarda ni anula movimientos con el plan vencido o gratuito, aunque el envío llegue por otra ruta. La captura de recibos, la consulta mensual, el ZIP, la importación y el ajuste de stock no cambian. D9 sigue pendiente: no hay precio, vigencia, cupos ni cobertura comercial.
+- **Diseño integrado (ajustes mínimos de servidor y plantilla):** la vista previa de incorporación muestra estados legibles (`clasificacion_nombre`, `verificacion_nombre`) y bloquea lo que el rol no puede incorporar; `?captura=<id>` resalta la tarjeta; la bandeja de recibos siempre trae el token CSRF y muestra «Ver respaldos del mes» y «Ver mi plan» solo a quien puede abrirlos; el kardex no ofrece sus formularios con el plan vencido o gratuito (`capacidades.bloqueo`); las descargas no vuelcan el HTML de un error; la búsqueda de productos del kardex detecta la pestaña de otra empresa y su aviso de notas del proveedor enlaza cada documento; `?captura=` con algo que no sea un número se ignora. La factura recupera el foco visible por teclado en sus botones: `.btn:focus{outline:0}` de Bootstrap ganaba al `:focus-visible` global y se añadió la misma regla acotada que ya tenían sus diálogos. Las capturas, los lotes por claves o reporte y los envíos del complemento se rechazan con 409 `empresa_cambiada` si el formulario se abrió con otra empresa.
+- **Migraciones:** ninguna nueva. El candidato sigue con las 45 migraciones ensayadas.
+- **Pruebas:** suites completas sobre `0fb9167`: SQLite 1700 aprobadas y 54 omitidas (exclusivas de PostgreSQL), sin fallos; PostgreSQL 1754 aprobadas, sin fallos ni omisiones. Nuevas: `tests/test_factura_lineas.py` (25), `tests/test_complemento_contable.py` (14) y `tests/test_nc_proveedor_inventario.py` (5), más casos en `test_capturas`, `test_importacion_masiva`, `test_kardex` y `test_respaldo_cobros`. La suite PostgreSQL sobre `c7675ec` mostró 2 fallos en `test_zz_kardex_concurrencia_pg` (la empresa de la prueba no tenía plan y el kardex ahora lo exige para guardar): corregido en `0fb9167`; la suite SQLite sobre `c7675ec` ya había pasado (1697 y 54 omitidas).
+- **Navegador:** vista previa local sobre `0fb9167` (SQLite, datos ficticios, red externa bloqueada), 39 comprobaciones sin fallos ni errores de JavaScript: cliente y producto creados sin salir de la factura (errores dentro del diálogo; código repetido avisado y la factura se conserva), precio 8,75 con coma decimal, descuento entero (el punto se avisa), total 18,11 y cambio 1,89, 13,70 + 15 % = 15,76, transferencia sin nota rechazada y con nota guardada, crédito sin plazo con mensaje claro y con plazo guardado, Vendedor sin campo de precio, captura con solo la nota, Contador con dos empresas (resumen solo con la cubierta; pestaña vieja → 409 sin guardar en ninguna; complemento cerrado: página al inicio con el aviso, API y descarga 403, menú «por anunciar», captura abierta) y avisos fuera de la ventana «Error». Los totales guardados por el servidor son los de la pantalla (18,11 · 15,76 · 11,50) y el catálogo siguió en 10,00. Sin desplazamiento horizontal a 360, 390, 768, 1024, 1360 y 1440 px en factura, recibos, libros y kardex; foco visible por teclado en todos los elementos recorridos (39–40 por página) en los seis anchos. Evidencia en `capturas/cierre-integrado/`.
+- **Sin publicar.** La publicación requiere la aprobación de la propietaria, respaldo de base y archivos privados, y el ensayo de migraciones.
+
+**Clasificación de la propuesta externa** (por lo que dice traer; su código no se vio):
+
+| Función | Clase | En invoice15 |
+|---|---|---|
+| Precio editable por línea sin cambiar el catálogo | Mejora compatible: integrada | El modelo ya lo soportaba; faltaban el campo y la validación del servidor (esta entrega) |
+| Crear productos desde la factura | Ya existe y funciona: se conserva | Diálogo de producto con el mismo formulario y vista del catálogo; se corrigió el mensaje de código repetido |
+| Formularios por secciones y adaptación móvil | Ya existe y funciona: se conserva | Tres secciones, `.fp-responsive-form` y `.fp-mobile-lines` sin clonar campos |
+| Nota de pago y adjunto | Ya existe y funciona: se conserva | Respaldo de cobro privado (`core/cobros`) con historial; no va al XML, RIDE, ticket ni correo |
+| Descargas protegidas por permisos | Ya existe y funciona: se conserva | Vistas con permiso del rol y empresa activa; `/media/` no sirve `privado/` |
+| «Efectivo recibido» y «Cambio» opcionales | Contradice las reglas si aplica al efectivo: no se incorpora | En efectivo el servidor exige lo recibido y calcula el cambio; con otro medio o a crédito ya quedan en 0 |
+| 13 pruebas | Fuera de alcance | No sustituyen las pruebas de aislamiento, PostgreSQL, permisos y regresión de invoice15 |
+
+**Decisiones externas que siguen abiertas:**
+- **Revisión tributaria del contador:** las 12 preguntas de `revision-contador/LEEME.md`, sin respuestas registradas. Bloquea dar por terminados el ATS y los borradores del 104 y del 103.
+- **Notas de crédito del proveedor:** cómo se registra una devolución física (cantidades por línea y costo), un descuento sin devolución y un caso mixto. Hasta decidirlo, se registran sin mover stock y el kardex avisa.
+- **D9, Complemento Contable:** precio, vigencia, plan base, cupos y cobertura en Multiempresa. Hasta decidirlo, solo revisión por lista.
+- **D5** (plan de cuentas y catálogo Supercias), **D7** (matriz de asientos validada) y **D6** (extractos bancarios anonimizados): bloquean diario, mayor, balance, estados financieros, 101 y bancos.
+- **Descripción del gasto como nota de respaldo:** la pantalla de gasto nuevo la envía también en `nota_respaldo` (decisión de interfaz). Con eso, un gasto con descripción deja de figurar «sin respaldo» en la revisión del mes. ¿Se mantiene?
+
+## Pendiente para Codex — cierre integrado
+
+- [ ] Dar estilo al campo del precio de la línea (`input[name="price_current"].fp-precio-linea`, solo con `data-precio-editable="1"`) en escritorio y en las tarjetas móviles. El descuento ya es entero (paso 1).
+- [ ] Mostrar el 409 `empresa_cambiada` de `POST /adjuntos/api/capturas/` y de los lotes por claves o reporte con su texto y un botón para recargar. Los formularios ya envían `empresa`.
+- [ ] Menú: el texto para lectores de pantalla ya dice «Complemento Contable, por anunciar» (filtro `es_complemento_contable`); si se quiere un rótulo visible, el mismo filtro. El aviso de las páginas llega como mensaje con la etiqueta `complemento`.
+- [ ] Kardex: el aviso `capacidades.bloqueo` y los enlaces del aviso `nc_proveedor_por_revisar` ya aparecen; darles estilo.
+- [ ] Factura a crédito: en la vista previa el campo de plazo aparece vacío y el validador del navegador (`end_credit`) no detuvo el envío; el servidor ya responde «Indica la fecha de plazo del crédito (AAAA-MM-DD).». Revisar el valor inicial del campo y el validador.
+- [ ] Guía: regenerar el PDF desde `manuales/COMPROBANTES-DE-PAGO.md` (precio y descuento de la factura, notas del proveedor y complemento).
+
+## Notas entre agentes — contrato del cierre integrado (Claude → Codex)
+
+**Venta, `POST /pos/sale/admin/add/` (`action=add`):** `products` es la lista JSON de siempre (`id`, `cant`, `price_current`, `dscto`). `price_current` lleva el precio de esa línea con hasta 2 decimales; `dscto` es un porcentaje entero. Errores en `data.error` (texto), con el número de línea:
+
+| Caso | Texto |
+|---|---|
+| Sin líneas o JSON inválido | «Agrega al menos un producto.» |
+| Producto inexistente o de otra empresa | «Línea N: El producto no existe.» |
+| Producto repetido | «Línea N: El producto X está repetido: suma las cantidades en una sola línea.» |
+| Cantidad | «Línea N (X): La cantidad es un número entero de 1 a 999999.» |
+| Precio | «Línea N (X): El precio va de 0 a 999999,99, con hasta 2 decimales.» |
+| Descuento | «Línea N (X): El descuento es un porcentaje entero de 0 a 100, igual que en la factura.» |
+| Precio distinto sin permiso | «El precio de X no coincide con el del catálogo (10.00) y tu perfil no puede cambiarlo: quita la línea y vuelve a agregarla, o factura desde una proforma.» |
+| Sin stock | «No hay stock suficiente de X: quedan N. Revisa la cantidad.» |
+| Condición de pago | «Elige la condición de pago: contado o crédito.» |
+| Forma de pago del SRI | «Elige la forma de pago del SRI.» |
+| A crédito sin fecha de plazo válida | «Indica la fecha de plazo del crédito (AAAA-MM-DD).» |
+
+`action=create_client`: sin `add_client`, `{"error": "Tu perfil no puede crear clientes."}`; con errores, `{"error": {campo: [mensajes]}}` con los de los dos formularios; identificación repetida en otra pestaña, `{"error": {"dni": ["Ya existe un cliente con esta identificación. Puedes buscarlo aquí."]}}`. El botón «Crear cliente aquí» solo se pinta con `add_client`.
+
+**Producto, `POST /pos/product/add/` (`action=add`):** código repetido, `{"error": {"code": ["Ya existe un producto con este código en tu empresa: búscalo en el catálogo."]}}`; código o nombre creado a la vez en otra pestaña, `{"error": "Ya existe un producto con ese código o nombre en esta empresa: búscalo en el catálogo."}`. `action=edit` responde igual.
+
+**Empresa, edición de datos:** un RUC o cédula que ya tiene otra empresa, `{"error": {"ruc": ["Ya existe una empresa con este RUC o cédula. Pide acceso a su propietario."]}}`.
+
+**Complemento Contable:** todas las rutas de `/tributario/` y `/contabilidad/`. Páginas: 302 a `/dashboard/` con un mensaje de nivel `warning` y etiqueta `complemento`. API, descargas y cualquier envío: 403 `{"error": "El Complemento Contable (…) todavía no está disponible: su precio y sus condiciones están por anunciar.", "plan": "complemento_contable", "codigo": "complemento_pendiente"}`; si además traen `empresa=<id>` de otra empresa, primero 409 `empresa_cambiada`. En plantillas: `fpa_plan.complemento` (habilitado para revisión), `url|bloqueado_por_plan:fpa_plan` (ahora incluye el complemento) y `url|es_complemento_contable`.
+
+**Pestaña de otra empresa en envíos:** `POST /adjuntos/api/capturas/`, `POST /importacion/api/lotes/claves/`, `POST /importacion/api/lotes/reporte/` y `POST /importacion/claves/` aceptan `empresa=<id>`. Si no es la empresa activa: 409 `{"error": "La empresa activa cambió en otra pestaña: …", "codigo": "empresa_cambiada"}` (la página nativa vuelve con el mensaje). Sin `empresa`, como antes. `GET /contabilidad/api/kardex/productos/?empresa=<id>` también responde 409.
+
+**Cobros:** `clave` que empiece por `venta-` → 400 `clave`; misma clave usada en otra factura → 409 `clave_usada` («Esta clave ya se usó para el cobro de otra factura: vuelve a abrir el formulario e inténtalo de nuevo.»). La misma clave y la misma factura sigue devolviendo el respaldo existente (200, `repetido`).
+
+**Kardex:** `capacidades` = `{ver, registrar, anular, bloqueo}`; con el plan vencido o gratuito, `registrar` y `anular` son `false`, `bloqueo` trae el texto del plan y cualquier envío de un movimiento o una anulación responde 403 `{"error": <texto del plan>, "codigo": "plan"}`. Aviso nuevo `nc_proveedor_por_revisar` con `documentos: [{tipo: 'compra', id, numero, url}]`.
+
+**Importación, vista previa de incorporación:** cada elemento trae además `clasificacion_nombre` y `verificacion_nombre`; si el rol no puede incorporarlo, `estado: 'bloqueado'` con el bloqueo `{"codigo": "sin_permiso", "texto": "Tu perfil no puede incorporar este documento."}`. Vincular el XML de una nota 04/05 con una compra que tiene productos: «La compra #N tiene productos y movió el stock: una nota del proveedor no se vincula con ella. Regístrala desde el XML (con líneas de gasto) y revisa el inventario con tu contador.»
+
+**Ejemplo ficticio:**
+
+```
+POST /pos/sale/admin/add/   action=add receipt=08 payment_type=efectivo medio_cobro=efectivo cash=20.00
+     products=[{"id": 12, "cant": 2, "price_current": "8.75", "dscto": 10}]
+→ 200 {"print_url": "/pos/sale/admin/print/…"}       SaleDetail.price 8.75 · total 18.11 · cambio 1.89 · Product.pvp sigue en 10.00
+(el Vendedor, con el mismo precio 8.75)
+→ 200 {"error": "El precio de PRODUCTO PRV-1 no coincide con el del catálogo (10.00) y tu perfil no puede cambiarlo: quita la línea y vuelve a agregarla, o factura desde una proforma."}
+GET /tributario/api/revision/   (empresa sin el complemento en revisión)
+→ 403 {"error": "El Complemento Contable (…) por anunciar.", "plan": "complemento_contable", "codigo": "complemento_pendiente"}
+```
+
 ## Estado actual — diseño de captura rápida, importación masiva y revisión contable (Codex, 02/11/2026; sin publicar)
 
 - **Entrega de código y evidencia subida a GitHub:** `frontend/etapa3` = `9b694d125eae0d46ef1dd5a0c605394648d11ee3` (verificada con `git ls-remote`). El commit documental posterior solo registra este resultado.

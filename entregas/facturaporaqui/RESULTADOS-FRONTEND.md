@@ -1697,3 +1697,47 @@ No cambió Python, modelos, servicios, permisos, reglas de acceso, migraciones, 
 Claude debe corregir stock/kardex de notas de crédito del proveedor y acceso al complemento en el servidor antes de publicar; la [orden de cierre](CIERRE-CONTABLE-PARA-CLAUDE.md) separa devolución física de descuento y marca las decisiones pendientes. No se considera aprobado el tratamiento contable ni el precio D9. El contador debe revisar ATS/104/103. Diario, mayor, bancos, estados financieros y 101 siguen sujetos a D5/D7/D6/D9; no se anuncian como terminados.
 
 PostgreSQL, ensayo sobre respaldo de producción y publicación corresponden a Claude sobre el resultado integrado; no se ejecutaron aquí. La cámara y el teclado virtual requieren comprobación en un teléfono físico.
+
+## 03/11/2026 — cierre integrado: ajustes mínimos de interfaz hechos por Claude, sin publicar
+
+Base: `frontend/etapa3 60e1f11` integrada por avance rápido en `plataforma`. Los cambios de interfaz son los mínimos para que la
+pantalla use las reglas nuevas del servidor; el diseño de Codex no se rehízo. Código probado `0fb9167`.
+
+### Cambios
+
+- **Factura** (`core/pos/static/sale/admin/js/form.js`, `core/pos/templates/sale/admin/create.html`): campo de precio por línea
+  (`input[name="price_current"].fp-precio-linea`) solo con `data-precio-editable="1"` (permiso `change_product`), validado al
+  salir del campo (acepta coma o punto) y recalculado en pantalla; el servidor vuelve a validar y calcula los importes.
+  Descuento como porcentaje entero (el servidor nunca guardó decimales): un separador decimal avisa en vez de perderse en
+  silencio. El total de la pantalla se calcula en centavos con redondeo a la mitad hacia arriba, como el comprobante
+  (13,70 + 15 % = 15,76). «Crear cliente aquí» solo con `add_client`; sin ese permiso, una proforma para un prospecto avisa
+  que hay que elegir un cliente registrado. Texto de ayuda según el permiso.
+- **Recibos por completar** (`core/adjuntos/templates/adjuntos/capturas.html`): token CSRF para cualquier rol con acciones,
+  campo `empresa` en el formulario nuevo, «Ver respaldos del mes» solo con `capacidades.ver_todas` y «Ver mi plan» solo para
+  quien gestiona el plan.
+- **Importación** (`claves.html`, `incorporar.html`): campo `empresa` en los dos formularios y estados legibles en la vista
+  previa.
+- **Kardex** (`kardex.html`): el aviso `capacidades.bloqueo` en lugar del formulario cuando el plan no deja guardar y
+  los enlaces a las notas del proveedor por revisar.
+- **Descargas y búsqueda del kardex** (`static/js/fp-contable.js`): un error que no es JSON ni texto muestra un aviso breve,
+  no el HTML de la página.
+- **Foco** (`static/css/facturaporaqui.css`): `#frmForm:has(.fp-sale-editor) :focus-visible`, la misma regla de
+  `.fp-product-dialog`; sin ella, diez botones de la factura no mostraban el foco por teclado.
+- **Menú** (`hzt_dashboard.html`, `hzt_header.html`, `vtc_sidebar.html`): el texto para lectores de pantalla de los módulos
+  del complemento dice «Complemento Contable, por anunciar» en lugar de «requiere plan».
+
+### Verificación
+
+Vista previa local sobre `0fb9167` (SQLite, datos ficticios, red externa bloqueada): 39 comprobaciones sin
+fallos ni errores de JavaScript (`capturas/cierre-integrado/informe.json`). Factura: altas sin salir, precio con coma,
+descuento entero, 18,11 y cambio 1,89, 13,70 → 15,76 igual que el servidor, otro medio con y sin nota, crédito con y
+sin plazo. Recibos: guardar solo la nota (éxito, no «Error») y 409 desde una pestaña de otra empresa. Complemento
+cerrado y abierto por la lista de revisión. Anchos 360, 390, 768, 1024, 1360 y 1440 px sin desplazamiento horizontal;
+foco visible en todos los elementos recorridos de factura, recibos, libros y kardex (`foco-<ancho>.json`). Capturas:
+`factura-lista-1360.jpg`, `factura-360.jpg`, `factura-768.jpg`, `factura-1360.jpg`.
+
+### Pendientes para Codex
+
+Estilo del campo de precio (escritorio y tarjetas móviles), un botón para recargar junto al mensaje del 409
+`empresa_cambiada` en capturas y lotes, rótulo visible del complemento en el menú si se quiere, estilo de los avisos del
+kardex, valor inicial y validador del plazo del crédito en la factura, y el PDF de la guía regenerado. Sin despliegue.

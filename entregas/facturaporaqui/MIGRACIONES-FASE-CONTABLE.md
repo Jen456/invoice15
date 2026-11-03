@@ -229,3 +229,8 @@ del respaldo diario, código `53e5297`: 45 pendientes; ida en 63,1 s en un solo 
 
 **Restauración:** la vuelta pierde los ajustes de stock registrados y los movimientos manuales del kardex (el stock de los
 productos no cambia). Con datos reales nuevos, revertir = restaurar el volcado previo, no `migrate` hacia atrás.
+
+## Nota (03/11/2026) — cierre integrado: sin migraciones nuevas
+
+El cierre integrado no añade migraciones: el candidato sigue con las 45 de la nota anterior. Ensayo repetido sobre el código
+final: sobre `0fb9167` y una copia del último respaldo diario: 45 aplicadas y 0 pendientes; la vuelta (`contabilidad zero`, `tributario zero`, …) deja el esquema IDÉNTICO al publicado y la otra ida termina igual que la primera. Mismo resultado que el ensayo del kardex. Bases temporales borradas al terminar.
