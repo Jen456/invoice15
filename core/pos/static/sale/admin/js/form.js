@@ -541,9 +541,13 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 },
                 end_credit: {
                     validators: {
-                        notEmpty: {
-                            enabled: false,
-                            message: 'La fecha es obligatoria'
+                        // Obligatoria solo a crédito. Un validador con enabled: false no se reactiva en el adaptador local
+                        // (enableValidator no lo revive): la condición va dentro del callback.
+                        callback: {
+                            message: 'Indica la fecha de plazo del crédito.',
+                            callback: function (input) {
+                                return select_payment_type.val() !== 'credito' || String(input.value || '').trim() !== '';
+                            }
                         },
                         date: {
                             format: 'YYYY-MM-DD',

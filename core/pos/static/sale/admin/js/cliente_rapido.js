@@ -1,7 +1,9 @@
 /* Alta contextual: solo presentación; el servidor valida y guarda el cliente. */
 window.fpClienteRapido = (function () {
     'use strict';
-    var form, modal, alertBox, matches, save, lookup;
+    var form, modal, alertBox, matches, save, lookup, volver;
+    var EMPRESA_CAMBIADA = 'La empresa activa cambió en otra pestaña. No se creó ningún cliente y lo escrito se conserva. ' +
+        'Vuelve a la empresa de esta factura para guardarlo aquí, o recarga la página para trabajar con la empresa nueva.';
     var busy = false, uncertain = false, searching = false, lookupVersion = 0;
     var opener, finished = false, previousDisabled = new Map();
 
@@ -95,11 +97,41 @@ window.fpClienteRapido = (function () {
                 var rechazo = await response.json().catch(function () { return {}; });
                 var error = new Error(rechazo.error || 'La empresa activa cambió en otra pestaña: vuelve a cargar la página.');
                 error.empresaCambiada = true;
+                error.codigo = rechazo.codigo;
                 throw error;
             }
             if (!response.ok) { throw new Error('Respuesta no confirmada'); }
             return await response.json();
         } finally { window.clearTimeout(timeout); }
+    }
+    function avisarEmpresaCambiada() {
+        announce(EMPRESA_CAMBIADA);
+        volver.hidden = false;
+        focus(alertBox);
+    }
+    function empresaCambiadaEnCampos() {
+        return Array.prototype.some.call(form.querySelectorAll('.fv-help-block'), function (mensaje) {
+            return mensaje.textContent.indexOf('La empresa activa cambió') !== -1;
+        });
+    }
+    async function volverALaEmpresa() {
+        // Reactiva en el servidor la empresa en que se abrió esta factura (comprueba la membresía) sin recargar la página.
+        volver.disabled = true;
+        var datos = new FormData();
+        datos.set('company', field('empresa').value);
+        datos.set('next', window.location.pathname);
+        try {
+            var respuesta = await fetch('/empresas/cambiar/', {method: 'POST', body: datos, credentials: 'same-origin',
+                redirect: 'manual', headers: {'X-CSRFToken': field('csrfmiddlewaretoken').value}});
+            if (respuesta.type !== 'opaqueredirect' && !respuesta.ok) { throw new Error('Cambio no confirmado'); }
+            volver.hidden = true;
+            announce('La empresa de esta factura vuelve a estar activa. Revisa los datos y guarda el cliente.');
+            if (field('dni').value) { fvClient.revalidateField('dni'); }
+            focus(save);
+        } catch (_) {
+            announce('No se pudo volver a la empresa de esta factura. Recarga la página; lo escrito en este diálogo no se guardará.');
+            focus(alertBox);
+        } finally { volver.disabled = false; }
     }
     async function guardar() {
         if (busy || uncertain || searching || finished || !modal.hasClass('show')) { return; }
@@ -111,7 +143,7 @@ window.fpClienteRapido = (function () {
         matches.hidden = true;
         lockInputs(true);
         refreshButtons();
-        var result, rechazo = '';
+        var result, rechazo = null;
         try {
             result = await post(params);
             if (!Object.prototype.hasOwnProperty.call(result || {}, 'error') && !validClient(result)) {
@@ -119,7 +151,7 @@ window.fpClienteRapido = (function () {
             }
         } catch (error) {
             if (error && error.empresaCambiada) {
-                rechazo = error.message;   // rechazo confirmado: no es una respuesta perdida
+                rechazo = error;   // rechazo confirmado: no es una respuesta perdida
             } else {
                 // Un corte de red no demuestra que el POST no se haya guardado. No repetirlo.
                 uncertain = true;
@@ -130,7 +162,11 @@ window.fpClienteRapido = (function () {
             lockInputs(uncertain);
             refreshButtons();
         }
-        if (rechazo) { announce(rechazo + ' No se creó ningún cliente y lo escrito se conserva.'); focus(alertBox); return; }
+        if (rechazo) {
+            if (rechazo.codigo === 'empresa_cambiada') { avisarEmpresaCambiada(); }
+            else { announce(rechazo.message + ' No se creó ningún cliente y lo escrito se conserva.'); focus(alertBox); }
+            return;
+        }
         if (uncertain) { focus(lookup); return; }
         if (Object.prototype.hasOwnProperty.call(result, 'error')) { showErrors(result.error); return; }
         selectClient(result, true);
@@ -219,7 +255,17 @@ window.fpClienteRapido = (function () {
         lookup.addEventListener('click', findClient);
         field('identification_type').addEventListener('change', identificationHint);
         identificationHint();
+        volver = document.createElement('button');
+        volver.type = 'button';
+        volver.id = 'fp-client-volver';
+        volver.className = 'btn btn-outline-primary btn-sm mt-2';
+        volver.textContent = 'Volver a la empresa de esta factura';
+        volver.hidden = true;
+        alertBox.after(volver);
+        volver.addEventListener('click', volverALaEmpresa);
         fvClient.on('core.form.invalid', function () {
+            if (empresaCambiadaEnCampos()) { avisarEmpresaCambiada(); return; }   // R1: el dni lo rechazó por la empresa
+            volver.hidden = true;
             announce('Revisa los campos señalados antes de guardar.');
             var invalid = form.querySelector('.is-invalid:not([disabled])');
             focus(invalid || alertBox);
