@@ -1,0 +1,4 @@
+# Conservar literalmente el parche y el EOF de la plantilla de origen.
+# No afecta al código activo de la aplicación.
+cambios-interfaz.patch -whitespace
+core/pos/templates/sale/admin/create.html whitespace=-blank-at-eof

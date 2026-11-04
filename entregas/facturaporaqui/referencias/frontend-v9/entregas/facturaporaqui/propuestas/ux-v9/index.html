@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Propuesta contable · FacturaPorAquí</title>
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" href="../../../../static/img/brand/isotipo-pie.png">
+  <link rel="stylesheet" href="../../../../static/css/facturaporaqui.css">
+  <link rel="stylesheet" href="propuesta.css">
+  <script src="propuesta.js" defer></script>
+</head>
+<body class="fp-ui">
+  <a class="fp-skip" href="#contenido">Saltar al contenido</a>
+  <div class="fp-preview-banner"><strong>Propuesta interactiva</strong><span>Datos simulados · Sin conexión a la API · No guarda ni presenta información</span></div>
+  <div class="fp-app">
+    <aside class="fp-sidebar" aria-label="Navegación principal">
+      <a class="fp-brand" href="#inicio"><img src="../../../../static/img/brand/isotipo-pie.png" width="36" height="36" alt="">FacturaPorAquí</a>
+      <div class="fp-nav-title">Tu contabilidad</div>
+      <nav id="fp-navigation">
+        <a href="#inicio" data-page="inicio"><span aria-hidden="true">◈</span> Inicio contable</a>
+        <a href="#cuentas" data-page="cuentas"><span aria-hidden="true">⊞</span> Plan de cuentas</a>
+        <a href="#asientos" data-page="asientos"><span aria-hidden="true">≡</span> Asientos</a>
+        <a href="#cierre" data-page="cierre"><span aria-hidden="true">▤</span> Revisión del mes</a>
+        <a href="#reportes" data-page="reportes"><span aria-hidden="true">▥</span> Reportes</a>
+        <a href="#puntos" data-page="puntos"><span aria-hidden="true">⌖</span> Puntos de emisión</a>
+      </nav>
+      <div class="fp-sidebar-note"><img src="../../../../static/img/brand/isotipo-pie.png" width="32" height="32" alt=""><p>Menos pasos.<br>Más claridad para tu negocio.</p></div>
+    </aside>
+    <div class="fp-app-content">
+      <header class="fp-topbar">
+        <button type="button" id="fp-menu-toggle" class="fp-btn-secondary" aria-controls="fp-navigation" aria-expanded="false">Menú</button>
+        <div><label for="fp-company">Empresa de esta vista</label><select id="fp-company"><option value="demo">Comercio Demo · empresa ficticia</option><option value="piloto">NEXALLTI · propuesta de piloto</option></select></div>
+        <span class="fp-chip fp-chip-warning">Complemento en revisión</span>
+      </header>
+      <div class="fp-demo-tools"><label for="fp-demo-state">Probar estado visual</label><select id="fp-demo-state"><option value="ready">Ejemplo con datos simulados</option><option value="loading">Cargando</option><option value="empty">Vacío</option><option value="error">Error</option><option value="forbidden">Permisos insuficientes</option><option value="pending">Datos pendientes</option></select><span>Estos controles pertenecen a la propuesta.</span></div>
+      <main id="contenido" tabindex="-1"></main>
+      <footer class="fp-app-footer">Diseño en revisión · Word versión 9 pendiente de recepción · Sin datos financieros reales</footer>
+    </div>
+  </div>
+  <dialog id="fp-dialog" aria-labelledby="fp-dialog-title"><div class="fp-proposal-dialog-head"><h2 id="fp-dialog-title"></h2><button type="button" class="fp-btn-secondary" id="fp-close-dialog" aria-label="Cerrar diálogo">Cerrar</button></div><div id="fp-dialog-content"></div></dialog>
+  <p class="fp-sr-only" id="fp-announcement" role="status" aria-live="polite"></p>
+</body>
+</html>

@@ -1,5 +1,25 @@
 # Resultados frontend — FacturaPorAquí
 
+## 2026-11-04 — Acceso a v9 desde invoice15 y conservación de lo publicado
+
+**Resultado:** fusionado `plataforma f2a2b5b` mediante `673b82c` en `frontend/etapa3`, conservando las dos secciones de HANDOFF y las correcciones publicadas. La rama mantiene también `006dea7` / `0d92a86`: RUC del servicio solo en el pie y «Usar como base para otra factura». No se modificó el servidor.
+
+La entrega de `facturacion15 25e4f78` queda accesible desde el repositorio que ya puede leer Claude, en [referencias/frontend-v9/](referencias/frontend-v9/README.md). Incluye sus **55 archivos modificados, byte por byte**, con SHA-256 en `ORIGEN.json` y parche original de interfaz. Se traslada como referencia aislada en `entregas/`: las maquetas no entran al menú y los formularios antiguos no reemplazan los contratos actuales de cobros. El historial antiguo, las configuraciones de entorno y el material de firma no se trasladan.
+
+**Archivos:** nueva carpeta de referencia y [INTEGRACION-V9-20261104.md](INTEGRACION-V9-20261104.md), actualización de HANDOFF y este registro, cinco capturas nuevas y su informe. El documento clasifica lo que ya funciona en invoice15, las diferencias del pago y lo que sigue siendo maqueta. Registra los precios indicados por la propietaria ($150/año por módulo para una empresa y $250/año multiempresa), manteniendo impuestos y alcance pendientes. No cambia precios públicos ni accesos al complemento.
+
+**Verificación de esta entrega:**
+
+- Integridad de los 55 archivos y del parche contra sus huellas: correcta.
+- SQLite sobre la base fusionada: `pytest tests/test_factura_base.py tests/test_ride_integracion.py tests/test_regenerar_ride.py tests/test_estaticos.py tests/test_rutas.py`: **37 aprobadas**. Sin SRI, firmas ni correos reales.
+- `node --test tests/frontend/factura_base.test.cjs`: **4 aprobadas**.
+- Maqueta v9 trasladada, servida localmente: **47 comprobaciones aprobadas**, sin errores JavaScript, recursos fallidos ni peticiones de escritura. Seis pantallas a 360/768/1360 px sin desbordes; estados de carga, vacío, error, permiso insuficiente y pendientes; importación definitiva deshabilitada y cierre de diálogo por teclado. Ver [informe](capturas/integracion-v9-20261104/verificacion.json). Estas comprobaciones no prueban una API contable ni producción.
+- `git diff --check` correcto; `plataforma f2a2b5b` es ancestro de la rama. El código activo respecto de plataforma solo contiene la entrega anterior de RIDE/reutilización. Sin cambios nuevos de backend ni migraciones.
+
+**Capturas:** [cuentas 360](capturas/integracion-v9-20261104/propuesta-cuentas-360.jpg), [768](capturas/integracion-v9-20261104/propuesta-cuentas-768.jpg), [1360](capturas/integracion-v9-20261104/propuesta-cuentas-1360.jpg), [cierre](capturas/integracion-v9-20261104/propuesta-cierre-1360.jpg) y [piloto pendiente](capturas/integracion-v9-20261104/piloto-pendiente-1360.jpg). Datos simulados identificados como tales; imágenes inferiores a 150 KB.
+
+No se ejecutaron la suite completa ni PostgreSQL en esta entrega. No se accedió a producción, datos privados, credenciales ni certificados. Claude puede integrar y publicar los cambios activos con el procedimiento ya autorizado; los PDF almacenados requieren regeneración controlada y fiel al XML, conservando el original. Las maquetas y su guía histórica no se presentan como funciones ni manual de la aplicación publicada.
+
 ## 2026-11-04 — Proveedor del servicio en el pie y reutilización de facturas
 
 **Commit de código y evidencias subido a GitHub:** `006dea75ffd62fb66f029f06134fc00cadae8c73` (`frontend/etapa3`), remoto verificado con `git ls-remote` el 04/11/2026. El commit posterior modifica únicamente HANDOFF y este registro; no cambia el código probado.

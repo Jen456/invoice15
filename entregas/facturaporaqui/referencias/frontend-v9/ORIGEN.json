@@ -1,0 +1,284 @@
+{
+  "repositorio_origen": "Jen456/facturacion15",
+  "base": "817c5be8a7e60c64a64d596d56dd37b7805aefc9",
+  "commit_origen": "25e4f78d1013c6077c66f034f08502d091b0a89d",
+  "tipo": "Referencia de interfaz; no se instala sobre el backend actual",
+  "archivos": [
+    {
+      "ruta": "core/pos/static/sale/admin/css/experience.css",
+      "bytes": 9017,
+      "sha256": "65ba458ba2db897373d5ff5fda14faaeb9a7a66d9a82f2a5c662218ae6403557"
+    },
+    {
+      "ruta": "core/pos/static/sale/admin/js/form.js",
+      "bytes": 40961,
+      "sha256": "9da1178fe2d6554efc61ff4174c334f22129969042fc1802ccae55c346871b65"
+    },
+    {
+      "ruta": "core/pos/static/sale/admin/js/ux.js",
+      "bytes": 12068,
+      "sha256": "bf87681e3a01499ba279a8cd1e11a991337a0e7f042abc437124c35d3c6f3079"
+    },
+    {
+      "ruta": "core/pos/templates/sale/admin/create.html",
+      "bytes": 16809,
+      "sha256": "2d3df9fe29685a0bf77aa7b4e4457a6da1c40f607f274d973d6b16889568ff84"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/CONTRATO-FRONTEND-PENDIENTE.md",
+      "bytes": 4746,
+      "sha256": "8ec661967e22890a4c0d09c1f9c8cdec24c99ae6db268b50fbb82065a374f714"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/HANDOFF.md",
+      "bytes": 3981,
+      "sha256": "cbc8d0b8d7abdf0217ad519f8437c14dbf1dd8be584e3507ee92054de76efebd"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/PR-FRONTEND-V9.md",
+      "bytes": 1661,
+      "sha256": "b666d6ec70e50e9f39cde404619f24eaba851f418765a0b893e94be631163ce9"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/RESULTADOS-FRONTEND.md",
+      "bytes": 7603,
+      "sha256": "64bf9aafaedadeda155905b9e200c74f55c9da11303d30f42592d2e3346494ed"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/asiento-detalle-1440.jpg",
+      "bytes": 64356,
+      "sha256": "849128998747c42bcc568190486b2adea4a7689d3abab2d7eea55b2a1cd8d37e"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/asientos-1360.jpg",
+      "bytes": 74143,
+      "sha256": "b2f2ca8b336d2df0723c2b17d80551bb6b2bb3ad808c382b192098d713fdf4cf"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/asientos-360.jpg",
+      "bytes": 44031,
+      "sha256": "93cfddebc07b74c6602262a78bb2d77f89d821092306ed6463cdb9256742c5a1"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/asientos-768.jpg",
+      "bytes": 59702,
+      "sha256": "088998888d540edcbbdd50bcc5c4a2db1cf101ee36e3f9f9f6653e0affacd901"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/cierre-1360.jpg",
+      "bytes": 126500,
+      "sha256": "2da1ff471d658fa3382daf4f23e779066021abd199a7e5458ee8a1873cb3c54f"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/cierre-360.jpg",
+      "bytes": 89725,
+      "sha256": "7532c979835d957961d48c42af78802eb2354d418a558577117a222c7e6bffd4"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/cierre-768.jpg",
+      "bytes": 113497,
+      "sha256": "7d15c8679a88a9f27793a1d3b08eaf64565294292daf8e6f5eda1a4ece91ead5"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/conflicto-empresa-1360.jpg",
+      "bytes": 143453,
+      "sha256": "561a63223e069db377bc86457f8b8f740f012dbeee4f061f91d28cb4c4e02792"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/cuentas-1360.jpg",
+      "bytes": 94654,
+      "sha256": "de09f48c081729377f1b82a8555c8282668e16b3bc9cd96e498e684ee150eac2"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/cuentas-360.jpg",
+      "bytes": 63616,
+      "sha256": "962b7c839d949c520229d1f0ca743b9f056e6cbe6e9a7b548cf6982792298051"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/cuentas-768.jpg",
+      "bytes": 82924,
+      "sha256": "e0cccd8b215e3fae19b8f8263daa88d353178288dc37863721c992af1d091c6a"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/estado-empty.jpg",
+      "bytes": 50408,
+      "sha256": "598bf204a91e562570c777ae52c17cbe8c786c3787c01613def23e47ede4d187"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/estado-error.jpg",
+      "bytes": 50305,
+      "sha256": "3b4f04e55bd89512f32e6812e4ee15f27cbc245bffea6402b8c9bef92f5a5311"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/estado-forbidden.jpg",
+      "bytes": 50905,
+      "sha256": "b11ee4708693cc8cae135d4ca75769c58c03caeae9495920e058786f63ceba3f"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/estado-loading.jpg",
+      "bytes": 50963,
+      "sha256": "c386c077c5e8abac6fc5c7b02adbd959759818f2174f9079ca3190bb3531be7f"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/estado-pending.jpg",
+      "bytes": 50547,
+      "sha256": "5169a11aa523919d74ceae39ccbd60da5bcab0007101373fb2a60c98d3830f9f"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/factura-1360.jpg",
+      "bytes": 143835,
+      "sha256": "29cfc5150d7d9d91541f9bdc9aadaf700bcf66a86fc368ea26d72e211880080a"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/factura-360.jpg",
+      "bytes": 118502,
+      "sha256": "3aa447c072c242b2d0eea23873b97827a0a21c87c6c8efdf36a578a0c00be8f5"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/factura-768.jpg",
+      "bytes": 121606,
+      "sha256": "35e6e9775a74f66a3194c59e41ed8528fb822a76040fd5214b448f3841aea7c5"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/importacion-ejemplo-1440.jpg",
+      "bytes": 88957,
+      "sha256": "f3aa7e1ea3407c9bd8b946247d146ee7a030ee8919c012a93bda42993a84e1cb"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/inicio-1360.jpg",
+      "bytes": 97152,
+      "sha256": "e94c92bb9170b2556d0e678f1a404e35e767ebe261a61beb24aba318e81be19d"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/inicio-360.jpg",
+      "bytes": 67588,
+      "sha256": "9bce26c00b332494d06c6c126b4e6d812578d7889f86fe9d203d3ab8fec03fe7"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/inicio-768.jpg",
+      "bytes": 87133,
+      "sha256": "1b847d9c77314e20bd2dae6da32a97477262e1e5946326d94d6f1c29edc23e29"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/piloto-pendiente-1440.jpg",
+      "bytes": 77920,
+      "sha256": "cedfb1d02303a54a2e8e8c7abf61ff8d5ee2f9212f2773a6d55c2c854722dd97"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/producto-error-1360.jpg",
+      "bytes": 147178,
+      "sha256": "62f703e64927a238d4454ee2cce446c8196f69bda82a4bb76518118e2884e2d4"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/puntos-1360.jpg",
+      "bytes": 77851,
+      "sha256": "aafe004f3bd4853ac0dcfc652bcc53cf269986a7c6029cf46693088b6a08bf8d"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/puntos-360.jpg",
+      "bytes": 58491,
+      "sha256": "c99365ddb3aa83e443157dc9e73eb06139e7e5346955bd09c50d5c67f2f76407"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/puntos-768.jpg",
+      "bytes": 77314,
+      "sha256": "3e59e4552cd056e83d90461d41b946bde1dd78c5825b66372cb177f6f7f39aab"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/reportes-1360.jpg",
+      "bytes": 100637,
+      "sha256": "fc820b89030cafa7fec054de480694a2b78f205368eaa61352477365c6f566a4"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/reportes-360.jpg",
+      "bytes": 64919,
+      "sha256": "3ebd3631108b4458a2a264267f58e7969667212f44296679db8cd8a0123318a5"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/reportes-768.jpg",
+      "bytes": 82693,
+      "sha256": "8a5ca65db0d277b7741b8afb763838a7424f16b0532e00c23b3d4dfffb97758d"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/capturas/ux-v9/verificacion.json",
+      "bytes": 7552,
+      "sha256": "6475371d51c5d3283c1246ab6257a688bbe0d029fb1188e73eff0973b360794a"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/manuales/Guia-interfaz-v9-propuesta.pdf",
+      "bytes": 59947,
+      "sha256": "c614471017e8a9f60d72e96c36b774eb59c792ba06892ea43082159a213ee8e2"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/manuales/guia-interfaz-v9.html",
+      "bytes": 5747,
+      "sha256": "e6e3aa1b96d1a2ba89051e23a7d0f0f8263eced8c5e1fe10e2fbc1e0d3b49029"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/propuestas/ux-v9/README.md",
+      "bytes": 1537,
+      "sha256": "6e3435a54b1a405b6aec3b05f6c73d494dba5c749bdc27d7a192ec8b887174dc"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/propuestas/ux-v9/index.html",
+      "bytes": 3471,
+      "sha256": "f83f706531bbcd85d920365dd4d884cc1b5e73083524580828f2eb3dcba005c7"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/propuestas/ux-v9/propuesta.css",
+      "bytes": 10961,
+      "sha256": "75859bfbf019b9aa01313209385b026a2b497403aaad7015ebc771919f58e4c2"
+    },
+    {
+      "ruta": "entregas/facturaporaqui/propuestas/ux-v9/propuesta.js",
+      "bytes": 28829,
+      "sha256": "025767a826d3015ee7c1ea6ffda2830baf6fa2b10739835c92ed47a9ac6667c2"
+    },
+    {
+      "ruta": "frontend_tests/README.md",
+      "bytes": 1950,
+      "sha256": "137d77c5da107e3fcbd02f9ae99cdf9412b3460fddd61c4bfdd148ec14d17bd6"
+    },
+    {
+      "ruta": "frontend_tests/render_preview.py",
+      "bytes": 1925,
+      "sha256": "8fbcb864d29817506d913ea2b81085b0faefa6600a841750252a398a3f3dd4bc"
+    },
+    {
+      "ruta": "frontend_tests/serve_preview.py",
+      "bytes": 1676,
+      "sha256": "b1e7104f2dfcff1281aa5f7e57a68d901e46b1d838d83c37770ea45e533edce7"
+    },
+    {
+      "ruta": "frontend_tests/templates/preview-shell.html",
+      "bytes": 437,
+      "sha256": "59db5601b3bbd7256b60897a01a372195609d983dc47e069fc5bf9d39b37ba97"
+    },
+    {
+      "ruta": "frontend_tests/verify_browser.py",
+      "bytes": 15719,
+      "sha256": "bf8be43a66579425d9578b8872580c95e9bdc90fc02674ec4f0dba90843f2d05"
+    },
+    {
+      "ruta": "static/css/facturaporaqui.css",
+      "bytes": 5732,
+      "sha256": "9219596113412d6382b80f9dfee9e31850c741d1d8a34cc592c2f0c0c4f116d3"
+    },
+    {
+      "ruta": "static/img/brand/isotipo-pie.png",
+      "bytes": 14737,
+      "sha256": "4061f404710ee46e215c9310a057bf365a8ab915f5823868aacde36afba24dad"
+    },
+    {
+      "ruta": "templates/base.html",
+      "bytes": 2266,
+      "sha256": "6cf48566803f2e0c2fad76f3eb18f56f1d5caf901d3b5b70dacdf291cfb2f654"
+    },
+    {
+      "ruta": "templates/form.html",
+      "bytes": 2846,
+      "sha256": "594c57f81ff60616bf3ada7eb5096666f7a2a59d253300bdc340c571f6f0ccfa"
+    }
+  ],
+  "parche_sha256": "8fea244b9c09c788f8dc5a76449838c0652ee2e9e861c15181f8af93dc236888"
+}

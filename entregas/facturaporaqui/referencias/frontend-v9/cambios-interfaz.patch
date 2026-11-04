@@ -1,0 +1,1162 @@
+diff --git a/core/pos/static/sale/admin/css/experience.css b/core/pos/static/sale/admin/css/experience.css
+new file mode 100644
+index 0000000000000000000000000000000000000000..c52f2ce0f0d71dbe1d014a52a127db4ebdad2ac5
+--- /dev/null
++++ b/core/pos/static/sale/admin/css/experience.css
+@@ -0,0 +1,11 @@
++.fp-sale-form>.card{border:0;box-shadow:none;background:transparent}.fp-sale-form>.card>.card-header{padding:12px 0 4px;background:transparent;border:0}.fp-sale-form>.card>.card-header h3{font-size:1.8rem;font-weight:700;color:var(--fp-ink);letter-spacing:-.025em}.fp-sale-form>.card>.card-header h3>i{display:none}.fp-sale-form>.card>.card-body{padding:12px 0 0}.fp-sale-form>.card>.card-body>.container-fluid{padding:0}.fp-sale-form>.card>.card-footer{padding:16px 0;background:transparent;border-top:1px solid var(--fp-line)}
++.fp-sale-intro{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 20px}.fp-sale-intro p{color:var(--fp-muted);margin:0}.fp-steps{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:24px}.fp-steps a{display:inline-flex;align-items:center;gap:8px;font-size:.9rem;min-height:44px;color:var(--fp-ink);text-decoration:none}.fp-steps a:hover{text-decoration:underline}.fp-steps span{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:var(--fp-tint);font-size:.8rem;font-weight:700}.fp-sale section[id]{scroll-margin-top:24px}
++.fp-client-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.fp-electronic-grid{grid-template-columns:minmax(160px,1fr) minmax(0,2fr) minmax(110px,.65fr);padding-top:18px;border-top:1px solid var(--fp-line);align-items:center}.fp-check-field input{margin-right:8px;width:18px;height:18px;vertical-align:middle;accent-color:var(--fp-coral)}.fp-check-field label{font-size:.88rem;margin-bottom:0}
++.fp-sale .select2-container{width:100%!important;min-width:0;max-width:100%}.fp-sale .select2-selection{border-color:#a7bac6!important;border-radius:8px!important;min-height:44px}.fp-sale .select2-selection__rendered{white-space:normal!important;overflow-wrap:anywhere;line-height:1.45!important;padding-top:8px!important;padding-bottom:8px!important}.fp-sale .select2-selection--single .select2-selection__clear{margin-top:0!important}.fp-sale .select2-selection:focus{outline:3px solid #1b718e;outline-offset:3px}.fp-sale .input-group{flex-wrap:nowrap;min-width:0}.fp-sale .input-group>.form-control{min-width:0}.fp-sale .input-group-append .btn{border-radius:0 8px 8px 0}.fp-product-search{margin-top:20px}.fp-sale .dataTables_scroll{overflow:visible;width:100%}.fp-sale .dataTables_info{display:none}.fp-detail-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--fp-muted);padding-top:8px}
++#tblProducts{border:0;table-layout:fixed}#tblProducts th:nth-child(1){width:5%}#tblProducts th:nth-child(2){width:8%}#tblProducts th:nth-child(3){width:23%}#tblProducts th:nth-child(4){width:7%}#tblProducts th:nth-child(5){width:16%}#tblProducts th:nth-child(6){width:14%}#tblProducts th:nth-child(7){width:17%}#tblProducts th:nth-child(8){width:10%}#tblProducts td{padding:14px 7px;overflow-wrap:anywhere}#tblProducts td:last-child{text-align:right!important;font-variant-numeric:tabular-nums}#tblProducts .form-control{min-width:0;width:100%;text-align:right;font-variant-numeric:tabular-nums}#tblProducts .bootstrap-touchspin .btn{min-width:32px;min-height:44px;background:#edf4f8;color:var(--fp-ink);border:1px solid #b8ccd8}#tblProducts .bootstrap-touchspin-postfix{display:none}#tblProducts button[rel=remove]{min-width:40px;min-height:44px;color:#94342b;background:#fff3ef;border:1px solid #e7c3ba;border-radius:7px}#tblProducts th{padding:12px 7px}#tblProducts td.dataTables_empty{padding:28px 14px;text-align:center!important;color:var(--fp-muted)}#tblProducts .badge{padding:6px 7px;font-size:.73rem;white-space:normal}#tblProducts .badge-success{background:#e8f3ec;color:#23624b}#tblProducts .badge-secondary{background:#eff3f6;color:#536470}
++.fp-sale-bottom{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:20px;align-items:start}.fp-totals{background:#f9fbfd}.fp-total-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,.7fr);align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--fp-line)}.fp-total-row label{margin:0;font-size:.88rem}.fp-total-row .form-control{border:0;background:transparent!important;text-align:right;min-height:34px;height:34px;padding:3px 0;font-variant-numeric:tabular-nums;font-size:1rem;color:var(--fp-ink)!important}.fp-total-final{margin-top:8px;padding:18px 0;border:0}.fp-total-final label{font-size:1rem;font-weight:700}.fp-total-final .form-control{font-size:1.7rem;font-weight:750;height:44px}.fp-totals>.fp-help{margin-top:12px}.fp-totals>.fp-btn-text{max-width:100%}.fp-upload{padding:16px;border:1px dashed #9db5c2;background:#f8fbfd;border-radius:8px}.fp-upload input{max-width:100%;width:100%;font-size:.9rem}.fp-upload input::file-selector-button{background:#fff;color:var(--fp-ink);border:1px solid #9aafbb;min-height:42px;border-radius:6px;margin-right:10px;padding:8px 12px;font-weight:600;cursor:pointer}.fp-upload small{display:block;margin-top:10px;color:var(--fp-muted)}.fp-upload p{font-size:.84rem;margin:10px 0 0;overflow-wrap:anywhere}.fp-form-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px}.fp-form-actions p{margin:0 auto 0 0;font-size:.85rem;color:var(--fp-muted)}
++.fp-dialog{color:var(--fp-ink)}.fp-dialog .modal-content{border:0;border-radius:14px;overflow:hidden}.fp-dialog .modal-header{padding:20px 24px;background:#f5f9fb;border-bottom:1px solid var(--fp-line)}.fp-dialog .modal-title{font-size:1.1rem;font-weight:650}.fp-dialog .modal-body{padding:22px 24px}.fp-dialog label{font-size:.9rem;font-weight:600}.fp-dialog input[type=checkbox]{width:18px;height:18px;accent-color:var(--fp-coral)}.fp-dialog .btn-primary{background:var(--fp-coral);border-color:var(--fp-coral);min-height:44px;border-radius:8px}.fp-dialog .btn-primary:hover{background:var(--fp-coral-dark)}.fp-dialog .modal-footer{padding:16px 24px}.fp-dialog .close{min-width:44px;min-height:44px;color:var(--fp-ink);opacity:1}.fp-dialog .invalid-feedback{color:var(--fp-error);font-size:.85rem}.fp-dialog .modal-body .text-muted{color:var(--fp-muted)!important;font-size:.9rem}.fp-dialog .table{font-size:.87rem}.fp-dialog .dataTables_scroll{max-width:100%;overflow:auto}.fp-dialog .btn:focus-visible,.fp-sale-form .btn:focus-visible{outline:3px solid #1b718e!important;outline-offset:3px!important;box-shadow:none!important}
++@media(max-width:1100px){.fp-client-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.fp-client-grid .fp-span-2{grid-column:span 2}.fp-lines{min-width:900px}}
++@media(max-width:767px){.fp-sale-form>.card>.card-header h3{font-size:1.55rem}.fp-sale-intro{gap:10px}.fp-sale-intro p{font-size:.92rem}.fp-steps{gap:8px 16px;margin-bottom:16px}.fp-steps a{font-size:.84rem}.fp-client-grid,.fp-electronic-grid{grid-template-columns:1fr}.fp-client-grid .fp-span-2{grid-column:auto}.fp-sale .input-group{max-width:100%}.fp-sale-bottom{grid-template-columns:1fr;gap:0}.fp-sale .form-control,.fp-dialog .form-control{font-size:16px}.fp-sale .fp-section-heading .btn{max-width:100%}.fp-lines,#tblProducts{min-width:0;table-layout:auto}#tblProducts,#tblProducts tbody{display:block;width:100%!important}#tblProducts thead{position:absolute;width:1px;height:1px;clip:rect(0,0,0,0);overflow:hidden}#tblProducts tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--fp-line);border-radius:10px;padding:10px;margin-bottom:12px;position:relative}#tblProducts td{display:block;border:0;min-width:0;text-align:left!important;padding:8px;overflow-wrap:anywhere}#tblProducts td:before{content:attr(data-label);display:block;color:var(--fp-muted);font-size:.75rem;font-weight:500;margin-bottom:5px}#tblProducts td:nth-child(3){grid-column:1/-1;grid-row:1;font-size:1rem;font-weight:650;padding-right:48px}#tblProducts td:nth-child(3):before{display:none}#tblProducts td:first-child{position:absolute;right:10px;top:8px;padding:0}#tblProducts td:first-child:before{display:none}#tblProducts td:last-child{grid-column:1/-1;border-top:1px solid var(--fp-line);text-align:right!important;padding-top:12px}#tblProducts td:last-child:before{float:left}#tblProducts td.dataTables_empty{grid-column:1/-1;position:static}#tblProducts .bootstrap-touchspin .btn{min-width:28px;padding:6px}.fp-detail-tools{flex-wrap:wrap}.fp-form-actions{display:grid;grid-template-columns:1fr 1.6fr}.fp-form-actions p{grid-column:1/-1;font-size:.8rem}.fp-form-actions .btn{padding:10px 8px}.fp-dialog .modal-dialog{margin:10px}.fp-dialog .modal-body,.fp-dialog .modal-header,.fp-dialog .modal-footer{padding:18px 16px}.fp-upload{padding:12px}.fp-field-footer{flex-wrap:wrap;gap:4px}}
++.fp-sale .bootstrap-touchspin .btn{background:#edf4f8;color:var(--fp-ink);border:1px solid #b8ccd8;min-height:44px;min-width:36px}.fp-sale .bootstrap-touchspin .btn:hover{background:#dcecf4}.fp-dialog .form-control-file{max-width:100%}
++.fp-sale .select2-selection--single{height:auto!important}.fp-sale .select2-selection__rendered{padding-right:30px!important}.fp-sale .select2-selection__arrow{top:50%!important;transform:translateY(-50%)}
+diff --git a/core/pos/static/sale/admin/js/form.js b/core/pos/static/sale/admin/js/form.js
+index 0d916edcf4af8e2024c4f1b35aacf6845f5dea34..ef7860645560b7b4941089a84c6413b95525d44f 100644
+--- a/core/pos/static/sale/admin/js/form.js
++++ b/core/pos/static/sale/admin/js/form.js
+@@ -48,6 +48,7 @@ var sale = {
+         tblProducts = $('#tblProducts').DataTable({
+             autoWidth: false,
+             destroy: true,
++            language: {emptyTable: 'Agrega tu primer producto o servicio para empezar.', infoEmpty: 'Sin productos', info: '_TOTAL_ productos'},
+             data: this.detail.products,
+             ordering: false,
+             lengthChange: false,
+@@ -75,7 +76,7 @@ var sale = {
+                             }
+                             return '<span class="badge badge-danger badge-pill">' + row.stock + '</span>';
+                         }
+-                        return '<span class="badge badge-secondary badge-pill">Sin stock</span>';
++                        return '<span class="badge badge-secondary badge-pill">Sin inventario</span>';
+                     }
+                 },
+                 {
+@@ -111,7 +112,7 @@ var sale = {
+                     targets: [0],
+                     class: 'text-center',
+                     render: function (data, type, row) {
+-                        return '<a rel="remove" class="btn btn-danger btn-flat btn-xs"><i class="fas fa-times"></i></a>';
++                        return '<button type="button" rel="remove" aria-label="Quitar producto"><i class="fas fa-times" aria-hidden="true"></i></button>';
+                     }
+                 },
+             ],
+@@ -457,9 +458,10 @@ document.addEventListener('DOMContentLoaded', function (e) {
+                     select_client.select2('trigger', 'select', {data: request});
+                     fvSale.revalidateField('client');
+                     $('#myModalClient').modal('hide');
++                    fvClient.resetForm(true);
+                 }
+             };
+-            submit_with_formdata(args);
++            FPSaleUX.submit(args, fvClient.form);
+         });
+ });
+ 
+@@ -564,6 +566,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
+             }
+         })
+         .on('core.form.valid', function () {
++            if (!FPSaleUX.validateCredit(fvSale.form)) { fvSale.form.reportValidity(); return; }
+             if (sale.detail.products.length === 0) {
+                 message_error('Debe tener al menos un item en el detalle de la venta');
+                 return false;
+@@ -613,7 +616,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
+                     });
+                 }
+             };
+-            submit_with_formdata(args);
++            FPSaleUX.submit(args, fvSale.form);
+         });
+ });
+ 
+@@ -684,10 +687,10 @@ $(function () {
+             var tr = tblProducts.cell($(this).closest('td, li')).index();
+             var price = Number(this.value);
+             if (this.value === '' || !this.checkValidity() || !Number.isFinite(price)) {
+-                this.classList.add('is-invalid');
++                FPSaleUX.fieldError(this, 'Ingresa un precio válido con hasta dos decimales.', false);
+                 return;
+             }
+-            this.classList.remove('is-invalid');
++            FPSaleUX.clearField(this);
+             sale.detail.products[tr.row].price_current = price;
+             sale.calculateInvoice();
+             $('td:last', tblProducts.row(tr.row).node()).text('$' + sale.detail.products[tr.row].total.toFixed(2));
+@@ -695,19 +698,33 @@ $(function () {
+         })
+         .on('change', 'input[name="cant"]', function () {
+             var tr = tblProducts.cell($(this).closest('td, li')).index();
+-            sale.detail.products[tr.row].cant = parseInt($(this).val());
++            var quantity = Number(this.value);
++            var item = sale.detail.products[tr.row];
++            if (!this.value.trim() || !Number.isInteger(quantity) || quantity < 1 || quantity > 1000000 || (item.inventoried && quantity > item.stock)) {
++                FPSaleUX.fieldError(this, 'Ingresa unidades enteras dentro del stock disponible.', true);
++                return;
++            }
++            FPSaleUX.clearField(this);
++            sale.detail.products[tr.row].cant = quantity;
+             sale.calculateInvoice();
+             $('td:last', tblProducts.row(tr.row).node()).html('$' + sale.detail.products[tr.row].total.toFixed(2));
+         })
+         .on('change', 'input[name="dscto_unitary"]', function () {
+             var tr = tblProducts.cell($(this).closest('td, li')).index();
+-            sale.detail.products[tr.row].dscto = parseFloat($(this).val());
++            var value = this.value.trim().replace(',', '.');
++            var discount = Number(value);
++            if (!/^\d+(\.\d{1,2})?$/.test(value) || !Number.isFinite(discount) || discount < 0 || discount > 100) {
++                FPSaleUX.fieldError(this, 'Ingresa un descuento entre 0 y 100, con hasta dos decimales.', true);
++                return;
++            }
++            FPSaleUX.clearField(this);
++            sale.detail.products[tr.row].dscto = discount;
+             sale.calculateInvoice();
+             var parent = $(this).closest('.bootstrap-touchspin');
+             parent.find('.bootstrap-touchspin-postfix').children().html(sale.detail.products[tr.row].total_dscto.toFixed(2));
+             $('td:last', tblProducts.row(tr.row).node()).html('$' + sale.detail.products[tr.row].total.toFixed(2));
+         })
+-        .on('click', 'a[rel="remove"]', function () {
++        .on('click', 'button[rel="remove"]', function () {
+             var tr = tblProducts.cell($(this).closest('td, li')).index();
+             sale.detail.products.splice(tr.row, 1);
+             tblProducts.row(tr.row).remove().draw();
+@@ -757,7 +774,7 @@ $(function () {
+                             }
+                             return '<span class="badge badge-danger badge-pill">' + row.stock + '</span>';
+                         }
+-                        return '<span class="badge badge-secondary badge-pill">Sin stock</span>';
++                        return '<span class="badge badge-secondary badge-pill">Sin inventario</span>';
+                     }
+                 },
+                 {
+@@ -803,7 +820,7 @@ $(function () {
+ 
+     // Quick product form lives outside the invoice form.
+     $('.btnAddProduct').on('click', function () {
+-        $('#quickProductErrors').text('');
++        FPSaleUX.clearErrors(document.getElementById('frmQuickProduct'));
+         $('#myModalProduct').modal('show');
+     });
+     $('#frmQuickProduct').on('submit', function (event) {
+@@ -819,9 +836,7 @@ $(function () {
+             headers: {'X-CSRFToken': csrftoken},
+             success: function (data) {
+                 if (data.error) {
+-                    var errors = typeof data.error === 'string' ? data.error :
+-                        Object.keys(data.error).map(function (field) { return field + ': ' + data.error[field].join(' '); }).join(' • ');
+-                    $('#quickProductErrors').text(errors);
++                    FPSaleUX.errors(form, data.error);
+                     return;
+                 }
+                 sale.addProduct(data);
+@@ -829,16 +844,12 @@ $(function () {
+                 $('#myModalProduct').modal('hide');
+                 input_search_product.val('').focus();
+             },
+-            error: function () { $('#quickProductErrors').text('No se pudo crear el producto. Revise los datos y vuelva a intentar.'); },
++            error: function (xhr) {
++                FPSaleUX.errors(form, (xhr.responseJSON || {}).error || 'No se pudo confirmar el guardado. Conservamos tus datos; comprueba si el producto ya existe antes de repetir.', xhr.status);
++            },
+             complete: function () { button.prop('disabled', false); }
+         });
+     });
+-    $('input[name="payment_attachment"]').on('change', function () {
+-        var file = this.files[0];
+-        this.setCustomValidity(file && file.size > 10 * 1024 * 1024 ? 'El adjunto no debe superar 10 MB.' : '');
+-        this.reportValidity();
+-    });
+-
+     // Client
+ 
+     select_client.select2({
+@@ -875,13 +886,10 @@ $(function () {
+         });
+ 
+     $('.btnAddClient').on('click', function () {
+-        input_birthdate.datetimepicker('date', new Date());
+         $('#myModalClient').modal('show');
+     });
+ 
+-    $('#myModalClient').on('hidden.bs.modal', function () {
+-        fvClient.resetForm(true);
+-    });
++    // Closing a dialog preserves the draft. Reset only after a successful save.
+ 
+     $('input[name="dni"]').on('keypress', function (e) {
+         return validate_text_box({'event': e, 'type': 'numbers'});
+@@ -912,6 +920,7 @@ $(function () {
+     select_payment_type.on('change', function () {
+         var credit = $(this).val() === 'credito';
+         $('.credit-due-date').toggle(credit);
++        input_end_credit.prop('required', credit);
+         if (credit) fvSale.enableValidator('end_credit');
+         else fvSale.disableValidator('end_credit');
+     }).trigger('change');
+@@ -926,7 +935,7 @@ $(function () {
+     input_date_joined.on('change.datetimepicker', function (e) {
+         fvSale.revalidateField('date_joined');
+         input_end_credit.datetimepicker('minDate', e.date);
+-        input_end_credit.datetimepicker('date', e.date);
++        // Do not overwrite the customer's agreed due date when issue date changes.
+     });
+ 
+     input_end_credit.datetimepicker({
+diff --git a/core/pos/static/sale/admin/js/ux.js b/core/pos/static/sale/admin/js/ux.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..e94a26ddaab94ca2901916affee5535699d407cc
+--- /dev/null
++++ b/core/pos/static/sale/admin/js/ux.js
+@@ -0,0 +1,221 @@
++/* UI only. Field names, payloads, financial rules and endpoints remain unchanged. */
++(function (window, document) {
++    'use strict';
++    let errorSequence = 0;
++
++    function message(value) {
++        if (Array.isArray(value)) return value.map(message).join(' ');
++        if (value && typeof value === 'object') return Object.values(value).map(message).join(' ');
++        return value == null ? '' : String(value);
++    }
++
++    function clearField(field) {
++        if (!field) return;
++        const id = field.dataset.fpError;
++        if (id) {
++            const feedback = document.getElementById(id);
++            if (feedback) feedback.remove();
++            const descriptions = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(item => item && item !== id);
++            if (descriptions.length) field.setAttribute('aria-describedby', descriptions.join(' '));
++            else field.removeAttribute('aria-describedby');
++            delete field.dataset.fpError;
++        }
++        if (field.dataset.fpValidity) {
++            field.setCustomValidity('');
++            delete field.dataset.fpValidity;
++        }
++        field.removeAttribute('aria-invalid');
++        field.classList.remove('is-invalid');
++    }
++
++    function fieldError(field, text, nativeValidity) {
++        if (!field) return;
++        clearField(field);
++        if (!text) return;
++        const feedback = document.createElement('div');
++        feedback.id = 'fp-field-error-' + (++errorSequence);
++        feedback.className = 'invalid-feedback fp-field-error';
++        feedback.textContent = text;
++        const anchor = field.closest('.input-group') || field;
++        anchor.insertAdjacentElement('afterend', feedback);
++        field.dataset.fpError = feedback.id;
++        field.classList.add('is-invalid');
++        field.setAttribute('aria-invalid', 'true');
++        field.setAttribute('aria-describedby', [field.getAttribute('aria-describedby'), feedback.id].filter(Boolean).join(' '));
++        if (nativeValidity) {
++            field.setCustomValidity(text);
++            field.dataset.fpValidity = '1';
++        }
++    }
++
++    function errorBox(form) {
++        let box = form.querySelector('[role="alert"]');
++        if (!box) {
++            box = document.createElement('div');
++            box.className = 'fp-alert fp-alert-error';
++            box.setAttribute('role', 'alert');
++            box.tabIndex = -1;
++            (form.querySelector('.modal-body') || form).prepend(box);
++        }
++        return box;
++    }
++
++    function clearErrors(form) {
++        form.querySelectorAll('[data-fp-error]').forEach(clearField);
++        const box = errorBox(form);
++        box.hidden = true;
++        box.replaceChildren();
++    }
++
++    function errors(form, error, status) {
++        clearErrors(form);
++        const box = errorBox(form);
++        const title = document.createElement('strong');
++        title.textContent = status === 403 ? 'No tienes permiso para esta acción.' :
++            status === 409 ? 'Los datos de esta pestaña deben revisarse.' : 'Revisa los datos para continuar.';
++        box.append(title);
++        const list = document.createElement('ul');
++        const values = error && typeof error === 'object' && !Array.isArray(error) ? error : {'__all__': error};
++        Object.entries(values).forEach(([name, value]) => {
++            const text = message(value);
++            if (!text) return;
++            const field = Array.from(form.elements).find(element => element.name === name && element.type !== 'hidden');
++            if (field) fieldError(field, text, false);
++            const li = document.createElement('li');
++            if (field && field.id) {
++                const link = document.createElement('a');
++                link.href = '#' + field.id;
++                link.textContent = text;
++                link.addEventListener('click', function (event) { event.preventDefault(); field.focus(); });
++                li.append(link);
++            } else li.textContent = text;
++            list.append(li);
++        });
++        box.append(list);
++        if (status === 409) {
++            const reload = document.createElement('button');
++            reload.type = 'button';
++            reload.className = 'btn fp-btn-secondary';
++            reload.textContent = 'Recargar la página';
++            reload.addEventListener('click', function () {
++                if (window.confirm('Al recargar se perderán los datos sin guardar. Comprueba la empresa activa antes de volver a ingresar información.')) window.location.reload();
++            });
++            box.append(reload);
++        }
++        box.hidden = false;
++        box.focus();
++    }
++
++    function validateCredit(form) {
++        const condition = form.elements.namedItem('payment_type');
++        const due = form.elements.namedItem('end_credit');
++        const issued = form.elements.namedItem('date_joined');
++        if (!condition || !due) return true;
++        const credit = condition.value === 'credito';
++        due.required = credit;
++        clearField(due);
++        if (!credit) return true;
++        let error = '';
++        const date = due.value.trim();
++        if (!date) error = 'Indica el vencimiento del crédito.';
++        else if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0, 10) !== date) error = 'Ingresa una fecha válida en formato AAAA-MM-DD.';
++        else if (issued && /^\d{4}-\d{2}-\d{2}$/.test(issued.value) && date < issued.value) error = 'El vencimiento no puede ser anterior a la fecha de emisión.';
++        if (error) fieldError(due, error, true);
++        return !error;
++    }
++
++    function submit(args, form) {
++        if (form.dataset.fpBusy) return;
++        if (form.id === 'frmForm' && !validateCredit(form)) { form.reportValidity(); return; }
++        if (!form.reportValidity()) return;
++        const invoice = form.id === 'frmForm';
++        form.dataset.fpBusy = 'confirming';
++        function cancel() { delete form.dataset.fpBusy; }
++        function send() {
++            clearErrors(form);
++            form.dataset.fpBusy = 'sending';
++            form.setAttribute('aria-busy', 'true');
++            const buttons = Array.from(form.querySelectorAll('button[type="submit"]')).map(button => ({button, disabled: button.disabled}));
++            buttons.forEach(item => { item.button.disabled = true; });
++            const status = document.getElementById('fp-sale-status');
++            if (invoice && status) status.textContent = 'Enviando la factura. Espera la respuesta antes de volver a intentarlo.';
++            const csrf = form.querySelector('[name="csrfmiddlewaretoken"]');
++            window.jQuery.ajax({
++                url: window.location.pathname, type: 'POST', data: args.params,
++                processData: false, contentType: false, dataType: 'json',
++                headers: {'X-CSRFToken': csrf ? csrf.value : window.getCookie('csrftoken')},
++                success: function (data) {
++                    if (Object.prototype.hasOwnProperty.call(data, 'error')) {
++                        errors(form, data.errors || data.errores || data.error);
++                    } else if (args.success) args.success(data);
++                },
++                error: function (xhr) {
++                    const data = xhr.responseJSON || {};
++                    const fallback = xhr.status === 403 ? 'Solicita a tu administrador el acceso necesario.' :
++                        xhr.status === 409 ? 'Comprueba la empresa activa y recarga esta página.' :
++                        invoice ? 'No se pudo confirmar la respuesta. Conservamos lo escrito. Consulta la lista de facturas antes de repetir el envío.' :
++                        'No se pudo confirmar el guardado. Conservamos tus datos; comprueba si el registro ya existe antes de repetir.';
++                    errors(form, data.errors || data.errores || data.error || fallback, xhr.status);
++                },
++                complete: function () {
++                    delete form.dataset.fpBusy;
++                    form.removeAttribute('aria-busy');
++                    buttons.forEach(item => { item.button.disabled = item.disabled; });
++                    if (invoice && status) status.textContent = '';
++                }
++            });
++        }
++        if (invoice) window.dialog_action({title: 'Revisa antes de generar', content: 'Se enviarán los datos de esta factura. ¿Deseas continuar?', success: send, cancel: cancel});
++        else send();
++    }
++
++    document.addEventListener('DOMContentLoaded', function () {
++        const form = document.getElementById('frmForm');
++        if (!form || !form.classList.contains('fp-sale-form')) return;
++        const note = form.elements.namedItem('payment_note');
++        const attachment = form.elements.namedItem('payment_attachment');
++        const condition = form.elements.namedItem('payment_type');
++        // Preserve the historical value required by this backend, clarify its label.
++        Array.from(condition.options).forEach(option => {
++            if (option.value === 'efectivo') option.textContent = 'Contado';
++        });
++        function updateAttachment() {
++            clearField(attachment);
++            const file = attachment.files[0];
++            document.getElementById('fp-attachment-status').textContent = file ? file.name + ' · seleccionado, todavía no enviado.' : 'No has seleccionado un archivo.';
++            document.getElementById('fp-remove-attachment').hidden = !file;
++            let error = '';
++            if (file && file.size > 10 * 1024 * 1024) error = 'El archivo no debe superar 10 MB.';
++            else if (file && !/\.(pdf|jpe?g|png)$/i.test(file.name)) error = 'Selecciona un PDF, JPG o PNG.';
++            if (error) fieldError(attachment, error, true);
++        }
++        note.addEventListener('input', function () { document.getElementById('fp-note-count').textContent = note.value.length + ' / 300'; });
++        attachment.addEventListener('change', updateAttachment);
++        document.getElementById('fp-remove-attachment').addEventListener('click', function () { attachment.value = ''; updateAttachment(); attachment.focus(); });
++        document.addEventListener('invalid', function (event) {
++            if (event.target.closest('.fp-sale-form,.fp-dialog') && !event.target.dataset.fpError) fieldError(event.target, event.target.validationMessage, false);
++        }, true);
++        document.addEventListener('input', function (event) {
++            if (event.target.closest('.fp-sale-form,.fp-dialog') && event.target.name !== 'payment_attachment') clearField(event.target);
++        }, true);
++        window.jQuery(form).on('change', '[name="payment_type"],[name="end_credit"],[name="date_joined"]', function () {
++            validateCredit(form);
++            document.getElementById('fp-payment-guidance').textContent = form.elements.namedItem('payment_type').value === 'credito' ?
++                'Esta factura queda pendiente de pago. La promesa, la nota y el adjunto no registran un abono.' :
++                'La nota y el adjunto son opcionales. Si el pago está pendiente, selecciona Crédito e indica el vencimiento.';
++        });
++        window.jQuery('.fp-dialog').on('show.bs.modal', function () {
++            this.fpReturnFocus = document.activeElement;
++        }).on('shown.bs.modal', function () {
++            const first = this.querySelector('input:not([type="hidden"]),select,textarea');
++            if (first) first.focus();
++        }).on('hidden.bs.modal', function () {
++            if (this.fpReturnFocus && this.fpReturnFocus.isConnected) this.fpReturnFocus.focus();
++        });
++        window.jQuery('#tblProducts').on('draw.dt', function () {
++            const count = window.sale.detail.products.length;
++            document.getElementById('fp-product-count').textContent = count ? count + (count === 1 ? ' producto en el detalle' : ' productos en el detalle') : 'Sin productos todavía';
++        });
++    });
++    window.FPSaleUX = {errors, clearErrors, fieldError, clearField, validateCredit, submit};
++}(window, document));
+diff --git a/core/pos/templates/sale/admin/create.html b/core/pos/templates/sale/admin/create.html
+index 193f2ac58e562755f3cca4fdf57b620952370cbf..fa59828f66dddf78d63bb3a1826f6d047c7ac0a1 100644
+--- a/core/pos/templates/sale/admin/create.html
++++ b/core/pos/templates/sale/admin/create.html
+@@ -1,7 +1,10 @@
+ {% extends 'form.html' %}
+ {% load widget_tweaks %}
+ {% load static %}
++{% block form_class %}fp-sale-form{% endblock %}
+ {% block assets_form %}
++    <link rel="stylesheet" href="{% static 'css/facturaporaqui.css' %}">
++    <script src="{% static 'sale/admin/js/ux.js' %}"></script>
+     <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
+     <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
+     <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}">
+@@ -10,201 +13,82 @@
+     <script src="{% static 'lib/bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js' %}"></script>
+     <script src="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js' %}"></script>
+     <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
+-    <link rel="stylesheet" href="{% static 'sale/admin/css/form.css' %}">
++    <link rel="stylesheet" href="{% static 'sale/admin/css/experience.css' %}">
+     <script src="{% static 'sale/admin/js/form.js' %}"></script>
+ {% endblock %}
+ 
+ {% block form_fields %}
+-    <div class="sale-workspace">
+-    <h4 class="sale-section-title">Cliente y comprobante</h4>
+-    <div class="row">
+-        <div class="col-lg-4">
+-            <div class="form-group">
+-                <label>{{ form.client.label }}:</label>
+-                <div class="input-group input-group-search">
+-                    {{ form.client }}
+-                    <div class="input-group-append">
+-                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+-                            <i class="fas fa-tasks"></i>
+-                        </button>
+-                        <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+-                            <a class="dropdown-item btnAddClient">
+-                                <i class="fas fa-plus"></i> Crear cliente
+-                            </a>
+-                        </div>
+-                    </div>
+-                </div>
+-            </div>
+-        </div>
+-        <div class="col-lg-3">
+-            <div class="form-group">
+-                <label>{{ form.date_joined.label }}:</label>
+-                {{ form.date_joined }}
+-            </div>
+-        </div>
+-        <div class="col-lg-2">
+-            <div class="form-group">
+-                <label>{{ form.receipt.label }}:</label>
+-                {{ form.receipt }}
+-            </div>
+-        </div>
+-        <div class="col-lg-3">
+-            <div class="form-group">
+-                <label>{{ form.voucher_number.label }}:</label>
+-                {{ form.voucher_number }}
+-            </div>
+-        </div>
+-    </div>
+-    <div class="row content-electronic-billing">
+-        <div class="col-lg-2">
+-            <div class="form-group">
+-                <label>{{ form.create_electronic_invoice.label }}:</label><br>
+-                {{ form.create_electronic_invoice }}
+-            </div>
++<div class="fp-ui fp-sale sale-workspace">
++    <div class="fp-sale-intro"><p>Tu cliente, sus productos y los acuerdos de pago. Todo en el mismo lugar.</p><span class="fp-chip">Precio por factura · catálogo intacto</span></div>
++    <nav class="fp-steps" aria-label="Secciones de la factura">
++        <a href="#fp-cliente"><span>1</span> Cliente</a>
++        <a href="#fp-productos"><span>2</span> Productos</a>
++        <a href="#fp-pago"><span>3</span> Pago</a>
++        <a href="#fp-resumen"><span>4</span> Revisión</a>
++    </nav>
++    <div id="fp-sale-errors" class="fp-alert fp-alert-error" role="alert" tabindex="-1" hidden></div>
++    <p id="fp-sale-status" class="fp-status" role="status" aria-live="polite"></p>
++    <section id="fp-cliente" class="fp-section" aria-labelledby="fp-cliente-title">
++        <div class="fp-section-heading"><div><span class="fp-eyebrow">01 · Datos del comprobante</span><h2 id="fp-cliente-title">¿A quién facturamos?</h2></div><button type="button" class="btn fp-btn-secondary btnAddClient"><i class="fas fa-plus" aria-hidden="true"></i> Crear cliente</button></div>
++        <div class="fp-form-grid fp-client-grid">
++            <div class="form-group fp-span-2"><label for="{{ form.client.id_for_label }}">Cliente</label>{{ form.client }}<small class="fp-help">Busca por nombre o identificación. Puedes crear uno sin salir.</small></div>
++            <div class="form-group"><label for="{{ form.date_joined.id_for_label }}">Fecha de emisión</label>{{ form.date_joined }}</div>
++            <div class="form-group"><label for="{{ form.receipt.id_for_label }}">Tipo de comprobante</label>{{ form.receipt }}</div>
++            <div class="form-group"><label for="{{ form.voucher_number.id_for_label }}">Número del comprobante</label>{{ form.voucher_number }}<small class="fp-help">Asignado por el sistema.</small></div>
+         </div>
+-        <div class="col-lg-7">
+-            <div class="form-group">
+-                <label>{{ form.payment_method.label }}:</label>
+-                {{ form.payment_method }}
+-            </div>
++        <div class="content-electronic-billing fp-form-grid fp-electronic-grid">
++            <div class="form-group fp-check-field"><label for="{{ form.create_electronic_invoice.id_for_label }}">{{ form.create_electronic_invoice }} Crear factura electrónica</label></div>
++            <div class="form-group"><label for="{{ form.payment_method.id_for_label }}">Forma de pago del comprobante</label>{{ form.payment_method }}</div>
++            <div class="form-group"><label for="{{ form.time_limit.id_for_label }}">Plazo</label>{{ form.time_limit }}</div>
+         </div>
+-        <div class="col-lg-3">
+-            <div class="form-group">
+-                <label>{{ form.time_limit.label }}:</label>
+-                {{ form.time_limit }}
+-            </div>
+-        </div>
+-    </div>
+-    <section class="card p-3 sale-products">
+-        <h4 class="sale-section-title">Productos y servicios</h4>
+-        <p class="text-muted">Edite cantidad, precio sin IVA y descuento directamente en cada línea. El precio del catálogo se conserva.</p>
+-        {% if can_create_product %}<button type="button" class="btn btn-outline-primary btnAddProduct mb-3"><i class="fas fa-plus"></i> Crear producto</button>{% endif %}
+-        <div class="row">
+-            <div class="col-lg-12">
+-                <div class="form-group">
+-                    <label>Búsqueda de productos:</label>
+-                    <div class="input-group input-group-search">
+-                        <input type="text" class="form-control" aria-label="Buscar producto por nombre o código" autocomplete="off" name="search_product" placeholder="Ingrese el nombre de un producto">
+-                        <div class="input-group-append">
+-                            <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+-                                <i class="fas fa-tasks"></i>
+-                            </button>
+-                            <div class="dropdown-menu dropdown-menu-right" style="cursor: pointer;">
+-                                <a class="dropdown-item btnSearchProducts">
+-                                    <i class="fas fa-search"></i> Buscar productos
+-                                </a>
+-                                <a class="dropdown-item btnClearProducts">
+-                                    <i class="fas fa-times"></i> Limpiar búsqueda
+-                                </a>
+-                                <a class="dropdown-item btnRemoveAllProducts">
+-                                    <i class="fas fa-trash-alt"></i> Borrar todo
+-                                </a>
+-                            </div>
+-                        </div>
+-                    </div>
+-                </div>
+-            </div>
+-            <div class="col-lg-12">
+-                <table style="width:100%;" class="table table-bordered table-sm" id="tblProducts">
+-                    <thead>
+-                    <tr>
+-                        <th style="width: 5%;">Eliminar</th>
+-                        <th style="width: 5%;">Código</th>
+-                        <th style="width: 20%;">Producto</th>
+-                        <th style="width: 5%;">Stock</th>
+-                        <th style="width: 15%;">Cantidad</th>
+-                        <th style="width: 15%;">P./Unitario</th>
+-                        <th style="width: 15%;">Descuento (%)</th>
+-                        <th style="width: 15%;">Total</th>
+-                    </tr>
+-                    </thead>
+-                    <tbody>
+-                    </tbody>
+-                </table>
+-            </div>
+-        </div>
+-        <div class="row d-flex flex-row-reverse">
+-            <div class="col-lg-5">
+-                <table class="table table-bordered table-sm">
+-                    <tbody>
+-                    <tr>
+-                        <td><b>{{ form.subtotal_0.label|upper }}</b></td>
+-                        <td>{{ form.subtotal_0 }}</td>
+-                    </tr>
+-                    <tr>
+-                        <td><b>{{ form.subtotal_12.label|upper }} {{ company.iva|safe }}%</b></td>
+-                        <td>{{ form.subtotal_12 }}</td>
+-                    </tr>
+-                    <tr>
+-                        <td><b>{{ form.total_dscto.label|upper }}</b></td>
+-                        <td>{{ form.total_dscto }}</td>
+-                    </tr>
+-                    <tr>
+-                        <td><b>{{ form.iva.label|upper }}</b></td>
+-                        <td>{{ form.iva }}</td>
+-                    </tr>
+-                    <tr>
+-                        <td><b>{{ form.total_iva.label|upper }}</b></td>
+-                        <td>{{ form.total_iva }}</td>
+-                    </tr>
+-                    <tr>
+-                        <td><b>{{ form.total.label|upper }}</b></td>
+-                        <td>{{ form.total }}</td>
+-                    </tr>
+-                    <tr>
+-                        <td><b>{{ form.payment_type.label|upper }}</b></td>
+-                        <td>
+-                            <div class="form-group mb-0">
+-                                {{ form.payment_type }}
+-                            </div>
+-                        </td>
+-                    </tr>
+-                    <tr class="credit-due-date" style="display: none;">
+-                        <td><b>{{ form.end_credit.label|upper }}</b></td>
+-                        <td>
+-                            <div class="form-group mb-0">
+-                                {{ form.end_credit }}
+-                            </div>
+-                        </td>
+-                    </tr>
+-                    </tbody>
+-                </table>
+-            </div>
++    </section>
++    <section id="fp-productos" class="fp-section sale-products" aria-labelledby="fp-productos-title">
++        <div class="fp-section-heading"><div><span class="fp-eyebrow">02 · Detalle</span><h2 id="fp-productos-title">Productos y servicios</h2></div>{% if can_create_product %}<button type="button" class="btn fp-btn-secondary btnAddProduct"><i class="fas fa-plus" aria-hidden="true"></i> Crear producto</button>{% endif %}</div>
++        <p class="fp-help">Ajusta el precio de esta factura sin modificar el catálogo. Los precios del detalle no incluyen IVA.</p>
++        <div class="form-group fp-product-search"><label for="fp-product-search">Buscar producto</label>
++            <div class="input-group"><input id="fp-product-search" type="search" class="form-control" autocomplete="off" name="search_product" placeholder="Nombre o código del producto" aria-describedby="fp-product-search-help"><div class="input-group-append"><button class="btn fp-btn-secondary btnSearchProducts" type="button" aria-label="Abrir catálogo de productos"><i class="fas fa-search" aria-hidden="true"></i> <span>Catálogo</span></button></div></div>
++            <small id="fp-product-search-help" class="fp-help">Escribe para buscar o escanea el código y presiona Enter.</small>
+         </div>
++        <div class="fp-table-region" role="region" aria-label="Detalle de productos" tabindex="0">
++        <table class="table table-sm fp-lines" id="tblProducts" style="width:100%">
++            <caption class="sr-only">Productos de la factura: cantidad, precio sin IVA, descuento y total sin IVA.</caption>
++            <thead><tr><th scope="col">Quitar</th><th scope="col">Código</th><th scope="col">Producto</th><th scope="col">Stock</th><th scope="col">Cantidad</th><th scope="col">Precio sin IVA</th><th scope="col">Desc. %</th><th scope="col">Total sin IVA</th></tr></thead><tbody></tbody>
++        </table></div>
++        <div class="fp-detail-tools"><small id="fp-product-count" role="status">Sin productos todavía</small><button type="button" class="btn fp-btn-text btnRemoveAllProducts">Vaciar detalle</button></div>
+     </section>
+-    <section class="sale-payment card p-3">
+-        <h4 class="sale-section-title">Detalle del pago</h4>
+-        <p class="text-muted">Anote cómo se pagará esta factura o adjunte un respaldo. Estos datos no registran un cobro. Para pagos pendientes, seleccione crédito e indique el vencimiento.</p>
+-        <div class="row">
+-            <div class="col-md-7 form-group">
+-                <label for="payment_note">Nota o condiciones de pago (opcional)</label>
+-                <textarea class="form-control" id="payment_note" name="payment_note" rows="3" maxlength="300" placeholder="Ej.: transferencia bancaria a 15 días; anticipo acordado y saldo pendiente."></textarea>
+-            </div>
+-            <div class="col-md-5 form-group">
+-                <label for="payment_attachment">Archivo adjunto (opcional)</label>
+-                <input class="form-control-file" type="file" id="payment_attachment" name="payment_attachment" accept=".pdf,.jpg,.jpeg,.png" aria-describedby="payment_attachment_help">
+-                <small id="payment_attachment_help" class="form-text text-muted">PDF, JPG o PNG. Máximo 10 MB. Disponible para usuarios con permiso de consultar ventas.</small>
+-            </div>
++    <div class="fp-sale-bottom">
++    <section id="fp-pago" class="fp-section sale-payment" aria-labelledby="fp-pago-title">
++        <span class="fp-eyebrow">03 · Acuerdos y respaldo</span><h2 id="fp-pago-title">Detalle del pago</h2>
++        <div class="fp-form-grid">
++            <div class="form-group"><label for="{{ form.payment_type.id_for_label }}">Condición de pago</label>{{ form.payment_type }}</div>
++            <div class="form-group credit-due-date" style="display:none"><label for="{{ form.end_credit.id_for_label }}">Vencimiento del crédito</label>{{ form.end_credit }}<small class="fp-help">Selecciona la fecha acordada con tu cliente.</small></div>
+         </div>
++        <div class="fp-callout"><strong>Un acuerdo de pago no confirma un cobro.</strong><p id="fp-payment-guidance">La nota y el adjunto son opcionales. Si el pago está pendiente, selecciona Crédito e indica el vencimiento.</p></div>
++        <div class="form-group"><label for="payment_note">Nota o condiciones de pago <span class="fp-optional">(opcional)</span></label><textarea class="form-control" id="payment_note" name="payment_note" rows="3" maxlength="300" aria-describedby="fp-note-help fp-note-count" placeholder="Ej.: el cliente se compromete a pagar el 18 de noviembre."></textarea><div class="fp-field-footer"><small id="fp-note-help">La nota se incluye como condiciones de pago del comprobante. No escribas datos sensibles.</small><small id="fp-note-count">0 / 300</small></div></div>
++        <div class="form-group"><label for="payment_attachment">Comprobante de pago <span class="fp-optional">(opcional)</span></label><div class="fp-upload"><input type="file" id="payment_attachment" name="payment_attachment" accept=".pdf,.jpg,.jpeg,.png" aria-describedby="payment_attachment_help fp-attachment-status"><small id="payment_attachment_help">PDF, JPG o PNG · hasta 10 MB</small><p id="fp-attachment-status" role="status">No has seleccionado un archivo.</p><button type="button" class="btn fp-btn-text" id="fp-remove-attachment" hidden>Quitar archivo seleccionado</button></div></div>
++    </section>
++    <section id="fp-resumen" class="fp-section fp-totals" aria-labelledby="fp-resumen-title">
++        <span class="fp-eyebrow">04 · Antes de guardar</span><h2 id="fp-resumen-title">Revisa tu factura</h2>
++        <div class="fp-total-row"><label for="{{ form.subtotal_0.id_for_label }}">Subtotal 0 %</label>{{ form.subtotal_0 }}</div>
++        <div class="fp-total-row"><label for="{{ form.subtotal_12.id_for_label }}">Subtotal con IVA</label>{{ form.subtotal_12 }}</div>
++        <div class="fp-total-row"><label for="{{ form.total_dscto.id_for_label }}">Descuento</label>{{ form.total_dscto }}</div>
++        <div class="fp-total-row"><label for="{{ form.iva.id_for_label }}">Tarifa de IVA (%)</label>{{ form.iva }}</div>
++        <div class="fp-total-row"><label for="{{ form.total_iva.id_for_label }}">Valor del IVA</label>{{ form.total_iva }}</div>
++        <div class="fp-total-row fp-total-final"><label for="{{ form.total.id_for_label }}">Total USD</label>{{ form.total }}</div>
++        <p class="fp-help">Comprueba cliente, detalle y condición de pago antes de continuar.</p>
++        <button type="button" class="btn fp-btn-text btnAdditionalInfo"><i class="fas fa-plus" aria-hidden="true"></i> Información adicional</button>
+     </section>
+     </div>
++</div>
+ {% endblock %}
+ 
+ {% block buttons %}
+-    <button type="submit" class="btn btn-primary btn-flat">
+-        <i class="fas fa-file-invoice-dollar"></i> Generar Venta
+-    </button>
+-    <a class="btn btn-success btn-flat btnAdditionalInfo">
+-        <i class="fas fa-folder-plus"></i> Agregar información adicional a la factura
+-    </a>
+-    <a href="{{ list_url }}" class="btn btn-danger btn-flat">
+-        <i class="fas fa-times"></i> Cancelar
+-    </a>
++    <div class="fp-form-actions"><p>Revisa los datos antes de generar el comprobante.</p><a href="{{ list_url }}" class="btn fp-btn-secondary">Cancelar</a><button type="submit" class="btn fp-btn-primary"><i class="fas fa-file-invoice" aria-hidden="true"></i> Generar comprobante</button></div>
+ {% endblock %}
+ 
+ {% block content_form_before %}
+     {% if can_create_product %}
+-    <div id="myModalProduct" tabindex="-1" class="modal fade" role="dialog" aria-labelledby="quickProductTitle">
++    <div id="myModalProduct" tabindex="-1" class="modal fade fp-dialog" role="dialog" aria-labelledby="quickProductTitle">
+         <div class="modal-dialog modal-lg"><div class="modal-content">
+             <form id="frmQuickProduct" method="post" autocomplete="off">
+                 {% csrf_token %}
+@@ -213,7 +97,7 @@
+                     <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">&times;</button>
+                 </div>
+                 <div class="modal-body">
+-                    <div id="quickProductErrors" class="text-danger mb-3" role="alert"></div>
++                    <div id="quickProductErrors" class="fp-alert fp-alert-error" role="alert" tabindex="-1" hidden></div>
+                     <p class="text-muted">Se guardará en el catálogo al pulsar el botón. La factura permanece abierta.</p>
+                     <div class="row">
+                     {% for field in frmQuickProduct %}
+@@ -227,14 +111,14 @@
+     </div>
+     {% endif %}
+ 
+-    <div id="myModalSearchProducts" tabindex="-1" class="modal fade" role="dialog">
++    <div id="myModalSearchProducts" tabindex="-1" class="modal fade fp-dialog" role="dialog" aria-labelledby="fp-catalog-title">
+         <div class="modal-dialog modal-xl">
+             <div class="modal-content">
+                 <div class="modal-header">
+-                    <h5 class="modal-title font-weight-bold">
++                    <h5 id="fp-catalog-title" class="modal-title font-weight-bold">
+                         <i class="fa fa-search"></i> Búsqueda de productos
+                     </h5>
+-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
++                    <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                         <span aria-hidden="true">&times;</span>
+                     </button>
+                 </div>
+@@ -259,15 +143,16 @@
+             </div>
+         </div>
+     </div>
+-    <div id="myModalClient" tabindex="-2" class="modal fade" role="dialog">
++    <div id="myModalClient" tabindex="-1" class="modal fade fp-dialog" role="dialog" aria-labelledby="fp-client-title">
+         <form class="form" id="frmClient" method="POST" autocomplete="off">
++            {% csrf_token %}
+             <div class="modal-dialog">
+                 <div class="modal-content">
+                     <div class="modal-header">
+-                        <h5 class="modal-title font-weight-bold">
+-                            <i class="fa fa-plus"></i> Nuevo registro de un cliente
++                        <h5 id="fp-client-title" class="modal-title font-weight-bold">
++                            <i class="fa fa-plus" aria-hidden="true"></i> Crear cliente
+                         </h5>
+-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
++                        <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                             <span aria-hidden="true">&times;</span>
+                         </button>
+                     </div>
+@@ -275,13 +160,13 @@
+                         <div class="container-fluid">
+                             {% for field in frmUser.visible_fields %}
+                                 <div class="form-group">
+-                                    <label>{{ field.label }}:</label>
++                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                     {{ field }}
+                                 </div>
+                             {% endfor %}
+                             {% for field in frmClient.visible_fields %}
+                                 <div class="form-group">
+-                                    <label>{{ field.label }}:</label>
++                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                     {{ field }}
+                                 </div>
+                             {% endfor %}
+@@ -297,14 +182,14 @@
+         </form>
+ 
+     </div>
+-    <div id="myModalAdditionalInfo" tabindex="-3" class="modal fade" role="dialog">
++    <div id="myModalAdditionalInfo" tabindex="-1" class="modal fade fp-dialog" role="dialog" aria-labelledby="fp-additional-title">
+         <div class="modal-dialog modal-lg">
+             <div class="modal-content">
+                 <div class="modal-header">
+-                    <h5 class="modal-title font-weight-bold">
+-                        <i class="fas fa-folder-plus"></i> Información adicional
++                    <h5 id="fp-additional-title" class="modal-title font-weight-bold">
++                        <i class="fas fa-folder-plus" aria-hidden="true"></i> Información adicional
+                     </h5>
+-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
++                    <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                         <span aria-hidden="true">&times;</span>
+                     </button>
+                 </div>
+@@ -324,12 +209,12 @@
+                     </div>
+                 </div>
+                 <div class="modal-footer justify-content-center">
+-                    <a class="btn btn-primary btn-flat btnCreateAdditionalInfo">
+-                        <i class="fas fa-plus"></i> Nuevo campo
+-                    </a>
+-                    <a class="btn btn-danger btn-flat btnRemoveAdditionalInfo">
+-                        <i class="fas fa-trash"></i> Eliminar todos los campos
+-                    </a>
++                    <button type="button" class="btn fp-btn-secondary btnCreateAdditionalInfo">
++                        <i class="fas fa-plus" aria-hidden="true"></i> Nuevo campo
++                    </button>
++                    <button type="button" class="btn fp-btn-text btnRemoveAdditionalInfo">
++                        <i class="fas fa-trash" aria-hidden="true"></i> Eliminar todos los campos
++                    </button>
+                 </div>
+             </div>
+         </div>
+diff --git a/static/css/facturaporaqui.css b/static/css/facturaporaqui.css
+new file mode 100644
+index 0000000000000000000000000000000000000000..ac9aee678a08b26092a4ac96a87d8e16bf835480
+--- /dev/null
++++ b/static/css/facturaporaqui.css
+@@ -0,0 +1,13 @@
++/* FacturaPorAquí: shared primitives, scoped to fp-* components. */
++:root{--fp-ink:#163b50;--fp-muted:#526975;--fp-coral:#ca462c;--fp-coral-dark:#aa3822;--fp-sky:#44badd;--fp-tint:#e5f1f6;--fp-line:#d7e3e9;--fp-bg:#f5f8fa;--fp-success:#23624b;--fp-warning:#775112;--fp-error:#a32f2c;--fp-radius:14px}
++.fp-ui{color:var(--fp-ink);font:400 16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.fp-ui *{box-sizing:border-box}.fp-ui h1,.fp-ui h2,.fp-ui h3{color:var(--fp-ink);line-height:1.2;letter-spacing:-.02em}.fp-ui h1{font-size:clamp(1.6rem,3vw,2.1rem)}.fp-ui h2{font-size:1.25rem;margin:4px 0 14px}.fp-ui h3{font-size:1.05rem}.fp-ui p{margin:0 0 12px}.fp-ui a{color:#225f79}.fp-ui [hidden],.fp-dialog [hidden]{display:none!important}
++.fp-ui :focus-visible,.fp-dialog :focus-visible,.fp-form-actions :focus-visible{outline:3px solid #1b718e!important;outline-offset:3px!important;box-shadow:none!important}.fp-ui button,.fp-ui input,.fp-ui select,.fp-ui textarea{font:inherit}.fp-ui button{cursor:pointer}.fp-ui button:disabled,.fp-ui [aria-disabled=true]{cursor:not-allowed;opacity:.7}
++.fp-btn-primary,.fp-btn-secondary,.fp-btn-text{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border-radius:8px;padding:9px 16px;font-size:.94rem;font-weight:600;text-decoration:none;line-height:1.35;border:1px solid transparent;white-space:normal}.fp-btn-primary{background:var(--fp-coral);color:#fff!important;border-color:var(--fp-coral)}.fp-btn-primary:hover{background:var(--fp-coral-dark);border-color:var(--fp-coral-dark)}.fp-btn-secondary{color:var(--fp-ink)!important;background:#fff;border-color:#9aafbb}.fp-btn-secondary:hover{background:var(--fp-tint);border-color:var(--fp-ink)}.fp-btn-text{color:#225f79!important;background:transparent;padding-inline:8px}.fp-btn-text:hover{text-decoration:underline;background:#f1f7fa}
++.fp-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid #c6dbe5;border-radius:6px;color:var(--fp-ink);background:#eff7fa;font-size:.78rem;font-weight:650;line-height:1.5}.fp-chip-warning{color:var(--fp-warning);background:#fff7e7;border-color:#e6cc99}.fp-chip-success{color:var(--fp-success);background:#edf7f1;border-color:#b7d7c5}.fp-chip-muted{background:#f1f3f5;color:#52616b;border-color:#d4dde2}.fp-chip-error{color:var(--fp-error);background:#fff1ef;border-color:#e9c1ba}
++.fp-section{background:#fff;border:1px solid var(--fp-line);border-radius:var(--fp-radius);padding:24px;margin:0 0 20px;min-width:0}.fp-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}.fp-section-heading h2{margin-bottom:4px}.fp-eyebrow{font-size:.73rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:#526975}.fp-help,.fp-optional{font-size:.84rem;color:var(--fp-muted)}.fp-help{display:block;margin:6px 0 12px}.fp-optional{font-weight:400}
++.fp-alert,.fp-callout{padding:14px 16px;border-radius:8px;background:#edf5f9;border:1px solid #c7dce6;color:var(--fp-ink);margin-bottom:18px;overflow-wrap:anywhere}.fp-alert p:last-child,.fp-callout p:last-child{margin-bottom:0}.fp-alert-error{background:#fff4f2;color:#832722;border-color:#e8bbb1}.fp-alert-warning{background:#fff8e9;color:#68480d;border-color:#e7cea3}.fp-callout{border-left:3px solid #2f89a8;font-size:.9rem}.fp-callout strong{display:block;margin-bottom:4px}.fp-alert ul{margin:8px 0 0;padding-left:20px}.fp-status:empty{display:none}.fp-status{color:var(--fp-muted);font-size:.9rem}
++.fp-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.fp-span-2{grid-column:span 2}.fp-ui .form-group{margin-bottom:14px;min-width:0}.fp-ui label{display:block;font-size:.9rem;font-weight:600;margin:0 0 7px}.fp-ui .form-control,.fp-ui select,.fp-ui textarea,.fp-dialog .form-control{border:1px solid #a7bac6;border-radius:8px;min-height:44px;color:var(--fp-ink);background:#fff;font-size:1rem;max-width:100%}.fp-ui .form-control:disabled{color:#465f6d;background:#f1f6f8;opacity:1}.fp-ui textarea{resize:vertical}.fp-field-error,.fp-ui .invalid-feedback{display:block;font-size:.84rem;color:var(--fp-error);margin-top:6px}.fp-ui [aria-invalid=true],.fp-dialog [aria-invalid=true]{border-color:var(--fp-error)!important}.fp-field-footer{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font-size:.8rem;color:var(--fp-muted);margin-top:6px}.fp-field-footer small:last-child{white-space:nowrap}
++.fp-table-region{max-width:100%;overflow:auto;border-radius:8px;position:relative}.fp-ui table{border-collapse:collapse;width:100%;font-size:.9rem}.fp-ui th{text-align:left;font-size:.78rem;color:#425f6f;background:#eff5f8;font-weight:650;padding:12px 14px}.fp-ui td{padding:14px;border-bottom:1px solid var(--fp-line);vertical-align:middle}.fp-numeric{text-align:right!important;font-variant-numeric:tabular-nums;white-space:nowrap}.fp-ui caption{color:var(--fp-muted);text-align:left;padding:10px 0}
++.fp-empty{padding:32px 20px;text-align:center;color:var(--fp-muted)}.fp-empty strong{display:block;color:var(--fp-ink);font-size:1.06rem;margin:10px 0}.fp-empty p{max-width:480px;margin:0 auto 16px}.fp-link{color:#225f79;text-decoration:underline;text-underline-offset:3px}.fp-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
++@media(max-width:767px){.fp-section{padding:18px 16px}.fp-section-heading{align-items:flex-start;flex-wrap:wrap}.fp-form-grid{grid-template-columns:1fr;gap:8px}.fp-span-2{grid-column:auto}.fp-ui h2{font-size:1.15rem}}
++@media(prefers-reduced-motion:reduce){.fp-ui *,.fp-dialog *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+diff --git a/static/img/brand/isotipo-pie.png b/static/img/brand/isotipo-pie.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..8779993853f886448f2dee57b88d025905901a96
+GIT binary patch
+literal 14737
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/templates/base.html b/templates/base.html
+index 68603aa4af6abd70a80e6ae2c1cc35415a0fcb6f..c624c7d355f5dc55610269e97c5c45e8fd9e169d 100644
+--- a/templates/base.html
++++ b/templates/base.html
+@@ -1,13 +1,13 @@
+ {% load static %}
+ <!DOCTYPE html>
+-<html lang="en">
++<html lang="es">
+ <head>
+     <title>{{ title }}</title>
+     <meta charset="utf-8">
+     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+     <meta name="description" content="">
+     <meta name="author" content="{{ dashboard.author }}">
+-    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
++    <meta content="width=device-width, initial-scale=1" name="viewport">
+     <link rel="shortcut icon" href="{{ dashboard.get_image }}"/>
+     <!--CSS-->
+     <link rel="stylesheet" href="{% static 'lib/bootstrap-4.6.0/css/bootstrap.min.css' %}"/>
+@@ -41,4 +41,4 @@
+ {% endblock %}
+ <!--Javascript-->
+ <script src="{% static 'js/main.js' %}"></script>
+-</html>
+\ No newline at end of file
++</html>
+diff --git a/templates/form.html b/templates/form.html
+index 161e249507a0a8d8475ee08d8646ad873925ecee..8f9866cfdcfa2c4e7c7d90044c65d575c09ca232 100644
+--- a/templates/form.html
++++ b/templates/form.html
+@@ -13,7 +13,7 @@
+ {% endblock %}
+ 
+ {% block content %}
+-    <form class="form" method="post" action="." enctype="multipart/form-data" id="frmForm" data-url="{{ list_url }}" autocomplete="off">
++    <form class="form {% block form_class %}{% endblock %}" method="post" action="." enctype="multipart/form-data" id="frmForm" data-url="{{ list_url }}" autocomplete="off">
+         <div class="card {{ dashboard.card }}">
+             <div class="card-header">
+                 <h3 class="card-title">

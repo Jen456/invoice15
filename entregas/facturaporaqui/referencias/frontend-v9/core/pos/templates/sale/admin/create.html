@@ -1,0 +1,232 @@
+{% extends 'form.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% block form_class %}fp-sale-form{% endblock %}
+{% block assets_form %}
+    <link rel="stylesheet" href="{% static 'css/facturaporaqui.css' %}">
+    <script src="{% static 'sale/admin/js/ux.js' %}"></script>
+    <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
+    <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}">
+    <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
+    <link rel="stylesheet" href="{% static 'lib/bootstrap-touchspin-4.2.5/css/jquery.bootstrap-touchspin.css' %}"/>
+    <script src="{% static 'lib/bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js' %}"></script>
+    <script src="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
+    <link rel="stylesheet" href="{% static 'sale/admin/css/experience.css' %}">
+    <script src="{% static 'sale/admin/js/form.js' %}"></script>
+{% endblock %}
+
+{% block form_fields %}
+<div class="fp-ui fp-sale sale-workspace">
+    <div class="fp-sale-intro"><p>Tu cliente, sus productos y los acuerdos de pago. Todo en el mismo lugar.</p><span class="fp-chip">Precio por factura · catálogo intacto</span></div>
+    <nav class="fp-steps" aria-label="Secciones de la factura">
+        <a href="#fp-cliente"><span>1</span> Cliente</a>
+        <a href="#fp-productos"><span>2</span> Productos</a>
+        <a href="#fp-pago"><span>3</span> Pago</a>
+        <a href="#fp-resumen"><span>4</span> Revisión</a>
+    </nav>
+    <div id="fp-sale-errors" class="fp-alert fp-alert-error" role="alert" tabindex="-1" hidden></div>
+    <p id="fp-sale-status" class="fp-status" role="status" aria-live="polite"></p>
+    <section id="fp-cliente" class="fp-section" aria-labelledby="fp-cliente-title">
+        <div class="fp-section-heading"><div><span class="fp-eyebrow">01 · Datos del comprobante</span><h2 id="fp-cliente-title">¿A quién facturamos?</h2></div><button type="button" class="btn fp-btn-secondary btnAddClient"><i class="fas fa-plus" aria-hidden="true"></i> Crear cliente</button></div>
+        <div class="fp-form-grid fp-client-grid">
+            <div class="form-group fp-span-2"><label for="{{ form.client.id_for_label }}">Cliente</label>{{ form.client }}<small class="fp-help">Busca por nombre o identificación. Puedes crear uno sin salir.</small></div>
+            <div class="form-group"><label for="{{ form.date_joined.id_for_label }}">Fecha de emisión</label>{{ form.date_joined }}</div>
+            <div class="form-group"><label for="{{ form.receipt.id_for_label }}">Tipo de comprobante</label>{{ form.receipt }}</div>
+            <div class="form-group"><label for="{{ form.voucher_number.id_for_label }}">Número del comprobante</label>{{ form.voucher_number }}<small class="fp-help">Asignado por el sistema.</small></div>
+        </div>
+        <div class="content-electronic-billing fp-form-grid fp-electronic-grid">
+            <div class="form-group fp-check-field"><label for="{{ form.create_electronic_invoice.id_for_label }}">{{ form.create_electronic_invoice }} Crear factura electrónica</label></div>
+            <div class="form-group"><label for="{{ form.payment_method.id_for_label }}">Forma de pago del comprobante</label>{{ form.payment_method }}</div>
+            <div class="form-group"><label for="{{ form.time_limit.id_for_label }}">Plazo</label>{{ form.time_limit }}</div>
+        </div>
+    </section>
+    <section id="fp-productos" class="fp-section sale-products" aria-labelledby="fp-productos-title">
+        <div class="fp-section-heading"><div><span class="fp-eyebrow">02 · Detalle</span><h2 id="fp-productos-title">Productos y servicios</h2></div>{% if can_create_product %}<button type="button" class="btn fp-btn-secondary btnAddProduct"><i class="fas fa-plus" aria-hidden="true"></i> Crear producto</button>{% endif %}</div>
+        <p class="fp-help">Ajusta el precio de esta factura sin modificar el catálogo. Los precios del detalle no incluyen IVA.</p>
+        <div class="form-group fp-product-search"><label for="fp-product-search">Buscar producto</label>
+            <div class="input-group"><input id="fp-product-search" type="search" class="form-control" autocomplete="off" name="search_product" placeholder="Nombre o código del producto" aria-describedby="fp-product-search-help"><div class="input-group-append"><button class="btn fp-btn-secondary btnSearchProducts" type="button" aria-label="Abrir catálogo de productos"><i class="fas fa-search" aria-hidden="true"></i> <span>Catálogo</span></button></div></div>
+            <small id="fp-product-search-help" class="fp-help">Escribe para buscar o escanea el código y presiona Enter.</small>
+        </div>
+        <div class="fp-table-region" role="region" aria-label="Detalle de productos" tabindex="0">
+        <table class="table table-sm fp-lines" id="tblProducts" style="width:100%">
+            <caption class="sr-only">Productos de la factura: cantidad, precio sin IVA, descuento y total sin IVA.</caption>
+            <thead><tr><th scope="col">Quitar</th><th scope="col">Código</th><th scope="col">Producto</th><th scope="col">Stock</th><th scope="col">Cantidad</th><th scope="col">Precio sin IVA</th><th scope="col">Desc. %</th><th scope="col">Total sin IVA</th></tr></thead><tbody></tbody>
+        </table></div>
+        <div class="fp-detail-tools"><small id="fp-product-count" role="status">Sin productos todavía</small><button type="button" class="btn fp-btn-text btnRemoveAllProducts">Vaciar detalle</button></div>
+    </section>
+    <div class="fp-sale-bottom">
+    <section id="fp-pago" class="fp-section sale-payment" aria-labelledby="fp-pago-title">
+        <span class="fp-eyebrow">03 · Acuerdos y respaldo</span><h2 id="fp-pago-title">Detalle del pago</h2>
+        <div class="fp-form-grid">
+            <div class="form-group"><label for="{{ form.payment_type.id_for_label }}">Condición de pago</label>{{ form.payment_type }}</div>
+            <div class="form-group credit-due-date" style="display:none"><label for="{{ form.end_credit.id_for_label }}">Vencimiento del crédito</label>{{ form.end_credit }}<small class="fp-help">Selecciona la fecha acordada con tu cliente.</small></div>
+        </div>
+        <div class="fp-callout"><strong>Un acuerdo de pago no confirma un cobro.</strong><p id="fp-payment-guidance">La nota y el adjunto son opcionales. Si el pago está pendiente, selecciona Crédito e indica el vencimiento.</p></div>
+        <div class="form-group"><label for="payment_note">Nota o condiciones de pago <span class="fp-optional">(opcional)</span></label><textarea class="form-control" id="payment_note" name="payment_note" rows="3" maxlength="300" aria-describedby="fp-note-help fp-note-count" placeholder="Ej.: el cliente se compromete a pagar el 18 de noviembre."></textarea><div class="fp-field-footer"><small id="fp-note-help">La nota se incluye como condiciones de pago del comprobante. No escribas datos sensibles.</small><small id="fp-note-count">0 / 300</small></div></div>
+        <div class="form-group"><label for="payment_attachment">Comprobante de pago <span class="fp-optional">(opcional)</span></label><div class="fp-upload"><input type="file" id="payment_attachment" name="payment_attachment" accept=".pdf,.jpg,.jpeg,.png" aria-describedby="payment_attachment_help fp-attachment-status"><small id="payment_attachment_help">PDF, JPG o PNG · hasta 10 MB</small><p id="fp-attachment-status" role="status">No has seleccionado un archivo.</p><button type="button" class="btn fp-btn-text" id="fp-remove-attachment" hidden>Quitar archivo seleccionado</button></div></div>
+    </section>
+    <section id="fp-resumen" class="fp-section fp-totals" aria-labelledby="fp-resumen-title">
+        <span class="fp-eyebrow">04 · Antes de guardar</span><h2 id="fp-resumen-title">Revisa tu factura</h2>
+        <div class="fp-total-row"><label for="{{ form.subtotal_0.id_for_label }}">Subtotal 0 %</label>{{ form.subtotal_0 }}</div>
+        <div class="fp-total-row"><label for="{{ form.subtotal_12.id_for_label }}">Subtotal con IVA</label>{{ form.subtotal_12 }}</div>
+        <div class="fp-total-row"><label for="{{ form.total_dscto.id_for_label }}">Descuento</label>{{ form.total_dscto }}</div>
+        <div class="fp-total-row"><label for="{{ form.iva.id_for_label }}">Tarifa de IVA (%)</label>{{ form.iva }}</div>
+        <div class="fp-total-row"><label for="{{ form.total_iva.id_for_label }}">Valor del IVA</label>{{ form.total_iva }}</div>
+        <div class="fp-total-row fp-total-final"><label for="{{ form.total.id_for_label }}">Total USD</label>{{ form.total }}</div>
+        <p class="fp-help">Comprueba cliente, detalle y condición de pago antes de continuar.</p>
+        <button type="button" class="btn fp-btn-text btnAdditionalInfo"><i class="fas fa-plus" aria-hidden="true"></i> Información adicional</button>
+    </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block buttons %}
+    <div class="fp-form-actions"><p>Revisa los datos antes de generar el comprobante.</p><a href="{{ list_url }}" class="btn fp-btn-secondary">Cancelar</a><button type="submit" class="btn fp-btn-primary"><i class="fas fa-file-invoice" aria-hidden="true"></i> Generar comprobante</button></div>
+{% endblock %}
+
+{% block content_form_before %}
+    {% if can_create_product %}
+    <div id="myModalProduct" tabindex="-1" class="modal fade fp-dialog" role="dialog" aria-labelledby="quickProductTitle">
+        <div class="modal-dialog modal-lg"><div class="modal-content">
+            <form id="frmQuickProduct" method="post" autocomplete="off">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 id="quickProductTitle" class="modal-title">Crear producto y agregar a la factura</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="quickProductErrors" class="fp-alert fp-alert-error" role="alert" tabindex="-1" hidden></div>
+                    <p class="text-muted">Se guardará en el catálogo al pulsar el botón. La factura permanece abierta.</p>
+                    <div class="row">
+                    {% for field in frmQuickProduct %}
+                        <div class="col-md-6 form-group"><label for="{{ field.id_for_label }}">{{ field.label }}</label><br>{{ field }}</div>
+                    {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Guardar y agregar</button></div>
+            </form>
+        </div></div>
+    </div>
+    {% endif %}
+
+    <div id="myModalSearchProducts" tabindex="-1" class="modal fade fp-dialog" role="dialog" aria-labelledby="fp-catalog-title">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="fp-catalog-title" class="modal-title font-weight-bold">
+                        <i class="fa fa-search"></i> Búsqueda de productos
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <table style="width:100%;" class="table table-bordered table-sm" id="tblSearchProducts">
+                            <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>P./Unitario</th>
+                                <th>P./Promoción</th>
+                                <th>Stock</th>
+                                <th>Agregar</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="myModalClient" tabindex="-1" class="modal fade fp-dialog" role="dialog" aria-labelledby="fp-client-title">
+        <form class="form" id="frmClient" method="POST" autocomplete="off">
+            {% csrf_token %}
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 id="fp-client-title" class="modal-title font-weight-bold">
+                            <i class="fa fa-plus" aria-hidden="true"></i> Crear cliente
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="container-fluid">
+                            {% for field in frmUser.visible_fields %}
+                                <div class="form-group">
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    {{ field }}
+                                </div>
+                            {% endfor %}
+                            {% for field in frmClient.visible_fields %}
+                                <div class="form-group">
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    {{ field }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary btn-flat btn-block">
+                            <i class="fas fa-save"></i> Guardar registro
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+    </div>
+    <div id="myModalAdditionalInfo" tabindex="-1" class="modal fade fp-dialog" role="dialog" aria-labelledby="fp-additional-title">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 id="fp-additional-title" class="modal-title font-weight-bold">
+                        <i class="fas fa-folder-plus" aria-hidden="true"></i> Información adicional
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <table style="width:100%;" class="table table-bordered table-sm" id="tblAdditionalInfo">
+                            <thead>
+                            <tr>
+                                <th style="width: 15%;">Eliminar</th>
+                                <th style="width: 35%;">Nombre</th>
+                                <th style="width: 50%;">Descripción</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn fp-btn-secondary btnCreateAdditionalInfo">
+                        <i class="fas fa-plus" aria-hidden="true"></i> Nuevo campo
+                    </button>
+                    <button type="button" class="btn fp-btn-text btnRemoveAdditionalInfo">
+                        <i class="fas fa-trash" aria-hidden="true"></i> Eliminar todos los campos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="application/javascript">
+        sale.detail.iva = {{ company.iva|safe }};
+        $(function () {
+            sale.listProducts();
+            {% if final_consumer %}
+                select_client.select2('trigger', 'select', {data: {{ final_consumer|safe }}});
+            {% endif %}
+        });
+    </script>
+{% endblock %}
+

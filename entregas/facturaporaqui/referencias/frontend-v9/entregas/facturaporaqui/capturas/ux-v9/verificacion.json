@@ -1,0 +1,355 @@
+{
+  "scope": "Plantillas reales y componentes; respuestas API simuladas. No demuestra persistencia real ni autorización SRI.",
+  "checks": [
+    {
+      "check": "factura sin desborde 360",
+      "passed": true
+    },
+    {
+      "check": "factura sin desborde 390",
+      "passed": true
+    },
+    {
+      "check": "factura sin desborde 768",
+      "passed": true
+    },
+    {
+      "check": "factura sin desborde 1024",
+      "passed": true
+    },
+    {
+      "check": "factura sin desborde 1360",
+      "passed": true
+    },
+    {
+      "check": "factura sin desborde 1440",
+      "passed": true
+    },
+    {
+      "check": "efectivo y cambio fuera del formulario",
+      "passed": true
+    },
+    {
+      "check": "precio editado actualiza detalle",
+      "passed": true
+    },
+    {
+      "check": "precio editado conserva la nota",
+      "passed": true
+    },
+    {
+      "check": "crédito exige vencimiento junto al campo",
+      "passed": true
+    },
+    {
+      "check": "el error conserva las líneas",
+      "passed": true
+    },
+    {
+      "check": "corregir vencimiento retira el error",
+      "passed": true
+    },
+    {
+      "check": "formato inválido junto al archivo",
+      "passed": true
+    },
+    {
+      "check": "quitar archivo mantiene la nota",
+      "passed": true
+    },
+    {
+      "check": "error de producto conserva factura y nombre",
+      "passed": true
+    },
+    {
+      "check": "respuesta simulada de alta agrega la línea sin perder la anterior",
+      "passed": true
+    },
+    {
+      "check": "alta no pierde cliente",
+      "passed": true
+    },
+    {
+      "check": "409 ofrece recargar sin borrar automáticamente",
+      "passed": true
+    },
+    {
+      "check": "errores del cliente junto al campo y sin pérdida",
+      "passed": true
+    },
+    {
+      "check": "cerrar y reabrir cliente conserva borrador",
+      "passed": true
+    },
+    {
+      "check": "foco visible del botón de alta",
+      "passed": true
+    },
+    {
+      "check": "cancelar confirmación no envía y libera el formulario",
+      "passed": true
+    },
+    {
+      "check": "doble acción no duplica la confirmación",
+      "passed": true
+    },
+    {
+      "check": "respuesta de validación conserva nota y productos",
+      "passed": true
+    },
+    {
+      "check": "validación del servidor libera el envío sin reintento",
+      "passed": true
+    },
+    {
+      "check": "inicio sin desborde 360",
+      "passed": true
+    },
+    {
+      "check": "cuentas sin desborde 360",
+      "passed": true
+    },
+    {
+      "check": "asientos sin desborde 360",
+      "passed": true
+    },
+    {
+      "check": "cierre sin desborde 360",
+      "passed": true
+    },
+    {
+      "check": "reportes sin desborde 360",
+      "passed": true
+    },
+    {
+      "check": "puntos sin desborde 360",
+      "passed": true
+    },
+    {
+      "check": "inicio sin desborde 390",
+      "passed": true
+    },
+    {
+      "check": "cuentas sin desborde 390",
+      "passed": true
+    },
+    {
+      "check": "asientos sin desborde 390",
+      "passed": true
+    },
+    {
+      "check": "cierre sin desborde 390",
+      "passed": true
+    },
+    {
+      "check": "reportes sin desborde 390",
+      "passed": true
+    },
+    {
+      "check": "puntos sin desborde 390",
+      "passed": true
+    },
+    {
+      "check": "inicio sin desborde 768",
+      "passed": true
+    },
+    {
+      "check": "cuentas sin desborde 768",
+      "passed": true
+    },
+    {
+      "check": "asientos sin desborde 768",
+      "passed": true
+    },
+    {
+      "check": "cierre sin desborde 768",
+      "passed": true
+    },
+    {
+      "check": "reportes sin desborde 768",
+      "passed": true
+    },
+    {
+      "check": "puntos sin desborde 768",
+      "passed": true
+    },
+    {
+      "check": "inicio sin desborde 1024",
+      "passed": true
+    },
+    {
+      "check": "cuentas sin desborde 1024",
+      "passed": true
+    },
+    {
+      "check": "asientos sin desborde 1024",
+      "passed": true
+    },
+    {
+      "check": "cierre sin desborde 1024",
+      "passed": true
+    },
+    {
+      "check": "reportes sin desborde 1024",
+      "passed": true
+    },
+    {
+      "check": "puntos sin desborde 1024",
+      "passed": true
+    },
+    {
+      "check": "inicio sin desborde 1360",
+      "passed": true
+    },
+    {
+      "check": "cuentas sin desborde 1360",
+      "passed": true
+    },
+    {
+      "check": "asientos sin desborde 1360",
+      "passed": true
+    },
+    {
+      "check": "cierre sin desborde 1360",
+      "passed": true
+    },
+    {
+      "check": "reportes sin desborde 1360",
+      "passed": true
+    },
+    {
+      "check": "puntos sin desborde 1360",
+      "passed": true
+    },
+    {
+      "check": "inicio sin desborde 1440",
+      "passed": true
+    },
+    {
+      "check": "cuentas sin desborde 1440",
+      "passed": true
+    },
+    {
+      "check": "asientos sin desborde 1440",
+      "passed": true
+    },
+    {
+      "check": "cierre sin desborde 1440",
+      "passed": true
+    },
+    {
+      "check": "reportes sin desborde 1440",
+      "passed": true
+    },
+    {
+      "check": "puntos sin desborde 1440",
+      "passed": true
+    },
+    {
+      "check": "buscar cuenta conserva la jerarquía",
+      "passed": true
+    },
+    {
+      "check": "grupo y movimiento diferenciados",
+      "passed": true
+    },
+    {
+      "check": "seleccionar Excel no afirma importación",
+      "passed": true
+    },
+    {
+      "check": "filas de importación identificadas como simuladas",
+      "passed": true
+    },
+    {
+      "check": "confirmar importación deshabilitado",
+      "passed": true
+    },
+    {
+      "check": "comprobante enlaza a asiento con débitos y créditos",
+      "passed": true
+    },
+    {
+      "check": "cuadre no confirma asiento",
+      "passed": true
+    },
+    {
+      "check": "excepción muestra causa y acción pendiente",
+      "passed": true
+    },
+    {
+      "check": "reporte detallado mantiene etiqueta provisional",
+      "passed": true
+    },
+    {
+      "check": "exportación identificada DEMO y provisional",
+      "passed": true
+    },
+    {
+      "check": "estado visual loading",
+      "passed": true
+    },
+    {
+      "check": "estado visual empty",
+      "passed": true
+    },
+    {
+      "check": "estado visual error",
+      "passed": true
+    },
+    {
+      "check": "estado visual forbidden",
+      "passed": true
+    },
+    {
+      "check": "estado visual pending",
+      "passed": true
+    },
+    {
+      "check": "piloto sin cifras ni confirmación en inicio",
+      "passed": true
+    },
+    {
+      "check": "piloto sin cifras ni confirmación en cuentas",
+      "passed": true
+    },
+    {
+      "check": "piloto sin cifras ni confirmación en asientos",
+      "passed": true
+    },
+    {
+      "check": "piloto sin cifras ni confirmación en cierre",
+      "passed": true
+    },
+    {
+      "check": "piloto sin cifras ni confirmación en reportes",
+      "passed": true
+    },
+    {
+      "check": "piloto sin cifras ni confirmación en puntos",
+      "passed": true
+    },
+    {
+      "check": "máximo de tres puntos y sin verificación inventada",
+      "passed": true
+    },
+    {
+      "check": "menú móvil accesible por teclado",
+      "passed": true
+    },
+    {
+      "check": "movimiento reducido respetado",
+      "passed": true
+    },
+    {
+      "check": "sin errores de JavaScript",
+      "passed": true
+    },
+    {
+      "check": "sin respuestas fallidas de recursos",
+      "passed": true
+    }
+  ],
+  "js_errors": [],
+  "failed_requests": []
+}
