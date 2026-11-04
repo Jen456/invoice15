@@ -2,6 +2,8 @@
 
 ## 2026-11-04 — Proveedor del servicio en el pie y reutilización de facturas
 
+**Commit de código y evidencias subido a GitHub:** `006dea75ffd62fb66f029f06134fc00cadae8c73` (`frontend/etapa3`), remoto verificado con `git ls-remote` el 04/11/2026. El commit posterior modifica únicamente HANDOFF y este registro; no cambia el código probado.
+
 Base: `baadb8b` (`plataforma`) incorporada por avance rápido en `frontend/etapa3`, repositorio `Jen456/invoice15`. Sin cambios de backend ni migraciones.
 
 **Resultado:** RUC del proveedor del servicio únicamente en el pie de los seis RIDE A4; XML intactos. Nueva opción «Usar como base para otra factura», con carga real mediante la API existente. Se copian las líneas para elegir cliente y revisar el pago, con número nuevo asignado por el alta normal. Precio original sujeto al permiso `change_product`; tarifas y stock actuales, mensajes de revisión, reintento y bloqueo de emisión si la carga no termina.

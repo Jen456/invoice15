@@ -2,6 +2,8 @@
 
 ## 04/11/2026 — RUC del servicio solo en el pie y «Usar como base» (Codex)
 
+**Código y evidencias subidos:** `006dea75ffd62fb66f029f06134fc00cadae8c73`, en `frontend/etapa3`, verificado con `git ls-remote` el 04/11/2026. El cierre posterior solo registra esta referencia en documentación.
+
 Solicitud de la propietaria: retirar el RUC del proveedor del servicio de «Información adicional», porque ya está en el pie, y reutilizar los productos de una factura para otro cliente respetando la secuencia.
 
 - Base integrada por avance rápido: `origin/plataforma baadb8b` en `frontend/etapa3`. El trabajo corresponde a **Jen456/invoice15**, que contiene las pantallas y los RIDE de las capturas de la aplicación. No incorpora la rama antigua de `facturacion15`.
