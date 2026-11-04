@@ -1,0 +1,78 @@
+{
+  "company_form": 1,
+  "company_session": 2,
+  "posts": [
+    {
+      "url": "http://127.0.0.1:8089/pos/sale/admin/add/",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8089/pos/sale/admin/",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8089/pos/sale/admin/add/",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8089/pos/sale/admin/add/",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8089/pos/sale/admin/add/",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8089/pos/sale/admin/add/",
+      "status": 200
+    }
+  ],
+  "errors_js": [],
+  "client_value": "3",
+  "database_after": [
+    {
+      "company": 1,
+      "name": "COMERCIO DEMOSTRACION A",
+      "client_count": 0,
+      "sales": 2,
+      "sequences": [
+        [
+          1,
+          15
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          7,
+          502
+        ]
+      ]
+    },
+    {
+      "company": 2,
+      "name": "COMERCIO DEMOSTRACION B",
+      "client_count": 1,
+      "sales": 0,
+      "sequences": [
+        [
+          4,
+          15
+        ],
+        [
+          5,
+          0
+        ],
+        [
+          6,
+          0
+        ]
+      ]
+    }
+  ]
+}

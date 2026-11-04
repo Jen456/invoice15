@@ -1,5 +1,15 @@
 # Handoff compartido — frontend
 
+## 04/11/2026 — Revisión independiente mientras Claude integra (Codex)
+
+**Base revisada: `c00b620`; solo documentación y evidencia, sin cambios funcionales.** Informe y casos reproducibles: [REVISION-FLUJOS-20261104.md](REVISION-FLUJOS-20261104.md).
+
+- **Prioridad alta para Claude, R1:** «Crear cliente aquí» en una factura de A guarda en B si la sesión cambió a B en otra pestaña. HTTP 200 y confirmación de éxito; verificado en navegador y base ficticia. Incluso enviando `empresa=A`, el backend ignora ese contexto. Acordar empresa de origen + 409 `empresa_cambiada` antes de escribir; Codex adapta el diálogo y su tratamiento de errores. No equivale a acceso a una empresa sin membresía.
+- **Prioridad alta para Claude, R3:** `ProductListView`, acción `upload_excel`, permite al rol Consulta modificar productos porque exige únicamente `view_product`. Reproducción ficticia: PVP 10,00 → 19,99 con HTTP 200, sin `change_product`. Validar permisos por efecto de la importación antes de escribir y rechazar lotes prohibidos sin cambios parciales.
+- **Frontend, R2:** el plazo de crédito vacío devuelve `Valid` en el navegador por `notEmpty.enabled=false` y el comportamiento del adaptador. El servidor sí lo rechaza. Corrección acotada al formulario, sin tocar reglas de crédito ni la librería compartida por todos los módulos.
+- R1/R3 están en archivos idénticos a los de `29623af`, pero **no se reprodujeron en producción** ni se afirma que afectaran a datos reales. No dependen de D5–D9 ni de decisiones fiscales.
+- Verificaciones: **174 pruebas existentes aprobadas en SQLite** y **39 comprobaciones aprobadas en navegador**; las regresiones nuevas reproducen R1/R3 con **1 aprobada y 3 fallidas**. El defecto visual R2 se registra aparte. Capturas, conteos y reproductor enlazados en el informe. No se ejecutó PostgreSQL ni la suite completa.
+
 ## 04/11/2026 — Entrega v9 accesible en invoice15 y unión con la publicación (Codex)
 
 **Entrega subida y verificada en GitHub:** `be9955873e52ebfd1e4ad3cddb0df927be55a4f3`, rama `frontend/etapa3` de invoice15 (`git ls-remote`, 04/11/2026). El cierre posterior solo añade esta constancia en HANDOFF y RESULTADOS-FRONTEND.

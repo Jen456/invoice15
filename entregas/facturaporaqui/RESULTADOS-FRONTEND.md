@@ -1,5 +1,19 @@
 # Resultados frontend — FacturaPorAquí
 
+## 2026-11-04 — Revisión independiente de facturas, recibos, cobros y permisos
+
+**Base:** `c00b620`, en worktree aislado mientras Claude trabaja. No se cambió código de aplicación, contrato de datos, modelos, servicios, vistas, URL ni migraciones. Entrega documental: [REVISION-FLUJOS-20261104.md](REVISION-FLUJOS-20261104.md), reproductor en `revision-flujos-20261104/repro_regresiones.py`, HANDOFF y este registro.
+
+**Hallazgos reproducidos:** R1, alta rápida de cliente en la empresa equivocada después de cambiar la sesión en otra pestaña; R3, importación de productos con rol Consulta que modifica PVP sin permiso de edición; R2, plazo vacío válido en navegador aunque el servidor lo rechaza. Los dos primeros requieren corrección de servidor coordinada con la interfaz; no son decisiones fiscales.
+
+**Pruebas existentes:** `pytest tests/test_factura_lineas.py tests/test_respaldo_cobros.py tests/test_capturas.py tests/test_adjuntos.py tests/test_complemento_contable.py tests/test_revision.py tests/test_frontend_cobros_puntos.py`: **174 aprobadas en SQLite**. Reproductor nuevo de R1/R3: **1 aprobada y 3 fallidas que demuestran los defectos**; fuera de la suite por defecto y con base efímera en memoria. No afirmar que esos defectos quedaron corregidos.
+
+**Navegador:** 39 comprobaciones aprobadas contra Django local, con datos ficticios y red externa bloqueada. Factura con líneas, recibos y consulta mensual a 360/390/768/1024/1440 px sin desborde; teclado, nota sola, completar gasto, conservación de otro borrador, cheque con referencia, reintento sin duplicado después de perder la respuesta, cobro y revisión separados del saldo, filtros y ZIP mensual. Sin errores JavaScript ni estáticos faltantes. La validación incorrecta del plazo se registra aparte de las comprobaciones aprobadas. El cambio de empresa se reprodujo también en navegador y se confirmó en la base ficticia.
+
+**Evidencias:** [capturas/revision-flujos-20261104/](capturas/revision-flujos-20261104/), con 13 JPG inferiores a 150 KB y dos JSON. No hay imágenes de empresas reales. [Informe de navegador](capturas/revision-flujos-20261104/verificacion.json) y [resultado del cambio de empresa](capturas/revision-flujos-20261104/cliente-cambio-empresa.json).
+
+**Límites:** no PostgreSQL ni suite completa en esta revisión; no pruebas sobre el servidor publicado, emisiones, pagos o correos reales. No se leyeron credenciales ni firmas. Claude conserva la propiedad del backend y Codex la interfaz; esta entrega no modifica sus archivos de trabajo. El informe incluye las acciones y criterios de aceptación para cerrar los hallazgos sin ampliar el alcance a otras fases.
+
 ## 2026-11-04 — Acceso a v9 desde invoice15 y conservación de lo publicado
 
 **Entrega subida y verificada:** `be9955873e52ebfd1e4ad3cddb0df927be55a4f3`, rama `frontend/etapa3` de `Jen456/invoice15` (`git ls-remote`, 04/11/2026). El cierre posterior solo registra esta referencia en documentación.
