@@ -1,5 +1,24 @@
 # Resultados frontend — FacturaPorAquí
 
+## 2026-11-04 — Proveedor del servicio en el pie y reutilización de facturas
+
+Base: `baadb8b` (`plataforma`) incorporada por avance rápido en `frontend/etapa3`, repositorio `Jen456/invoice15`. Sin cambios de backend ni migraciones.
+
+**Resultado:** RUC del proveedor del servicio únicamente en el pie de los seis RIDE A4; XML intactos. Nueva opción «Usar como base para otra factura», con carga real mediante la API existente. Se copian las líneas para elegir cliente y revisar el pago, con número nuevo asignado por el alta normal. Precio original sujeto al permiso `change_product`; tarifas y stock actuales, mensajes de revisión, reintento y bloqueo de emisión si la carga no termina.
+
+**Archivos:** `core/pos/templates/sale/admin/{list,create}.html`, `core/pos/static/sale/admin/js/{list,form,base}.js`, `core/pos/static/sale/admin/css/base.css`; RIDE `sale/format/invoice.html`, `credit_note/format/invoice.html`, `comprobantes/{notadebito,retencion,liquidacion,guia}/ride.html`; pruebas `test_factura_base.py`, `frontend/factura_base.test.cjs` y actualización de `test_ride_integracion.py`. Guía de uso y HANDOFF actualizados.
+
+**Pruebas ejecutadas en SQLite y sin servicios reales:**
+
+- `python -m pytest tests/test_factura_base.py tests/test_factura_lineas.py tests/test_ride_integracion.py tests/test_ride_diseno.py tests/test_impresos.py tests/test_ticket_continuo.py tests/test_estaticos.py tests/test_rutas.py`: **69 aprobadas**.
+- `python -m pytest tests/test_regenerar_ride.py tests/test_emision_sri.py`: **33 aprobadas**. Conservación de XML, guardado del RIDE, regeneración con fidelidad/respaldo y secuencia del alta normal. Firma, SRI y correo de prueba, sin emisiones reales.
+- `node --test tests/frontend/factura_base.test.cjs`: **4 aprobadas**. Copia selectiva, permisos de precio, tarifas actuales, stock sin recorte y rechazo de líneas inválidas.
+- Verificación final de estáticos y contratos compartidos: `python -m pytest tests/test_estaticos.py tests/test_frontend_integracion.py tests/test_frontend_cobros_puntos.py`: **16 aprobadas**; incluye la repetición de estáticos tras terminar los ajustes de interfaz.
+- Navegador Chromium contra Django local con empresas ficticias: **41 comprobaciones aprobadas, 0 errores JavaScript**; ver [resultado verificable](capturas/factura-base-20261104/navegador-verificacion.json). Incluye 360/390/768/1024/1360/1440 px, teclado, selección de otro cliente, conservación de líneas, precio con coma, reintento tras un 503 inyectado, permisos reales y estado vacío. Las demás respuestas provienen de los endpoints reales de la vista previa. Cantidad y descuento mantienen sus controles en una fila en móvil.
+- Siete PDF generados con contextos ficticios: seis tipos cortos y factura de 90 líneas largas (7 páginas). Un RUC del proveedor por página, en el pie; [reporte](capturas/factura-base-20261104/pdf-verificacion.json). Se revisó visualmente la [factura A4](capturas/factura-base-20261104/ride-factura.pdf).
+
+Capturas en [factura-base-20261104/](capturas/factura-base-20261104/). Las pruebas de apertura y lectura no crean ventas ni modifican secuencias o stock; las altas simuladas posteriores obtienen números diferentes y conservan la factura original. No se ejecutó la suite PostgreSQL en esta sesión. No se accedió a datos reales ni se cambió producción. Los PDF ya guardados requieren regeneración controlada para mostrar la nueva disposición; ver HANDOFF.
+
 ## 2026-10-10 — Revisión y propuesta previa a implementación
 
 ### Alcance y estado

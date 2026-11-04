@@ -102,14 +102,14 @@ var sale = {
                     targets: [-4],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return '<input type="text" class="form-control" autocomplete="off" name="cant" value="' + row.cant + '">';
+                        return '<input type="text" class="form-control" autocomplete="off" name="cant" aria-label="Cantidad" value="' + row.cant + '">';
                     }
                 },
                 {
                     targets: [-2],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return '<input type="text" class="form-control" autocomplete="off" name="dscto_unitary" value="' + row.dscto + '">';
+                        return '<input type="text" class="form-control" autocomplete="off" name="dscto_unitary" aria-label="Descuento en porcentaje" value="' + row.dscto + '">';
                     }
                 },
                 {
@@ -141,6 +141,8 @@ var sale = {
             rowCallback: function (row, data, index) {
                 var tr = $(row).closest('tr');
                 var stock = data.inventoried ? data.stock : 1000000;
+                // Al reutilizar una factura se conserva la cantidad original para revisarla, sin recortarla en silencio.
+                if (data.fp_base) stock = Math.max(stock, data.cant);
                 tr.find('input[name="cant"]')
                     .TouchSpin({
                         min: 1,
@@ -158,7 +160,7 @@ var sale = {
                         decimals: 0,   // porcentaje entero, como lo guarda y valida el servidor
                         boostat: 5,
                         maxboostedstep: 10,
-                        postfix: "0.00"
+                        postfix: Number(data.total_dscto || 0).toFixed(2)
                     })
                     .on('keypress', function (e) {
                         var tecla = e.which || e.keyCode;
@@ -618,6 +620,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
             }
         })
         .on('core.form.valid', function () {
+            if (sale.validarBase && !sale.validarBase()) return false;
             if (sale.detail.products.length === 0) {
                 message_error('Debe tener al menos un item en el detalle de la venta');
                 return false;

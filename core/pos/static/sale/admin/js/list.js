@@ -129,6 +129,12 @@ var sale = {
                         buttons += '<div class="btn-group" role="group">';
                         buttons += '<button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fas fa-list"></i> Opciones</button>';
                         buttons += '<div class="dropdown-menu dropdown-menu-right">';
+                        if (fpaPermiso('add_sale') && row.receipt.voucher_type.id === '01') {
+                            var base = document.getElementById('fp-sale-copy-config');
+                            var urlBase = base.dataset.createUrl + '?base=' + encodeURIComponent(row.id) + '&empresa=' + encodeURIComponent(base.dataset.company);
+                            buttons += '<a class="dropdown-item fp-sale-copy" href="' + fpaTexto(urlBase) + '"><i class="fas fa-copy" aria-hidden="true"></i> Usar como base para otra factura</a>';
+                            buttons += '<div class="dropdown-divider"></div>';
+                        }
                         if (fpaPermiso('view_respaldocobro')) {
                             buttons += '<button type="button" class="dropdown-item" data-cobros-url="/cobros/factura/' + parseInt(row.id, 10) + '/"><i class="fas fa-receipt" aria-hidden="true"></i> Cobros y respaldos</button>';
                         }

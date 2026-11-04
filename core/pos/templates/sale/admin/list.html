@@ -5,6 +5,7 @@
     <script src="{% static 'lib/bootstrap-daterangepicker-3.1/js/daterangepicker.js' %}"></script>
     <link rel="stylesheet" href="{% static 'lib/bootstrap-daterangepicker-3.1/css/daterangepicker.css' %}"/>
     <script src="{% static 'sale/admin/js/list.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'sale/admin/css/base.css' %}">
 {% endblock %}
 
 {% block columns %}
@@ -24,7 +25,8 @@
 {% block content_list_before %}
     {% include 'cobros/_panel.html' %}
     {# Etapa 2 (O2): permisos del rol para las opciones de anulado y retención recibida con json_script. #}
-    {% permisos_de 'change_anulado_sri_sale' 'add_retencionrecibida' 'view_respaldocobro' as fpa_permisos %}{{ fpa_permisos|json_script:'fpa-permisos' }}
+    {% permisos_de 'change_anulado_sri_sale' 'add_retencionrecibida' 'view_respaldocobro' 'add_sale' as fpa_permisos %}{{ fpa_permisos|json_script:'fpa-permisos' }}
+    <div id="fp-sale-copy-config" data-create-url="{{ create_url }}" data-company="{{ company.pk }}" hidden></div>
     <div class="row">
         <div class="col-lg-5 col-md-12">
             <div class="form-group">

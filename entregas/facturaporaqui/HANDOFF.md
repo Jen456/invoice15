@@ -1,5 +1,27 @@
 # Handoff compartido — frontend
 
+## 04/11/2026 — RUC del servicio solo en el pie y «Usar como base» (Codex)
+
+Solicitud de la propietaria: retirar el RUC del proveedor del servicio de «Información adicional», porque ya está en el pie, y reutilizar los productos de una factura para otro cliente respetando la secuencia.
+
+- Base integrada por avance rápido: `origin/plataforma baadb8b` en `frontend/etapa3`. El trabajo corresponde a **Jen456/invoice15**, que contiene las pantallas y los RIDE de las capturas de la aplicación. No incorpora la rama antigua de `facturacion15`.
+- RIDE A4: quitada únicamente la fila del proveedor **del servicio** en factura, NC, ND, retención, liquidación y guía. Se conserva el pie compartido, su colibrí y los cuatro datos del proveedor; también el RUC del emisor y del proveedor comercial cuando corresponde. No se modifican XML autorizados, impuestos ni datos fiscales. El ticket ya identifica el servicio en su pie y no necesitó cambios.
+- Facturas emitidas → Opciones → **Usar como base para otra factura**. Abre el alta existente y carga productos, cantidades y descuentos, sin guardar una venta. Exige elegir cliente. La fecha y el punto son los del alta nueva; el número definitivo lo reserva el servidor mediante su procedimiento habitual. No copia cliente, cobros, respaldos, información adicional, autorización, clave, XML ni PDF.
+- Precio: con `change_product`, conserva el de la factura de origen; sin ese permiso utiliza el precio vigente del catálogo/promoción y avisa si cambia. Las tarifas y el stock se consultan del catálogo actual. Una cantidad superior al stock se mantiene visible para corregirla, sin reducirla silenciosamente; el servidor continúa siendo quien valida al guardar.
+- Carga, reintento, origen inexistente, permisos y empresa cambiada con mensajes explícitos. No permite emitir mientras no se complete la carga. Los errores de formulario conservan las líneas. Se corrigió el importe de descuento mostrado junto al porcentaje al precargar una línea.
+
+### Contrato y propiedad de archivos
+
+**Sin endpoint ni contexto nuevo requerido de Claude.** `base=<id>&empresa=<id>` son parámetros de navegación de la interfaz, no nuevos campos de emisión. Se consulta el POST existente de `sale_admin_list`, `action=search_detail_products`, `id=<venta>`, con CSRF. Exige `view_sale` y filtra por empresa en el servidor; abrir/guardar la factura sigue exigiendo `add_sale`. La opción solo aparece con ese permiso y para documentos 01. El detalle aporta `product` actual y `cant`, `price`, `dscto` histórico; el código de interfaz selecciona explícitamente los datos que reutiliza. El alta conserva `action=add`, sus campos y las reglas de numeración, precio, stock y pago.
+
+Codex modificó plantillas de RIDE, lista/alta de facturas y sus estáticos; añadió `sale/admin/js/base.js`, `sale/admin/css/base.css` y pruebas. No modificó vistas Python, servicios, modelos, URL ni migraciones. Guía: [GUIA-USAR-FACTURA-COMO-BASE.md](GUIA-USAR-FACTURA-COMO-BASE.md). Evidencias y pruebas en la entrega del 04/11 de RESULTADOS-FRONTEND.
+
+### Publicación e impresos que ya estaban guardados
+
+Claude puede integrar esta entrega y continuar el procedimiento de publicación ya autorizado por la propietaria, con respaldo y verificación. No hay migraciones nuevas en este cambio; sí hay estáticos que deben publicarse. Esta sesión de Codex no accedió al servidor de producción.
+
+El botón A4 entrega el PDF guardado al autorizar: **publicar la plantilla no cambia los PDF anteriores**. Para actualizar un PDF existente, usar el comando vigente `regenerar_ride` primero en ensayo, limitar empresa/documento, comprobar fidelidad con el XML y aplicar con respaldo conservando el original. No volver a emitir ni renumerar para cambiar el diseño. Las pruebas de ese comando pasaron con esta plantilla. Los números y datos de las capturas de la usuaria no se incorporaron a los ejemplos.
+
 ## Estado actual — cierre integrado: factura, respaldos, notas del proveedor y acceso al Complemento Contable, sin publicar (Claude, 03/11/2026)
 
 - **Integración:** `frontend/etapa3 60e1f11` (código de Codex `9b694d1`) entró en `plataforma` por avance rápido sobre `69cdca3`; se conservan ambas historias y todas las secciones. `c5e04a9` sigue sin fusionar. Código en `c7675ec` y `0fb9167` (correcciones de la vista previa y de la suite PostgreSQL); código probado `0fb9167`; esta documentación va en el commit siguiente.

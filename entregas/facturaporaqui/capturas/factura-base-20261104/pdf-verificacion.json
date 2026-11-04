@@ -1,0 +1,44 @@
+[
+  {
+    "archivo": "ride-factura.pdf",
+    "paginas": 1,
+    "ruc_proveedor_por_pagina": 1,
+    "bytes": 41476
+  },
+  {
+    "archivo": "ride-factura-largo.pdf",
+    "paginas": 7,
+    "ruc_proveedor_por_pagina": 1,
+    "bytes": 57278
+  },
+  {
+    "archivo": "ride-credito.pdf",
+    "paginas": 1,
+    "ruc_proveedor_por_pagina": 1,
+    "bytes": 41418
+  },
+  {
+    "archivo": "ride-debito.pdf",
+    "paginas": 1,
+    "ruc_proveedor_por_pagina": 1,
+    "bytes": 40458
+  },
+  {
+    "archivo": "ride-retencion.pdf",
+    "paginas": 1,
+    "ruc_proveedor_por_pagina": 1,
+    "bytes": 40286
+  },
+  {
+    "archivo": "ride-liquidacion.pdf",
+    "paginas": 1,
+    "ruc_proveedor_por_pagina": 1,
+    "bytes": 40966
+  },
+  {
+    "archivo": "ride-guia.pdf",
+    "paginas": 1,
+    "ruc_proveedor_por_pagina": 1,
+    "bytes": 40325
+  }
+]

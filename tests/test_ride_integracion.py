@@ -1,5 +1,5 @@
-"""Correcciones de la integración del RIDE B (revisión del 24/10/2026): «RUC Proveedor» también en «Información adicional»
-(Anexo 26 de la ficha técnica, ejemplo 2), PDF liviano, código de barras con módulos de píxeles enteros, hoja con huella
+"""Correcciones del RIDE B: el proveedor del sistema se identifica solo en el pie (decisión de la propietaria, 04/11/2026),
+sin modificar los XML. PDF liviano, código de barras con módulos de píxeles enteros, hoja con huella
 que aún no está en STATIC_ROOT, hora de autorización de la NC en hora de Ecuador y columnas de la liquidación."""
 import base64
 from datetime import datetime, timezone
@@ -29,9 +29,10 @@ def informacion_adicional(contenido_html):
 
 
 @pytest.mark.parametrize('tipo', TEMPLATES)
-def test_ruc_proveedor_en_informacion_adicional_y_en_el_pie(tipo):
+def test_ruc_proveedor_solo_en_el_pie(tipo):
     contenido = render_to_string(TEMPLATES[tipo], contexto_demo(tipo))
-    assert informacion_adicional(contenido)['RUC Proveedor'] == PROVEEDOR_DEMO['ruc']
+    assert 'RUC Proveedor' not in informacion_adicional(contenido)
+    assert contenido.count(PROVEEDOR_DEMO['ruc']) == 1
     pie = ' '.join(html.fromstring(contenido).xpath('string(//footer)').split())
     assert f'RUC Proveedor: {PROVEEDOR_DEMO["ruc"]}' in pie
 
@@ -109,5 +110,6 @@ def test_factura_no_repite_un_ruc_proveedor_escrito_a_mano():
     contexto['sale'].additional_info = [*contexto['sale'].additional_info,
                                          NS(name='RUC Proveedor', value='1790012345001'), NS(name='  ', value='sin nombre')]
     contenido = render_to_string(TEMPLATES['factura'], contexto)
-    assert informacion_adicional(contenido)['RUC Proveedor'] == PROVEEDOR_DEMO['ruc']
+    assert 'RUC Proveedor' not in informacion_adicional(contenido)
+    assert contenido.count(PROVEEDOR_DEMO['ruc']) == 1
     assert '1790012345001' not in contenido and 'sin nombre' not in contenido

@@ -77,16 +77,15 @@
                         <tr><td>Forma de pago</td><td>{{ sale.get_payment_method_display }}</td></tr>
                     </tbody>
                 </table>
-                {% if sale.additional_info or proveedor %}
+                {% if sale.additional_info %}
                 <table class="detalle">
                     <colgroup><col style="width:32%"><col style="width:68%"></colgroup>
                     <thead><tr><th colspan="2">Información adicional</th></tr></thead>
                     <tbody>
-                    {# Como en el XML: sin campos vacíos ni un «RUC Proveedor» escrito a mano (el real va al final). #}
+                    {# El proveedor del sistema se identifica solo en el pie; el XML autorizado no se modifica. #}
                     {% for additional_info in sale.additional_info %}{% if additional_info.value and additional_info.name|cut:" " and additional_info.name|cut:" " != "RUCProveedor" %}
                         <tr><td><b>{{ additional_info.name }}</b></td><td>{{ additional_info.value }}</td></tr>
                     {% endif %}{% endfor %}
-                    {% if proveedor %}<tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>{% endif %}
                     </tbody>
                 </table>
                 {% endif %}

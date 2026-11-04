@@ -52,14 +52,13 @@
 </table>
 <table class="cabecera fp-ride-summary" style="margin-top:5mm"><tr>
     <td style="width:58%; vertical-align:top; padding-right:5mm">
-        {% if c.correo or c.concepto or proveedor %}
+        {% if c.correo or c.concepto %}
         <table class="detalle" style="margin-top:0">
             <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
             <thead><tr><th colspan="2">Información adicional</th></tr></thead>
             <tbody>
                 {% if c.correo %}<tr><td><b>Email</b></td><td>{{ c.correo }}</td></tr>{% endif %}
                 {% if c.concepto %}<tr><td><b>Concepto</b></td><td>{{ c.concepto }}</td></tr>{% endif %}
-                {% if proveedor %}<tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>{% endif %}
             </tbody>
         </table>
         {% endif %}

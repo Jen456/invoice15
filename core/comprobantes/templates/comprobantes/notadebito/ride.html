@@ -47,14 +47,13 @@
 </table>
 <table class="cabecera fp-ride-summary" style="margin-top:5mm"><tr>
     <td style="width:58%; vertical-align:top; padding-right:5mm">
-        {% if c.direccion or c.correo or proveedor %}
+        {% if c.direccion or c.correo %}
         <table class="detalle" style="margin-top:0">
             <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
             <thead><tr><th colspan="2">Información adicional</th></tr></thead>
             <tbody>
                 {% if c.direccion %}<tr><td><b>Dirección</b></td><td>{{ c.direccion }}</td></tr>{% endif %}
                 {% if c.correo %}<tr><td><b>Email</b></td><td>{{ c.correo }}</td></tr>{% endif %}
-                {% if proveedor %}<tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>{% endif %}
             </tbody>
         </table>
         {% endif %}

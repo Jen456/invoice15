@@ -56,13 +56,12 @@
     {% for d in c.detalles.all %}<tr><td>{{ d.codigo }}</td><td>{{ d.descripcion }}</td><td class="num">{{ d.cantidad|floatformat:"-6" }}</td></tr>{% endfor %}
     </tbody>
 </table>
-{% if c.correo or proveedor %}
+{% if c.correo %}
 <table class="detalle" style="width:70%">
     <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
     <thead><tr><th colspan="2">Información adicional</th></tr></thead>
     <tbody>
         {% if c.correo %}<tr><td><b>Email</b></td><td>{{ c.correo }}</td></tr>{% endif %}
-        {% if proveedor %}<tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>{% endif %}
     </tbody>
 </table>
 {% endif %}

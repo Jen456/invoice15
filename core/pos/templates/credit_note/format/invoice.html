@@ -72,7 +72,6 @@
                     <p><b>Fecha de emisión del comprobante modificado:</b> {{ credit_note.sale.date_joined|date:"d/m/Y" }}</p>
                     <p><b>Razón de modificación:</b> {{ credit_note.motive }}</p>
                 </section>
-                {% with proveedor=credit_note.get_proveedor %}
                 <table class="detalle">
                     <colgroup><col style="width:32%"><col style="width:68%"></colgroup>
                     <thead><tr><th colspan="2">Información adicional</th></tr></thead>
@@ -80,10 +79,8 @@
                         {% if credit_note.sale.client.address %}<tr><td><b>Dirección</b></td><td>{{ credit_note.sale.client.address }}</td></tr>{% endif %}
                         {% if credit_note.sale.client.mobile %}<tr><td><b>Teléfono</b></td><td>{{ credit_note.sale.client.mobile }}</td></tr>{% endif %}
                         <tr><td><b>Observación</b></td><td>NOTA_CREDITO # {{ credit_note.voucher_number }}</td></tr>
-                        {% if proveedor %}<tr><td><b>RUC Proveedor</b></td><td>{{ proveedor.ruc }}</td></tr>{% endif %}
                     </tbody>
                 </table>
-                {% endwith %}
             </td>
             <td>
                 <table class="totales">

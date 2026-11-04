@@ -1,0 +1,30 @@
+.fp-sale-copy { max-width: 18rem; white-space: normal; }
+.fp-sale-copy:focus-visible { outline: 3px solid #163b50; outline-offset: -3px; }
+.fp-sale-editor #tblProducts .bootstrap-touchspin { display: flex; flex-wrap: nowrap; }
+.fp-sale-editor #tblProducts .bootstrap-touchspin > .form-control { flex: 1 1 0; width: 0 !important; min-width: 0; }
+.fp-sale-editor #tblProducts .bootstrap-touchspin .input-group-prepend,
+.fp-sale-editor #tblProducts .bootstrap-touchspin .input-group-append { flex: 0 0 auto; }
+.fp-sale-editor #tblProducts .bootstrap-touchspin .btn { min-width: 44px; }
+.fp-sale-base {
+    margin-bottom: 1.5rem;
+    padding: 1.15rem 1.25rem;
+    border: 1px solid #b6d9e6;
+    border-left: 4px solid #ca462c;
+    border-radius: .8rem;
+    background: #e5f1f6;
+    color: #163b50;
+}
+.fp-sale-base[hidden], .fp-sale-base [hidden] { display: none !important; }
+.fp-sale-base-heading { display: flex; align-items: baseline; gap: .65rem; }
+.fp-sale-base h2 { margin: 0 0 .65rem; font-size: 1.12rem; font-weight: 700; }
+.fp-sale-base p { margin-bottom: .65rem; }
+.fp-sale-base-status { font-weight: 600; }
+.fp-sale-base ul { margin-bottom: .75rem; padding-left: 1.25rem; }
+.fp-sale-base-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; }
+.fp-sale-base a { color: #163b50; text-decoration: underline; text-underline-offset: .15em; }
+.fp-sale-base.has-error { background: #fff3ed; border-color: #ca462c; }
+.fp-sale-base :focus-visible { outline: 3px solid #163b50; outline-offset: 3px; }
+@media (max-width: 575.98px) {
+    .fp-sale-base { padding: 1rem; }
+    .fp-sale-base-actions { align-items: stretch; flex-direction: column; }
+}

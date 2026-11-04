@@ -13,6 +13,8 @@
     <script src="{% static 'sale/admin/js/form.js' %}"></script>
     <script src="{% static 'sale/admin/js/llenado.js' %}" defer></script>
     <script src="{% static 'sale/admin/js/cliente_rapido.js' %}" defer></script>
+    <script src="{% static 'sale/admin/js/base.js' %}" defer></script>
+    <link rel="stylesheet" href="{% static 'sale/admin/css/base.css' %}">
 {% endblock %}
 
 {% block form_title %}<span id="fp-sale-title">Nueva factura</span>{% endblock %}
@@ -30,6 +32,16 @@
     {% endif %}
     {% permisos_de 'add_product' 'add_client' 'change_product' as fp_alta %}
     <div class="fp-sale-editor" data-company="{{ company.pk }}" data-precio-editable="{% if fp_alta.change_product %}1{% else %}0{% endif %}">
+    <section id="fp-sale-base" class="fp-sale-base" aria-labelledby="fp-sale-base-title" data-list-url="{{ list_url }}" hidden>
+        <div class="fp-sale-base-heading"><i class="fas fa-copy" aria-hidden="true"></i><h2 id="fp-sale-base-title">Una nueva factura, con los mismos productos</h2></div>
+        <p>Elige el cliente y revisa cantidades, precios y pago. El sistema asignará un número nuevo del punto de emisión activo al emitir.</p>
+        <p id="fp-sale-base-status" class="fp-sale-base-status" role="status" tabindex="-1"></p>
+        <ul id="fp-sale-base-warnings" hidden></ul>
+        <div class="fp-sale-base-actions">
+            <button id="fp-sale-base-retry" type="button" class="btn btn-outline-primary" hidden>Reintentar la carga</button>
+            <a id="fp-sale-base-empty" href="{% url 'sale_admin_create' %}">Empezar una factura vacía</a>
+        </div>
+    </section>
     <p class="fp-sale-intro">Completa el cliente, añade los productos y revisa el pago.{% if fp_alta.add_product %} Puedes crear productos sin salir de esta factura.{% endif %}</p>
     <fieldset class="fp-sale-section">
         <legend><span>1</span> Cliente y documento</legend>
@@ -191,7 +203,7 @@
             sale.listProducts();
             {% if final_consumer and not proforma_precarga %}
                 var finalConsumer = {{ final_consumer|safe }};
-                if (finalConsumer && finalConsumer.id !== undefined) {
+                if (finalConsumer && finalConsumer.id !== undefined && !new URLSearchParams(window.location.search).has('base')) {
                     select_client.select2('trigger', 'select', {data: finalConsumer});
                 }
             {% endif %}
