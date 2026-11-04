@@ -71,6 +71,7 @@
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest(), form = new FormData();
                 form.append('archivos', file);
+                if (upload.elements.empresa) form.append('empresa', upload.elements.empresa.value);   // 409 si la empresa cambió
                 xhr.open('POST', api + path); xhr.setRequestHeader('X-CSRFToken', csrf); xhr.timeout = 180000;
                 xhr.upload.onprogress = event => {if (event.lengthComputable) progress.value = Math.round(event.loaded * 100 / event.total);};
                 xhr.onerror = xhr.ontimeout = () => reject(new Error('Se interrumpió la conexión. Revisa el lote antes de volver a subir este archivo.'));

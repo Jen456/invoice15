@@ -116,6 +116,8 @@ window.fpClienteRapido = (function () {
     }
     async function volverALaEmpresa() {
         // Reactiva en el servidor la empresa en que se abrió esta factura (comprueba la membresía) sin recargar la página.
+        announce('Volviendo a la empresa de esta factura…');
+        focus(alertBox);
         volver.disabled = true;
         var datos = new FormData();
         datos.set('company', field('empresa').value);

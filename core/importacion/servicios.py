@@ -894,7 +894,7 @@ def _plan_documento(entrada, documento, permisos):
         propuesta = desde_xml.propuesta_compra(documento)
         item['bloqueos'] = propuesta['bloqueos']
         item['confirmaciones'] = list(propuesta['confirmaciones'])
-        if propuesta['exige_confirmar_sin_verificar']:
+        if propuesta['exige_confirmar_sin_verificar'] and not item['bloqueos']:
             item['confirmaciones'].append('confirmar_sin_verificar')
         item['pendientes_revision'] = _pendientes_de_revision(documento, propuesta)
         item['proveedor'] = propuesta['proveedor']
@@ -904,7 +904,7 @@ def _plan_documento(entrada, documento, permisos):
         item['permiso'] = {'change_documentoimportado', 'add_purchase'} <= permisos
     elif accion == 'registrar_retencion':
         item['bloqueos'] = recibidos.bloqueos_retencion(documento)
-        if recibidos.exige_confirmar_sin_verificar(documento):
+        if recibidos.exige_confirmar_sin_verificar(documento) and not item['bloqueos']:
             item['confirmaciones'] = ['confirmar_sin_verificar']
         item['permiso'] = {'change_documentoimportado', 'add_retencionrecibida'} <= permisos
     else:   # vincular_venta: solo con la venta de la misma clave de acceso (coincidencia exacta)

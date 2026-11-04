@@ -177,7 +177,8 @@ class PasoView(ConfiguracionAccessMixin, TemplateView):
             audit(request, 'billing_point_change', company=company, punto=punto.full_code, accion='agregar')
             avisar(request, messages.SUCCESS, f'Punto de emisión {punto.full_code} agregado.')
         elif accion == 'desactivar_punto':
-            punto = EmissionPoint.all_companies.filter(company=company, pk=request.POST.get('point')).first()
+            punto_id = (request.POST.get('point') or '').strip()
+            punto = EmissionPoint.all_companies.filter(company=company, pk=punto_id).first() if punto_id.isdigit() else None
             if punto is None:
                 raise Http404
             if punto.is_default or any(r.is_used for r in punto.sequences.all()):

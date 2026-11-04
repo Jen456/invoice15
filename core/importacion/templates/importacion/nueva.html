@@ -5,7 +5,7 @@
     <header class="fp-welcome"><span class="fp-eyebrow">Importación de documentos</span><h1>Importar XML / RIDE</h1>
         <p>Sube comprobantes que ya existen: XML autorizados del SRI o el RIDE en PDF. Esto no emite facturas ni usa tu numeración.</p></header>
     {% include 'importacion/_mensajes.html' %}<ol class="fp-import-steps" aria-label="Etapas de importación"><li><b>1</b> Sube tus archivos</li><li><b>2</b> Procesa y verifica</li><li><b>3</b> Revisa y decide</li></ol>
-    <form id="fp-import-upload" method="post" enctype="multipart/form-data" class="card fp-retencion-panel"><div class="card-body">{% csrf_token %}
+    <form id="fp-import-upload" method="post" enctype="multipart/form-data" class="card fp-retencion-panel"><div class="card-body">{% csrf_token %}<input type="hidden" name="empresa" value="{{ request.company.pk }}">
         <div class="fp-import-drop" id="fp-import-drop"><span class="fp-import-symbol" aria-hidden="true"><i class="fas fa-cloud-upload-alt"></i></span><h2>De tus archivos a una sola bandeja</h2><p>Arrastra aquí tus XML o RIDE, o selecciona los archivos de tu dispositivo.</p><label for="id_archivos" class="font-weight-bold">Archivos XML o PDF</label>
         <input type="file" name="archivos" id="id_archivos" class="form-control" multiple accept=".xml,.pdf,application/xml,text/xml,application/pdf" required>
         </div><small class="form-text text-muted">Hasta {{ limites.MAX_ARCHIVOS_POR_LOTE }} archivos por lote; XML de hasta {{ limites.MAX_XML_BYTES|filesizeformat }} y PDF de hasta {{ limites.MAX_PDF_BYTES|filesizeformat }} y {{ limites.MAX_PDF_PAGINAS }} páginas. Se admiten facturas, notas de crédito, notas de débito y retenciones (01, 04, 05 y 07).</small>

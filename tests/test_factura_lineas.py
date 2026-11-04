@@ -17,7 +17,7 @@ from django.test import Client as ClienteWeb
 from core.pos import lineas_venta, notas_credito
 from core.pos.forms import ProductForm
 from core.pos.models import Category, Product, Receipt, Sale, SaleDetail
-from core.pos.views.sale.views import PLAZO_CREDITO
+from core.pos.views.sale.views import PLAZO_ANTERIOR, PLAZO_CREDITO
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_SELLER
 from tests import helpers
@@ -158,6 +158,15 @@ class TestLineasInvalidas:
         antes = foto(empresa, producto)
         r = web.post(f'{VENTAS}add/', datos(comprador, [linea(producto)], payment_type='credito', end_credit=plazo, cash='0')).json()
         assert r['error'] == PLAZO_CREDITO
+        assert foto(empresa, producto) == antes
+
+    def test_credito_con_plazo_anterior_a_la_factura(self, web, empresa, comprador, producto):
+        from datetime import timedelta
+        from django.utils import timezone
+        antes = foto(empresa, producto)
+        ayer = (timezone.localdate() - timedelta(days=1)).isoformat()
+        r = web.post(f'{VENTAS}add/', datos(comprador, [linea(producto)], payment_type='credito', end_credit=ayer, cash='0')).json()
+        assert r['error'] == PLAZO_ANTERIOR
         assert foto(empresa, producto) == antes
 
 

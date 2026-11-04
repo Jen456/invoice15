@@ -44,10 +44,17 @@
         });
     }
     function ocupado(valor) {
+        var modal = el('fpAdjuntosModal');
+        // El botón enfocado se deshabilita: el foco queda en el diálogo para que Escape y Tab sigan funcionando.
+        if (valor && modal.contains(document.activeElement)) { modal.focus(); }
         estado.ocupado = valor;
         el('fpAdjuntosCampos').disabled = valor;
         el('fpAdjuntosForm').setAttribute('aria-busy', String(valor));
         el('fpAdjuntosModal').querySelectorAll('[data-dismiss], [data-quitar], #fpAdjuntosQuitar button, #fpAdjMotivo, #fpAdjuntosRecargar, #fpAdjuntosCapturaCampos').forEach(function (n) { n.disabled = valor; });
+        if (!valor && document.activeElement === modal) {
+            var aviso = el('fpAdjuntosAviso');
+            if (!aviso.hidden) { aviso.setAttribute('tabindex', '-1'); aviso.focus(); }
+        }
     }
     function tarjeta(a, permisos) {
         var item = nodo('article', null, {class: 'fp-adjuntos-file' + (a.eliminado ? ' fp-adjuntos-eliminado' : '')});

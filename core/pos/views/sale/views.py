@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 PLAZO_CREDITO = 'Indica la fecha de plazo del crédito (AAAA-MM-DD).'
+PLAZO_ANTERIOR = 'La fecha de plazo del crédito no puede ser anterior a la fecha de la factura.'
 # Alta rápida de cliente (R1): solo en la empresa en que se abrió el formulario.
 SIN_EMPRESA = 'Vuelve a cargar la factura antes de crear el cliente: este formulario no indica en qué empresa se abrió.'
 ACCIONES_DEL_CLIENTE = ('create_client', 'search_client', 'validate_client')
@@ -222,6 +223,8 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                             sale.end_credit = date.fromisoformat(request.POST.get('end_credit', '').strip())
                         except ValueError:
                             raise ValueError(PLAZO_CREDITO) from None
+                        if sale.end_credit < sale.date_joined:
+                            raise ValueError(PLAZO_ANTERIOR)
                     sale.save()
                     # Precio distinto del catálogo: con permiso o desde la proforma que se factura (core/pos/lineas_venta.py).
                     lineas_venta.comprobar_precios(request, lineas, proforma)

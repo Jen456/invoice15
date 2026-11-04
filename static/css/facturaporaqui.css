@@ -59,6 +59,8 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-current-summary .fpa-progreso{margin-top:10px;max-width:none}
 .fpa-plan .fpa-plan-tarjeta .fpa-incluye{margin-bottom:12px}
 .fpa-plan .table-responsive{position:relative}
+.btn:focus-visible,.btn.focus-visible{outline:3px solid #176581;outline-offset:3px}
+@media(max-width:575.98px){.fp-selector-punto .dropdown-menu{position:fixed!important;left:10px!important;right:10px!important;top:60px!important;width:auto;max-width:none;transform:none!important}}
 /* Las dos tarjetas van lado a lado solo cuando hay ancho para el resumen compacto. */
 @media(min-width:1360px){
 .fpa-plan .fp-plan-col{flex:0 0 50%;max-width:50%}

@@ -195,6 +195,8 @@ class LotesApi(ApiMixin, View):
     def post(self, request):
         if not tiene_permiso(request, IMPORTAR):
             return error('Tu perfil no puede importar documentos.', 403)
+        if empresa_cambiada(request):   # pantalla abierta con otra empresa: el lote no se crea en la activa
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
         archivos = request.FILES.getlist('archivos')
         if sum(a.size for a in archivos) > limites.MAX_BYTES_POR_PETICION:
             return error(f'Sube como máximo {limites.MAX_BYTES_POR_PETICION // limites.MB} MB por vez.', 413)
@@ -217,6 +219,8 @@ class ArchivosLoteApi(ApiMixin, View):
     permission_required = IMPORTAR
 
     def post(self, request, pk):
+        if empresa_cambiada(request):
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
         lote = get_object_or_404(LoteImportacion, pk=pk)
         try:
             lote = sv.agregar_archivos(lote, request.user, [(a.name, a.read()) for a in request.FILES.getlist('archivos')])
@@ -449,6 +453,9 @@ class NuevaImportacion(Pagina):
     titulo = 'Nueva importación XML / RIDE'
 
     def post(self, request):
+        if empresa_cambiada(request):
+            messages.error(request, EMPRESA_CAMBIADA)
+            return HttpResponseRedirect(reverse('importacion_nueva'))
         archivos = request.FILES.getlist('archivos')
         try:
             lote = sv.crear_lote(request.company, request.user, [(a.name, a.read()) for a in archivos])

@@ -53,8 +53,8 @@ class SessionGroupMixin(LoginRequiredMixin):
         if request.method == 'GET':
             group_module = self.get_group_module(group)
             set_module(request, group_module.module if group_module else None)
-            if group_module:
-                request.session['url_last'] = request.path
+            if group_module and '/api/' not in request.path and not request.path.endswith('.json'):
+                request.session['url_last'] = request.path   # solo páginas: deny() vuelve aquí
         return super().dispatch(request, *args, **kwargs)
 
 

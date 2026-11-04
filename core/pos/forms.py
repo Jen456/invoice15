@@ -54,6 +54,15 @@ class ProviderForm(forms.ModelForm):
                 self.add_error(campo, mensaje)
         if 'ruc' in datos:
             datos['ruc'] = numero
+        repetidos = {'name': 'Ya existe un proveedor con esta razón social en tu empresa.',
+                     'ruc': 'Ya existe un proveedor con esta identificación en tu empresa.',
+                     'mobile': 'Ya existe un proveedor con este celular en tu empresa.',
+                     'email': 'Ya existe un proveedor con este correo en tu empresa.'}
+        for campo, mensaje in repetidos.items():
+            valor = datos.get(campo)
+            if valor and campo not in self.errors and \
+                    Provider.objects.filter(**{campo: valor}).exclude(pk=self.instance.pk).exists():
+                self.add_error(campo, mensaje)
         datos['tipo_sujeto'] = sujeto
         self.advertencias = [{'codigo': codigo, 'texto': texto} for codigo, texto in advertencias]
         return datos
@@ -71,6 +80,8 @@ class ProviderForm(forms.ModelForm):
                 data['advertencias'] = self.advertencias
             else:
                 data['error'] = self.errors
+        except IntegrityError:   # otra pestaña lo guardó a la vez
+            data['error'] = 'Ya existe un proveedor con esa razón social, identificación, celular o correo en tu empresa.'
         except Exception as e:
             data['error'] = str(e)
         return data
@@ -248,6 +259,8 @@ class ExpensesForm(forms.ModelForm):
         datos['referencia'] = referencia
         if datos.get('medio_pago') == 'cheque' and not referencia:
             self.add_error('referencia', 'Escribe el número del cheque')
+        if 'valor' not in self.errors and (datos.get('valor') is None or datos['valor'] <= 0):
+            self.add_error('valor', 'Escribe el valor del gasto, mayor que cero.')
         return datos
 
     def save(self, commit=True):
@@ -406,6 +419,8 @@ class SaleForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if 'end_credit' in self.fields:
+            self.fields['end_credit'].label = 'Fecha de plazo del crédito'
         self.fields['client'].queryset = Client.objects.none()
         self.fields['receipt'].choices = tuple((code, label) for code, label in VOUCHER_TYPE if code in ('01', '08'))
         self.fields['medio_cobro'].choices = [('', 'Elige el medio de cobro')] + [c for c in self.fields['medio_cobro'].choices if c[0]]
