@@ -1177,7 +1177,7 @@ class SaleDetail(TenantModel):
         item['total_iva'] = float(self.total_iva)
         item['codigo_porcentaje'] = codigo_de_linea(self)
         item['tarifa'] = float(PORCENTAJE_IVA.get(item['codigo_porcentaje'], 0))
-        item['dscto'] = float(self.dscto) * 100
+        item['dscto'] = float(self.dscto * 100)   # exacto: en coma flotante 0.07 × 100 da 7.000000000000001
         item['total_dscto'] = float(self.total_dscto)
         item['total'] = float(self.total)
         if args is not None:
@@ -1696,10 +1696,14 @@ class CreditNote(TenantModel):
         self.receipt = receipt
         return receipt.next_number_full()
 
-    def generate_pdf_authorized(self):
+    def ride_pdf(self):
+        """RIDE A4 de la nota con la plantilla y los datos actuales, en memoria (no guarda nada)."""
         from core.comprobantes.ride import codigo_de_barras
         context = {'credit_note': self, 'access_code_barcode': codigo_de_barras(self.access_code)}
-        pdf_file = printer.create_pdf(context=context, template_name='credit_note/format/invoice.html')
+        return printer.create_pdf(context=context, template_name='credit_note/format/invoice.html')
+
+    def generate_pdf_authorized(self):
+        pdf_file = self.ride_pdf()
         with tempfile.NamedTemporaryFile(delete=True) as file_temp:
             file_temp.write(pdf_file)
             file_temp.flush()

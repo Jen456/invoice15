@@ -2,6 +2,7 @@
 plantilla actual: el PDF nuevo se arma con los datos de hoy (cliente, productos), que pueden haber cambiado después de
 autorizar. Se comprueba que cada dato del XML autorizado aparezca en el texto del PDF: número, clave y autorización, fechas,
 emisor y direcciones, comprador, cada detalle (código, descripción, cantidad, precios), totales por tarifa e información adicional.
+Facturas (infoFactura) y notas de crédito (infoNotaCredito: además, documento modificado, su fecha, motivo y valor).
 
 Se compara sin espacios ni mayúsculas (los saltos de línea del PDF no cuentan) y se aceptan las formas en que la plantilla
 escribe números (1440,00 / 1.440,00 / 1440.00) y fechas (24/10/2026 / 2026-10-24)."""
@@ -65,6 +66,9 @@ def datos_autorizados(xml_autorizado):
             datos.append((campo, formas(valor) if formas else [valor]))
 
     it, info = factura.find('infoTributaria'), factura.find('infoFactura')
+    nota = info is None   # nota de crédito (codDoc 04)
+    if nota:
+        info = factura.find('infoNotaCredito')
     agregar('número de autorización', raiz.findtext('numeroAutorizacion') or it.findtext('claveAcceso'))
     agregar('fecha de autorización', raiz.findtext('fechaAutorizacion'), _fecha)
     agregar('clave de acceso', it.findtext('claveAcceso'))
@@ -76,8 +80,12 @@ def datos_autorizados(xml_autorizado):
     agregar('fecha de emisión', info.findtext('fechaEmision'), _fecha)
     agregar('comprador', info.findtext('razonSocialComprador'))
     agregar('identificación del comprador', info.findtext('identificacionComprador'))
+    if nota:
+        agregar('documento modificado', info.findtext('numDocModificado'))
+        agregar('fecha del documento modificado', info.findtext('fechaEmisionDocSustento'), _fecha)
+        agregar('motivo', info.findtext('motivo'))
     for n, d in enumerate(factura.iterfind('detalles/detalle'), start=1):
-        agregar(f'detalle {n}: código', d.findtext('codigoPrincipal'))
+        agregar(f'detalle {n}: código', d.findtext('codigoPrincipal') or d.findtext('codigoInterno'))
         agregar(f'detalle {n}: descripción', d.findtext('descripcion'))
         agregar(f'detalle {n}: cantidad', d.findtext('cantidad'), _cantidad)
         agregar(f'detalle {n}: precio unitario', d.findtext('precioUnitario'), _dinero)
@@ -88,7 +96,10 @@ def datos_autorizados(xml_autorizado):
     for t in info.iterfind('totalConImpuestos/totalImpuesto'):
         agregar(f"base imponible (código {t.findtext('codigoPorcentaje')})", t.findtext('baseImponible'), _dinero)
         agregar(f"IVA (código {t.findtext('codigoPorcentaje')})", t.findtext('valor'), _dinero)
-    agregar('importe total', info.findtext('importeTotal'), _dinero)
+    if nota:
+        agregar('valor de la modificación', info.findtext('valorModificacion'), _dinero)
+    else:
+        agregar('importe total', info.findtext('importeTotal'), _dinero)
     for campo in factura.iterfind('infoAdicional/campoAdicional'):
         agregar(f"información adicional: {campo.get('nombre')}", (campo.text or '').strip())
     return datos

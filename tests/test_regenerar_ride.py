@@ -1,5 +1,6 @@
 """Regenerar el RIDE A4 guardado (manage.py regenerar_ride): ensayo por defecto, solo si el PDF nuevo es fiel al XML
 autorizado, y al aplicar nunca sobrescribe: archivo nuevo, el anterior intacto y copiado, registro en la auditoría."""
+import json
 from io import StringIO
 from pathlib import Path
 
@@ -7,7 +8,7 @@ import pytest
 from django.core.management import CommandError, call_command
 
 from core.comprobantes.fidelidad import _dinero, datos_autorizados, diferencias
-from core.pos.models import Sale
+from core.pos.models import CreditNote, Sale, SaleDetail
 from core.tenancy.models import AuditLog
 from core.user.models import User
 from tests.test_emision_sri import comprador, dueno, empresa, leer, p12, producto, sri, vender, venta_de, web  # noqa: F401
@@ -83,3 +84,44 @@ class TestRegenerar:
             regenerar(empresa, '--aplicar')
         with pytest.raises(CommandError, match='No hay una empresa'):
             call_command('regenerar_ride', '--empresa', '0999999999001', stdout=StringIO())
+
+
+class TestNotasDeCredito:
+    """El RIDE A4 de las notas de crédito también se regenera con fidelidad al XML (infoNotaCredito)."""
+
+    @pytest.fixture
+    def nota(self, web, empresa, factura, sri):  # noqa: F811
+        sri.respuestas_autorizacion = ['AUTORIZADO']
+        detalle = leer(empresa, lambda: SaleDetail.objects.filter(sale=factura).first())
+        r = web.post('/pos/credit/note/admin/add/', {
+            'action': 'add', 'sale': factura.pk, 'motive': 'Devolución ficticia de prueba', 'create_electronic_invoice': 'on',
+            'products': json.dumps([{'id': detalle.pk, 'quantity': 1, 'price': '0.01', 'dscto': 0}])}).json()
+        assert r.get('resp') is True, r
+        nota = leer(empresa, lambda: CreditNote.objects.get(sale=factura))
+        assert nota.xml_authorized and nota.pdf_authorized
+        return nota
+
+    def test_el_ride_de_la_nota_es_fiel_a_su_xml(self, nota):
+        xml, pdf = contenido(nota.xml_authorized), contenido(nota.pdf_authorized)
+        campos = {c for c, _ in datos_autorizados(xml)}
+        assert {'documento modificado', 'fecha del documento modificado', 'motivo', 'valor de la modificación',
+                'detalle 1: código', 'detalle 1: descripción'} <= campos and 'importe total' not in campos
+        assert diferencias(pdf, xml) == []
+
+    def test_ensayo_y_aplicar_solo_las_notas(self, empresa, factura, nota, tmp_path):  # noqa: F811
+        factura_antes = leer(empresa, lambda: Sale.objects.get(pk=factura.pk).pdf_authorized.name)
+        salida = regenerar(empresa, '--tipo', 'nota_credito', '--salida', str(tmp_path / 'ensayo'))
+        assert 'ENSAYO (no se cambió nada): fieles 1, con diferencias 0, aplicadas 0' in salida
+        assert f'nota de crédito {nota.voucher_number_full}' in salida
+        assert Path(tmp_path, 'ensayo', f'nc-{nota.voucher_number_full}-nuevo.pdf').read_bytes()[:5] == b'%PDF-'
+        anterior_nombre, anterior = nota.pdf_authorized.name, contenido(nota.pdf_authorized)
+        salida = regenerar(empresa, '--tipo', 'nota_credito', '--aplicar', '--respaldo', str(tmp_path / 'respaldo'))
+        assert 'APLICADO: fieles 1, con diferencias 0, aplicadas 1' in salida
+        nueva = leer(empresa, lambda: CreditNote.objects.get(pk=nota.pk))
+        assert nueva.pdf_authorized.name != anterior_nombre and nueva.pdf_authorized.storage.exists(anterior_nombre)
+        assert Path(tmp_path, 'respaldo', Path(anterior_nombre).name).read_bytes() == anterior
+        assert (nueva.status, nueva.access_code, nueva.xml_authorized.name) == (nota.status, nota.access_code, nota.xml_authorized.name)
+        registro = AuditLog.objects.get(action='ride_regenerado')
+        assert registro.detail == {'comprobante': nota.voucher_number_full, 'anterior': anterior_nombre,
+                                   'nuevo': nueva.pdf_authorized.name, 'tipo': 'nota_credito'}
+        assert leer(empresa, lambda: Sale.objects.get(pk=factura.pk).pdf_authorized.name) == factura_antes   # solo las notas

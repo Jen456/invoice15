@@ -86,3 +86,15 @@ def test_opcion_exige_permiso_de_crear(web, empresa):
     pagina = web.get(VENTAS).content.decode()
     assert '"add_sale": false' in pagina
     assert web.get(f'{VENTAS}add/?base=1&empresa={empresa.pk}').status_code == 302
+
+
+def test_descuentos_que_en_coma_flotante_no_dan_enteros(web, empresa, comprador, sri):  # noqa: F811
+    """0.07 × 100 = 7.000000000000001 en coma flotante: el detalle entrega el porcentaje exacto que base.js exige entero."""
+    producto = helpers.crear_producto(empresa, 'BASE-DSCTO-7', pvp='10.00')
+    otro = helpers.crear_producto(empresa, 'BASE-DSCTO-29', pvp='4.00')
+    sri.respuestas_autorizacion = ['AUTORIZADO']
+    r = web.post(f'{VENTAS}add/', datos(comprador, [linea(producto, dscto=7), linea(otro, dscto=29)])).json()
+    assert r.get('resp') is True, r
+    venta = leer(empresa, lambda: Sale.objects.latest('pk'))
+    detalle = web.post(VENTAS, {'action': 'search_detail_products', 'id': venta.pk}).json()
+    assert [d['dscto'] for d in detalle] == [7, 29] and all(float(d['dscto']).is_integer() for d in detalle)
