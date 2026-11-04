@@ -2,7 +2,7 @@
 <div id="myModalClient" tabindex="-1" class="modal fade fp-client-modal" role="dialog" aria-labelledby="fp-client-title" aria-describedby="fp-client-intro">
     <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
         <form class="modal-content" id="frmClient" method="POST" enctype="multipart/form-data" autocomplete="off" novalidate>
-            {% csrf_token %}
+            {% csrf_token %}<input type="hidden" name="empresa" value="{{ company.pk }}">
             <div class="modal-header">
                 <div>
                     <p class="fp-client-eyebrow">Sin salir de tu factura</p>

@@ -16,6 +16,7 @@ from openpyxl import load_workbook
 from core.pos.choices import NOMBRE_TARIFA_IVA, PORCENTAJE_IVA
 from core.pos.forms import ProductForm, Product, Category
 from core.security.mixins import GroupPermissionMixin
+from core.security.session import get_group
 
 COLUMNA_TARIFA = {'4': '15 %', '5': '5 %', '0': '0 %', '7': 'Exento', '6': 'No objeto'}
 
@@ -36,6 +37,78 @@ def tarifa_desde_excel(valor):
     return {Decimal('15'): '4', Decimal('5'): '5', Decimal('0'): '0'}.get(numero, '')
 
 
+# Importación del catálogo (R3): cada efecto exige su permiso, como en las pantallas de alta, edición y ajuste de stock.
+PERMISO_DEL_EFECTO = {'add_product': 'crear productos', 'change_product': 'modificar productos',
+                      'adjust_product_stock': 'ajustar el stock', 'add_category': 'crear categorías'}
+CAMPOS_DEL_CATALOGO = ('name', 'code', 'category_id', 'price', 'pvp', 'inventoried', 'tarifa_iva')
+
+
+def _centavos(valor):
+    return Decimal(str(valor)).quantize(Decimal('0.01'))
+
+
+def plan_de_importacion(hoja):
+    """Lee las filas sin escribir nada: [(fila, producto con los valores nuevos, stock anterior, categoría nueva o None,
+    efectos {permiso: True})]. Un mismo id repetido reutiliza el producto, como el guardado fila por fila."""
+    plan, productos = [], {}
+    for cell in hoja.iter_rows(min_row=2, max_row=hoja.max_row):
+        row = cell[0].row
+        id = int(hoja.cell(row=row, column=1).value)
+        if id not in productos:
+            productos[id] = Product.objects.select_for_update().filter(pk=id).first()
+        product = productos[id]
+        nuevo = product is None or product.pk is None   # un id nuevo repetido en el archivo sigue siendo un alta
+        if product is None:
+            product = productos[id] = Product()
+        anterior = product.stock if product.pk else 0
+        antes = {campo: getattr(product, campo) for campo in CAMPOS_DEL_CATALOGO}
+        product.name = str(hoja.cell(row=row, column=2).value)
+        product.code = str(hoja.cell(row=row, column=3).value)
+        nombre_categoria = str(hoja.cell(row=row, column=4).value)
+        categoria = Category.objects.filter(name=nombre_categoria).first()
+        if categoria is not None:
+            product.category = categoria
+        else:
+            product.category_id = None
+        product.price = _centavos(float(hoja.cell(row=row, column=5).value))
+        product.pvp = _centavos(float(hoja.cell(row=row, column=6).value))
+        product.stock = int(hoja.cell(row=row, column=7).value)
+        product.inventoried = str(hoja.cell(row=row, column=8).value).lower() == 'si'
+        # La columna «Tarifa de IVA» manda; los archivos sin ella usan «¿Se cobra impuesto?» y conservan
+        # la tarifa del producto si sigue de acuerdo (un producto del 5 % sigue en 5 %).
+        con_impuesto = str(hoja.cell(row=row, column=9).value).lower() == 'si'
+        tarifa = tarifa_desde_excel(hoja.cell(row=row, column=10).value)
+        if tarifa:
+            product.tarifa_iva = tarifa
+        elif not product.tarifa_iva or con_impuesto != (PORCENTAJE_IVA.get(product.tarifa_iva, 0) > 0):
+            product.tarifa_iva = '4' if con_impuesto else '0'
+        efectos = {}
+        if nuevo:
+            efectos['add_product'] = True   # el stock inicial va con el alta, como en el formulario de producto
+        else:
+            despues = {campo: getattr(product, campo) for campo in CAMPOS_DEL_CATALOGO}
+            if categoria is None or any(antes[c] != despues[c] for c in CAMPOS_DEL_CATALOGO):
+                efectos['change_product'] = True
+            if product.stock != anterior:
+                efectos['adjust_product_stock' if product.inventoried else 'change_product'] = True
+        if categoria is None:
+            efectos['add_category'] = True
+        plan.append((row, product, anterior, product.stock, None if categoria is not None else nombre_categoria, efectos))
+    return plan
+
+
+def permisos_que_faltan(request, plan):
+    """{permiso: [filas]} de los efectos que el rol no tiene."""
+    grupo = get_group(request)
+    tiene = set(grupo.permissions.values_list('codename', flat=True)) if grupo is not None else set()
+    faltan = {}
+    for row, _, _, _, _, efectos in plan:
+        for permiso in efectos:
+            if permiso not in tiene:
+                faltan.setdefault(permiso, []).append(row)
+    return faltan
+
+
 class ProductListView(GroupPermissionMixin, TemplateView):
     template_name = 'product/list.html'
     permission_required = 'view_product'
@@ -52,33 +125,23 @@ class ProductListView(GroupPermissionMixin, TemplateView):
                 with transaction.atomic():
                     archive = request.FILES['archive']
                     workbook = load_workbook(filename=archive, data_only=True)
-                    wb = workbook[workbook.sheetnames[0]]
-                    for cell in wb.iter_rows(min_row=2, max_row=wb.max_row):
-                        row = cell[0].row
-                        id = int(wb.cell(row=row, column=1).value)
-                        product = Product.objects.filter(pk=id).first()
-                        if product is None:
-                            product = Product()
-                        anterior = product.stock if product.pk else 0
-                        product.name = str(wb.cell(row=row, column=2).value)
-                        product.code = str(wb.cell(row=row, column=3).value)
-                        product.category = Category.objects.get_or_create(name=str(wb.cell(row=row, column=4).value))[0]
-                        product.price = float(wb.cell(row=row, column=5).value)
-                        product.pvp = float(wb.cell(row=row, column=6).value)
-                        product.stock = int(wb.cell(row=row, column=7).value)
-                        product.inventoried = str(wb.cell(row=row, column=8).value).lower() == 'si'
-                        # La columna «Tarifa de IVA» manda; los archivos sin ella usan «¿Se cobra impuesto?» y conservan
-                        # la tarifa del producto si sigue de acuerdo (un producto del 5 % sigue en 5 %).
-                        con_impuesto = str(wb.cell(row=row, column=9).value).lower() == 'si'
-                        tarifa = tarifa_desde_excel(wb.cell(row=row, column=10).value)
-                        if tarifa:
-                            product.tarifa_iva = tarifa
-                        elif not product.tarifa_iva or con_impuesto != (PORCENTAJE_IVA.get(product.tarifa_iva, 0) > 0):
-                            product.tarifa_iva = '4' if con_impuesto else '0'
+                    # Primero se planifica todo sin escribir; si a una fila le falta un permiso, se rechaza el lote entero.
+                    plan = plan_de_importacion(workbook[workbook.sheetnames[0]])
+                    faltan = permisos_que_faltan(request, plan)
+                    if faltan:
+                        detalle = '; '.join(f"{PERMISO_DEL_EFECTO[permiso]} (filas {', '.join(map(str, filas[:10]))})"
+                                            for permiso, filas in faltan.items())
+                        return HttpResponse(json.dumps({
+                            'error': f'Tu perfil no puede importar este archivo: le falta permiso para {detalle}. No se cambió nada.',
+                            'codigo': 'sin_permiso', 'faltan': {permiso: filas for permiso, filas in faltan.items()}}),
+                            status=403, content_type='application/json')
+                    from core.contabilidad.servicios import registrar_ajuste
+                    for row, product, anterior, stock, categoria_nueva, _ in plan:
+                        if categoria_nueva is not None:
+                            product.category = Category.objects.get_or_create(name=categoria_nueva)[0]
                         product.save()
                         if product.inventoried:   # kardex: el cambio de stock de la importación queda registrado
-                            from core.contabilidad.servicios import registrar_ajuste
-                            registrar_ajuste(product, anterior, product.stock, request.user, origen='importacion')
+                            registrar_ajuste(product, anterior, stock, request.user, origen='importacion')
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
         except Exception as e:

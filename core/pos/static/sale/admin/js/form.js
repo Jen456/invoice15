@@ -389,6 +389,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
                                 return {
                                     parameter: fvClient.form.querySelector('[name="dni"]').value,
                                     pattern: 'dni',
+                                    empresa: (fvClient.form.querySelector('[name="empresa"]') || {}).value || '',
                                     action: 'validate_client'
                                 };
                             },

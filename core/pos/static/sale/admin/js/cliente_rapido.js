@@ -91,6 +91,12 @@ window.fpClienteRapido = (function () {
                 method: 'POST', body: params, credentials: 'same-origin', redirect: 'error',
                 headers: {'X-CSRFToken': field('csrfmiddlewaretoken').value}, signal: controller.signal
             });
+            if (response.status === 409) {   // la empresa del formulario ya no es la activa: rechazo seguro, nada se guardó
+                var rechazo = await response.json().catch(function () { return {}; });
+                var error = new Error(rechazo.error || 'La empresa activa cambió en otra pestaña: vuelve a cargar la página.');
+                error.empresaCambiada = true;
+                throw error;
+            }
             if (!response.ok) { throw new Error('Respuesta no confirmada'); }
             return await response.json();
         } finally { window.clearTimeout(timeout); }
@@ -105,21 +111,26 @@ window.fpClienteRapido = (function () {
         matches.hidden = true;
         lockInputs(true);
         refreshButtons();
-        var result;
+        var result, rechazo = '';
         try {
             result = await post(params);
             if (!Object.prototype.hasOwnProperty.call(result || {}, 'error') && !validClient(result)) {
                 throw new Error('Alta no confirmada');
             }
-        } catch (_) {
-            // Un corte de red no demuestra que el POST no se haya guardado. No repetirlo.
-            uncertain = true;
-            announce('No recibimos la confirmación del guardado. Busca el cliente con esta identificación antes de continuar. No volveremos a enviarlo automáticamente.');
+        } catch (error) {
+            if (error && error.empresaCambiada) {
+                rechazo = error.message;   // rechazo confirmado: no es una respuesta perdida
+            } else {
+                // Un corte de red no demuestra que el POST no se haya guardado. No repetirlo.
+                uncertain = true;
+                announce('No recibimos la confirmación del guardado. Busca el cliente con esta identificación antes de continuar. No volveremos a enviarlo automáticamente.');
+            }
         } finally {
             busy = false;
             lockInputs(uncertain);
             refreshButtons();
         }
+        if (rechazo) { announce(rechazo + ' No se creó ningún cliente y lo escrito se conserva.'); focus(alertBox); return; }
         if (uncertain) { focus(lookup); return; }
         if (Object.prototype.hasOwnProperty.call(result, 'error')) { showErrors(result.error); return; }
         selectClient(result, true);
@@ -135,6 +146,7 @@ window.fpClienteRapido = (function () {
         matches.hidden = false;
         var params = new FormData();
         params.set('action', 'search_client');
+        if (field('empresa')) { params.set('empresa', field('empresa').value); }   // busca solo en la empresa de origen
         // Misma normalización de espacios que usa la validación existente.
         var foreign = es_identificacion_extranjera(field('identification_type').value);
         params.set('term', foreign ? number.replace(/\s+/g, ' ').toUpperCase() : number.replace(/\s/g, ''));
@@ -160,9 +172,10 @@ window.fpClienteRapido = (function () {
                 matches.appendChild(row);
             });
             if (clients.length) { focus(matches.querySelector('button')); }
-        } catch (_) {
+        } catch (error) {
             if (version === lookupVersion) {
-                matches.textContent = 'No pudimos consultar los clientes. Revisa tu conexión y vuelve a buscar. Lo escrito se conserva.';
+                matches.textContent = error && error.empresaCambiada ? error.message :
+                    'No pudimos consultar los clientes. Revisa tu conexión y vuelve a buscar. Lo escrito se conserva.';
             }
         } finally { searching = false; refreshButtons(); }
     }

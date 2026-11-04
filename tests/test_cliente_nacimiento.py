@@ -14,13 +14,13 @@ EMPRESA = {'action': 'create_client', 'names': 'IMPORTADORA SIN CUMPLEAÑOS S.A.
 
 
 def test_alta_desde_la_factura_sin_fecha_de_nacimiento(web, empresa):  # noqa: F811
-    datos = web.post(f'{VENTAS}add/', EMPRESA).json()
+    datos = web.post(f'{VENTAS}add/', {**EMPRESA, 'empresa': empresa.pk}).json()
     assert 'error' not in datos, datos
     cliente = leer(empresa, lambda: Client.objects.get(dni='0992560541001'))
     assert cliente.birthdate is None and datos['birthdate'] == '' and cliente.identification_type == '04'
     assert cliente.birthdate_format() == '' and leer(empresa, lambda: cliente.toJSON())['birthdate'] == ''
     # con fecha sigue funcionando igual
-    con_fecha = web.post(f'{VENTAS}add/', {**EMPRESA, 'names': 'PERSONA NATURAL', 'identification_type': '05', 'dni': '1710034065',
+    con_fecha = web.post(f'{VENTAS}add/', {**EMPRESA, 'empresa': empresa.pk, 'names': 'PERSONA NATURAL', 'identification_type': '05', 'dni': '1710034065',
                                            'email': 'persona@example.com', 'mobile': '0990000012', 'birthdate': '1990-01-01'}).json()
     assert 'error' not in con_fecha, con_fecha
     assert con_fecha['birthdate'] == '1990-01-01'

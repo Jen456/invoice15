@@ -54,7 +54,8 @@ def test_unir_y_separar_correos():
 def test_factura_a_un_cliente_del_exterior_llega_a_todos_sus_correos(web, empresa, producto, sri):  # noqa: F811
     datos = {'action': 'create_client', 'names': 'PRILABSA LOGISTIC S,A', 'email': 'p@example.com',
              'extra_emails': 'c1@example.com, c2@example.com', 'dni': '155652251-2-2017 DV7', 'identification_type': '08',
-             'mobile': '', 'birthdate': '1990-01-01', 'address': 'Panapark Free Zone, Panamá', 'send_email_invoice': 'on'}
+             'mobile': '', 'birthdate': '1990-01-01', 'address': 'Panapark Free Zone, Panamá', 'send_email_invoice': 'on',
+             'empresa': empresa.pk}
     creado = web.post(f'{VENTAS}add/', datos).json()
     assert 'error' not in creado, creado
     cliente = leer(empresa, lambda: Client.objects.select_related('user').get(pk=creado['id']))

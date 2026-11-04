@@ -167,9 +167,9 @@ class TestAltasDesdeLaFactura:
         grupo = helpers.crear_grupo('CAJERO SIN CLIENTES', ['add_sale', 'view_sale'])
         cajero = helpers.crear_usuario('cajero.sin.clientes', empresa, grupo)
         web_c = sesion(ClienteWeb(), empresa, cajero)
-        assert web_c.post(f'{VENTAS}add/', {'action': 'create_client', 'names': 'X', 'dni': '0912345670'}).json() == \
+        assert web_c.post(f'{VENTAS}add/', {'action': 'create_client', 'names': 'X', 'dni': '0912345670', 'empresa': empresa.pk}).json() == \
             {'error': 'Tu perfil no puede crear clientes.'}
-        errores = web.post(f'{VENTAS}add/', {'action': 'create_client', 'email': 'no-es-correo'}).json()['error']
+        errores = web.post(f'{VENTAS}add/', {'action': 'create_client', 'email': 'no-es-correo', 'empresa': empresa.pk}).json()['error']
         assert 'email' in errores and 'dni' in errores   # los de ClientUserForm y los de ClientForm juntos
 
     def test_codigo_repetido_con_mensaje_claro(self, web, empresa, producto, monkeypatch):

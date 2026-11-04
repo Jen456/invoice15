@@ -322,7 +322,8 @@ class TestReglas:
         otra = helpers.crear_empresa('OTRA')
         helpers.crear_cliente('0912345675', otra, '0912345675', '0990000003')   # su usuario es la cédula
         datos = {'action': 'create_client', 'names': 'JUAN PÉREZ', 'email': 'juan@example.com', 'dni': '0912345675',
-                 'identification_type': '05', 'mobile': '0990000004', 'birthdate': '1990-01-01', 'address': 'Quito'}
+                 'identification_type': '05', 'mobile': '0990000004', 'birthdate': '1990-01-01', 'address': 'Quito',
+                 'empresa': empresa.pk}
         r = web.post(f'{VENTAS}add/', datos).json()
         assert 'error' not in r, r
         with company_context(empresa):

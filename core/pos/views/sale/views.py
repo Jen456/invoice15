@@ -29,12 +29,16 @@ from core.pos.utilities.sri import SRI
 from core.reports.forms import ReportForm
 from core.security.mixins import GroupPermissionMixin
 from core.security.session import get_group
+from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada
 
 
 logger = logging.getLogger(__name__)
 
 
 PLAZO_CREDITO = 'Indica la fecha de plazo del crédito (AAAA-MM-DD).'
+# Alta rápida de cliente (R1): solo en la empresa en que se abrió el formulario.
+SIN_EMPRESA = 'Vuelve a cargar la factura antes de crear el cliente: este formulario no indica en qué empresa se abrió.'
+ACCIONES_DEL_CLIENTE = ('create_client', 'search_client', 'validate_client')
 
 
 class SaleListView(GroupPermissionMixin, FormView):
@@ -139,6 +143,14 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
     def post(self, request, *args, **kwargs):
         action = request.POST['action']
         data = {}
+        # R1: el diálogo envía la empresa en que se abrió; si ya no es la activa (otra pestaña), nada se busca ni se crea en
+        # la nueva. Crear un cliente la exige: un formulario sin ella (abierto con una versión anterior) se recarga.
+        if action in ACCIONES_DEL_CLIENTE and empresa_cambiada(request):
+            return HttpResponse(json.dumps({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}), status=409,
+                                content_type='application/json')
+        if action == 'create_client' and not (request.POST.get('empresa') or '').strip():
+            return HttpResponse(json.dumps({'error': SIN_EMPRESA, 'codigo': 'sin_empresa'}), status=409,
+                                content_type='application/json')
         try:
             if action == 'add':
                 if request.POST['receipt'] == VOUCHER_TYPE[2][0] and request.company.environment_type == emision.PRODUCCION:
