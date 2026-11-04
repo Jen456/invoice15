@@ -39,6 +39,7 @@ PLAZO_CREDITO = 'Indica la fecha de plazo del crédito (AAAA-MM-DD).'
 # Alta rápida de cliente (R1): solo en la empresa en que se abrió el formulario.
 SIN_EMPRESA = 'Vuelve a cargar la factura antes de crear el cliente: este formulario no indica en qué empresa se abrió.'
 ACCIONES_DEL_CLIENTE = ('create_client', 'search_client', 'validate_client')
+CLIENTE_REPETIDO = 'Ya existe un cliente con esta identificación. Puedes buscarlo aquí.'
 
 
 class SaleListView(GroupPermissionMixin, FormView):
@@ -146,8 +147,10 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
         # R1: el diálogo envía la empresa en que se abrió; si ya no es la activa (otra pestaña), nada se busca ni se crea en
         # la nueva. Crear un cliente la exige: un formulario sin ella (abierto con una versión anterior) se recarga.
         if action in ACCIONES_DEL_CLIENTE and empresa_cambiada(request):
-            return HttpResponse(json.dumps({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}), status=409,
-                                content_type='application/json')
+            rechazo = {'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}
+            if action == 'validate_client':   # el validador remoto del diálogo lee valid y message, no el código HTTP
+                rechazo.update(valid=False, message=EMPRESA_CAMBIADA)
+            return HttpResponse(json.dumps(rechazo), status=409, content_type='application/json')
         if action == 'create_client' and not (request.POST.get('empresa') or '').strip():
             return HttpResponse(json.dumps({'error': SIN_EMPRESA, 'codigo': 'sin_empresa'}), status=409,
                                 content_type='application/json')
@@ -310,6 +313,8 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                 queryset = Client.objects.all()
                 if pattern == 'dni':
                     data['valid'] = not queryset.filter(dni=parameter).exists()
+                    if not data['valid']:
+                        data['message'] = CLIENTE_REPETIDO   # el validador del diálogo muestra el mensaje del servidor
                 elif pattern == 'mobile':
                     data['valid'] = not queryset.filter(mobile=parameter).exists()
                 elif pattern == 'email':

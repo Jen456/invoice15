@@ -51,6 +51,9 @@ class TestClienteEnLaEmpresaDeOrigen:
         r = dos_empresas.post(VENTAS, {**CLIENTE, 'empresa': empresa.pk})
         assert r.status_code == 200 and r.json().get('id'), r.json()
         assert clientes(empresa) == 1
+        repetido = dos_empresas.post(VENTAS, {'action': 'validate_client', 'pattern': 'dni', 'parameter': CLIENTE['dni'],
+                                              'empresa': empresa.pk}).json()
+        assert repetido == {'valid': False, 'message': 'Ya existe un cliente con esta identificación. Puedes buscarlo aquí.'}
         # respuesta perdida: la búsqueda con la empresa de origen lo encuentra
         encontrados = dos_empresas.post(VENTAS, {'action': 'search_client', 'term': CLIENTE['dni'], 'empresa': empresa.pk}).json()
         assert [c['dni'] for c in encontrados] == [CLIENTE['dni']]
@@ -70,6 +73,8 @@ class TestClienteEnLaEmpresaDeOrigen:
                       {'action': 'validate_client', 'pattern': 'dni', 'parameter': '0912345675'}):
             r = dos_empresas.post(VENTAS, {**datos, 'empresa': empresa.pk})
             assert (r.status_code, r.json()['codigo']) == (409, 'empresa_cambiada')   # no muestra clientes de B
+            if datos['action'] == 'validate_client':   # el validador remoto muestra este mensaje junto al campo
+                assert r.json()['valid'] is False and 'empresa activa cambió' in r.json()['message']
             assert dos_empresas.post(VENTAS, datos).status_code == 200                  # sin empresa, como antes
 
     def test_formulario_sin_empresa_no_crea_nada(self, dos_empresas, empresa):

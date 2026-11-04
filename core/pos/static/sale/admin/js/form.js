@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
                                     action: 'validate_client'
                                 };
                             },
-                            message: 'Ya existe un cliente con esta identificación. Puedes buscarlo aquí.',
+                            // Sin mensaje fijo: el servidor dice si el cliente está repetido o si la empresa cambió en otra pestaña.
                             method: 'POST',
                             headers: {
                                 'X-CSRFToken': csrftoken
