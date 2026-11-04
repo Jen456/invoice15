@@ -1,0 +1,50 @@
+{
+ "pasos": [
+  {
+   "nombre": "el diálogo lleva la empresa de origen",
+   "ok": true
+  },
+  {
+   "nombre": "tras cambiar de empresa: no se crea el cliente y el diálogo explica el cambio de empresa",
+   "ok": true,
+   "peticiones": [
+    {
+     "accion": "validate_client",
+     "estado": 409
+    },
+    {
+     "accion": "validate_client",
+     "estado": 200
+    },
+    {
+     "accion": "validate_client",
+     "estado": 200
+    }
+   ],
+   "alerta": "Revisa los campos señalados antes de guardar.",
+   "campo": "La empresa activa cambió en otra pestaña: vuelve a cargar la página para ver los datos de la empresa que tienes abierta ahora."
+  },
+  {
+   "nombre": "se conserva lo escrito y el diálogo sigue abierto",
+   "ok": true
+  },
+  {
+   "nombre": "la búsqueda del diálogo también se rechaza",
+   "ok": true,
+   "estado": 409
+  },
+  {
+   "nombre": "de vuelta en la empresa de origen, guarda y lo selecciona",
+   "ok": true,
+   "estado": 200,
+   "texto": "Cliente guardado y seleccionado: CLIENTE DE OTRA PESTAÑA (1710034065). Puedes continuar con tu factu"
+  },
+  {
+   "nombre": "sin errores de JavaScript",
+   "ok": true,
+   "errores": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": []
+}

@@ -1,5 +1,11 @@
 # D9: recomendación para el complemento «Contable»
 
+> **Decisión de la propietaria (04/11/2026):** «Los precios anuales definidos por módulo son $150 para una empresa y $250
+> para multiempresa; impuestos y alcance multiempresa siguen pendientes». Quedan decididos los importes y la periodicidad
+> anual. No se convierten en un precio final con IVA ni se infieren el número de RUC de multiempresa, la agrupación de
+> módulos o las condiciones de activación. El complemento sigue cerrado (lista de revisión vacía) y la landing no cambia
+> hasta definir lo pendiente. Las recomendaciones de abajo quedan como antecedente.
+
 28/10/2026. Nada de esto cambia todavía la app ni la landing. Siguen mostrando «Precio por anunciar» y el cobro sigue deshabilitado hasta que lo apruebes.
 
 ## Resumen

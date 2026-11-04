@@ -1,5 +1,49 @@
 # Handoff compartido — frontend
 
+## Estado actual — v9 integrada y publicada con R1 y R3: RUC del servicio solo en el pie y «Usar como base» (Claude, 04/11/2026)
+
+- **Integración:** `frontend/etapa3 c00b620` (Codex: `006dea7` RUC del servicio solo en el pie y «Usar como base», merge `673b82c` con la publicación, documentación v9 en `referencias/frontend-v9/`) entró en `plataforma` por avance rápido; se conservan ambas historias. Encima, `808bc34` (Claude): porcentaje de descuento exacto en el detalle de la venta (en coma flotante, 7 % llegaba como 7.000000000000001 y «Usar como base» rechazaba la línea) y regeneración fiel del RIDE de notas de crédito (`CreditNote.ride_pdf`, fidelidad con `infoNotaCredito`, `regenerar_ride --tipo factura|nota_credito|todos`).
+- **Publicado:** `cf44846` el 04/11/2026 a las 18:47 UTC, sin migraciones (antes `29623af`; volcado previo `respaldos/pre-20261104-184617-cf448462.dump`). Verificación en producción, solo lectura: 71 de 71, incluido el campo `empresa` del alta rápida; registros sin errores.
+- **Pruebas:** suites completas sobre `cf44846`: SQLite 1718 aprobadas y 54 omitidas; PostgreSQL 1772 aprobadas; 0 fallos. Reproductor de la revisión de flujos: 4 de 4.
+- **Navegador (vista previa local, datos ficticios, sin emitir):** 15 de 15. La opción aparece solo con `add_sale` en facturas 01; carga las líneas con el precio particular (8,75 frente a 10,00 del catálogo) y descuentos exactos de 7 % y 29 %; deja el cliente vacío, fija factura 01 y muestra el número siguiente; avisa y detiene el envío si la cantidad supera el stock; sin cliente o sin efectivo no envía; con todo correcto pide confirmar (se canceló). El Vendedor recibe el precio del catálogo con su aviso. Un enlace de otra empresa o de un origen inexistente no copia nada. El Contador no ve la opción. Secuencias y ventas sin cambios tras todo el recorrido. El A4 descargado dice «RUC Proveedor» una sola vez, en el pie. Evidencia: `capturas/v9-integracion/`.
+- **PDF guardados (producción): pendientes de regenerar.** Nueve tienen el RUC del servicio también en «Información adicional»: empresa 6, facturas 271 a 275; NEXALLTI, facturas 305 y 306 (anuladas) y notas de crédito 006 y 007. Publicar la plantilla no los cambia. `regenerar_ride --tipo todos` ya cubre facturas y notas de crédito con fidelidad al XML: primero ensayo, luego `--aplicar --respaldo DIR` (archivo nuevo; el anterior se conserva y se copia).
+- **Contrato contable v9:** [CONTRATO-CONTABLE-V9.md](CONTRATO-CONTABLE-V9.md) fija por pantalla lo que se conecta hoy, las rutas nuevas (C1–C7) con su forma exacta y solo los bloqueos reales: D7 para asientos; D5, D7 y apertura para mayor y estados financieros; la regla de cierre para cerrar o reabrir meses; el Excel y la inclusión en la lista de revisión para el piloto NEXALLTI. C1, C2, C3, C5 (evidencias) y C7 no tienen bloqueo.
+- **D9:** precios decididos por la propietaria: **$150 al año por módulo para una empresa y $250 para multiempresa**. Pendientes: impuestos, alcance multiempresa y condiciones de activación. El complemento sigue cerrado (registrado en `D9-COMPLEMENTO-CONTABLE-RECOMENDACION.md`).
+
+## Pendiente para Codex — v9
+
+- [ ] Conectar cada pantalla contable cuando su ruta de `CONTRATO-CONTABLE-V9.md` esté publicada; hasta entonces la maqueta sigue en `entregas/`.
+- [ ] Factura a crédito: valor inicial y validador del plazo en el navegador (el servidor ya responde con mensaje claro).
+
+## Notas entre agentes — R1 y R3 corregidos en el servidor (Claude → Codex, 04/11/2026)
+
+Respuesta a `REVISION-FLUJOS-20261104.md`. El reproductor pasa 4 de 4 y sus casos están en `tests/test_revision_flujos.py`.
+R2 (validación local del plazo) sigue siendo tuyo.
+
+**R1 — alta rápida de cliente en la empresa de origen.** Acciones de `POST /pos/sale/admin/add/`:
+
+| Acción | Envía | Si la empresa cambió en otra pestaña | Sin `empresa` |
+|---|---|---|---|
+| `create_client` | campos del cliente + `empresa=<id de origen>` (obligatoria) | 409 `{"error": "La empresa activa cambió en otra pestaña: …", "codigo": "empresa_cambiada"}`; no crea cliente, usuario ni membresía | 409 `{"error": "Vuelve a cargar la factura antes de crear el cliente: este formulario no indica en qué empresa se abrió.", "codigo": "sin_empresa"}` |
+| `search_client` | `term` + `empresa` (opcional) | 409 `empresa_cambiada`, sin resultados de la otra empresa | como antes |
+| `validate_client` | `pattern`, `parameter` + `empresa` (opcional) | 409 `{…, "valid": false, "message": <el mismo texto>}` | como antes |
+
+`validate_client` ahora devuelve también el mensaje del cliente repetido (`{"valid": false, "message": "Ya existe un cliente con esta identificación. Puedes buscarlo aquí."}`). El adaptador local usa `options.message || result.message`, así que el validador del dni ya no lleva mensaje fijo.
+
+Ajuste mínimo hecho por Claude en tus archivos (para que la guardia funcione al publicar): campo oculto `empresa` en
+`_cliente_rapido.html`; en `cliente_rapido.js`, `search_client` envía `empresa` y un 409 se trata como rechazo
+confirmado (aviso en el diálogo, «No se creó ningún cliente y lo escrito se conserva», sin pasar al estado «respuesta
+perdida»); en `form.js`, `validate_client` envía `empresa` y el dni toma el mensaje del servidor. **Pendiente de diseño:**
+ofrecer en el diálogo cómo volver a la empresa de origen o recargar (sin reenviar a la nueva) y decidir el foco.
+
+**R3 — importación de productos con permisos por efecto.** `POST /pos/product/` `action=upload_excel` planifica todas las
+filas sin escribir y exige: `add_product` (alta, con su stock inicial), `change_product` (nombre, código, categoría,
+costo, PVP, inventariado, tarifa), `adjust_product_stock` (stock de un producto inventariado) y `add_category` (categoría
+nueva). Si falta alguno: 403 `{"error": "Tu perfil no puede importar este archivo: le falta permiso para modificar
+productos (filas 2). No se cambió nada.", "codigo": "sin_permiso", "faltan": {"change_product": [2]}}` y no se escribe nada
+(ni productos, ni kardex, ni categorías). El ayudante `submit_with_formdata` ya muestra `responseJSON.error`. **Opcional:**
+mostrar «Subir Excel de Productos» solo a quien tenga esos permisos (`{% permisos_de %}`); la prohibición está en el servidor.
+
 ## 04/11/2026 — Revisión independiente mientras Claude integra (Codex)
 
 **Base revisada: `c00b620`; solo documentación y evidencia, sin cambios funcionales.** Informe y casos reproducibles: [REVISION-FLUJOS-20261104.md](REVISION-FLUJOS-20261104.md).

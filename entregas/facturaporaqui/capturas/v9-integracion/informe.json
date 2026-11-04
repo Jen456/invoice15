@@ -1,0 +1,131 @@
+{
+ "base": {
+  "venta": 1,
+  "numero": "001-001-006461922",
+  "empresa": 1,
+  "secuencia": 6461922,
+  "total": "28.88"
+ },
+ "pasos": [
+  {
+   "nombre": "listado: «Usar como base para otra factura» en la factura 01",
+   "ok": true,
+   "enlace": [
+    "/pos/sale/admin/add/?base=1&empresa=1"
+   ]
+  },
+  {
+   "nombre": "carga: las tres líneas con cantidades, precio particular 8,75 y descuentos 7 % y 29 %",
+   "ok": true,
+   "lineas": [
+    {
+     "code": "PRV-1",
+     "cant": 2,
+     "precio": 8.75,
+     "dscto": 7
+    },
+    {
+     "code": "PRV-S",
+     "cant": 1,
+     "precio": 4,
+     "dscto": 29
+    },
+    {
+     "code": "PRV-POCO",
+     "cant": 2,
+     "precio": 3,
+     "dscto": 0
+    }
+   ],
+   "cliente": "",
+   "receipt": "01",
+   "otros_tipos_deshabilitados": true,
+   "numero": "006461923",
+   "campo_precio": 3,
+   "estado": "Productos cargados. Elige el cliente de esta nueva factura; revisa el pago antes de emitir.",
+   "avisos": [
+    "PRODUCTO PRV-POCO: copiaste 2, pero hay 1 en stock. Revisa la cantidad antes de emitir."
+   ]
+  },
+  {
+   "nombre": "carga: cliente vacío para elegirlo, solo factura 01 y número nuevo",
+   "ok": true,
+   "cliente": "",
+   "numero": "006461923"
+  },
+  {
+   "nombre": "carga: el propietario puede ajustar el precio (campo editable)",
+   "ok": true
+  },
+  {
+   "nombre": "carga: aviso de stock para PRV-POCO (2 copiadas, 1 en stock)",
+   "ok": true,
+   "avisos": [
+    "PRODUCTO PRV-POCO: copiaste 2, pero hay 1 en stock. Revisa la cantidad antes de emitir."
+   ]
+  },
+  {
+   "nombre": "sin cliente: no se envía y pide el cliente",
+   "ok": true,
+   "mensajes": [
+    "Seleccione un cliente",
+    "El efectivo debe ser mayor o igual al total a pagar"
+   ]
+  },
+  {
+   "nombre": "con cliente y más cantidad que stock: se detiene antes de enviar y lo explica",
+   "ok": true,
+   "estado": "Revisa la cantidad de PRODUCTO PRV-POCO: hay 1 en stock."
+  },
+  {
+   "nombre": "con cliente y stock suficiente: pide confirmar la emisión (se cancela; nada se envía)",
+   "ok": true,
+   "dialogo_confirmacion": 1
+  },
+  {
+   "nombre": "vendedor: usa el precio del catálogo (10,00), sin campo de precio, y lo avisa",
+   "ok": true,
+   "p1": {
+    "code": "PRV-1",
+    "cant": 2,
+    "precio": 10,
+    "dscto": 7
+   },
+   "avisos": [
+    "PRODUCTO PRV-POCO: copiaste 2, pero hay 1 en stock. Revisa la cantidad antes de emitir.",
+    "Tu perfil usa el precio vigente del catálogo: se actualizaron 1 líneas."
+   ]
+  },
+  {
+   "nombre": "empresa cambiada en el enlace: no carga y lo explica",
+   "ok": true
+  },
+  {
+   "nombre": "origen inexistente u otra empresa: no copia nada",
+   "ok": true,
+   "estado": "No encontramos productos para copiar. Vuelve al listado y elige una factura de esta empresa."
+  },
+  {
+   "nombre": "390 px: sin desplazamiento horizontal",
+   "ok": true
+  },
+  {
+   "nombre": "contador sin permiso de crear: sin la opción de usar como base",
+   "ok": true
+  },
+  {
+   "nombre": "A4: descarga del RIDE guardado",
+   "ok": true,
+   "estado": 200,
+   "bytes": 49873
+  },
+  {
+   "nombre": "sin errores de JavaScript",
+   "ok": true,
+   "errores": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "envios_add": 0
+}

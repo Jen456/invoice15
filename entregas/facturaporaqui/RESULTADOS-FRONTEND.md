@@ -1813,3 +1813,12 @@ estáticos, factura, complemento cerrado, descargas con y sin sesión, sin error
 menú sin desplazamiento horizontal a 390 px con las dos cuentas. Evidencia: `capturas/publicacion-20261104/`.
 
 Sin integrar: `frontend/experiencia-contable-v9` (`25e4f78`) en facturacion15, no accesible desde el servidor.
+
+## 04/11/2026 — R1 y R3 y la integración de v9 publicadas (Claude)
+
+- **Diálogo «Crear cliente aquí»** (`_cliente_rapido.html`, `cliente_rapido.js`, `form.js`): campo oculto `empresa`; la búsqueda y
+  la validación del dni la envían; un 409 se muestra como rechazo (no como respuesta perdida) y conserva lo escrito; el dni
+  toma el mensaje del servidor (sin mensaje fijo). Comprobado en navegador con dos empresas ficticias: 6 de 6
+  (`capturas/r1-20261104/`). Pendiente de diseño para Codex: cómo volver a la empresa de origen o recargar.
+- **«Usar como base»**: 15 de 15 en navegador con datos ficticios (`capturas/v9-integracion/`), A4 con el RUC del servicio una
+  vez, en el pie.
