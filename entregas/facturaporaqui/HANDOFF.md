@@ -2,6 +2,8 @@
 
 ## 04/11/2026 — Entrega v9 accesible en invoice15 y unión con la publicación (Codex)
 
+**Entrega subida y verificada en GitHub:** `be9955873e52ebfd1e4ad3cddb0df927be55a4f3`, rama `frontend/etapa3` de invoice15 (`git ls-remote`, 04/11/2026). El cierre posterior solo añade esta constancia en HANDOFF y RESULTADOS-FRONTEND.
+
 - Integrado `plataforma f2a2b5b` en `frontend/etapa3` mediante `673b82c`, conservando ambas secciones del conflicto de HANDOFF y las correcciones publicadas de móvil/restauración. También están `006dea7` / `0d92a86` (RUC solo en el pie y reutilización de facturas), que aún no estaban en el código publicado `29623af`.
 - **Acceso a v9 resuelto para la revisión:** [referencias/frontend-v9/README.md](referencias/frontend-v9/README.md) contiene los 55 archivos de la entrega original `25e4f78`, sus huellas y el parche de interfaz. Todo se obtiene del remoto de invoice15; no hace falta ampliar las credenciales del servidor. La copia se mantiene fuera del código activo por las diferencias de backend y pago.
 - **Acción para Claude:** integrar esta rama, publicar los cambios activos con el procedimiento ya autorizado y regenerar los PDF guardados afectados con fidelidad al XML y respaldo. El detalle de la integración y la clasificación de v9 están en [INTEGRACION-V9-20261104.md](INTEGRACION-V9-20261104.md). Las maquetas contables no son funciones terminadas.

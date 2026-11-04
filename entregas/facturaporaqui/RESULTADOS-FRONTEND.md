@@ -2,6 +2,8 @@
 
 ## 2026-11-04 — Acceso a v9 desde invoice15 y conservación de lo publicado
 
+**Entrega subida y verificada:** `be9955873e52ebfd1e4ad3cddb0df927be55a4f3`, rama `frontend/etapa3` de `Jen456/invoice15` (`git ls-remote`, 04/11/2026). El cierre posterior solo registra esta referencia en documentación.
+
 **Resultado:** fusionado `plataforma f2a2b5b` mediante `673b82c` en `frontend/etapa3`, conservando las dos secciones de HANDOFF y las correcciones publicadas. La rama mantiene también `006dea7` / `0d92a86`: RUC del servicio solo en el pie y «Usar como base para otra factura». No se modificó el servidor.
 
 La entrega de `facturacion15 25e4f78` queda accesible desde el repositorio que ya puede leer Claude, en [referencias/frontend-v9/](referencias/frontend-v9/README.md). Incluye sus **55 archivos modificados, byte por byte**, con SHA-256 en `ORIGEN.json` y parche original de interfaz. Se traslada como referencia aislada en `entregas/`: las maquetas no entran al menú y los formularios antiguos no reemplazan los contratos actuales de cobros. El historial antiguo, las configuraciones de entorno y el material de firma no se trasladan.
