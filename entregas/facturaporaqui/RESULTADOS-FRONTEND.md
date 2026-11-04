@@ -1762,3 +1762,18 @@ foco visible en todos los elementos recorridos de factura, recibos, libros y kar
 Estilo del campo de precio (escritorio y tarjetas móviles), un botón para recargar junto al mensaje del 409
 `empresa_cambiada` en capturas y lotes, rótulo visible del complemento en el menú si se quiere, estilo de los avisos del
 kardex, valor inicial y validador del plazo del crédito en la factura, y el PDF de la guía regenerado. Sin despliegue.
+
+## 04/11/2026 — publicación del cierre en app.facturaporaqui.com (Claude)
+
+Publicado `29623af` (desde `98cfa20`). Ajustes de interfaz hechos por Claude que Codex debe conservar:
+
+- **Foco en la factura** (`static/css/facturaporaqui.css`): `#frmForm:has(.fp-sale-editor) :focus-visible`.
+- **Plan en móvil** (`static/css/facturaporaqui.css`, nivel superior): `.fpa-plan .table-responsive{position:relative}`. El
+  `span.sr-only` absoluto del encabezado de la tabla de pagos escapaba de `.table-responsive` y estiraba la página a 433 px.
+- **Reporte de ganancias** (`core/reports/templates/earnings_report/report.html`): la tabla dentro de `.table-responsive`.
+
+Verificación en producción (solo lectura, cuentas de demostración): 70 comprobaciones sin fallos (menú completo,
+estáticos, factura, complemento cerrado, descargas con y sin sesión, sin errores de JavaScript ni 5xx) y las 52 páginas del
+menú sin desplazamiento horizontal a 390 px con las dos cuentas. Evidencia: `capturas/publicacion-20261104/`.
+
+Sin integrar: `frontend/experiencia-contable-v9` (`25e4f78`) en facturacion15, no accesible desde el servidor.

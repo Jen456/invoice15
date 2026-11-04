@@ -58,6 +58,7 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-current-summary dd{margin:0;text-align:right}
 .fp-current-summary .fpa-progreso{margin-top:10px;max-width:none}
 .fpa-plan .fpa-plan-tarjeta .fpa-incluye{margin-bottom:12px}
+.fpa-plan .table-responsive{position:relative}
 /* Las dos tarjetas van lado a lado solo cuando hay ancho para el resumen compacto. */
 @media(min-width:1360px){
 .fpa-plan .fp-plan-col{flex:0 0 50%;max-width:50%}

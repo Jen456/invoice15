@@ -1,0 +1,578 @@
+{
+ "pasos": [
+  {
+   "nombre": "acceso: inicio de sesión y empresa elegida",
+   "ok": true,
+   "url": "https://app.facturaporaqui.com/dashboard/"
+  },
+  {
+   "nombre": "menú /configuracion/puntos/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /empresas/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/sale/admin/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/credit/note/admin/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /comprobantes/retenciones/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /comprobantes/notas-debito/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /comprobantes/guias/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /comprobantes/liquidaciones/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/voucher/errors/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /proformas/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/client/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/promotions/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/purchase/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /importacion/recibidos/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/provider/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/expenses/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/type/expense/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /adjuntos/capturas/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /importacion/nueva/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /importacion/claves/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /importacion/lotes/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /importacion/pendientes/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/category/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/product/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/product/stock/adjustment/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/ctas/collect/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/debts/pay/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /comprobantes/retenciones-recibidas/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /adjuntos/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /tributario/libros/",
+   "ok": true,
+   "final": "/dashboard/"
+  },
+  {
+   "nombre": "menú /tributario/revision/",
+   "ok": true,
+   "final": "/dashboard/"
+  },
+  {
+   "nombre": "menú /tributario/ats/",
+   "ok": true,
+   "final": "/dashboard/"
+  },
+  {
+   "nombre": "menú /tributario/formularios/",
+   "ok": true,
+   "final": "/dashboard/"
+  },
+  {
+   "nombre": "menú /tributario/empresas/",
+   "ok": true,
+   "final": "/dashboard/"
+  },
+  {
+   "nombre": "menú /contabilidad/kardex/",
+   "ok": true,
+   "final": "/dashboard/"
+  },
+  {
+   "nombre": "menú /contabilidad/inventario/",
+   "ok": true,
+   "final": "/dashboard/"
+  },
+  {
+   "nombre": "menú /reports/purchase/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /reports/ctas/collect/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /reports/debts/pay/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /reports/earnings/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /reports/expenses/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /reports/results/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /reports/sale/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/company/update/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /configuracion/facturacion/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /importacion/reglas/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /pos/receipt/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /user/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /user/update/password/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /user/update/profile/",
+   "ok": true
+  },
+  {
+   "nombre": "menú /suscripcion/",
+   "ok": true
+  },
+  {
+   "nombre": "estáticos: 97 archivos de las páginas responden 200",
+   "ok": true,
+   "rotos": []
+  },
+  {
+   "nombre": "factura: precio por línea, altas de cliente y producto, condición de pago",
+   "ok": true,
+   "precio": "1",
+   "alta_cliente": true,
+   "alta_producto": true,
+   "punto": null,
+   "condicion": [
+    "Contado",
+    "Crédito"
+   ]
+  },
+  {
+   "nombre": "factura: sin desplazamiento horizontal a 1360 px",
+   "ok": true
+  },
+  {
+   "nombre": "complemento cerrado: API 403 complemento_pendiente",
+   "ok": true
+  },
+  {
+   "nombre": "complemento cerrado: descarga 403",
+   "ok": true
+  },
+  {
+   "nombre": "descarga inexistente /adjuntos/999999/archivo/: sin error del servidor",
+   "ok": true,
+   "estado": 404
+  },
+  {
+   "nombre": "descarga inexistente /cobros/respaldo/999999/archivo/: sin error del servidor",
+   "ok": true,
+   "estado": 404
+  },
+  {
+   "nombre": "descarga inexistente /adjuntos/capturas/999999/archivo/: sin error del servidor",
+   "ok": true,
+   "estado": 404
+  },
+  {
+   "nombre": "sin sesión /adjuntos/1/archivo/: redirige al inicio de sesión",
+   "ok": true,
+   "estado": 302,
+   "destino": "/login/?next=/adjuntos/1/archivo/"
+  },
+  {
+   "nombre": "sin sesión /adjuntos/capturas/: redirige al inicio de sesión",
+   "ok": true,
+   "estado": 302,
+   "destino": "/login/?next=/adjuntos/capturas/"
+  },
+  {
+   "nombre": "sin sesión /pos/sale/admin/add/: redirige al inicio de sesión",
+   "ok": true,
+   "estado": 302,
+   "destino": "/login/?next=/pos/sale/admin/add/"
+  },
+  {
+   "nombre": "sin sesión /tributario/libros/: redirige al inicio de sesión",
+   "ok": true,
+   "estado": 302,
+   "destino": "/login/?next=/tributario/libros/"
+  },
+  {
+   "nombre": "acceso móvil: otra empresa de demostración",
+   "ok": true,
+   "url": "https://app.facturaporaqui.com/dashboard/"
+  },
+  {
+   "nombre": "390 px /dashboard/: 200 y sin desplazamiento horizontal",
+   "ok": true,
+   "estado": 200
+  },
+  {
+   "nombre": "390 px /pos/sale/admin/add/: 200 y sin desplazamiento horizontal",
+   "ok": true,
+   "estado": 200
+  },
+  {
+   "nombre": "390 px /adjuntos/capturas/: 200 y sin desplazamiento horizontal",
+   "ok": true,
+   "estado": 200
+  },
+  {
+   "nombre": "sin errores de JavaScript",
+   "ok": true,
+   "errores": []
+  },
+  {
+   "nombre": "sin respuestas 5xx",
+   "ok": true,
+   "r": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "enlaces": [
+  {
+   "href": "/configuracion/puntos/",
+   "estado": 200,
+   "final": "/configuracion/puntos/"
+  },
+  {
+   "href": "/empresas/",
+   "estado": 200,
+   "final": "/empresas/"
+  },
+  {
+   "href": "/pos/sale/admin/",
+   "estado": 200,
+   "final": "/pos/sale/admin/"
+  },
+  {
+   "href": "/pos/credit/note/admin/",
+   "estado": 200,
+   "final": "/pos/credit/note/admin/"
+  },
+  {
+   "href": "/comprobantes/retenciones/",
+   "estado": 200,
+   "final": "/comprobantes/retenciones/"
+  },
+  {
+   "href": "/comprobantes/notas-debito/",
+   "estado": 200,
+   "final": "/comprobantes/notas-debito/"
+  },
+  {
+   "href": "/comprobantes/guias/",
+   "estado": 200,
+   "final": "/comprobantes/guias/"
+  },
+  {
+   "href": "/comprobantes/liquidaciones/",
+   "estado": 200,
+   "final": "/comprobantes/liquidaciones/"
+  },
+  {
+   "href": "/pos/voucher/errors/",
+   "estado": 200,
+   "final": "/pos/voucher/errors/"
+  },
+  {
+   "href": "/proformas/",
+   "estado": 200,
+   "final": "/proformas/"
+  },
+  {
+   "href": "/pos/client/",
+   "estado": 200,
+   "final": "/pos/client/"
+  },
+  {
+   "href": "/pos/promotions/",
+   "estado": 200,
+   "final": "/pos/promotions/"
+  },
+  {
+   "href": "/pos/purchase/",
+   "estado": 200,
+   "final": "/pos/purchase/"
+  },
+  {
+   "href": "/importacion/recibidos/",
+   "estado": 200,
+   "final": "/importacion/recibidos/"
+  },
+  {
+   "href": "/pos/provider/",
+   "estado": 200,
+   "final": "/pos/provider/"
+  },
+  {
+   "href": "/pos/expenses/",
+   "estado": 200,
+   "final": "/pos/expenses/"
+  },
+  {
+   "href": "/pos/type/expense/",
+   "estado": 200,
+   "final": "/pos/type/expense/"
+  },
+  {
+   "href": "/adjuntos/capturas/",
+   "estado": 200,
+   "final": "/adjuntos/capturas/"
+  },
+  {
+   "href": "/importacion/nueva/",
+   "estado": 200,
+   "final": "/importacion/nueva/"
+  },
+  {
+   "href": "/importacion/claves/",
+   "estado": 200,
+   "final": "/importacion/claves/"
+  },
+  {
+   "href": "/importacion/lotes/",
+   "estado": 200,
+   "final": "/importacion/lotes/"
+  },
+  {
+   "href": "/importacion/pendientes/",
+   "estado": 200,
+   "final": "/importacion/pendientes/"
+  },
+  {
+   "href": "/pos/category/",
+   "estado": 200,
+   "final": "/pos/category/"
+  },
+  {
+   "href": "/pos/product/",
+   "estado": 200,
+   "final": "/pos/product/"
+  },
+  {
+   "href": "/pos/product/stock/adjustment/",
+   "estado": 200,
+   "final": "/pos/product/stock/adjustment/"
+  },
+  {
+   "href": "/pos/ctas/collect/",
+   "estado": 200,
+   "final": "/pos/ctas/collect/"
+  },
+  {
+   "href": "/pos/debts/pay/",
+   "estado": 200,
+   "final": "/pos/debts/pay/"
+  },
+  {
+   "href": "/comprobantes/retenciones-recibidas/",
+   "estado": 200,
+   "final": "/comprobantes/retenciones-recibidas/"
+  },
+  {
+   "href": "/adjuntos/",
+   "estado": 200,
+   "final": "/adjuntos/"
+  },
+  {
+   "href": "/tributario/libros/",
+   "estado": 200,
+   "final": "/dashboard/"
+  },
+  {
+   "href": "/tributario/revision/",
+   "estado": 200,
+   "final": "/dashboard/"
+  },
+  {
+   "href": "/tributario/ats/",
+   "estado": 200,
+   "final": "/dashboard/"
+  },
+  {
+   "href": "/tributario/formularios/",
+   "estado": 200,
+   "final": "/dashboard/"
+  },
+  {
+   "href": "/tributario/empresas/",
+   "estado": 200,
+   "final": "/dashboard/"
+  },
+  {
+   "href": "/contabilidad/kardex/",
+   "estado": 200,
+   "final": "/dashboard/"
+  },
+  {
+   "href": "/contabilidad/inventario/",
+   "estado": 200,
+   "final": "/dashboard/"
+  },
+  {
+   "href": "/reports/purchase/",
+   "estado": 200,
+   "final": "/reports/purchase/"
+  },
+  {
+   "href": "/reports/ctas/collect/",
+   "estado": 200,
+   "final": "/reports/ctas/collect/"
+  },
+  {
+   "href": "/reports/debts/pay/",
+   "estado": 200,
+   "final": "/reports/debts/pay/"
+  },
+  {
+   "href": "/reports/earnings/",
+   "estado": 200,
+   "final": "/reports/earnings/"
+  },
+  {
+   "href": "/reports/expenses/",
+   "estado": 200,
+   "final": "/reports/expenses/"
+  },
+  {
+   "href": "/reports/results/",
+   "estado": 200,
+   "final": "/reports/results/"
+  },
+  {
+   "href": "/reports/sale/",
+   "estado": 200,
+   "final": "/reports/sale/"
+  },
+  {
+   "href": "/pos/company/update/",
+   "estado": 200,
+   "final": "/pos/company/update/"
+  },
+  {
+   "href": "/configuracion/facturacion/",
+   "estado": 200,
+   "final": "/configuracion/facturacion/paso/5/"
+  },
+  {
+   "href": "/importacion/reglas/",
+   "estado": 200,
+   "final": "/importacion/reglas/"
+  },
+  {
+   "href": "/pos/receipt/",
+   "estado": 200,
+   "final": "/pos/receipt/"
+  },
+  {
+   "href": "/user/",
+   "estado": 200,
+   "final": "/user/"
+  },
+  {
+   "href": "/user/update/password/",
+   "estado": 200,
+   "final": "/user/update/password/"
+  },
+  {
+   "href": "/user/update/profile/",
+   "estado": 200,
+   "final": "/user/update/profile/"
+  },
+  {
+   "href": "/suscripcion/",
+   "estado": 200,
+   "final": "/suscripcion/"
+  }
+ ]
+}
