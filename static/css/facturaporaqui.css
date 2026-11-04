@@ -58,10 +58,10 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-current-summary dd{margin:0;text-align:right}
 .fp-current-summary .fpa-progreso{margin-top:10px;max-width:none}
 .fpa-plan .fpa-plan-tarjeta .fpa-incluye{margin-bottom:12px}
+.fpa-plan .table-responsive{position:relative}
 /* Las dos tarjetas van lado a lado solo cuando hay ancho para el resumen compacto. */
 @media(min-width:1360px){
 .fpa-plan .fp-plan-col{flex:0 0 50%;max-width:50%}
-.fpa-plan .table-responsive{position:relative}
 .fp-upgrade-summary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);column-gap:20px;align-items:start;padding:18px 20px}
 .fp-upgrade-summary>.fp-eyebrow,.fp-upgrade-summary>p.small{grid-column:1/-1}
 .fp-upgrade-summary>h4{grid-column:1;font-size:20px;margin:8px 0 0}
