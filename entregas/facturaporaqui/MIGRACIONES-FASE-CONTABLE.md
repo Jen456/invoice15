@@ -234,3 +234,13 @@ productos no cambia). Con datos reales nuevos, revertir = restaurar el volcado p
 
 El cierre integrado no añade migraciones: el candidato sigue con las 45 de la nota anterior. Ensayo repetido sobre el código
 final: sobre `0fb9167` y una copia del último respaldo diario: 45 aplicadas y 0 pendientes; la vuelta (`contabilidad zero`, `tributario zero`, …) deja el esquema IDÉNTICO al publicado y la otra ida termina igual que la primera. Mismo resultado que el ensayo del kardex. Bases temporales borradas al terminar.
+
+## Publicación (04/11/2026): las 45 migraciones aplicadas en app.facturaporaqui.com
+
+Aplicadas el 04/11/2026 entre las 14:07:52 y las 14:09:43 UTC con `baadb8b`, con el servicio y las tareas del SRI y de
+importación detenidos. Antes: ensayo sobre un volcado fresco de producción (45 en 78 s; vuelta con esquema idéntico) y
+restauración comprobada (`respaldos/cierre-20261104-135137/`: 68 tablas con los mismos conteos y 264 archivos privados con
+la misma huella). Volcado previo del despliegue: `respaldos/pre-20261104-140752-baadb8bd.dump`; versión anterior:
+`releases/20261028-130922-98cfa208`. Vuelta: `deploy/scripts/restaurar.sh <volcado> <versión anterior> [--ejecutar]`
+(base, código y estáticos; `desplegar.sh --revertir` no sirve con migraciones). Las facturas autorizadas en el SRI
+después del volcado no están en él: con documentos nuevos, corregir hacia adelante o volver a registrarlos.
