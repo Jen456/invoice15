@@ -306,7 +306,7 @@ def _autorizacion(texto, tipo, etiqueta='La autorización'):
     digitos = re.sub(r'\s', '', _texto(texto))
     if not digitos:
         return ''
-    if not digitos.isdigit():
+    if not (digitos.isascii() and digitos.isdigit()):
         raise ErrorCompra(f'{etiqueta} solo admite dígitos.')
     if tipo in ('01', '04', '05'):
         if len(digitos) not in (10, 37, 49):
@@ -1252,7 +1252,7 @@ def opciones_formulario():
 def comprobante_registrado(proveedor_id, tipo, estab, pto_emi, secuencial, excluir=None):
     """Compra ya registrada con ese comprobante del proveedor (o None). El secuencial se completa con ceros a 9 dígitos."""
     secuencial = _texto(secuencial)
-    if not secuencial.isdigit() or int(secuencial) == 0:
+    if not (secuencial.isascii() and secuencial.isdigit()) or int(secuencial) == 0:
         return None
     return _comprobante_registrado(proveedor_id, _texto(tipo), _texto(estab), _texto(pto_emi), secuencial.zfill(9),
                                    excluir=excluir)
@@ -1268,7 +1268,7 @@ def compras_anteriores_mismo_numero(proveedor_id, estab, pto_emi, secuencial, ex
     ser el mismo y registrarlo otra vez duplicaría stock y cuenta por pagar."""
     from core.pos.models import Purchase
     secuencial = _texto(secuencial)
-    if not proveedor_id or not secuencial.isdigit() or int(secuencial) == 0:
+    if not proveedor_id or not (secuencial.isascii() and secuencial.isdigit()) or int(secuencial) == 0:
         return []
     corto = secuencial.lstrip('0')
     claves = {corto, f'{_texto(estab)}{_texto(pto_emi)}{secuencial.zfill(9)}'.lstrip('0')}
@@ -1282,7 +1282,7 @@ def documento_importado_pendiente(proveedor, tipo, estab, pto_emi, secuencial):
     """XML recibido de ese proveedor y con ese número que todavía no tiene compra (pendiente o aprobado), o None."""
     from core.importacion.models import DocumentoImportado
     secuencial = _texto(secuencial)
-    if proveedor is None or not secuencial.isdigit() or int(secuencial) == 0:
+    if proveedor is None or not (secuencial.isascii() and secuencial.isdigit()) or int(secuencial) == 0:
         return None
     return (DocumentoImportado.objects.filter(emisor_ruc=re.sub(r'\s', '', proveedor.ruc or ''), cod_doc=_texto(tipo),
                                               estab=_texto(estab), pto_emi=_texto(pto_emi), secuencial=secuencial.zfill(9),

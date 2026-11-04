@@ -9,7 +9,9 @@ from core.suscripciones import servicios as sv
 from core.suscripciones.cupo import PlanRequerido, verificar_disponible
 from core.suscripciones.models import EmpresaAdicional, Plan, SubscriptionPeriod
 from core.tenancy.context import company_context
-from core.tenancy.models import ROLE_ADMIN, ROLE_OWNER, Membership
+from django.contrib.auth.models import Group
+
+from core.tenancy.models import ROLE_ADMIN, ROLE_OWNER, ROLE_READONLY, Membership
 from tests import helpers
 
 pytestmark = pytest.mark.django_db
@@ -150,3 +152,35 @@ class TestPantallas:
         helpers.iniciar_sesion(client, administrador, empresa=titular)
         client.post("/suscripcion/empresas/", {"accion": "nueva", **datos(RUCS[7])})
         assert not Company.objects.filter(ruc=RUCS[7]).exists()
+
+
+class TestVincularDesdeLaPantalla:
+    """Revisión del 04/11/2026: el campo de la empresa que se vincula no se confunde con la empresa de la pestaña."""
+
+    @pytest.fixture
+    def propia(self, dueno):
+        empresa = helpers.crear_empresa("PROPIA", plan=None)
+        Membership.objects.create(user=dueno, company=empresa, group=Group.objects.get(name=ROLE_OWNER))
+        return empresa
+
+    def envio(self, client, titular, propia):
+        return client.post("/suscripcion/empresas/", {"accion": "vincular", "empresa_vincular": propia.pk, "empresa": titular.pk})
+
+    def test_vincular_una_empresa_propia(self, client, titular, dueno, propia):
+        helpers.iniciar_sesion(client, dueno, empresa=titular)
+        pagina = client.get("/suscripcion/empresas/").content.decode()
+        assert 'name="empresa_vincular"' in pagina and pagina.count(f'name="empresa" value="{titular.pk}"') >= 2
+        assert self.envio(client, titular, propia).status_code == 302
+        assert EmpresaAdicional.objects.filter(titular=titular, company=propia).exists()
+
+    def test_desde_una_pestana_de_otra_empresa_no_vincula(self, client, titular, dueno, propia):
+        helpers.iniciar_sesion(client, dueno, empresa=propia)   # la pestaña de la titular quedó abierta
+        respuesta = self.envio(client, titular, propia)
+        assert respuesta.status_code == 302 and not EmpresaAdicional.objects.exists()
+
+    def test_sin_permiso_responde_403_y_no_empresa_cambiada(self, client, titular, propia):
+        consulta = helpers.crear_usuario("consulta.multi", titular, ROLE_READONLY)
+        helpers.iniciar_sesion(client, consulta, empresa=titular)
+        assert self.envio(client, titular, propia).status_code == 403
+        assert not EmpresaAdicional.objects.exists()
+

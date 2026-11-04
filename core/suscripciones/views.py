@@ -22,6 +22,7 @@ from core.suscripciones.servicios import (ReglaPlan, agregar_empresa, cancelar_p
                                           modos_de_pago, planes_de_pago, solicitar_factura, vencer_pendientes,
                                           vincular_empresa)
 from core.tenancy.models import ROLE_OWNER, Membership, audit
+from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada
 
 
 class PlanAccessMixin(SessionGroupMixin):
@@ -136,9 +137,12 @@ class EmpresasPlanView(PlanAccessMixin, TemplateView):
         if not self.es_propietario():
             messages.error(request, 'Solo el Propietario de la empresa titular puede agregar RUC al plan.')
             return HttpResponseRedirect(reverse('suscripcion_empresas'))
+        if empresa_cambiada(request):   # pantalla abierta con otra empresa: no se suma nada al plan de la activa
+            messages.error(request, EMPRESA_CAMBIADA)
+            return HttpResponseRedirect(reverse('suscripcion_empresas'))
         try:
             if request.POST.get('accion') == 'vincular':
-                empresa = get_object_or_404(empresas_vinculables(company, request.user), pk=request.POST.get('empresa'))
+                empresa = get_object_or_404(empresas_vinculables(company, request.user), pk=request.POST.get('empresa_vincular'))
                 vincular_empresa(company, request.user, empresa)
             else:
                 form = EmpresaAdicionalForm(request.POST)

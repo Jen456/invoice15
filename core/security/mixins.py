@@ -4,7 +4,7 @@ from django.http import HttpResponseRedirect, JsonResponse
 
 from config import settings
 from core.security.session import get_group, set_module
-from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada
+from core.tenancy.pestanas import empresa_cambiada, rechazo_empresa_cambiada
 from core.tenancy.roles import PLATFORM_URLS
 
 PLATFORM_PATHS = tuple(sorted(PLATFORM_URLS))
@@ -39,7 +39,7 @@ class SessionGroupMixin(LoginRequiredMixin):
             messages.error(request, PERMISSION_DENIED_MESSAGE)
             return HttpResponseRedirect(self.get_last_url())
         if empresa_cambiada(request):   # envío armado para otra empresa: lo que falta es recargar, no un permiso
-            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
+            return rechazo_empresa_cambiada(request)
         return JsonResponse({'error': PERMISSION_DENIED_MESSAGE}, status=403)
 
     def get_group_module(self, group):

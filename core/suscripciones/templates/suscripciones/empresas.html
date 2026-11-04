@@ -46,7 +46,7 @@
                             <h2 class="h5">Agregar una empresa nueva</h2>
                             <p class="text-muted small">Se crea la empresa con su RUC y quedas como su Propietario. Después la configuras desde «Configuración de facturación».</p>
                             {% for error in form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endfor %}
-                            <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="accion" value="nueva">
+                            <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="accion" value="nueva"><input type="hidden" name="empresa" value="{{ request.company.pk }}">
                                 <div class="fp-multi-fields">{% for field in form %}
                                     <div class="form-group">
                                         <label for="{{ field.id_for_label }}" class="font-weight-bold">{{ field.label }}</label>
@@ -63,10 +63,10 @@
                             <h2 class="h5">Empresas que ya administras</h2>
                             {% if vinculables %}
                                 <p class="text-muted small">Empresas registradas en FacturaPorAquí en las que eres Propietario.</p>
-                                <form method="post">{% csrf_token %}<input type="hidden" name="accion" value="vincular">
+                                <form method="post">{% csrf_token %}<input type="hidden" name="accion" value="vincular"><input type="hidden" name="empresa" value="{{ request.company.pk }}">
                                     <div class="form-group">
-                                        <label for="id_empresa" class="font-weight-bold">Empresa</label>
-                                        <select name="empresa" id="id_empresa" class="form-control">
+                                        <label for="id_empresa_vincular" class="font-weight-bold">Empresa</label>
+                                        <select name="empresa_vincular" id="id_empresa_vincular" class="form-control">
                                             {% for empresa in vinculables %}<option value="{{ empresa.pk }}">{{ empresa.business_name }} · RUC {{ empresa.ruc }}</option>{% endfor %}
                                         </select>
                                     </div>

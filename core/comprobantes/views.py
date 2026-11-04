@@ -232,7 +232,7 @@ class LiquidacionCrearView(GroupPermissionMixin, TemplateView):
         filas = []
         for f in lineas.forms:
             detalle = f['detalle'].value()
-            filas.append((f, por_detalle.get(int(detalle)) if str(detalle or '').isdigit() else None))
+            filas.append((f, por_detalle.get(int(detalle)) if str(detalle or '').isascii() and str(detalle or '').isdigit() else None))
         context.update({
             'title': 'Emitir liquidación de compra', 'compra': compra, 'vigente': sl.liquidacion_vigente(compra),
             'form': kwargs.get('form') or LiquidacionForm(initial={'tipo_identificacion': sl.tipo_sugerido(compra.provider.ruc),
@@ -343,7 +343,7 @@ class GuiaCrearView(GroupPermissionMixin, TemplateView):
         filas = []
         for f in lineas.forms:
             detalle = f['detalle'].value()
-            filas.append((f, por_detalle.get(int(detalle)) if str(detalle or '').isdigit() else None))
+            filas.append((f, por_detalle.get(int(detalle)) if str(detalle or '').isascii() and str(detalle or '').isdigit() else None))
         # Punto de emisión fijado al formulario; la dirección de partida sugerida es la de su establecimiento.
         contexto_punto = pt.contexto_formulario(self.request, sg.TIPO_GUIA, self.request.POST.get('punto'))
         punto = contexto_punto['punto']

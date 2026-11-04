@@ -77,13 +77,13 @@ class PlanMiddleware:
             if request.method == 'GET' and not any(p in request.path for p in ('/api/', '/exportar/', '/descargar/')):
                 messages.warning(request, mensaje, extra_tags='complemento')
                 return HttpResponseRedirect('/dashboard/')
-            from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada
+            from core.tenancy.pestanas import empresa_cambiada, rechazo_empresa_cambiada
             if empresa_cambiada(request):   # pestaña abierta con otra empresa: primero eso, para que recargue
-                return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
+                return rechazo_empresa_cambiada(request)
             return JsonResponse({'error': mensaje, 'plan': plan, 'codigo': 'complemento_pendiente'}, status=403)
-        from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada
+        from core.tenancy.pestanas import empresa_cambiada, rechazo_empresa_cambiada
         if request.method != 'GET' and empresa_cambiada(request):   # pestaña abierta con otra empresa: primero eso
-            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
+            return rechazo_empresa_cambiada(request)
         if request.method == 'GET' and '/api/' not in request.path:   # las API responden siempre JSON
             if puede_gestionar_plan(request):
                 messages.warning(request, mensaje, extra_tags='plan')

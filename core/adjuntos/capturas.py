@@ -297,7 +297,7 @@ def documentos_para_vincular(request, tipo, q='', limite=20):
         consulta = Expenses.objects.select_related('type_expense')
         if q:
             filtro = Q(description__icontains=q) | Q(type_expense__name__icontains=q) | Q(referencia__icontains=q)
-            if q.lstrip('#').isdigit():
+            if q.lstrip('#').isascii() and q.lstrip('#').isdigit():
                 filtro |= Q(pk=int(q.lstrip('#')))
             consulta = consulta.filter(filtro)
     else:

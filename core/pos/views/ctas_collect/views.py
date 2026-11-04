@@ -78,7 +78,7 @@ class CtasCollectCreateView(GroupPermissionMixin, CreateView):
                     data.append(item)
             elif action == 'add':
                 cuenta = request.POST.get('ctas_collect', '')
-                if not str(cuenta).isdigit():
+                if not (str(cuenta).isascii() and str(cuenta).isdigit()):
                     raise ValueError('Elige la cuenta por cobrar.')
                 # El cobro y su respaldo (comprobante o nota «Detalles», al menos uno) los registra core/cobros, que llama
                 # a cxc.registrar_cobro; `clave` evita duplicados por doble envío (sin ella se genera una por petición).

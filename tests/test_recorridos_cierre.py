@@ -129,3 +129,32 @@ def test_volver_a_la_empresa_desde_el_dialogo_se_confirma_en_json(dos_empresas, 
     sin_sesion = dos_empresas.post('/empresas/cambiar/', {'company': empresa.pk}, HTTP_ACCEPT='application/json')
     assert sin_sesion.status_code == 302 and '/login' in sin_sesion['Location']   # el diálogo no lo toma como confirmación
 
+
+@pytest.mark.parametrize('caso', ['plan', 'rol'])
+def test_validar_el_dni_desde_otra_pestana_lleva_el_aviso_al_campo(client, empresa, empresa_b, admin, caso):
+    """Con la empresa nueva sin plan o con un rol sin permiso, el rechazo lo da el middleware o deny(): igual lleva valid y
+    message, que es lo que lee el validador remoto del dni para mostrar el aviso R1 y «Volver»."""
+    if caso == 'plan':
+        Membership.objects.create(user=admin, company=empresa_b, group=Membership.objects.get(user=admin, company=empresa).group)
+        SubscriptionPeriod.objects.filter(company=empresa_b).delete()   # B con el plan gratuito
+    else:
+        Membership.objects.create(user=admin, company=empresa_b, group=Group.objects.get(name=ROLE_READONLY))
+    helpers.iniciar_sesion(client, admin, empresa=empresa)
+    client.post('/empresas/cambiar/', {'company': empresa_b.pk})
+    r = client.post('/pos/sale/admin/add/', {'action': 'validate_client', 'pattern': 'dni', 'parameter': '0926687856',
+                                             'empresa': empresa.pk})
+    cuerpo = r.json()
+    assert (r.status_code, cuerpo['codigo'], cuerpo['valid']) == (409, 'empresa_cambiada', False)
+    assert 'La empresa activa cambió' in cuerpo['message']
+
+
+def test_digitos_no_ascii_no_son_numeros_de_documento(client, empresa, admin):
+    from core.pos import compras
+    assert compras.comprobante_registrado(1, '01', '001', '001', '²') is None
+    with pytest.raises(compras.ErrorCompra):
+        compras._autorizacion('²' * 10, '01')
+    helpers.iniciar_sesion(client, admin, empresa=empresa)
+    for q in ('²', '#²'):
+        r = client.get('/adjuntos/api/capturas/documentos/', {'tipo': 'gasto', 'q': q})
+        assert r.status_code == 200, q
+
