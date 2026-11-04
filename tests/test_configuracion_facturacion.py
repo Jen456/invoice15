@@ -334,7 +334,8 @@ class TestPermisosYAislamiento:
         assert '005-009' not in json.dumps(cliente.get(f'{URL}estado.json').json())
 
     def test_punto_no_numerico_responde_404_y_no_500(self, cliente):
-        assert paso(cliente, 2, {'action': 'desactivar_punto', 'point': 'abc'}).status_code == 404
+        for valor in ('abc', '²', '١٢'):   # «²» y los dígitos arábigos pasan str.isdigit()
+            assert paso(cliente, 2, {'action': 'desactivar_punto', 'point': valor}).status_code == 404, valor
 
     def test_comprobantes_solo_consulta_y_compania_unificada(self, client, empresa, admin):
         helpers.configurar_facturacion(empresa, estab='003', punto='002', ultimo_factura=41)

@@ -182,6 +182,8 @@ class ApiMixin(GroupPermissionMixin):
     """La API responde siempre JSON: sin permiso, 403 (también en GET, donde las pantallas redirigen)."""
 
     def deny(self, request):
+        if request.method != 'GET' and empresa_cambiada(request):   # en la empresa de la pantalla sí puede tener el permiso
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
         return JsonResponse({'error': 'Tu perfil no cuenta con el permiso necesario.'}, status=403)
 
 
@@ -193,10 +195,10 @@ class LotesApi(ApiMixin, View):
         return JsonResponse({'lotes': [lote_dict(l) for l in pagina], 'pagina': pagina.number, 'paginas': pagina.paginator.num_pages})
 
     def post(self, request):
-        if not tiene_permiso(request, IMPORTAR):
-            return error('Tu perfil no puede importar documentos.', 403)
         if empresa_cambiada(request):   # pantalla abierta con otra empresa: el lote no se crea en la activa
             return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
+        if not tiene_permiso(request, IMPORTAR):
+            return error('Tu perfil no puede importar documentos.', 403)
         archivos = request.FILES.getlist('archivos')
         if sum(a.size for a in archivos) > limites.MAX_BYTES_POR_PETICION:
             return error(f'Sube como máximo {limites.MAX_BYTES_POR_PETICION // limites.MB} MB por vez.', 413)

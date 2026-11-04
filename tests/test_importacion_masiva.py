@@ -473,3 +473,21 @@ class TestIntegracionDelDiseno:
         revisor = helpers.crear_usuario('revisor.importaciones', empresa, grupo)
         sin_permiso = plan_de(empresa, lote, revisor)['items'][0]
         assert sin_permiso['estado'] == 'bloqueado' and sin_permiso['bloqueos'][-1]['codigo'] == 'sin_permiso'
+
+
+def test_lo_bloqueado_no_pide_ademas_confirmar_sin_verificacion(empresa, dueno, sri):
+    """Revisión del 04/11/2026: la vista previa no muestra «Requiere: confirmar sin verificación» en una fila bloqueada."""
+    lote, docs = lote_procesado(empresa, dueno, sri, {
+        A: r.factura(), EMITIDA: r.factura(ruc=RUC_EMPRESA, receptor_id='0993333333001', secuencial='000000400')},
+        texto=f'{A}\n{EMITIDA}')
+    with company_context(empresa):
+        DocumentoImportado.objects.filter(pk__in=[d.pk for d in docs.values()]).update(estado_verificacion='sri_no_disponible')
+    items = {i['accion']: i for i in plan_de(empresa, lote, dueno)['items']}
+    assert items['vincular_venta']['estado'] == 'bloqueado'                  # emitida sin venta con la misma clave
+    assert 'confirmar_sin_verificar' not in items['vincular_venta']['confirmaciones']
+    assert 'confirmar_sin_verificar' in items['crear_compra']['confirmaciones']   # sin bloqueo sí se pide
+    with company_context(empresa):
+        entrada = lote.entradas.select_related('documento').get(clave=A)
+        sin_permiso = sv._plan_documento(entrada, entrada.documento, set())
+    assert sin_permiso['estado'] == 'bloqueado' and 'confirmar_sin_verificar' not in sin_permiso['confirmaciones']
+

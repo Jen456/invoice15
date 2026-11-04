@@ -4,11 +4,20 @@ from django.http import HttpResponseRedirect, JsonResponse
 
 from config import settings
 from core.security.session import get_group, set_module
+from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada
 from core.tenancy.roles import PLATFORM_URLS
 
 PLATFORM_PATHS = tuple(sorted(PLATFORM_URLS))
 
 PERMISSION_DENIED_MESSAGE = 'Tu perfil no cuenta con el permiso necesario para ingresar'
+
+
+def es_pagina(respuesta):
+    """Una página a la que se puede volver: HTML con 200, sin descarga. Las API JSON (también /cobros/), los archivos y
+    los errores no cuentan, aunque su ruta no lleve /api/."""
+    return (respuesta.status_code == 200 and not getattr(respuesta, 'streaming', False)
+            and respuesta.get('Content-Type', '').startswith('text/html')
+            and 'attachment' not in respuesta.get('Content-Disposition', ''))
 
 
 class SessionGroupMixin(LoginRequiredMixin):
@@ -29,6 +38,8 @@ class SessionGroupMixin(LoginRequiredMixin):
         if request.method == 'GET':
             messages.error(request, PERMISSION_DENIED_MESSAGE)
             return HttpResponseRedirect(self.get_last_url())
+        if empresa_cambiada(request):   # envío armado para otra empresa: lo que falta es recargar, no un permiso
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
         return JsonResponse({'error': PERMISSION_DENIED_MESSAGE}, status=403)
 
     def get_group_module(self, group):
@@ -50,12 +61,14 @@ class SessionGroupMixin(LoginRequiredMixin):
             return JsonResponse({'error': PERMISSION_DENIED_MESSAGE}, status=403)
         if not self.has_access(group):
             return self.deny(request)
+        group_module = None
         if request.method == 'GET':
             group_module = self.get_group_module(group)
             set_module(request, group_module.module if group_module else None)
-            if group_module and '/api/' not in request.path and not request.path.endswith('.json'):
-                request.session['url_last'] = request.path   # solo páginas: deny() vuelve aquí
-        return super().dispatch(request, *args, **kwargs)
+        respuesta = super().dispatch(request, *args, **kwargs)
+        if group_module and es_pagina(respuesta):
+            request.session['url_last'] = request.path   # solo páginas: deny() vuelve aquí
+        return respuesta
 
 
 class GroupPermissionMixin(SessionGroupMixin):

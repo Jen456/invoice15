@@ -989,8 +989,11 @@ $(function () {
 
     input_date_joined.on('change.datetimepicker', function (e) {
         fvSale.revalidateField('date_joined');
-        input_end_credit.datetimepicker('minDate', e.date);
-        input_end_credit.datetimepicker('date', e.date);
+        // El servidor emite con la fecha de hoy: un plazo copiado de una fecha pasada lo rechazaría.
+        var hoy = moment().startOf('day');
+        var minimo = e.date && e.date.isAfter(hoy, 'day') ? e.date : hoy;
+        input_end_credit.datetimepicker('minDate', minimo);
+        input_end_credit.datetimepicker('date', minimo);
     });
 
     input_end_credit.datetimepicker({

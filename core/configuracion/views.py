@@ -178,7 +178,7 @@ class PasoView(ConfiguracionAccessMixin, TemplateView):
             avisar(request, messages.SUCCESS, f'Punto de emisión {punto.full_code} agregado.')
         elif accion == 'desactivar_punto':
             punto_id = (request.POST.get('point') or '').strip()
-            punto = EmissionPoint.all_companies.filter(company=company, pk=punto_id).first() if punto_id.isdigit() else None
+            punto = EmissionPoint.all_companies.filter(company=company, pk=punto_id).first() if punto_id.isascii() and punto_id.isdigit() else None
             if punto is None:
                 raise Http404
             if punto.is_default or any(r.is_used for r in punto.sequences.all()):

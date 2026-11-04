@@ -922,6 +922,8 @@ def _plan_documento(entrada, documento, permisos):
         item['bloqueos'].append({'codigo': 'sin_permiso', 'texto': 'Tu perfil no puede incorporar este documento.'})
     if item['bloqueos']:
         item['estado'] = 'bloqueado'
+        # No se incorpora: no se pide además confirmarlo (también con sin_permiso, que se añade al final, y en vincular_venta).
+        item['confirmaciones'] = [c for c in item['confirmaciones'] if c != 'confirmar_sin_verificar']
     elif item['confirmaciones'] or item['proveedor_nuevo']:
         item['estado'] = 'requiere_datos'
     else:

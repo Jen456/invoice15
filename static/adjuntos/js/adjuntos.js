@@ -187,10 +187,10 @@
         }
         el('fpAdjArchivo').value = '';
         var actualizado = await cargar(false);
-        ocupado(false);
         el('fpAdjuntosProgreso').textContent = 'Finalizado: ' + hechos + ' de ' + archivos.length + ' archivos confirmados.';
         if (hechos) mostrar('fpAdjuntosAviso', hechos + (hechos === 1 ? ' comprobante adjuntado.' : ' comprobantes adjuntados.') + (avisos.length ? ' ' + avisos.join(' ') : ''));
         if (errores.length) mostrar('fpAdjuntosError', errores.join(' ') + (!actualizado ? ' No se pudo actualizar la lista. Vuelve a consultar antes de subir de nuevo.' : ''));
+        ocupado(false);   // después de los avisos: el foco pasa al aviso (o se queda en el error)
     }
     function cancelarQuitar() {
         var previo = estado.quitar; estado.quitar = null; el('fpAdjuntosQuitar').hidden = true;

@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.http import Http404, HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -54,4 +54,6 @@ def company_switch(request):
     if not (destino.startswith('/') and not destino.startswith('//') and url_has_allowed_host_and_scheme(
             destino, allowed_hosts={request.get_host()}, require_https=request.is_secure())):
         destino = settings.LOGIN_REDIRECT_URL
+    if 'application/json' in request.headers.get('Accept', ''):   # diálogo de la factura (R1): confirmación comprobable
+        return JsonResponse({'ok': True, 'company': company.pk})
     return HttpResponseRedirect(destino)

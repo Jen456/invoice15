@@ -268,6 +268,14 @@ class TestCompletarYVincular:
         assert respuesta.status_code == 400 and respuesta.json()['codigo'] == codigo and campo in respuesta.json()['errores']
         assert leer(empresa, Expenses.objects.count) == 0 and leer(empresa, lambda: Captura.objects.get(pk=pk).estado) == 'pendiente'
 
+    def test_valor_positivo_mal_escrito_conserva_el_mensaje_del_campo(self, entrar, empresa, tipo):
+        pk = guardar(entrar, nota='Recibo').json()['captura']['id']
+        respuesta = entrar.post(f'{API}{pk}/completar/', datos_gasto(tipo, valor='12345678.00'))   # 10 dígitos: no cabe
+        mensajes = ' '.join(respuesta.json()['errores']['valor'])
+        assert respuesta.status_code == 400 and respuesta.json()['codigo'] == 'datos'
+        assert 'dígitos' in mensajes and 'mayor que cero' not in mensajes
+        assert leer(empresa, Expenses.objects.count) == 0
+
     def test_vincular_sin_duplicar_el_archivo(self, entrar, empresa, gasto):
         with company_context(empresa):
             existente = sv.adjuntar(empresa, None, 'gasto', gasto, subido())         # el mismo PDF ya está en el gasto

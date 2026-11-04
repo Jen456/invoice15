@@ -81,6 +81,9 @@ class PlanMiddleware:
             if empresa_cambiada(request):   # pestaña abierta con otra empresa: primero eso, para que recargue
                 return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
             return JsonResponse({'error': mensaje, 'plan': plan, 'codigo': 'complemento_pendiente'}, status=403)
+        from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada
+        if request.method != 'GET' and empresa_cambiada(request):   # pestaña abierta con otra empresa: primero eso
+            return JsonResponse({'error': EMPRESA_CAMBIADA, 'codigo': 'empresa_cambiada'}, status=409)
         if request.method == 'GET' and '/api/' not in request.path:   # las API responden siempre JSON
             if puede_gestionar_plan(request):
                 messages.warning(request, mensaje, extra_tags='plan')

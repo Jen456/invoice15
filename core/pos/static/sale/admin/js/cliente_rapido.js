@@ -11,6 +11,7 @@ window.fpClienteRapido = (function () {
     function announce(message) {
         alertBox.textContent = message;
         alertBox.hidden = !message;
+        if (volver) { volver.hidden = message !== EMPRESA_CAMBIADA; }   // «Volver» solo acompaña al aviso de empresa cambiada
     }
     function focus(element) {
         var details = element.closest('details');
@@ -106,34 +107,40 @@ window.fpClienteRapido = (function () {
     }
     function avisarEmpresaCambiada() {
         announce(EMPRESA_CAMBIADA);
-        volver.hidden = false;
         focus(alertBox);
     }
     function empresaCambiadaEnCampos() {
+        // Solo el mensaje que se ve: el adaptador oculta el de un validador que ya pasó, pero conserva su texto.
         return Array.prototype.some.call(form.querySelectorAll('.fv-help-block'), function (mensaje) {
-            return mensaje.textContent.indexOf('La empresa activa cambió') !== -1;
+            return mensaje.style.display !== 'none' && mensaje.textContent.indexOf('La empresa activa cambió') !== -1;
         });
     }
     async function volverALaEmpresa() {
         // Reactiva en el servidor la empresa en que se abrió esta factura (comprueba la membresía) sin recargar la página.
+        // Solo lo confirma una respuesta JSON con esa empresa: una redirección (p. ej. al inicio de sesión) no.
+        var empresa = String(field('empresa').value);
         announce('Volviendo a la empresa de esta factura…');
         focus(alertBox);
-        volver.disabled = true;
         var datos = new FormData();
-        datos.set('company', field('empresa').value);
+        datos.set('company', empresa);
         datos.set('next', window.location.pathname);
         try {
             var respuesta = await fetch('/empresas/cambiar/', {method: 'POST', body: datos, credentials: 'same-origin',
-                redirect: 'manual', headers: {'X-CSRFToken': field('csrfmiddlewaretoken').value}});
-            if (respuesta.type !== 'opaqueredirect' && !respuesta.ok) { throw new Error('Cambio no confirmado'); }
-            volver.hidden = true;
+                redirect: 'manual', headers: {'X-CSRFToken': field('csrfmiddlewaretoken').value, 'Accept': 'application/json'}});
+            var cambio = respuesta.ok ? await respuesta.json().catch(function () { return {}; }) : {};
+            if (String(cambio.company) !== empresa) { throw new Error('Cambio no confirmado'); }
+            if (uncertain) {   // un alta sin confirmar no se repite: primero se busca
+                announce('La empresa de esta factura vuelve a estar activa. Busca el cliente con esta identificación antes de continuar.');
+                focus(lookup);
+                return;
+            }
             announce('La empresa de esta factura vuelve a estar activa. Revisa los datos y guarda el cliente.');
             if (field('dni').value) { fvClient.revalidateField('dni'); }
             focus(save);
         } catch (_) {
-            announce('No se pudo volver a la empresa de esta factura. Recarga la página; lo escrito en este diálogo no se guardará.');
+            announce('No se pudo confirmar la vuelta a la empresa de esta factura (la sesión pudo cerrarse). Recarga la página; lo escrito en este diálogo no se guardará.');
             focus(alertBox);
-        } finally { volver.disabled = false; }
+        }
     }
     async function guardar() {
         if (busy || uncertain || searching || finished || !modal.hasClass('show')) { return; }
@@ -267,7 +274,6 @@ window.fpClienteRapido = (function () {
         volver.addEventListener('click', volverALaEmpresa);
         fvClient.on('core.form.invalid', function () {
             if (empresaCambiadaEnCampos()) { avisarEmpresaCambiada(); return; }   // R1: el dni lo rechazó por la empresa
-            volver.hidden = true;
             announce('Revisa los campos señalados antes de guardar.');
             var invalid = form.querySelector('.is-invalid:not([disabled])');
             focus(invalid || alertBox);

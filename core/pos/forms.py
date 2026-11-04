@@ -260,7 +260,7 @@ class ExpensesForm(forms.ModelForm):
         if datos.get('medio_pago') == 'cheque' and not referencia:
             self.add_error('referencia', 'Escribe el número del cheque')
         if 'valor' not in self.errors and (datos.get('valor') is None or datos['valor'] <= 0):
-            self.add_error('valor', 'Escribe el valor del gasto, mayor que cero.')
+            self.add_error('valor', forms.ValidationError('Escribe el valor del gasto, mayor que cero.', code='no_positivo'))
         return datos
 
     def save(self, commit=True):
