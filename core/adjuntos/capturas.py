@@ -432,6 +432,8 @@ def completar_gasto(request, pk, datos):
         raise ErrorCaptura('plan', bloqueo, 403)
     form = ExpensesForm(datos)
     if not form.is_valid():
+        if set(form.errors) == {'valor'}:   # el contrato de la API conserva su código propio para el valor
+            raise ErrorCaptura('valor', estado=400, errores={'valor': [MENSAJES['valor']]})
         raise ErrorCaptura('datos', estado=400, errores={campo: [str(m) for m in mensajes] for campo, mensajes in form.errors.items()})
     if form.cleaned_data['valor'] is None or form.cleaned_data['valor'] <= 0:
         raise ErrorCaptura('valor', estado=400, errores={'valor': [MENSAJES['valor']]})
