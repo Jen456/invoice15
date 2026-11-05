@@ -1,0 +1,60 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [],
+ "pasos": {
+  "gasto_validacion_servidor": {
+   "ok": true,
+   "detalle": {
+    "cero": {
+     "status": 200,
+     "cuerpo": {}
+    },
+    "negativo": {
+     "status": 200,
+     "cuerpo": {}
+    },
+    "texto": {
+     "status": 200,
+     "cuerpo": {
+      "error": {
+       "valor": [
+        "Introduzca un número."
+       ]
+      }
+     }
+    },
+    "enorme": {
+     "status": 200,
+     "cuerpo": {
+      "error": {
+       "valor": [
+        "Asegúrese de que no haya más de 9 dígitos en total."
+       ]
+      }
+     }
+    },
+    "fecha_futura": {
+     "status": 200,
+     "cuerpo": {}
+    },
+    "captura_fecha_futura": {
+     "status": 201,
+     "cuerpo": {
+      "id": 10,
+      "titulo": "Gasto #10 · Movilización ficticia"
+     }
+    },
+    "captura_valor_cero": {
+     "status": 400,
+     "cuerpo": {
+      "valor": [
+       "Escribe el valor del gasto, mayor que cero."
+      ]
+     }
+    }
+   }
+  }
+ },
+ "fallos": []
+}

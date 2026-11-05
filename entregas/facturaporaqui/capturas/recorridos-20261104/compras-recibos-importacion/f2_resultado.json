@@ -1,0 +1,291 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [
+  "dueno.demo: 400 POST /adjuntos/api/capturas/",
+  "dueno.demo: 409 POST /adjuntos/api/capturas/"
+ ],
+ "pasos": {
+  "recibos_desborde_1360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 1360,
+    "innerWidth": 1360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "recibo_solo_nota": {
+   "ok": true,
+   "detalle": {
+    "clase": "alert alert-success",
+    "texto": "Guardado: C-1. Puedes completar sus datos después.",
+    "id": 1,
+    "nota": "Taxi ficticio al SRI, pagado por Ana",
+    "archivo": false,
+    "estado": "pendiente",
+    "autor": "dueno.demo"
+   }
+  },
+  "recibo_solo_archivo_png": {
+   "ok": true,
+   "detalle": {
+    "clase": "alert alert-success",
+    "texto": "Guardado: C-1. Puedes completar sus datos después.",
+    "id": 2,
+    "nota": "",
+    "archivo": "privado/empresas/66162fbf-18d3-4bcf-9499-a30d7fb5f45d/comprobantes-pago/2026/11/79ca94a16e1b4c0c9b9b4da3118476eb.png",
+    "mime": "image/png",
+    "clave": "9e6f65782b6c403c9d654124b3f7d666",
+    "estado": "pendiente"
+   }
+  },
+  "recibo_clave_nueva_por_envio": {
+   "ok": true,
+   "detalle": {
+    "clave_formulario_tras_primer_envio": "9e6f6578…",
+    "clave_segunda": "9e6f6578…"
+   }
+  },
+  "recibo_archivo_y_nota": {
+   "ok": true,
+   "detalle": {
+    "clase": "alert alert-success",
+    "texto": "Guardado: C-2. Puedes completar sus datos después.",
+    "id": 3,
+    "nota": "Almuerzo ficticio con cliente",
+    "archivo": "privado/empresas/66162fbf-18d3-4bcf-9499-a30d7fb5f45d/comprobantes-pago/2026/11/c7fdafc4beac45afa9a3c95b7c86fb1d.pdf",
+    "mime": "application/pdf",
+    "estado": "pendiente"
+   }
+  },
+  "recibo_vacio_rechazado": {
+   "ok": true,
+   "detalle": "Adjunta el recibo o escribe una nota (o ambos)."
+  },
+  "recibo_archivo_falso_rechazado": {
+   "ok": true,
+   "detalle": {
+    "clase": "alert alert-danger",
+    "texto": "Solo se admiten comprobantes en PDF, JPG, PNG o WEBP."
+   }
+  },
+  "recibo_reintento_misma_clave_no_duplica": {
+   "ok": true,
+   "detalle": {
+    "antes": 3,
+    "tras_respuesta_perdida": 4,
+    "tras_reintento": 4,
+    "msgPerdida": "No se pudo confirmar la respuesta. Usa «Confirmar el envío pendiente»: conserva la misma clave y el mismo contenido para evitar duplicados. No cierres esta página todavía.",
+    "msgReintento": "Ya estaba guardado: C-4. Puedes completar sus datos después."
+   }
+  },
+  "recibo_api_idempotente": {
+   "ok": true,
+   "detalle": {
+    "estados": [
+     201,
+     200,
+     409
+    ],
+    "mismo_id": true,
+    "codigo3": "clave_usada"
+   }
+  },
+  "recibo_completado_como_gasto": {
+   "ok": true,
+   "detalle": {
+    "msgGasto": "Gasto registrado: Gasto #4 · Movilización ficticia. Conserva el recibo o la nota como respaldo.",
+    "estado": "completada",
+    "tipo": "gasto",
+    "gasto": 4,
+    "valor": "12.40",
+    "medio": "transferencia",
+    "ref": "TRF-FICT-77",
+    "adjuntos": [
+     {
+      "archivo": "privado/empresas/66162fbf-18d3-4bcf-9499-a30d7fb5f45d/comprobantes-pago/2026/11/c7fdafc4beac45afa9a3c95b7c86fb1d.pdf",
+      "captura_id": 3,
+      "descripcion": "Almuerzo ficticio con cliente"
+     }
+    ],
+    "archivo_captura": "privado/empresas/66162fbf-18d3-4bcf-9499-a30d7fb5f45d/comprobantes-pago/2026/11/c7fdafc4beac45afa9a3c95b7c86fb1d.pdf",
+    "n_gastos": 4
+   }
+  },
+  "recibo_completado_sale_de_pendientes": {
+   "ok": true,
+   "detalle": "tarjeta quitada de la bandeja de pendientes"
+  },
+  "recibo_completar_dos_veces_409": {
+   "ok": true,
+   "detalle": {
+    "status": 409,
+    "codigo": "captura_usada",
+    "error": "Este recibo ya se registró como Gasto #4 · Movilización ficticia (dueno.demo, 04/11/2026 14:46). No se creó otro registro."
+   }
+  },
+  "recibo_vinculado_a_compra_sin_resubir": {
+   "ok": true,
+   "detalle": {
+    "msgV": "Vinculado al documento existente.",
+    "opciones": [
+     [
+      "",
+      "Elige el documento"
+     ],
+     [
+      "10",
+      "Compra 001-002-000004321 · 2026-11-04 · $34.50 · PROVEEDOR FICTICIO FLUJOS S.A."
+     ]
+    ],
+    "estado": "vinculada",
+    "tipo": "compra",
+    "doc": 10,
+    "archivo_captura": "privado/empresas/66162fbf-18d3-4bcf-9499-a30d7fb5f45d/comprobantes-pago/2026/11/79ca94a16e1b4c0c9b9b4da3118476eb.png",
+    "sha": "c414cd0e204de974f73753c7e28d7638e7b3691bb8b1a2bab6b25bb7fed7ce77",
+    "adjuntos_compra": [
+     {
+      "pk": 5,
+      "archivo": "privado/empresas/66162fbf-18d3-4bcf-9499-a30d7fb5f45d/comprobantes-pago/2026/11/79ca94a16e1b4c0c9b9b4da3118476eb.png",
+      "captura_id": 2,
+      "sha256": "c414cd0e204de974f73753c7e28d7638e7b3691bb8b1a2bab6b25bb7fed7ce77"
+     }
+    ],
+    "archivos_en_disco": [
+     25,
+     25
+    ]
+   }
+  },
+  "_adjunto_compra": 5,
+  "recibo_mismo_archivo_avisa_y_no_duplica": {
+   "ok": true,
+   "detalle": {
+    "mismo_archivo": [
+     {
+      "tipo": "compra",
+      "id": 10,
+      "titulo": "Compra 001-002-000004321"
+     }
+    ],
+    "vincular": 201,
+    "ya_adjunto": true,
+    "adjuntos_vigentes_compra": 1
+   }
+  },
+  "recibo_descartado": {
+   "ok": true,
+   "detalle": {
+    "estado": "descartada",
+    "motivo": "Duplicado ficticio",
+    "por": "dueno.demo",
+    "vincular_descartado": 409
+   }
+  },
+  "recibos_filtro_todos": {
+   "ok": true,
+   "detalle": [
+    "Vinculada a un documento existente",
+    "Pendiente de completar",
+    "Pendiente de completar",
+    "Completada: registró el documento",
+    "Vinculada a un documento existente",
+    "Descartada"
+   ]
+  },
+  "recibos_foco_visible": {
+   "ok": true,
+   "detalle": {
+    "ok": true,
+    "sin_indicador": [],
+    "recorridos": 10
+   }
+  },
+  "vendedor_solo_ve_lo_suyo": {
+   "ok": true,
+   "detalle": {
+    "autores": [
+     "vendedor.previa"
+    ],
+    "n": 1,
+    "ajena": 404,
+    "archivo_ajeno": 404,
+    "descartar_ajena": 404,
+    "ver_todas": false,
+    "vincular": {
+     "compra": false,
+     "gasto": false,
+     "pago": false
+    }
+   }
+  },
+  "vendedor_sin_mes_ni_zip": {
+   "ok": true,
+   "detalle": {
+    "zip": 302,
+    "mes": 302,
+    "loc": "/adjuntos/capturas/"
+   }
+  },
+  "vendedor_no_vincula_a_compras": {
+   "ok": true,
+   "detalle": {
+    "vincular": 403,
+    "error": "Tu perfil no puede adjuntar respaldos a este documento.",
+    "documentos": 403
+   }
+  },
+  "contador_ve_todos_los_recibos": {
+   "ok": true,
+   "detalle": {
+    "n": 7,
+    "ver_todas": true
+   }
+  },
+  "recibos_aislados_por_empresa": {
+   "ok": true,
+   "detalle": {
+    "n_en_B": 0,
+    "archivo_de_A_desde_B": 404
+   }
+  },
+  "recibo_empresa_cambiada_409": {
+   "ok": true,
+   "detalle": {
+    "msg409": "La empresa activa cambió en otra pestaña: vuelve a cargar la página para ver los datos de la empresa que tienes abierta ahora.",
+    "notaConservada": "Nota escrita antes de cambiar de empresa",
+    "en_B": [
+     0,
+     0
+    ]
+   }
+  },
+  "recibos_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "recibos_desborde_360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "_capturas": {
+   "c1": 1,
+   "c2": 2,
+   "c3": 3,
+   "peaje": 5,
+   "gasto": 4
+  }
+ },
+ "fallos": []
+}

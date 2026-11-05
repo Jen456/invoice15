@@ -1,0 +1,108 @@
+{
+ "nombre": "permisos2",
+ "pasos": [
+  {
+   "nombre": "Consulta: ningún listado le ofrece «Nuevo registro»",
+   "ok": false,
+   "res": {
+    "/pos/sale/admin/": {
+     "enlaces": [
+      "/pos/sale/admin/add/",
+      "/pos/sale/admin/add/"
+     ],
+     "destino": "/pos/sale/admin/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/purchase/": {
+     "enlaces": [
+      "/pos/purchase/add/"
+     ],
+     "destino": "/pos/purchase/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/expenses/": {
+     "enlaces": [
+      "/pos/expenses/add/",
+      "/pos/expenses/add/"
+     ],
+     "destino": "/pos/expenses/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/ctas/collect/": {
+     "enlaces": [
+      "/pos/ctas/collect/add/",
+      "/pos/ctas/collect/add/"
+     ],
+     "destino": "/pos/ctas/collect/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/client/": {
+     "enlaces": [
+      "/pos/client/add/"
+     ],
+     "destino": "/pos/client/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/product/": {
+     "enlaces": [
+      "/pos/product/add/"
+     ],
+     "destino": "/pos/product/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    }
+   }
+  },
+  {
+   "nombre": "Consulta: la opción de menú «Importar por claves o reporte del SRI» abre su página",
+   "ok": false,
+   "en_menu": [
+    "Importar por claves o reporte del SRI"
+   ],
+   "boton_en_lotes": [],
+   "final": "/importacion/lotes/",
+   "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+  },
+  {
+   "nombre": "Consulta: adjuntar comprobante de pago a la compra 1 → 403",
+   "ok": true,
+   "http": 403,
+   "cuerpo": "{\"error\": \"Tu perfil no puede adjuntar comprobantes de pago.\"}"
+  },
+  {
+   "nombre": "Consulta: quitar un comprobante → 403/404 (nunca 200)",
+   "ok": true,
+   "http": 404
+  },
+  {
+   "nombre": "Contador: acceso negado a /importacion/reglas/ lo devuelve a una página (no a una API JSON)",
+   "ok": false,
+   "final": "/importacion/api/documentos/",
+   "tipo": "application/json",
+   "texto": "{\"bandeja\": \"pendientes\", \"documentos\": [], \"total\": 0, \"pagina\": 1, \"paginas\": 1}"
+  },
+  {
+   "nombre": "Contador: tras el kardex, /user/ negado vuelve a una página (no a una API JSON)",
+   "ok": true,
+   "final": "/contabilidad/kardex/",
+   "tipo": "text/html; charset=utf-8"
+  },
+  {
+   "nombre": "Vendedor: tras «Recibos por completar», /pos/purchase/ negado vuelve a una página",
+   "ok": true,
+   "final": "/adjuntos/capturas/",
+   "tipo": "text/html; charset=utf-8"
+  },
+  {
+   "nombre": "sin errores de JavaScript",
+   "ok": true,
+   "e": []
+  }
+ ],
+ "fallidas": [
+  "Consulta: ningún listado le ofrece «Nuevo registro»",
+  "Consulta: la opción de menú «Importar por claves o reporte del SRI» abre su página",
+  "Contador: acceso negado a /importacion/reglas/ lo devuelve a una página (no a una API JSON)"
+ ],
+ "errores_js": [],
+ "respuestas_5xx": []
+}

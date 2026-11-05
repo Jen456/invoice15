@@ -1,0 +1,33 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [],
+ "pasos": {
+  "contador_ve_compras_no_crea": {
+   "ok": true,
+   "detalle": {
+    "listado": 200,
+    "nueva_get": 302,
+    "nueva_post": 403,
+    "cuerpo": {
+     "error": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "gastos_listado": 200,
+    "gasto_post": 403,
+    "gasto_cuerpo": {
+     "error": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    }
+   }
+  },
+  "compras_aisladas_por_empresa": {
+   "ok": true,
+   "detalle": {
+    "lista_b": 0,
+    "detalle_compra_A_desde_B": {
+     "error": "La compra no existe."
+    }
+   }
+  }
+ },
+ "fallos": []
+}

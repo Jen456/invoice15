@@ -1,0 +1,208 @@
+{
+ "pasos": [
+  {
+   "nombre": "factura para la nota de crédito emitida",
+   "ok": true,
+   "resp": {
+    "estado": 200,
+    "json": {
+     "resp": true,
+     "estado": "authorized",
+     "mensaje": "Factura 001-001-002555779 autorizada por el SRI.",
+     "print_url": "/media/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/24fbe41a803a41d18_uVzio8x.pdf"
+    },
+    "sinCuerpo": false
+   }
+  },
+  {
+   "nombre": "la factura está autorizada",
+   "ok": true,
+   "id": 20,
+   "num": "001-001-002555779",
+   "status": "authorized",
+   "clave": "0411202601099000000000110010010025557792311115413",
+   "total": "16.10",
+   "stock_prv1": 80
+  },
+  {
+   "nombre": "crear la nota de crédito desde Opciones",
+   "ok": true,
+   "estado": 200,
+   "json": {
+    "resp": true,
+    "estado": "authorized",
+    "mensaje": "Nota de crédito 001-001-001858522 autorizada por el SRI.",
+    "print_url": "/media/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/5e620440d4c24523b_TZQsldR.pdf"
+   }
+  },
+  {
+   "nombre": "nota de crédito autorizada por el total y la factura queda anulada (cubierta por la NC)",
+   "ok": true,
+   "nc": {
+    "id": 1,
+    "num": "001-001-001858522",
+    "status": "authorized",
+    "total": "16.10",
+    "pdf": "empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/5e620440d4c24523b_TZQsldR.pdf",
+    "pdf_url": "/media/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/5e620440d4c24523b_TZQsldR.pdf",
+    "xml": "empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/xml/2026/11/4bf2906472f44c94b_ftIV3X5.xml",
+    "venta_status": "canceled",
+    "venta_pdf": "empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/24fbe41a803a41d18_uVzio8x.pdf",
+    "nc_total": 1,
+    "seq_nc": {
+     "2": 1858522
+    },
+    "stock_prv1": 81
+   },
+   "venta": {
+    "id": 20,
+    "num": "001-001-002555779",
+    "status": "authorized",
+    "clave": "0411202601099000000000110010010025557792311115413",
+    "total": "16.10",
+    "stock_prv1": 80
+   },
+   "ncAntes": {
+    "nc": 0,
+    "seq_nc": {
+     "2": 1858521
+    }
+   }
+  },
+  {
+   "nombre": "la nota consume un número de su secuencia y devuelve el stock",
+   "ok": true,
+   "antes": {
+    "2": 1858521
+   },
+   "despues": {
+    "2": 1858522
+   },
+   "stock": [
+    80,
+    81
+   ]
+  },
+  {
+   "nombre": "A4 de la factura (anulada por NC) se descarga como PDF",
+   "ok": true,
+   "estado": 200,
+   "url": "http://127.0.0.1:8781/media/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/24fbe41a803a41d18_uVzio8x.pdf",
+   "tipo": "application/pdf",
+   "bytes": 49411
+  },
+  {
+   "nombre": "A4 de la nota de crédito se descarga como PDF",
+   "ok": true,
+   "estado": 200,
+   "bytes": 49914
+  },
+  {
+   "nombre": "A4 factura: «RUC Proveedor» aparece una sola vez y en el pie",
+   "ok": true,
+   "apariciones": [
+    {
+     "pagina": 1,
+     "y_rel": 0.067,
+     "contexto": "16,10\r Sistema de facturación electrónica: FACTURAPORAQUI · RUC Proveedor: 0912345675001\r soporte@fa"
+    }
+   ],
+   "ultimas": [
+    "IVA 15 % 2,10",
+    "TOTAL USD 16,10",
+    "Sistema de facturación electrónica: FACTURAPORAQUI · RUC Proveedor: 0912345675001",
+    "soporte@facturaporaqui.com · Milagro, Manta y Rumiñahui 1 / 1"
+   ]
+  },
+  {
+   "nombre": "A4 factura: fiel al XML autorizado (sin diferencias)",
+   "ok": true,
+   "diferencias": []
+  },
+  {
+   "nombre": "A4 nota de crédito: «RUC Proveedor» una sola vez y en el pie",
+   "ok": true,
+   "apariciones": [
+    {
+     "pagina": 1,
+     "y_rel": 0.067,
+     "contexto": "16,10\r Sistema de facturación electrónica: FACTURAPORAQUI · RUC Proveedor: 0912345675001\r soporte@fa"
+    }
+   ],
+   "ultimas": [
+    "IVA 15 % 2,10",
+    "TOTAL USD 16,10",
+    "Sistema de facturación electrónica: FACTURAPORAQUI · RUC Proveedor: 0912345675001",
+    "soporte@facturaporaqui.com · Milagro, Manta y Rumiñahui 1 / 1"
+   ]
+  },
+  {
+   "nombre": "A4 nota de crédito: fiel al XML autorizado",
+   "ok": true,
+   "diferencias": []
+  },
+  {
+   "nombre": "el XML autorizado conserva el campo adicional «RUC Proveedor» (informativo)",
+   "ok": true,
+   "factura": true,
+   "nc": true
+  },
+  {
+   "nombre": "listado: la factura anulada ofrece A4 (anulada) y ya no ofrece otra nota de crédito",
+   "ok": true,
+   "opciones": [
+    "Usar como base para otra factura",
+    "Cobros y respaldos",
+    "Detalle de productos",
+    "Imprimir factura ticket",
+    "Imprimir factura A4 (anulada)",
+    "Registrar retención recibida",
+    "Marcar como anulada en el SRI"
+   ]
+  },
+  {
+   "nombre": "listado de facturas sin desplazamiento horizontal a 390 px",
+   "ok": true,
+   "scroll": 390,
+   "ancho": 390
+  },
+  {
+   "nombre": "foco visible en «Opciones» a 390 px",
+   "ok": false,
+   "mismo": true,
+   "tag": "BUTTON",
+   "id": "",
+   "outline": "none 0px rgb(255, 255, 255)",
+   "sombra": "rgba(130, 138, 145, 0.035) 0px 0px 0px 0px",
+   "sel": "#data tbody tr button.dropdown-toggle"
+  },
+  {
+   "nombre": "listado de facturas sin desplazamiento horizontal a 1360 px",
+   "ok": true,
+   "scroll": 1360,
+   "ancho": 1360
+  },
+  {
+   "nombre": "foco visible en «Opciones» a 1360 px",
+   "ok": false,
+   "mismo": true,
+   "tag": "BUTTON",
+   "id": "",
+   "outline": "none 0px rgb(255, 255, 255)",
+   "sombra": "rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+   "sel": "#data tbody tr button.dropdown-toggle"
+  },
+  {
+   "nombre": "sin errores de JavaScript ni respuestas 5xx",
+   "ok": true,
+   "js": [],
+   "http": []
+  }
+ ],
+ "fallidas": [
+  "foco visible en «Opciones» a 390 px",
+  "foco visible en «Opciones» a 1360 px"
+ ],
+ "errores_js": [],
+ "http5xx": []
+}

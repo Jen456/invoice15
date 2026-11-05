@@ -1,0 +1,51 @@
+{
+ "nombre": "cobros3",
+ "pasos": [
+  {
+   "nombre": "eliminar el cobro del respaldo rechazado: el saldo sube su importe y el respaldo queda sin abono con «cobro eliminado» en el historial",
+   "ok": true,
+   "http": 200,
+   "filasPagos": [
+    "1 2026-11-04 Cobro registrado Transferencia TRF-0001 $10.00 Abono ficticio con nota ",
+    "2 2026-11-04 Cobro registrado Depósito $5.00 Cobro con respaldo ",
+    "3 2026-11-04 Cobro registrado Transferencia $2.50 Abono ficticio con nota y PDF ",
+    "4 2026-11-04 Cobro registrado Efectivo $1.00 doble envío ficticio ",
+    "5 2026-11-04 Cobro registrado Transferencia $3.00 Abono ficticio desde Nuevo registro ",
+    "6 2026-11-04 Cobro registrado Transferencia $1.50 Abono ficticio del vendedor ",
+    "7 2026-11-04 Cobro registrado Efectivo $1.00 NO DEBE "
+   ],
+   "idx": 1,
+   "saldo": [
+    "33.50",
+    "38.50"
+   ],
+   "respaldo": {
+    "abono": null,
+    "estado": "rechazado"
+   },
+   "historial": [
+    "registro",
+    "revision",
+    "cobro_eliminado"
+   ]
+  },
+  {
+   "nombre": "panel: la tarjeta avisa que el cobro asociado fue eliminado",
+   "ok": true,
+   "aviso": "$5.00 · DepósitoRechazadoEl cobro asociado fue eliminado. Se conserva su respaldo e historial.Abrir comprobante-ficticio.pngReferencia—Registrado porPropietario"
+  },
+  {
+   "nombre": "consulta mensual (/adjuntos/): los respaldos de cobro de la factura aparecen con «Ver cobro»",
+   "ok": true,
+   "botones": 6
+  },
+  {
+   "nombre": "sin errores de JavaScript",
+   "ok": true,
+   "e": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "respuestas_5xx": []
+}

@@ -1,0 +1,118 @@
+{
+ "seq0": [
+  {
+   "id": 1,
+   "punto": 1,
+   "seq": 2555771
+  }
+ ],
+ "seqF": [
+  {
+   "id": 1,
+   "punto": 1,
+   "seq": 2555775
+  }
+ ],
+ "vs": [
+  {
+   "id": 13,
+   "num": "001-001-002555772",
+   "seq": 2555772,
+   "receipt": 1,
+   "status": "authorized",
+   "tipo": "01",
+   "pago": "efectivo",
+   "medio": "efectivo",
+   "cash": "20.00",
+   "change": "8.50",
+   "total": "11.50",
+   "end_credit": "2026-11-04",
+   "cliente": "0912345678",
+   "clave": "0411202601099000000000110010010025557726653812717",
+   "respaldos": [],
+   "cxc": []
+  },
+  {
+   "id": 14,
+   "num": "001-001-002555773",
+   "seq": 2555773,
+   "receipt": 1,
+   "status": "authorized",
+   "tipo": "01",
+   "pago": "efectivo",
+   "medio": "transferencia",
+   "cash": "0.00",
+   "change": "0.00",
+   "total": "11.50",
+   "end_credit": "2026-11-04",
+   "cliente": "0912345678",
+   "clave": "0411202601099000000000110010010025557730016626117",
+   "respaldos": [
+    {
+     "medio": "transferencia",
+     "referencia": "TRF-FICTICIA-001",
+     "nota": "Transferencia ficticia de prueba: el cliente envió el comprobante por chat.",
+     "archivo": "",
+     "archivo_tipo": "",
+     "archivo_bytes": 0,
+     "importe": "11.50",
+     "estado": "pendiente"
+    }
+   ],
+   "cxc": []
+  },
+  {
+   "id": 15,
+   "num": "001-001-002555774",
+   "seq": 2555774,
+   "receipt": 1,
+   "status": "authorized",
+   "tipo": "01",
+   "pago": "efectivo",
+   "medio": "transferencia",
+   "cash": "0.00",
+   "change": "0.00",
+   "total": "11.50",
+   "end_credit": "2026-11-04",
+   "cliente": "0912345678",
+   "clave": "0411202601099000000000110010010025557742045403915",
+   "respaldos": [
+    {
+     "medio": "transferencia",
+     "referencia": "TRF-FICTICIA-002",
+     "nota": "",
+     "archivo": "privado/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/cobros/2026/11/209512f5481f43ee8953ce5180e1d1f5.png",
+     "archivo_tipo": "png",
+     "archivo_bytes": 70,
+     "importe": "11.50",
+     "estado": "pendiente"
+    }
+   ],
+   "cxc": []
+  },
+  {
+   "id": 16,
+   "num": "001-001-002555775",
+   "seq": 2555775,
+   "receipt": 1,
+   "status": "authorized",
+   "tipo": "01",
+   "pago": "credito",
+   "medio": "",
+   "cash": "0.00",
+   "change": "0.00",
+   "total": "11.50",
+   "end_credit": "2026-12-04",
+   "cliente": "0912345678",
+   "clave": "0411202601099000000000110010010025557752556188910",
+   "respaldos": [],
+   "cxc": [
+    {
+     "end_date": "2026-12-04",
+     "debt": "11.50",
+     "saldo": "11.50"
+    }
+   ]
+  }
+ ]
+}

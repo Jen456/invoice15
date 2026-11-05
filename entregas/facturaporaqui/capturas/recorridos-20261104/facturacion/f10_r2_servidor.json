@@ -1,0 +1,104 @@
+{
+ "pasos": [
+  {
+   "nombre": "servidor: crédito con plazo vacío se rechaza sin consumir número",
+   "ok": true,
+   "estado": 200,
+   "error": "Indica la fecha de plazo del crédito (AAAA-MM-DD).",
+   "antes": {
+    "seq": {
+     "1": 2555779
+    },
+    "ventas": 20,
+    "cxc": 3
+   },
+   "despues": {
+    "seq": {
+     "1": 2555779
+    },
+    "ventas": 20,
+    "cxc": 3
+   }
+  },
+  {
+   "nombre": "servidor: crédito con plazo formato inválido se rechaza sin consumir número",
+   "ok": true,
+   "estado": 200,
+   "error": "Indica la fecha de plazo del crédito (AAAA-MM-DD).",
+   "antes": {
+    "seq": {
+     "1": 2555779
+    },
+    "ventas": 20,
+    "cxc": 3
+   },
+   "despues": {
+    "seq": {
+     "1": 2555779
+    },
+    "ventas": 20,
+    "cxc": 3
+   }
+  },
+  {
+   "nombre": "servidor: crédito con plazo con espacios se rechaza sin consumir número",
+   "ok": true,
+   "estado": 200,
+   "error": "Indica la fecha de plazo del crédito (AAAA-MM-DD).",
+   "antes": {
+    "seq": {
+     "1": 2555779
+    },
+    "ventas": 20,
+    "cxc": 3
+   },
+   "despues": {
+    "seq": {
+     "1": 2555779
+    },
+    "ventas": 20,
+    "cxc": 3
+   }
+  },
+  {
+   "nombre": "servidor: crédito con nota de cobro se rechaza (informativo)",
+   "ok": true,
+   "error": "Una factura a crédito se respalda al registrar cada cobro, no al emitirla."
+  },
+  {
+   "nombre": "pantalla: plazo con fecha pasada tecleada (informativo)",
+   "ok": true,
+   "valorTras": "",
+   "msgs": []
+  },
+  {
+   "nombre": "servidor: plazo de crédito en el pasado (informativo)",
+   "ok": true,
+   "emitida": true,
+   "estado": "authorized",
+   "antes": {
+    "seq": {
+     "1": 2555779
+    },
+    "ventas": 20,
+    "cxc": 3
+   },
+   "despues": {
+    "seq": {
+     "1": 2555780
+    },
+    "ventas": 21,
+    "cxc": 4
+   }
+  },
+  {
+   "nombre": "sin errores de JavaScript ni respuestas 5xx",
+   "ok": true,
+   "js": [],
+   "http": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "http5xx": []
+}

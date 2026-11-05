@@ -1,0 +1,159 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [],
+ "pasos": {
+  "login_dueno_empresa_A": {
+   "ok": true,
+   "detalle": "http://127.0.0.1:8783/dashboard/"
+  },
+  "compra_desborde_1360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 1360,
+    "innerWidth": 1360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "proveedor_creado_desde_modal": {
+   "ok": true,
+   "detalle": {
+    "provider": "23",
+    "error": ""
+   }
+  },
+  "compra_calculo_servidor": {
+   "ok": true,
+   "detalle": {
+    "total": "$34.50",
+    "esperado": "$34.50 (5x4 + 10 = 30 + IVA 15% 4.50)",
+    "tarifas": [
+     [
+      "",
+      "Elige la tarifa"
+     ],
+     [
+      "4",
+      "15 %"
+     ],
+     [
+      "5",
+      "5 %"
+     ],
+     [
+      "0",
+      "0 %"
+     ],
+     [
+      "6",
+      "No objeto de IVA"
+     ],
+     [
+      "7",
+      "Exento de IVA"
+     ],
+     [
+      "2",
+      "12 % (comprobantes anteriores al 01/04/2024)"
+     ],
+     [
+      "8",
+      "IVA diferenciado (escribe la tarifa)"
+     ]
+    ],
+    "resumenErr": "",
+    "faltantes": []
+   }
+  },
+  "compra_guardada_redirige_listado": {
+   "ok": true,
+   "detalle": "http://127.0.0.1:8783/pos/purchase/"
+  },
+  "compra_bd_dos_lineas_y_stock": {
+   "ok": true,
+   "detalle": {
+    "id": 13,
+    "proveedor": "PROVEEDOR FICTICIO FLUJOS 639287 S.A.",
+    "ruc": "0990639287001",
+    "numero": "001-002-000757627",
+    "subtotal": "30.00",
+    "iva": "4.50",
+    "total": "34.50",
+    "payment_type": "efectivo",
+    "lineas": [
+     [
+      "PRV-1",
+      5,
+      "4.00",
+      "20.00",
+      null,
+      ""
+     ],
+     [
+      null,
+      1,
+      "10.00",
+      "10.00",
+      null,
+      "Flete ficticio de la compra"
+     ]
+    ],
+    "stock_prv1": 110,
+    "compras": 13,
+    "cxp": 0,
+    "stock_antes": 105
+   }
+  },
+  "_compra_id": 13,
+  "compra_en_listado": {
+   "ok": true,
+   "detalle": {
+    "status": 200,
+    "n": 13
+   }
+  },
+  "compra_duplicada_detectada": {
+   "ok": true,
+   "detalle": {
+    "valid": false,
+    "compra_id": 13,
+    "mensaje": "Ya registraste este comprobante (compra #13).",
+    "documento_importado": null
+   }
+  },
+  "compra_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "listado_compras_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": [
+     "table#data.table.table-bordered r=1542",
+     "thead. r=1542",
+     "tr. r=1542",
+     "th.sorting r=532",
+     "th.sorting r=732"
+    ]
+   }
+  },
+  "compra_foco_visible": {
+   "ok": true,
+   "detalle": {
+    "ok": true,
+    "sin_indicador": [],
+    "recorridos": 8
+   }
+  }
+ },
+ "fallos": []
+}

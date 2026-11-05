@@ -1,0 +1,407 @@
+{
+ "nombre": "cobros",
+ "pasos": [
+  {
+   "nombre": "crédito: el campo «Fecha de plazo del crédito» aparece al elegir Crédito",
+   "ok": true,
+   "visible": true,
+   "distancia_px": 22,
+   "valor": ""
+  },
+  {
+   "nombre": "crédito sin plazo: no se envía y el mensaje lo pide",
+   "ok": true,
+   "dialogo": false,
+   "msg": [
+    "Indica la fecha de plazo del crédito.",
+    "Indica la fecha de plazo del crédito."
+   ]
+  },
+  {
+   "nombre": "propietario emite la factura a crédito (SRI simulado)",
+   "ok": true,
+   "http": 200,
+   "venta": {
+    "id": 2,
+    "estado": "authorized",
+    "numero": "001-001-006604420"
+   }
+  },
+  {
+   "nombre": "la factura a crédito genera su cuenta por cobrar con saldo = total",
+   "ok": true,
+   "numero": "001-001-006604420",
+   "total": "57.50",
+   "condicion": "credito",
+   "end_credit": "2026-12-04",
+   "cxc": 1,
+   "deuda": "57.50",
+   "saldo": "57.50",
+   "abonos": [],
+   "respaldos": []
+  },
+  {
+   "nombre": "panel CxC: muestra la factura y el saldo por cobrar",
+   "ok": true,
+   "texto": "Total$57.50CondiciónCréditoMedio de cobro—Saldo por cobrar$57.50"
+  },
+  {
+   "nombre": "sin nota ni archivo: no se registra (pide comprobante o nota)",
+   "ok": true,
+   "msgVacio": "Adjunta un comprobante o escribe una nota interna."
+  },
+  {
+   "nombre": "abono con nota: 201 y el saldo baja 10.00",
+   "ok": true,
+   "r1": {
+    "http": 201,
+    "id": 1,
+    "saldo_panel": "47.50",
+    "aviso": "Registro guardado. El respaldo queda pendiente de revisión."
+   },
+   "saldo": "47.50"
+  },
+  {
+   "nombre": "abono con archivo (PNG, sin nota): 201 y el saldo baja 5.00",
+   "ok": true,
+   "r2": {
+    "http": 201,
+    "id": 2,
+    "saldo_panel": "42.50",
+    "aviso": "Registro guardado. El respaldo queda pendiente de revisión."
+   },
+   "saldo": "42.50"
+  },
+  {
+   "nombre": "abono con nota y archivo (PDF): 201 y el saldo baja 2.50",
+   "ok": true,
+   "r3": {
+    "http": 201,
+    "id": 3,
+    "saldo_panel": "40.00",
+    "aviso": "Registro guardado. El respaldo queda pendiente de revisión."
+   },
+   "saldo": "40.00"
+  },
+  {
+   "nombre": "base: los tres respaldos quedan pendientes, ligados a su abono, con nota/archivo correctos",
+   "ok": true,
+   "respaldos": [
+    {
+     "id": 1,
+     "estado": "pendiente",
+     "importe": "10.00",
+     "nota": "Abono ficticio con nota",
+     "archivo": "",
+     "abono": 1,
+     "por": "dueno.demo",
+     "revisado_por": null
+    },
+    {
+     "id": 2,
+     "estado": "pendiente",
+     "importe": "5.00",
+     "nota": "",
+     "archivo": "png",
+     "abono": 2,
+     "por": "dueno.demo",
+     "revisado_por": null
+    },
+    {
+     "id": 3,
+     "estado": "pendiente",
+     "importe": "2.50",
+     "nota": "Abono ficticio con nota y PDF",
+     "archivo": "pdf",
+     "abono": 3,
+     "por": "dueno.demo",
+     "revisado_por": null
+    }
+   ]
+  },
+  {
+   "nombre": "el comprobante se abre por la ruta privada (image/png, no-store)",
+   "ok": true,
+   "http": 200,
+   "tipo": "image/png"
+  },
+  {
+   "nombre": "importe mayor que el saldo: rechazado y el saldo no cambia",
+   "ok": true,
+   "r4": {
+    "confirmacion": false,
+    "validacion": ""
+   },
+   "saldo": "40.00"
+  },
+  {
+   "nombre": "revisar (aprobar): 200, estado revisado y el saldo NO cambia",
+   "ok": true,
+   "v1": {
+    "http": 200,
+    "estado": "revisado",
+    "aviso": ""
+   },
+   "saldo": "40.00"
+  },
+  {
+   "nombre": "rechazar sin motivo: no se envía (motivo obligatorio)",
+   "ok": true,
+   "confirmacion": false,
+   "validacion": "Please fill out this field."
+  },
+  {
+   "nombre": "rechazar con motivo: 200, estado rechazado y el saldo NO cambia",
+   "ok": true,
+   "v2": {
+    "http": 200,
+    "estado": "rechazado",
+    "aviso": ""
+   },
+   "saldo": "40.00"
+  },
+  {
+   "nombre": "servidor: rechazo sin motivo → 400",
+   "ok": true,
+   "http": 400,
+   "cuerpo": "{\"error\": \"Escribe el motivo del rechazo.\", \"codigo\": \"motivo_rechazo\"}"
+  },
+  {
+   "nombre": "doble envío con la misma clave: 201 y luego 200 repetido, un solo abono",
+   "ok": true,
+   "f1": 201,
+   "f2": 200,
+   "abonos": [
+    "10.00",
+    "5.00",
+    "2.50",
+    "1.00"
+   ],
+   "saldo": "39.00"
+  },
+  {
+   "nombre": "historial del respaldo rechazado: registro y revisión con usuario",
+   "ok": true,
+   "historial": [
+    [
+     "registro",
+     "dueno.demo"
+    ],
+    [
+     "revision",
+     "dueno.demo"
+    ]
+   ]
+  },
+  {
+   "nombre": "panel de cobros a 390 px sin desplazamiento horizontal",
+   "ok": true,
+   "scroll": 390,
+   "ventana": 390,
+   "desborda": false,
+   "culpables": []
+  },
+  {
+   "nombre": "Nuevo registro: abono con nota y archivo, el saldo baja 3.00 y nace su respaldo pendiente",
+   "ok": true,
+   "http": 200,
+   "insignia": "Saldo: $39.00",
+   "saldo": "36.00",
+   "ultimo": {
+    "id": 5,
+    "estado": "pendiente",
+    "importe": "3.00",
+    "nota": "Abono ficticio desde Nuevo registro",
+    "archivo": "png",
+    "abono": 5,
+    "por": "dueno.demo",
+    "revisado_por": null
+   }
+  },
+  {
+   "nombre": "vendedor: /pos/ctas/collect/ no le abre (no está en su menú)",
+   "ok": true,
+   "url": "http://127.0.0.1:8784/dashboard/"
+  },
+  {
+   "nombre": "vendedor: «Cobros y respaldos» disponible en Facturas emitidas",
+   "ok": true
+  },
+  {
+   "nombre": "vendedor: ve «Registrar cobro» y ningún botón «Revisar»",
+   "ok": true,
+   "revisar": 0,
+   "registrar": true
+  },
+  {
+   "nombre": "vendedor registra un abono con nota: 201 y el saldo baja 1.50",
+   "ok": true,
+   "rv": {
+    "http": 201,
+    "id": 6,
+    "saldo_panel": "34.50",
+    "aviso": "Registro guardado. El respaldo queda pendiente de revisión."
+   },
+   "saldo": "34.50"
+  },
+  {
+   "nombre": "vendedor: revisar por POST directo → 403 y el respaldo sigue pendiente",
+   "ok": true,
+   "http": 403,
+   "estado": "pendiente"
+  },
+  {
+   "nombre": "vendedor: corrige su respaldo pendiente (200) y no el de otro usuario (403)",
+   "ok": true,
+   "propio": 200,
+   "ajeno": 403
+  },
+  {
+   "nombre": "panel del vendedor a 360 px sin desplazamiento horizontal",
+   "ok": true,
+   "scroll": 360,
+   "ventana": 360,
+   "desborda": false,
+   "culpables": [
+    "table#data.table.table-bordered r=1020",
+    "thead r=1020",
+    "tr r=1020",
+    "th.text-center.sorting r=531",
+    "th.text-center.sorting r=651",
+    "th.text-center.sorting r=723"
+   ]
+  },
+  {
+   "nombre": "contador.previa: ve la ficha (200) con capacidades sin registrar ni revisar",
+   "ok": true,
+   "http": 200,
+   "capacidades": {
+    "puede_ver": true,
+    "puede_registrar": false,
+    "puede_revisar": false,
+    "puede_eliminar_cobros": false
+   }
+  },
+  {
+   "nombre": "contador.previa: registrar, revisar, alta en CxC y eliminar cobro → 403 y nada cambia",
+   "ok": true,
+   "registrar": 403,
+   "revisar": 403,
+   "alta_cxc": 403,
+   "eliminar": 403,
+   "saldo": "34.50"
+  },
+  {
+   "nombre": "consulta.previa: ve la ficha (200) con capacidades sin registrar ni revisar",
+   "ok": true,
+   "http": 200,
+   "capacidades": {
+    "puede_ver": true,
+    "puede_registrar": false,
+    "puede_revisar": false,
+    "puede_eliminar_cobros": false
+   }
+  },
+  {
+   "nombre": "consulta.previa: registrar, revisar, alta en CxC y eliminar cobro → 403 y nada cambia",
+   "ok": true,
+   "registrar": 403,
+   "revisar": 403,
+   "alta_cxc": 403,
+   "eliminar": 403,
+   "saldo": "34.50"
+  },
+  {
+   "nombre": "sin errores de JavaScript",
+   "ok": true,
+   "errores": []
+  },
+  {
+   "nombre": "sin respuestas 5xx",
+   "ok": true,
+   "r": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "final": {
+  "numero": "001-001-006604420",
+  "total": "57.50",
+  "condicion": "credito",
+  "end_credit": "2026-12-04",
+  "cxc": 1,
+  "deuda": "57.50",
+  "saldo": "34.50",
+  "abonos": [
+   "10.00",
+   "5.00",
+   "2.50",
+   "1.00",
+   "3.00",
+   "1.50"
+  ],
+  "respaldos": [
+   {
+    "id": 1,
+    "estado": "revisado",
+    "importe": "10.00",
+    "nota": "Abono ficticio con nota",
+    "archivo": "",
+    "abono": 1,
+    "por": "dueno.demo",
+    "revisado_por": "dueno.demo"
+   },
+   {
+    "id": 2,
+    "estado": "rechazado",
+    "importe": "5.00",
+    "nota": "",
+    "archivo": "png",
+    "abono": 2,
+    "por": "dueno.demo",
+    "revisado_por": "dueno.demo"
+   },
+   {
+    "id": 3,
+    "estado": "pendiente",
+    "importe": "2.50",
+    "nota": "Abono ficticio con nota y PDF",
+    "archivo": "pdf",
+    "abono": 3,
+    "por": "dueno.demo",
+    "revisado_por": null
+   },
+   {
+    "id": 4,
+    "estado": "pendiente",
+    "importe": "1.00",
+    "nota": "doble envío ficticio",
+    "archivo": "",
+    "abono": 4,
+    "por": "dueno.demo",
+    "revisado_por": null
+   },
+   {
+    "id": 5,
+    "estado": "pendiente",
+    "importe": "3.00",
+    "nota": "Abono ficticio desde Nuevo registro",
+    "archivo": "png",
+    "abono": 5,
+    "por": "dueno.demo",
+    "revisado_por": null
+   },
+   {
+    "id": 6,
+    "estado": "pendiente",
+    "importe": "1.50",
+    "nota": "Abono ficticio del vendedor (corregido)",
+    "archivo": "",
+    "abono": 6,
+    "por": "vendedor.previa",
+    "revisado_por": null
+   }
+  ]
+ }
+}

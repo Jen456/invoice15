@@ -1,0 +1,124 @@
+{
+ "pasos": [
+  {
+   "n": "R1: el 409 avisa y muestra «Volver»",
+   "ok": true,
+   "aviso": "La empresa activa cambió en otra pestaña. No se creó ningún cliente y lo escrito se conserva. Vuelve a la empresa de esta factura para guardarlo aquí, o recarga la página para trabajar con la empresa nueva.",
+   "volver": true,
+   "activo": "fp-client-alert"
+  },
+  {
+   "n": "R1: «Volver» confirma la empresa (JSON) y se oculta",
+   "ok": true,
+   "aviso": "La empresa de esta factura vuelve a estar activa. Revisa los datos y guarda el cliente.",
+   "volver": false,
+   "activo": "fp-client-save"
+  },
+  {
+   "n": "R1: otro campo inválido después de volver no repite el aviso de empresa ni «Volver»",
+   "ok": true,
+   "aviso": "Revisa los campos señalados antes de guardar.",
+   "volver": false,
+   "activo": "id_names"
+  },
+  {
+   "n": "R1: tras guardar y reabrir, el diálogo empieza sin aviso ni «Volver»",
+   "ok": true,
+   "cerrado": true,
+   "aviso": "",
+   "volver": false,
+   "activo": "id_identification_type"
+  },
+  {
+   "n": "R1: sin sesión, «Volver» no dice que la empresa volvió y pide recargar",
+   "ok": true,
+   "aviso": "Tu sesión se cerró: no se pudo volver a la empresa de esta factura. Recarga la página; lo escrito en este diálogo no se guardará.",
+   "volver": false,
+   "activo": "fp-client-alert"
+  },
+  {
+   "n": "R1: corregir un campo con error del servidor no oculta el aviso ni «Volver»",
+   "ok": true,
+   "aviso": "La empresa activa cambió en otra pestaña. No se creó ningún cliente y lo escrito se conserva. Vuelve a la empresa de esta factura para guardarlo aquí, o recarga la página para trabajar con la empresa nueva.",
+   "volver": true,
+   "activo": "id_email"
+  },
+  {
+   "n": "R1: tras un corte de red, «Volver» sigue para reintentar sin recargar",
+   "ok": true,
+   "aviso": "No se pudo confirmar la vuelta a la empresa de esta factura. Revisa tu conexión y vuelve a intentarlo.",
+   "volver": true,
+   "activo": "fp-client-alert"
+  },
+  {
+   "n": "R1: el reintento de «Volver» confirma la empresa",
+   "ok": true,
+   "aviso": "La empresa de esta factura vuelve a estar activa. Revisa los datos y guarda el cliente.",
+   "volver": false,
+   "activo": "fp-client-save"
+  },
+  {
+   "n": "R2: con una fecha de registro pasada, el plazo queda en hoy (no antes)",
+   "ok": true,
+   "registro": "2026-11-01",
+   "plazo": "2026-11-04",
+   "hoy": "2026-11-04"
+  },
+  {
+   "n": "R2: con una fecha de registro futura, el plazo la sigue",
+   "ok": true,
+   "plazo": "2026-11-09",
+   "esperado": "2026-11-09"
+  },
+  {
+   "n": "comprobantes: tras subir un archivo el foco pasa al aviso",
+   "ok": true,
+   "activo": "fpAdjuntosAviso",
+   "aviso": "1 comprobante adjuntado.",
+   "error": ""
+  },
+  {
+   "n": "selector de punto a 360 px: ancho completo y bajo la cabecera",
+   "ok": true,
+   "izq": 10,
+   "der": 350,
+   "ancho": 360,
+   "arriba": 74,
+   "cabecera": 70
+  },
+  {
+   "n": "selector de punto a 414 px: ancho completo y bajo la cabecera",
+   "ok": true,
+   "izq": 10,
+   "der": 404,
+   "ancho": 414,
+   "arriba": 74,
+   "cabecera": 70
+  },
+  {
+   "n": "selector de punto a 480 px: ancho completo y bajo la cabecera",
+   "ok": true,
+   "izq": 10,
+   "der": 470,
+   "ancho": 480,
+   "arriba": 74,
+   "cabecera": 70
+  },
+  {
+   "n": "selector de punto a 575 px: ancho completo y bajo la cabecera",
+   "ok": true,
+   "izq": 10,
+   "der": 565,
+   "ancho": 575,
+   "arriba": 74,
+   "cabecera": 70
+  },
+  {
+   "n": "sin errores de JavaScript",
+   "ok": true,
+   "errores": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": []
+}

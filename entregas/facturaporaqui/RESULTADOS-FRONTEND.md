@@ -1822,3 +1822,30 @@ Sin integrar: `frontend/experiencia-contable-v9` (`25e4f78`) en facturacion15, n
   (`capturas/r1-20261104/`). Pendiente de diseño para Codex: cómo volver a la empresa de origen o recargar.
 - **«Usar como base»**: 15 de 15 en navegador con datos ficticios (`capturas/v9-integracion/`), A4 con el RUC del servicio una
   vez, en el pie.
+
+## 04/11/2026 — cierre de la versión operativa: frontend pendiente y defectos de los recorridos (Claude)
+
+Ajustes de interfaz hechos por Claude que Codex debe conservar (los contratos están en HANDOFF):
+- **R1** (`cliente_rapido.js`): aviso «La empresa activa cambió en otra pestaña…», lo escrito se conserva, botón «Volver a la
+  empresa de esta factura» (POST `/empresas/cambiar/` con `Accept: application/json`; solo cuenta como hecho si responde JSON
+  con la empresa del formulario) con aviso de progreso y foco controlado. «Volver» acompaña a ese aviso y al reintento tras
+  un corte de red; con la sesión cerrada pide recargar. El aviso solo cuenta mensajes visibles del dni y no se borra al
+  corregir otro campo.
+- **Empresas del plan** (`suscripciones/empresas.html`): el select de la empresa que se vincula se llama `empresa_vincular`;
+  `empresa` (oculto) es la de la pestaña, como en el resto de formularios.
+- **R2, fecha de registro** (`form.js`): el plazo copiado de la «Fecha de registro» no queda antes de hoy (el servidor emite
+  con la fecha de hoy).
+- **R2** (`form.js`): validador `callback` del plazo, obligatorio solo a crédito («Indica la fecha de plazo del crédito.»).
+- **Foco** (`facturaporaqui.css`): `.btn:focus-visible` a nivel superior, para todos los botones.
+- **Selector de punto en móvil** (`facturaporaqui.css`): el menú ocupa el ancho de la pantalla hasta 575 px (con `!important`, porque la regla base va después) y empieza bajo la cabecera.
+- **Proformas** (`templates/proformas/form.html`): la tabla de líneas va dentro de `.table-responsive`.
+- **Comprobantes de pago** (`static/adjuntos/js/adjuntos.js`): mientras guarda, el foco queda en el diálogo (Escape lo cierra)
+  y luego pasa al aviso, también al subir archivos (`ocupado(false)` va después de los avisos).
+- **Importación** (`nueva.html`, `importacion.js`): campo `empresa`; el 409 se muestra en el recuadro de error.
+
+Verificación: cuatro recorridos completos en vistas previas locales con datos ficticios y SRI simulado (85 comprobaciones,
+`capturas/recorridos-20261104/`) y una nueva comprobación de los ajustes: 7 de 7 (`capturas/recorridos-20261104/recheck/`). Tras la revisión independiente:
+16 de 16 y otra vez 7 de 7 (`capturas/recorridos-20261104/revision/`), sobre el código final. Publicado en `9584308`
+(04/11/2026, 19:40 en Ecuador); en el dominio, 14 de 14 de estos ajustes en los estáticos y pantallas servidos.
+Pendiente de Codex: «Nuevo registro» por permiso, error de punto junto a su selector y el mensaje al guardar desde una
+pestaña de otra empresa.

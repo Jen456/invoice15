@@ -1,0 +1,3789 @@
+{
+ "nombre": "movil",
+ "pasos": [
+  {
+   "nombre": "360 px: ninguna página del menú se desborda en horizontal",
+   "ok": true,
+   "malas": []
+  },
+  {
+   "nombre": "360 px: sin errores de JavaScript",
+   "ok": true,
+   "js": []
+  },
+  {
+   "nombre": "360 px: sin respuestas 5xx ni cargas fallidas",
+   "ok": true,
+   "s5": []
+  },
+  {
+   "nombre": "390 px: ninguna página del menú se desborda en horizontal",
+   "ok": true,
+   "malas": []
+  },
+  {
+   "nombre": "390 px: sin errores de JavaScript",
+   "ok": true,
+   "js": []
+  },
+  {
+   "nombre": "390 px: sin respuestas 5xx ni cargas fallidas",
+   "ok": true,
+   "s5": []
+  },
+  {
+   "nombre": "768 px: ninguna página del menú se desborda en horizontal",
+   "ok": true,
+   "malas": []
+  },
+  {
+   "nombre": "768 px: sin errores de JavaScript",
+   "ok": true,
+   "js": []
+  },
+  {
+   "nombre": "768 px: sin respuestas 5xx ni cargas fallidas",
+   "ok": true,
+   "s5": []
+  },
+  {
+   "nombre": "1360 px: ninguna página del menú se desborda en horizontal",
+   "ok": true,
+   "malas": []
+  },
+  {
+   "nombre": "1360 px: sin errores de JavaScript",
+   "ok": true,
+   "js": []
+  },
+  {
+   "nombre": "1360 px: sin respuestas 5xx ni cargas fallidas",
+   "ok": true,
+   "s5": []
+  },
+  {
+   "nombre": "factura 1360 px: foco visible en cada control alcanzado con Tab (fuera del menú)",
+   "ok": true,
+   "recorridos": 44,
+   "sin_foco": []
+  },
+  {
+   "nombre": "factura 390 px: foco visible en cada control alcanzado con Tab (fuera del menú)",
+   "ok": true,
+   "recorridos": 45,
+   "sin_foco": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "resultados": {
+  "/dashboard/": {
+   "360": {
+    "http": 200,
+    "final": "/dashboard/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table.table.m-0 r=836",
+     "thead r=836",
+     "tr r=836",
+     "th r=498",
+     "th r=599",
+     "th r=674"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/dashboard/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table.table.m-0 r=836",
+     "thead r=836",
+     "tr r=836",
+     "th r=498",
+     "th r=599",
+     "th r=674"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/dashboard/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table.table.m-0 r=848",
+     "thead r=848",
+     "tr r=848",
+     "th r=848",
+     "tbody r=848",
+     "tr r=848"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/dashboard/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/sale/admin/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/sale/admin/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1498",
+     "thead r=1498",
+     "tr r=1498",
+     "th.sorting r=410",
+     "th.sorting r=516",
+     "th.text-center.sorting r=751"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/sale/admin/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1498",
+     "thead r=1498",
+     "tr r=1498",
+     "th.sorting r=410",
+     "th.sorting r=516",
+     "th.text-center.sorting r=751"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/sale/admin/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1517",
+     "thead r=1517",
+     "tr r=1517",
+     "th.text-center.sorting r=1027",
+     "th.text-center.sorting r=1147",
+     "th.text-center.sorting r=1220"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/sale/admin/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1777",
+     "thead r=1777",
+     "tr r=1777",
+     "th.text-center.sorting r=1407",
+     "th.text-center.sorting r=1480",
+     "th.text-center.sorting r=1564"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/credit/note/admin/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/credit/note/admin/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1320",
+     "thead r=1320",
+     "tr r=1320",
+     "th.sorting r=467",
+     "th.sorting r=574",
+     "th.text-center.sorting r=831"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/credit/note/admin/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1320",
+     "thead r=1320",
+     "tr r=1320",
+     "th.sorting r=467",
+     "th.sorting r=574",
+     "th.text-center.sorting r=831"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/credit/note/admin/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1339",
+     "thead r=1339",
+     "tr r=1339",
+     "th.text-center.sorting r=850",
+     "th.text-center.sorting r=970",
+     "th.text-center.sorting r=1042"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/credit/note/admin/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1599",
+     "thead r=1599",
+     "tr r=1599",
+     "th.text-center.sorting r=1386",
+     "th.text-center.sorting r=1473",
+     "th.text-center.sorting r=1599"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/comprobantes/retenciones/": {
+   "360": {
+    "http": 200,
+    "final": "/comprobantes/retenciones/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th r=538",
+     "th.text-right r=644",
+     "th r=730",
+     "th r=755",
+     "span.sr-only r=742"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/comprobantes/retenciones/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th r=538",
+     "th.text-right r=644",
+     "th r=730",
+     "th r=755",
+     "span.sr-only r=742"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/comprobantes/retenciones/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/comprobantes/retenciones/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/comprobantes/notas-debito/": {
+   "360": {
+    "http": 200,
+    "final": "/comprobantes/notas-debito/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th r=376",
+     "th.text-right r=445",
+     "th r=531",
+     "th r=556",
+     "span.sr-only r=544"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/comprobantes/notas-debito/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th.text-right r=445",
+     "th r=531",
+     "th r=556",
+     "span.sr-only r=544"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/comprobantes/notas-debito/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/comprobantes/notas-debito/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/comprobantes/guias/": {
+   "360": {
+    "http": 200,
+    "final": "/comprobantes/guias/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th r=376",
+     "th r=499",
+     "th r=585",
+     "th r=610",
+     "span.sr-only r=598"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/comprobantes/guias/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th r=499",
+     "th r=585",
+     "th r=610",
+     "span.sr-only r=598"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/comprobantes/guias/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/comprobantes/guias/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/comprobantes/liquidaciones/": {
+   "360": {
+    "http": 200,
+    "final": "/comprobantes/liquidaciones/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th r=407",
+     "th.text-right r=476",
+     "th r=562",
+     "th r=587",
+     "span.sr-only r=575"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/comprobantes/liquidaciones/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th r=407",
+     "th.text-right r=476",
+     "th r=562",
+     "th r=587",
+     "span.sr-only r=575"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/comprobantes/liquidaciones/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/comprobantes/liquidaciones/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/voucher/errors/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/voucher/errors/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1158",
+     "thead r=1158",
+     "tr r=1158",
+     "th.text-center.sorting r=464",
+     "th.text-center.sorting r=699",
+     "th.text-center.sorting r=794"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/voucher/errors/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1158",
+     "thead r=1158",
+     "tr r=1158",
+     "th.text-center.sorting r=464",
+     "th.text-center.sorting r=699",
+     "th.text-center.sorting r=794"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/voucher/errors/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1169",
+     "thead r=1169",
+     "tr r=1169",
+     "th.text-center.sorting r=804",
+     "th.text-center.sorting r=934",
+     "th.text-center.sorting r=1043"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/voucher/errors/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1419",
+     "thead r=1419",
+     "tr r=1419",
+     "th.text-center.sorting r=1419",
+     "tbody r=1419",
+     "tr.odd r=1419"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/proformas/": {
+   "360": {
+    "http": 200,
+    "final": "/proformas/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/proformas/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/proformas/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/proformas/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/client/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/client/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1246",
+     "thead r=1246",
+     "tr r=1246",
+     "th.text-center.sorting r=514",
+     "th.sorting r=721",
+     "th.sorting r=848"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/client/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1246",
+     "thead r=1246",
+     "tr r=1246",
+     "th.text-center.sorting r=514",
+     "th.sorting r=721",
+     "th.sorting r=848"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/client/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1256",
+     "thead r=1256",
+     "tr r=1256",
+     "th.sorting r=859",
+     "th.sorting r=1149",
+     "th.text-center.sorting_disabled r=1256"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/client/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1506",
+     "thead r=1506",
+     "tr r=1506",
+     "th.sorting r=1399",
+     "th.text-center.sorting_disabled r=1506",
+     "tbody r=1506"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/promotions/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/promotions/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=751",
+     "thead r=751",
+     "tr r=751",
+     "th.sorting r=521",
+     "th.text-center.sorting r=625",
+     "th.text-center.sorting r=751"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/promotions/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=751",
+     "thead r=751",
+     "tr r=751",
+     "th.sorting r=521",
+     "th.text-center.sorting r=625",
+     "th.text-center.sorting r=751"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/promotions/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/promotions/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/purchase/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/purchase/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1542",
+     "thead r=1542",
+     "tr r=1542",
+     "th.sorting r=366",
+     "th.sorting r=532",
+     "th.sorting r=732"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/purchase/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1542",
+     "thead r=1542",
+     "tr r=1542",
+     "th.sorting r=532",
+     "th.sorting r=732",
+     "th.sorting.sorting_desc r=933"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/purchase/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1560",
+     "thead r=1560",
+     "tr r=1560",
+     "th.sorting.sorting_desc r=952",
+     "th.text-center.sorting r=1112",
+     "th.text-right.sorting r=1198"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/purchase/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1820",
+     "thead r=1820",
+     "tr r=1820",
+     "th.text-center.sorting r=1371",
+     "th.text-right.sorting r=1458",
+     "th.text-right.sorting r=1530"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/importacion/recibidos/": {
+   "360": {
+    "http": 200,
+    "final": "/importacion/recibidos/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th.text-right r=401",
+     "th r=539",
+     "th r=670",
+     "th r=771"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/importacion/recibidos/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th.text-right r=401",
+     "th r=539",
+     "th r=670",
+     "th r=771"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/importacion/recibidos/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/importacion/recibidos/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/provider/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/provider/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1071",
+     "thead r=1071",
+     "tr r=1071",
+     "th.sorting r=457",
+     "th.sorting r=576",
+     "th.sorting r=668"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/provider/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1071",
+     "thead r=1071",
+     "tr r=1071",
+     "th.sorting r=457",
+     "th.sorting r=576",
+     "th.sorting r=668"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/provider/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1090",
+     "thead r=1090",
+     "tr r=1090",
+     "th.sorting r=814",
+     "th.text-center.sorting r=982",
+     "th.text-center.sorting_disabled r=1090"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/provider/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/expenses/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/expenses/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1109",
+     "thead r=1109",
+     "tr r=1109",
+     "th.sorting r=461",
+     "th.text-center.sorting r=551",
+     "th.sorting r=727"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/expenses/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1109",
+     "thead r=1109",
+     "tr r=1109",
+     "th.sorting r=461",
+     "th.text-center.sorting r=551",
+     "th.sorting r=727"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/expenses/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1128",
+     "thead r=1128",
+     "tr r=1128",
+     "th.sorting r=886",
+     "th.sorting r=1002",
+     "th.text-center.sorting r=1128"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/expenses/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1388",
+     "thead r=1388",
+     "tr r=1388",
+     "th.text-center.sorting r=1388",
+     "tbody r=1388",
+     "tr.odd r=1388"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/type/expense/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/type/expense/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=741",
+     "thead r=741",
+     "tr r=741",
+     "th.sorting r=399",
+     "th.sorting r=616",
+     "th.text-center.sorting r=741"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/type/expense/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=741",
+     "thead r=741",
+     "tr r=741",
+     "th.sorting r=399",
+     "th.sorting r=616",
+     "th.text-center.sorting r=741"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/type/expense/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/type/expense/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/adjuntos/capturas/": {
+   "360": {
+    "http": 200,
+    "final": "/adjuntos/capturas/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/adjuntos/capturas/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/adjuntos/capturas/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/adjuntos/capturas/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/importacion/nueva/": {
+   "360": {
+    "http": 200,
+    "final": "/importacion/nueva/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/importacion/nueva/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/importacion/nueva/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/importacion/nueva/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/importacion/claves/": {
+   "360": {
+    "http": 200,
+    "final": "/importacion/claves/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/importacion/claves/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/importacion/claves/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/importacion/claves/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/importacion/lotes/": {
+   "360": {
+    "http": 200,
+    "final": "/importacion/lotes/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th r=444",
+     "th r=530",
+     "th r=685"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/importacion/lotes/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th r=444",
+     "th r=530",
+     "th r=685"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/importacion/lotes/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/importacion/lotes/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/importacion/pendientes/": {
+   "360": {
+    "http": 200,
+    "final": "/importacion/pendientes/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th.text-right r=401",
+     "th r=539",
+     "th r=670",
+     "th r=771"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/importacion/pendientes/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th.text-right r=401",
+     "th r=539",
+     "th r=670",
+     "th r=771"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/importacion/pendientes/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/importacion/pendientes/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/category/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/category/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=375",
+     "thead r=375",
+     "tr r=375",
+     "th.text-center.sorting_disabled r=375",
+     "tbody r=375",
+     "tr.odd r=375"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/category/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/category/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/category/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/product/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/product/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1556",
+     "thead r=1556",
+     "tr r=1556",
+     "th.sorting r=397",
+     "th.sorting r=553",
+     "th.text-center.sorting r=701"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/product/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1556",
+     "thead r=1556",
+     "tr r=1556",
+     "th.sorting r=397",
+     "th.sorting r=553",
+     "th.text-center.sorting r=701"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/product/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1567",
+     "thead r=1567",
+     "tr r=1567",
+     "th.text-center.sorting r=812",
+     "th.text-center.sorting r=989",
+     "th.text-center.sorting r=1113"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/product/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1817",
+     "thead r=1817",
+     "tr r=1817",
+     "th.text-center.sorting r=1363",
+     "th.text-center.sorting r=1468",
+     "th.text-center.sorting r=1618"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/product/stock/adjustment/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/product/stock/adjustment/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#tblProducts.table.table-bordered r=616",
+     "thead r=616",
+     "tr r=616",
+     "th.sorting_disabled.text-center r=480",
+     "th.sorting_disabled.text-center r=616",
+     "tbody r=616"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/product/stock/adjustment/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#tblProducts.table.table-bordered r=616",
+     "thead r=616",
+     "tr r=616",
+     "th.sorting_disabled.text-center r=480",
+     "th.sorting_disabled.text-center r=616",
+     "tbody r=616"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/product/stock/adjustment/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/product/stock/adjustment/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/ctas/collect/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/ctas/collect/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1012",
+     "thead r=1012",
+     "tr r=1012",
+     "th.text-center.sorting r=483",
+     "th.text-center.sorting r=660",
+     "th.text-center.sorting_disabled r=743"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/ctas/collect/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1012",
+     "thead r=1012",
+     "tr r=1012",
+     "th.text-center.sorting r=483",
+     "th.text-center.sorting r=660",
+     "th.text-center.sorting_disabled r=743"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/ctas/collect/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1031",
+     "thead r=1031",
+     "tr r=1031",
+     "th.text-center.sorting_disabled r=837",
+     "th.text-center.sorting_disabled r=923",
+     "th.text-center.sorting_disabled r=1031"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/ctas/collect/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/debts/pay/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/debts/pay/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1365",
+     "thead r=1365",
+     "tr r=1365",
+     "th.text-center.sorting r=481",
+     "th.text-center.sorting r=658",
+     "th.text-right.sorting r=759"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/debts/pay/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1365",
+     "thead r=1365",
+     "tr r=1365",
+     "th.text-center.sorting r=481",
+     "th.text-center.sorting r=658",
+     "th.text-right.sorting r=759"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/debts/pay/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1384",
+     "thead r=1384",
+     "tr r=1384",
+     "th.text-right.sorting r=778",
+     "th.text-center.sorting r=864",
+     "th.text-right.sorting r=974"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/debts/pay/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1644",
+     "thead r=1644",
+     "tr r=1644",
+     "th.text-right.sorting r=1449",
+     "th.text-center.sorting_disabled r=1536",
+     "th.text-center.sorting_disabled r=1644"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/comprobantes/retenciones-recibidas/": {
+   "360": {
+    "http": 200,
+    "final": "/comprobantes/retenciones-recibidas/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th r=376",
+     "th.text-right r=454",
+     "th.text-right r=509",
+     "th.text-right r=578",
+     "th r=766",
+     "th r=853"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/comprobantes/retenciones-recibidas/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th.text-right r=454",
+     "th.text-right r=509",
+     "th.text-right r=578",
+     "th r=766",
+     "th r=853",
+     "th r=938"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/comprobantes/retenciones-recibidas/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table.table.table-sm r=1021",
+     "thead r=1020",
+     "tr r=1020",
+     "th r=823",
+     "th r=909",
+     "th r=995"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/comprobantes/retenciones-recibidas/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/adjuntos/": {
+   "360": {
+    "http": 200,
+    "final": "/adjuntos/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th r=362",
+     "th r=430",
+     "th r=514",
+     "th r=649",
+     "th r=822",
+     "th r=896"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/adjuntos/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th r=430",
+     "th r=514",
+     "th r=649",
+     "th r=822",
+     "th r=896"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/adjuntos/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table.table.fp-adjuntos-table r=1057",
+     "thead r=1057",
+     "tr r=1057",
+     "th r=854",
+     "th r=1057",
+     "tbody r=1057"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/adjuntos/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/tributario/libros/": {
+   "360": {
+    "http": 200,
+    "final": "/tributario/libros/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/tributario/libros/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/tributario/libros/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/tributario/libros/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/tributario/revision/": {
+   "360": {
+    "http": 200,
+    "final": "/tributario/revision/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/tributario/revision/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/tributario/revision/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/tributario/revision/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/tributario/ats/": {
+   "360": {
+    "http": 200,
+    "final": "/tributario/ats/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/tributario/ats/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/tributario/ats/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/tributario/ats/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/tributario/formularios/": {
+   "360": {
+    "http": 200,
+    "final": "/tributario/formularios/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th r=450",
+     "th r=534"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/tributario/formularios/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th r=450",
+     "th r=534"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/tributario/formularios/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/tributario/formularios/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/tributario/empresas/": {
+   "360": {
+    "http": 200,
+    "final": "/tributario/empresas/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/tributario/empresas/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/tributario/empresas/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/tributario/empresas/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/contabilidad/kardex/": {
+   "360": {
+    "http": 200,
+    "final": "/contabilidad/kardex/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/contabilidad/kardex/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/contabilidad/kardex/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/contabilidad/kardex/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/contabilidad/inventario/": {
+   "360": {
+    "http": 200,
+    "final": "/contabilidad/inventario/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th r=455",
+     "th r=524",
+     "th r=652",
+     "th r=762",
+     "th r=847"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/contabilidad/inventario/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th r=455",
+     "th r=524",
+     "th r=652",
+     "th r=762",
+     "th r=847"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/contabilidad/inventario/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table.table.table-sm r=859",
+     "thead r=859",
+     "tr r=859",
+     "th r=774",
+     "th r=859",
+     "tbody r=859"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/contabilidad/inventario/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/reports/purchase/": {
+   "360": {
+    "http": 200,
+    "final": "/reports/purchase/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1550",
+     "thead r=1550",
+     "tr r=1550",
+     "th.sorting r=483",
+     "th.sorting r=649",
+     "th.sorting r=848"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/reports/purchase/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1550",
+     "thead r=1550",
+     "tr r=1550",
+     "th.sorting r=483",
+     "th.sorting r=649",
+     "th.sorting r=848"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/reports/purchase/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1577",
+     "thead r=1577",
+     "tr r=1577",
+     "th.sorting r=875",
+     "th.sorting r=1076",
+     "th.sorting r=1236"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/reports/purchase/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1836",
+     "thead r=1836",
+     "tr r=1836",
+     "th.sorting r=1495",
+     "th.text-right.sorting r=1582",
+     "th.text-right.sorting r=1654"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/reports/ctas/collect/": {
+   "360": {
+    "http": 200,
+    "final": "/reports/ctas/collect/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1084",
+     "thead r=1084",
+     "tr r=1084",
+     "th.sorting r=445",
+     "th.sorting r=644",
+     "th.sorting r=822"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/reports/ctas/collect/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1084",
+     "thead r=1084",
+     "tr r=1084",
+     "th.sorting r=445",
+     "th.sorting r=644",
+     "th.sorting r=822"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/reports/ctas/collect/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1110",
+     "thead r=1110",
+     "tr r=1110",
+     "th.sorting r=848",
+     "th.text-center.sorting_disabled r=931",
+     "th.text-center.sorting_disabled r=1006"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/reports/ctas/collect/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1370",
+     "thead r=1370",
+     "tr r=1370",
+     "th.sorting r=1370",
+     "tbody r=1370",
+     "tr.odd r=1370"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/reports/debts/pay/": {
+   "360": {
+    "http": 200,
+    "final": "/reports/debts/pay/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1512",
+     "thead r=1512",
+     "tr r=1512",
+     "th.sorting r=443",
+     "th.sorting r=639",
+     "th.sorting r=817"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/reports/debts/pay/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1512",
+     "thead r=1512",
+     "tr r=1512",
+     "th.sorting r=443",
+     "th.sorting r=639",
+     "th.sorting r=817"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/reports/debts/pay/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1539",
+     "thead r=1539",
+     "tr r=1539",
+     "th.sorting r=843",
+     "th.text-center.sorting r=1026",
+     "th.text-right.sorting r=1127"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/reports/debts/pay/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1798",
+     "thead r=1798",
+     "tr r=1798",
+     "th.text-right.sorting r=1386",
+     "th.text-right.sorting r=1496",
+     "th.text-right.sorting r=1619"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/reports/earnings/": {
+   "360": {
+    "http": 200,
+    "final": "/reports/earnings/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=567",
+     "thead r=567",
+     "tr r=567",
+     "th r=459",
+     "th r=567",
+     "tbody r=567"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/reports/earnings/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=567",
+     "thead r=567",
+     "tr r=567",
+     "th r=459",
+     "th r=567",
+     "tbody r=567"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/reports/earnings/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/reports/earnings/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/reports/expenses/": {
+   "360": {
+    "http": 200,
+    "final": "/reports/expenses/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=958",
+     "thead r=958",
+     "tr r=958",
+     "th.sorting r=454",
+     "th.sorting r=571",
+     "th.sorting r=747"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/reports/expenses/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=958",
+     "thead r=958",
+     "tr r=958",
+     "th.sorting r=454",
+     "th.sorting r=571",
+     "th.sorting r=747"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/reports/expenses/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=984",
+     "thead r=984",
+     "tr r=984",
+     "th.sorting r=773",
+     "th.sorting r=913",
+     "th.text-right.sorting_disabled r=984"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/reports/expenses/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/reports/results/": {
+   "360": {
+    "http": 200,
+    "final": "/reports/results/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/reports/results/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/reports/results/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/reports/results/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/reports/sale/": {
+   "360": {
+    "http": 200,
+    "final": "/reports/sale/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1147",
+     "thead r=1147",
+     "tr r=1147",
+     "th.sorting r=447",
+     "th.sorting r=625",
+     "th.text-center.sorting r=745"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/reports/sale/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1147",
+     "thead r=1147",
+     "tr r=1147",
+     "th.sorting r=447",
+     "th.sorting r=625",
+     "th.text-center.sorting r=745"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/reports/sale/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1173",
+     "thead r=1173",
+     "tr r=1173",
+     "th.text-center.sorting r=771",
+     "th.text-center.sorting r=909",
+     "th.text-center.sorting r=982"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/reports/sale/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#tblReport.table.table-bordered r=1433",
+     "thead r=1433",
+     "tr r=1433",
+     "th.text-center.sorting r=1433",
+     "tbody r=1433",
+     "tr.odd r=1433"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/company/update/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/company/update/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "tr r=442",
+     "th r=375",
+     "th r=442"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/company/update/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "tr r=442",
+     "th r=442"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/company/update/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/company/update/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/configuracion/facturacion/": {
+   "360": {
+    "http": 200,
+    "final": "/configuracion/facturacion/paso/5/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table.table.table-sm r=832",
+     "thead r=832",
+     "tr r=832",
+     "th r=401",
+     "th r=715",
+     "th r=832"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/configuracion/facturacion/paso/5/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table.table.table-sm r=832",
+     "thead r=832",
+     "tr r=832",
+     "th r=401",
+     "th r=715",
+     "th r=832"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/configuracion/facturacion/paso/5/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table.table.table-sm r=860",
+     "thead r=860",
+     "tr r=860",
+     "th r=860",
+     "tbody r=860",
+     "tr r=860"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/configuracion/facturacion/paso/5/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/configuracion/puntos/": {
+   "360": {
+    "http": 200,
+    "final": "/configuracion/puntos/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "th r=390",
+     "th r=525"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/configuracion/puntos/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "th r=525"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/configuracion/puntos/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/configuracion/puntos/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/importacion/reglas/": {
+   "360": {
+    "http": 200,
+    "final": "/importacion/reglas/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/importacion/reglas/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/importacion/reglas/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/importacion/reglas/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/pos/receipt/": {
+   "360": {
+    "http": 200,
+    "final": "/pos/receipt/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1440",
+     "thead r=1440",
+     "tr r=1440",
+     "th.text-center.sorting r=533",
+     "th.text-center.sorting r=733",
+     "th.text-center.sorting r=993"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/pos/receipt/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1440",
+     "thead r=1440",
+     "tr r=1440",
+     "th.text-center.sorting r=533",
+     "th.text-center.sorting r=733",
+     "th.text-center.sorting r=993"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/pos/receipt/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1450",
+     "thead r=1450",
+     "tr r=1450",
+     "th.text-center.sorting r=1004",
+     "th.text-center.sorting r=1337",
+     "th.text-center.sorting r=1450"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/pos/receipt/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=1700",
+     "thead r=1700",
+     "tr r=1700",
+     "th.text-center.sorting r=1587",
+     "th.text-center.sorting r=1700",
+     "tbody r=1700"
+    ],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/user/": {
+   "360": {
+    "http": 200,
+    "final": "/user/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=822",
+     "thead r=822",
+     "tr r=822",
+     "th.sorting r=421",
+     "th.text-center.sorting_disabled r=507",
+     "th.text-center.sorting_disabled r=599"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/user/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=822",
+     "thead r=822",
+     "tr r=822",
+     "th.sorting r=421",
+     "th.text-center.sorting_disabled r=507",
+     "th.text-center.sorting_disabled r=599"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/user/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [
+     "table#data.table.table-bordered r=833",
+     "thead r=833",
+     "tr r=833",
+     "th.text-center.sorting_disabled r=833",
+     "tbody r=833",
+     "tr.odd r=833"
+    ],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/user/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/user/update/password/": {
+   "360": {
+    "http": 200,
+    "final": "/user/update/password/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/user/update/password/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/user/update/password/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/user/update/password/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/user/update/profile/": {
+   "360": {
+    "http": 200,
+    "final": "/user/update/profile/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/user/update/profile/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/user/update/profile/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/user/update/profile/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  },
+  "/suscripcion/": {
+   "360": {
+    "http": 200,
+    "final": "/suscripcion/",
+    "scroll": 360,
+    "ventana": 360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "390": {
+    "http": 200,
+    "final": "/suscripcion/",
+    "scroll": 390,
+    "ventana": 390,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "768": {
+    "http": 200,
+    "final": "/suscripcion/",
+    "scroll": 768,
+    "ventana": 768,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   },
+   "1360": {
+    "http": 200,
+    "final": "/suscripcion/",
+    "scroll": 1360,
+    "ventana": 1360,
+    "desborda": false,
+    "culpables": [],
+    "js": [],
+    "s5xx": []
+   }
+  }
+ },
+ "rutas": [
+  "/dashboard/",
+  "/pos/sale/admin/",
+  "/pos/credit/note/admin/",
+  "/comprobantes/retenciones/",
+  "/comprobantes/notas-debito/",
+  "/comprobantes/guias/",
+  "/comprobantes/liquidaciones/",
+  "/pos/voucher/errors/",
+  "/proformas/",
+  "/pos/client/",
+  "/pos/promotions/",
+  "/pos/purchase/",
+  "/importacion/recibidos/",
+  "/pos/provider/",
+  "/pos/expenses/",
+  "/pos/type/expense/",
+  "/adjuntos/capturas/",
+  "/importacion/nueva/",
+  "/importacion/claves/",
+  "/importacion/lotes/",
+  "/importacion/pendientes/",
+  "/pos/category/",
+  "/pos/product/",
+  "/pos/product/stock/adjustment/",
+  "/pos/ctas/collect/",
+  "/pos/debts/pay/",
+  "/comprobantes/retenciones-recibidas/",
+  "/adjuntos/",
+  "/tributario/libros/",
+  "/tributario/revision/",
+  "/tributario/ats/",
+  "/tributario/formularios/",
+  "/tributario/empresas/",
+  "/contabilidad/kardex/",
+  "/contabilidad/inventario/",
+  "/reports/purchase/",
+  "/reports/ctas/collect/",
+  "/reports/debts/pay/",
+  "/reports/earnings/",
+  "/reports/expenses/",
+  "/reports/results/",
+  "/reports/sale/",
+  "/pos/company/update/",
+  "/configuracion/facturacion/",
+  "/configuracion/puntos/",
+  "/importacion/reglas/",
+  "/pos/receipt/",
+  "/user/",
+  "/user/update/password/",
+  "/user/update/profile/",
+  "/suscripcion/"
+ ],
+ "foco": {
+  "390": [
+   {
+    "el": "a#collapsedMenu.nav-link.cursor-pointer",
+    "texto": "Abrir o cerrar menú",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "button.nav-link",
+    "texto": "001-001",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Empresa activa: DEMOSTRACIÓN",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link.btnLogout",
+    "texto": "Cerrar sesión",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.brand-link",
+    "texto": "FacturaPorAquí",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link.active",
+    "texto": "Comprobantes Electrónicos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link.active",
+    "texto": "Facturas emitidas",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Notas de crédito",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Retenciones emitidas",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Notas de débito",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Guías de remisión",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Liquidaciones de compra",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Errores de comprobantes",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Cotizaciones",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Clientes y promociones",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Compras y gastos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Importación de documentos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Bodega",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Administrativo",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Tributario",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Contabilidad",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Reportes",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Configuración",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Seguridad",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Cambiar password",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Editar perfil",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Plan y pagos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a",
+    "texto": "Panel",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "a",
+    "texto": "Facturas emitidas",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "span.select2-selection.select2-selection--single",
+    "texto": "×\nConsumidor Final (9999999999",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "rgba(0, 123, 255, 0.1) 0px 0px 0px 1.296",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button.btn.btn-link",
+    "texto": "Crear cliente aquí",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "input#date_joined[name=date_joined].form-control.datetimepicker-input",
+    "texto": "2026-11-04",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "span.select2-selection.select2-selection--single",
+    "texto": "FACTURA",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "rgba(0, 123, 255, 0.1) 0px 0px 0px 1.295",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "select#id_punto[name=punto].form-control.fp-punto-select",
+    "texto": "AV. FICTICIA 123, GUAYAQUIL · ",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "input#fp-sale-search[name=search_product].form-control.ui-autocomplete-input",
+    "texto": "",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button.btn.btn-primary",
+    "texto": "Crear producto aquí",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button.btn.btn-outline-secondary",
+    "texto": "Ver catálogo",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "rgba(108, 117, 125, 0.29) 0px 0px 0px 0p",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button.btn.btn-link",
+    "texto": "Limpiar búsqueda",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button.btn.btn-link",
+    "texto": "Quitar todos los productos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "span.select2-selection.select2-selection--single",
+    "texto": "OTROS CON UTILIZACION DEL SIST",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "rgba(0, 123, 255, 0.15) 0px 0px 0px 1.90",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button.btn.btn-primary",
+    "texto": "-",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "input#id_time_limit[name=time_limit].form-control",
+    "texto": "31",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button.btn.btn-primary",
+    "texto": "+",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "span.select2-selection.select2-selection--single",
+    "texto": "Contado",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "rgba(0, 123, 255, 0.1) 0px 0px 0px 1.295",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button.btn.btn-primary",
+    "texto": "-",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   }
+  ],
+  "1360": [
+   {
+    "el": "a#collapsedMenu.nav-link.cursor-pointer",
+    "texto": "Abrir o cerrar menú",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Inicio",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "button.nav-link",
+    "texto": "001-001",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "DEMOSTRACIÓN · Propietario \nEm",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link.btnLogout",
+    "texto": "Cerrar sesión",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.brand-link",
+    "texto": "FacturaPorAquí",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Comprobantes Electrónicos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Cotizaciones",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Clientes y promociones",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Compras y gastos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Importación de documentos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Bodega",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Administrativo",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Tributario",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Contabilidad",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Reportes",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Configuración",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Seguridad",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Cambiar password",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Editar perfil",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Plan y pagos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "button",
+    "texto": "DET. WISE 3 KL LIMON X6U",
+    "visible": true,
+    "outline": "solid 2px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button",
+    "texto": "PROTEX FRESH",
+    "visible": true,
+    "outline": "solid 2px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button",
+    "texto": "PRODUCTO PRV-S",
+    "visible": true,
+    "outline": "solid 2px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button",
+    "texto": "ESPONJA COLORES X3U ESTRELLA X",
+    "visible": true,
+    "outline": "solid 2px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button",
+    "texto": "PRODUCTO PRV-1",
+    "visible": true,
+    "outline": "solid 2px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button",
+    "texto": "SUAVIZANTE WISE PRIMAVERAL 430",
+    "visible": true,
+    "outline": "solid 2px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button",
+    "texto": "LAVA WIMPLUS 900 GR TORONJA X1",
+    "visible": true,
+    "outline": "solid 2px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button",
+    "texto": "MR. MUSCULO TANQUE X2U",
+    "visible": true,
+    "outline": "solid 2px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button",
+    "texto": "SCOTT CUID.COMPLETO GD P11/LL1",
+    "visible": true,
+    "outline": "solid 2px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "button",
+    "texto": "TIPS AMB. BANO MANZANA X144U",
+    "visible": true,
+    "outline": "solid 2px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "a",
+    "texto": "facturaporaqui.com",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": false
+   },
+   {
+    "el": "a#collapsedMenu.nav-link.cursor-pointer",
+    "texto": "Abrir o cerrar menú",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Inicio",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "button.nav-link",
+    "texto": "001-001",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "DEMOSTRACIÓN · Propietario \nEm",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link.btnLogout",
+    "texto": "Cerrar sesión",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.brand-link",
+    "texto": "FacturaPorAquí",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Comprobantes Electrónicos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Cotizaciones",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Clientes y promociones",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Compras y gastos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Importación de documentos",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   },
+   {
+    "el": "a.nav-link",
+    "texto": "Bodega",
+    "visible": true,
+    "outline": "solid 3px",
+    "sombra": "none",
+    "en_pantalla": true,
+    "menu": true
+   }
+  ]
+ }
+}

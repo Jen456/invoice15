@@ -1,0 +1,35 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [],
+ "pasos": {
+  "lote_claves_recargado": {
+   "ok": true,
+   "detalle": {
+    "filas": [
+     "0311202601099000000600120010010000009991234567811CLAVEClave encontrada: falta el XML autorizado Sin XML autorizado: el sri no tiene esa clave. Ver documento Clave de acceso Buscar en el SRI",
+     "123CLAVERechazado Se leyeron 3 dígitos y la clave de acceso tiene 49.",
+     "0311202601099000000600120010010000009991234567811CLAVEDuplicado Repetida en la lista (fila 1)."
+    ],
+    "formularios_clave": 1,
+    "boton_reintentar": 1
+   }
+  },
+  "evidencia_lote_en_B": {
+   "ok": true,
+   "detalle": {
+    "lotes_B_texto": " Panel Lotes e historial Para emitir facturas completa la configuración de facturación (paso 1). Continuar configuración Importación de documentosLotes e historial Importar XML / RIDE Importar por claves o reporte del SRI LoteFechaEntradasOrigenAvanceEstadoImportado por #52026-11-04 · 20:04 1Archivos XML / RIDE100 %100 % Terminadodueno.demo ",
+    "documentos_B": [
+     {
+      "id": 5,
+      "numero": "001-002-000000555",
+      "receptor": "0990000000001",
+      "emisor": "PROVEEDOR XML FICTICIO S.A.",
+      "clasif": "ajeno"
+     }
+    ]
+   }
+  }
+ },
+ "fallos": []
+}

@@ -1,0 +1,163 @@
+{
+ "pasos": [
+  {
+   "nombre": "alta de cliente desde la factura: se guarda, se selecciona y la factura se conserva",
+   "ok": true,
+   "dni": "0917718413",
+   "estado": "Cliente guardado y seleccionado: CLIENTE FICTICIO DIALOGO 18419 (0917718413). Puedes continuar con tu factura.",
+   "modalAbierto": false,
+   "cliente": "CLIENTE FICTICIO DIALOGO 18419 (0917718413)",
+   "lineas": [
+    "PRV-1"
+   ],
+   "nota": "Nota que debe conservarse"
+  },
+  {
+   "nombre": "el cliente quedó solo en la empresa A",
+   "ok": true,
+   "enBD": [
+    {
+     "empresa": 1,
+     "dni": "0917718413"
+    }
+   ]
+  },
+  {
+   "nombre": "alta de producto desde la factura: se crea y se añade sin perder cliente ni líneas",
+   "ok": true,
+   "etiquetaGuardar": "Guardar y añadir a la factura",
+   "tarifas": [
+    "4",
+    "5",
+    "0",
+    "7",
+    "6"
+   ],
+   "estado": 200,
+   "dialogoAbierto": false,
+   "lineas": [
+    "PRV-1@10",
+    "SRV-18419@25"
+   ],
+   "cliente": "CLIENTE FICTICIO DIALOGO 18419 (0917718413)",
+   "aviso": "Producto creado y añadido: SERVICIO FICTICIO 18419. Revisa la cantidad y la tarifa antes de emitir."
+  },
+  {
+   "nombre": "el propietario ve el campo de precio por línea",
+   "ok": true,
+   "campos": 2
+  },
+  {
+   "nombre": "propietario emite con precio por línea cambiado",
+   "ok": true,
+   "total": 38.53,
+   "resp": {
+    "estado": 200,
+    "json": {
+     "resp": true,
+     "estado": "authorized",
+     "mensaje": "Factura 001-001-002555776 autorizada por el SRI.",
+     "print_url": "/media/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/e9bb757b48e24df18_tiRSDcC.pdf"
+    },
+    "sinCuerpo": false
+   }
+  },
+  {
+   "nombre": "la factura guardó 8.50 en la línea y el catálogo sigue en 10.00",
+   "ok": true,
+   "venta": {
+    "id": 17,
+    "num": "001-001-002555776",
+    "status": "authorized",
+    "cliente": "0917718413",
+    "empleado": "dueno.demo",
+    "lineas": [
+     {
+      "code": "PRV-1",
+      "price": "8.50",
+      "cant": 1
+     },
+     {
+      "code": "SRV-18419",
+      "price": "25.00",
+      "cant": 1
+     }
+    ]
+   },
+   "cat0": {
+    "pvp": "10.00",
+    "stock": 85
+   },
+   "cat1": {
+    "pvp": "10.00",
+    "stock": 84
+   }
+  },
+  {
+   "nombre": "vendedor: sin campo de precio por línea (muestra el del catálogo)",
+   "ok": true,
+   "attr": "0",
+   "camposVend": 0,
+   "celdaPrecio": "$10.00",
+   "ayuda": "Selecciona un resultado para agregarlo. Después puedes cambiar la cantidad y el descuento."
+  },
+  {
+   "nombre": "vendedor: un precio manipulado se rechaza en el servidor sin consumir número",
+   "ok": true,
+   "error": "El precio de PRODUCTO PRV-1 no coincide con el del catálogo (10.00) y tu perfil no puede cambiarlo: quita la línea y vuelve a agregarla, o factura desde una proforma.",
+   "seqA": {
+    "1": 2555776
+   },
+   "seqB": {
+    "1": 2555776
+   }
+  },
+  {
+   "nombre": "vendedor emite al precio del catálogo",
+   "ok": true,
+   "resp": {
+    "estado": 200,
+    "json": {
+     "resp": true,
+     "estado": "authorized",
+     "mensaje": "Factura 001-001-002555777 autorizada por el SRI.",
+     "print_url": "/media/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/591e3386dd9d4fdcb_TLuk3NG.pdf"
+    },
+    "sinCuerpo": false
+   }
+  },
+  {
+   "nombre": "la factura del vendedor guarda 10.00 y la registra su usuario",
+   "ok": true,
+   "venta": {
+    "id": 18,
+    "num": "001-001-002555777",
+    "status": "authorized",
+    "cliente": "0912345678",
+    "empleado": "vendedor.previa",
+    "lineas": [
+     {
+      "code": "PRV-1",
+      "price": "10.00",
+      "cant": 1
+     }
+    ]
+   }
+  },
+  {
+   "nombre": "vendedor: botones de alta según sus permisos (informativo)",
+   "ok": true,
+   "cliente": 1,
+   "producto": 0
+  },
+  {
+   "nombre": "sin errores de JavaScript ni respuestas 5xx",
+   "ok": true,
+   "js": [],
+   "http": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "http5xx": []
+}

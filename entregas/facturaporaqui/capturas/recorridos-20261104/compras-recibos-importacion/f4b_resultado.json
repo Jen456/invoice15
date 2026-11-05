@@ -1,0 +1,396 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [
+  "dueno.demo: 409 POST /importacion/api/lotes/claves/"
+ ],
+ "pasos": {
+  "incorporar_bloqueada_por_sri_no_crea": {
+   "ok": true,
+   "detalle": {
+    "status": 200,
+    "resultado": {
+     "documento_id": 1,
+     "numero": "001-002-000000555",
+     "resultado": "error",
+     "codigo": "verificacion",
+     "mensaje": "No se puede incorporar: el sri no tiene esa clave."
+    }
+   }
+  },
+  "reglas_desactivar_consulta_sri": {
+   "ok": true,
+   "detalle": {
+    "verificar_con_sri": false,
+    "exigir_verificacion": true
+   }
+  },
+  "incorporar_vista_previa_requiere_datos": {
+   "ok": true,
+   "detalle": {
+    "lote": 3,
+    "docA2": {
+     "id": 3,
+     "verif": "declarada_en_archivo",
+     "clasif": "recibido"
+    },
+    "items": [
+     {
+      "estado": "requiere_datos",
+      "texto": "Recibido por la empresa (compra o gasto)Factura 001-002-0000005562026-11-02 PROVEEDOR XML FICTICIO S.A.0990000003001 $29.25 Crear compra Autorización declarada en el archivo (sin verificar)Requiere datos o confirmación Proveedor nuevo: completa celular y correo arriba. Requiere: confirmar sin verificación del SRI Quedará pendiente: Sustento tributario, Parte relacionada",
+      "check": true
+     }
+    ]
+   }
+  },
+  "incorporar_sin_datos_del_proveedor_no_crea": {
+   "ok": true,
+   "detalle": {
+    "resultados": [
+     "001-002-000000556: El documento no está verificado en el SRI. Verifícalo o confirma que lo incorporas sin verificar."
+    ],
+    "compra_id": null
+   }
+  },
+  "incorporar_crea_compra_del_xml": {
+   "ok": true,
+   "detalle": {
+    "resumen": "Vas a incorporar 1 documentos con fecha de registro 2026-11-04.",
+    "resultados": [
+     "001-002-000000556: Compra #11 creada con los importes del XML."
+    ],
+    "compra": 11,
+    "rev": "vinculado",
+    "total": "29.25",
+    "subtotal": "27.00",
+    "iva": "2.25",
+    "numero": "001-002-000000556",
+    "autorizacion": "0211202601099000000300120010020000005561234567812",
+    "proveedor": "PROVEEDOR XML FICTICIO S.A.",
+    "faltantes": [
+     "Falta el sustento tributario"
+    ],
+    "compras": 11
+   }
+  },
+  "incorporar_repetido_no_duplica": {
+   "ok": true,
+   "detalle": {
+    "status": 200,
+    "resultado": {
+     "documento_id": 3,
+     "numero": "001-002-000000556",
+     "resultado": "ya_incorporado",
+     "mensaje": "Ya se creó la compra #11 desde este documento."
+    },
+    "compras": 11
+   }
+  },
+  "bandeja_recibidos": {
+   "ok": true,
+   "detalle": [
+    "Factura 001-002-0000005562026-11-02PROVEEDOR XML FICTICIO S.A. · 0990000003001$29.25RecibidoAutorización declarada en el archivo (sin verificar)Vinculado a un registro",
+    "Factura 001-002-0000005552026-11-02PROVEEDOR XML FICTICIO S.A. · 0990000003001$29.25RecibidoEl SRI no tiene esa clavePendiente de revisión"
+   ]
+  },
+  "bandeja_pendientes": {
+   "ok": true,
+   "detalle": {
+    "nota": "la factura A ya incorporada no sigue pendiente; la ajena no entra en pendientes",
+    "filas": [
+     "Factura 001-002-0000005552026-11-02PROVEEDOR XML FICTICIO S.A. · 0990000003001$29.25RecibidoEl SRI no tiene esa clavePendiente de revisión"
+    ]
+   }
+  },
+  "documento_verificar_sri_simulado": {
+   "ok": true,
+   "detalle": {
+    "status": 200,
+    "verificacion": {
+     "id": "no_encontrada_sri",
+     "nombre": "El SRI no tiene esa clave",
+     "en": "2026-11-04T20:04:06.855533+00:00"
+    }
+   }
+  },
+  "documento_descarga_xml": {
+   "ok": true,
+   "detalle": {
+    "status": 200,
+    "disposicion": "attachment; filename=\"c1aa906e244ca459.xml\""
+   }
+  },
+  "claves_desborde_1360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 1360,
+    "innerWidth": 1360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "claves_lote_preparado": {
+   "ok": true,
+   "detalle": {
+    "resumen": "Lote #4 preparado2 claves leídas · 1 rechazadas · 0 omitidas.123: Se leyeron 3 dígitos y la clave de acceso tiene 49.Abre el lote para consultar los XML al SRI y revisar los resultados antes de incorporarlos.Continuar con este lote",
+    "error": "",
+    "lote": "/importacion/lotes/4/"
+   }
+  },
+  "claves_pendiente_sin_autorizacion": {
+   "ok": true,
+   "detalle": {
+    "pantalla": [
+     "0311202601099000000600120010010000009991234567811CLAVEEn cola",
+     "123CLAVERechazado Se leyeron 3 dígitos y la clave de acceso tiene 49.",
+     "0311202601099000000600120010010000009991234567811CLAVEDuplicado Repetida en la lista (fila 1)."
+    ],
+    "estado": "con_errores",
+    "entradas": [
+     [
+      "0311202601099000000600120010010000009991234567811",
+      "pendiente_xml",
+      [
+       "Sin XML autorizado: el sri no tiene esa clave."
+      ]
+     ],
+     [
+      "",
+      "rechazado",
+      [
+       "Se leyeron 3 dígitos y la clave de acceso tiene 49."
+      ]
+     ],
+     [
+      "0311202601099000000600120010010000009991234567811",
+      "duplicado",
+      []
+     ]
+    ]
+   }
+  },
+  "claves_reintentar_sin_5xx": {
+   "ok": true,
+   "detalle": {
+    "status": 200,
+    "reencoladas": 1,
+    "estado": {
+     "id": "con_errores",
+     "nombre": "Terminado con errores"
+    }
+   }
+  },
+  "clave_manual_invalida": {
+   "ok": true,
+   "detalle": {
+    "status": 400,
+    "error": "La clave de acceso debe tener exactamente 49 dígitos."
+   }
+  },
+  "claves_empresa_cambiada_409": {
+   "ok": true,
+   "detalle": {
+    "mensaje": "La empresa activa cambió en otra pestaña: vuelve a cargar la página para ver los datos de la empresa que tienes abierta ahora.",
+    "lotes_B": [
+     0,
+     0
+    ]
+   }
+  },
+  "xml_subida_tras_cambiar_empresa": {
+   "ok": false,
+   "detalle": {
+    "campo_empresa_en_formulario": 0,
+    "mensaje": "Procesamiento finalizado: Terminado. Abre el lote para revisar errores, duplicados o claves pendientes.",
+    "error": "",
+    "antes_B": {
+     "lotes": 0,
+     "docs": 0
+    },
+    "despues_B": {
+     "lotes": 1,
+     "docs": [
+      [
+       "ajeno",
+       "0990000000001"
+      ]
+     ]
+    }
+   }
+  },
+  "reglas_restauradas": {
+   "ok": true,
+   "detalle": "consulta al SRI activada otra vez"
+  },
+  "vendedor_sin_importacion": {
+   "ok": true,
+   "detalle": {
+    "nueva": 302,
+    "api_lotes": 403,
+    "api_claves": 403
+   }
+  },
+  "contador_consulta_sin_importar": {
+   "ok": true,
+   "detalle": {
+    "lotes": 200,
+    "nueva": 302,
+    "incorporar": 302,
+    "api_claves": 403,
+    "api_incorporar": 403
+   }
+  },
+  "importacion_aislada_por_empresa": {
+   "ok": true,
+   "detalle": {
+    "documento_A_desde_B": 404,
+    "lote_A_desde_B": 404
+   }
+  },
+  "importacion_nueva_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_claves_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_lote_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_incorporar_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_recibidos_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_documento_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_lotes_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_nueva_desborde_360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_claves_desborde_360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_lote_desborde_360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_incorporar_desborde_360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_recibidos_desborde_360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_documento_desborde_360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_lotes_desborde_360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "importacion_foco_visible": {
+   "ok": true,
+   "detalle": {
+    "ok": true,
+    "sin_indicador": [],
+    "recorridos": 10
+   }
+  },
+  "_ids": {
+   "lote1": 1,
+   "lote": 3,
+   "docA": 1,
+   "docA2": 3,
+   "loteClaves": 4,
+   "compra": 11
+  }
+ },
+ "fallos": [
+  "xml_subida_tras_cambiar_empresa"
+ ]
+}

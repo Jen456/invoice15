@@ -1,0 +1,257 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [],
+ "pasos": {
+  "datos_mes_anterior_creados": {
+   "ok": true,
+   "detalle": {
+    "gOct": {},
+    "gNov": {},
+    "captura": 11,
+    "gasto_oct": 5,
+    "gasto_nov": 6
+   }
+  },
+  "mes_desborde_1360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 1360,
+    "innerWidth": 1360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "mes_actual_muestra_lo_registrado": {
+   "ok": true,
+   "detalle": {
+    "n_filas": 16,
+    "compra10": {
+     "doc": "compra-10",
+     "falta": "0",
+     "adjuntos": 1
+    },
+    "gasto4": {
+     "doc": "gasto-4",
+     "falta": "0",
+     "adjuntos": 1
+    },
+    "gasto_nov_sin_respaldo": {
+     "doc": "gasto-6",
+     "falta": "1",
+     "adjuntos": 0
+    },
+    "capturas_en_pantalla": [
+     4,
+     5,
+     7,
+     8,
+     9,
+     10
+    ],
+    "capturas_pendientes_nov_bd": [
+     4,
+     5,
+     7,
+     8,
+     9,
+     10
+    ],
+    "tarjetas": [
+     "16",
+     "5",
+     "1",
+     "0"
+    ]
+   }
+  },
+  "mes_filtros": {
+   "ok": true,
+   "detalle": {
+    "total": 16,
+    "con_falta": 1,
+    "visibles_sin_respaldo": 1,
+    "texto": "1 de 16 documentos",
+    "tarjeta_sin_respaldo": "1",
+    "visibles_por_revisar": 0,
+    "aviso_sin_resultados": true,
+    "visibles_todos": 16
+   }
+  },
+  "mes_modal_respaldos_compra": {
+   "ok": true,
+   "detalle": "recibo-peaje.pngRecibo · 1 KBReferenciaSin referenciaFecha del comprobanteSin fechaImporte del comprobanteSin importeSubido por dueno.demo · 2026-11-04 14:45DescargarQuitar"
+  },
+  "_foco_modal_compra": "BUTTON# dentro_del_modal=true",
+  "mes_nota_desde_modal_quita_faltante": {
+   "ok": true,
+   "detalle": {
+    "aviso": "Nota de respaldo guardada. ",
+    "data_faltantes_tras_recargar": "0"
+   }
+  },
+  "mes_modal_foco_tras_guardar_nota": {
+   "ok": false,
+   "detalle": {
+    "foco": "BODY dentro_del_modal=false",
+    "modal_sigue_abierto_tras_escape": true
+   }
+  },
+  "mes_foco_visible": {
+   "ok": true,
+   "detalle": {
+    "ok": true,
+    "sin_indicador": [],
+    "recorridos": 10
+   }
+  },
+  "mes_anterior_muestra_lo_anterior": {
+   "ok": true,
+   "detalle": {
+    "url": "http://127.0.0.1:8783/adjuntos/?mes=2026-10",
+    "titulo": "octubre 2026",
+    "filas": [
+     {
+      "doc": "gasto-5",
+      "falta": "1"
+     }
+    ],
+    "capturas": [
+     11
+    ],
+    "siguiente": "?mes=2026-11"
+   }
+  },
+  "mes_sin_siguiente_en_actual_y_zip_invalido_404": {
+   "ok": true,
+   "detalle": {
+    "futuro": 200,
+    "zip_mes_invalido": 404
+   }
+  },
+  "zip_propietario": {
+   "ok": true,
+   "detalle": {
+    "nov": {
+     "status": 200,
+     "tipo": "application/zip",
+     "disposicion": "attachment; filename=\"comprobantes-de-pago-2026-11.zip\"",
+     "archivos": [
+      "2026-11/compras/001-002-000004321_1.png",
+      "2026-11/gastos/1_1.pdf",
+      "2026-11/gastos/2_1.pdf",
+      "2026-11/gastos/3_1.pdf",
+      "2026-11/gastos/4_1.pdf",
+      "2026-11/recibos-por-completar/C-5.pdf",
+      "2026-11/recibos-por-completar/C-8.png",
+      "2026-11/recibos-por-completar/C-10.pdf",
+      "2026-11/indice.csv"
+     ],
+     "filas_indice": 13,
+     "sin_comprobante_en_indice": 0,
+     "esperado": 0
+    },
+    "oct": {
+     "archivos": [
+      "2026-10/recibos-por-completar/C-11.pdf",
+      "2026-10/indice.csv"
+     ],
+     "indice": [
+      "tipo;documento;tercero;identificacion;fecha_documento;importe_documento;medio_de_pago;clase;referencia;fecha_comprobante;importe_comprobante;descripcion;archivo;sha256;subido_por;subido_el;origen;respaldo;revision",
+      "Gasto;#5;Movilización ficticia;;2026-10-15;30.00;Transferencia;SIN COMPROBANTE;;;;;;;;;adjuntos;;",
+      "Recibo por completar;C-11;;;2026-10-20;;Sin dato;Recibo;;;;Recibo ficticio guardado en octubre;2026-10/recibos-por-completar/C-11.pdf;93e31154c364805a3ef8c904bc257f5ef77600c31b67d392704cd6e1e9cd0657;dueno.demo;2026-10-20 10:00;adjuntos;archivo;"
+     ]
+    }
+   }
+  },
+  "zip_por_rol": {
+   "ok": true,
+   "detalle": {
+    "contador": 200,
+    "vendedor": 302,
+    "vendedor_location": "/dashboard/",
+    "sin_sesion": 302,
+    "sin_sesion_location": "/login/?next=/adjuntos/zip/%3Fmes%3D2026-11",
+    "empresa_B": 200,
+    "archivos_en_zip_B": [
+     "2026-11/indice.csv"
+    ]
+   }
+  },
+  "archivo_privado_con_sesion": {
+   "ok": true,
+   "detalle": {
+    "status": 200,
+    "tipo": "image/png",
+    "csp": "sandbox; default-src 'none'; img-src 'self'",
+    "cache": "private, no-store",
+    "descarga": "attachment; filename=\"recibo-peaje.png\""
+   }
+  },
+  "archivo_privado_rechazos": {
+   "ok": true,
+   "detalle": {
+    "sin_sesion": 302,
+    "location": "/login/?next=/adjuntos/5/archivo/",
+    "otra_empresa": 404,
+    "vendedor_sin_permiso_compra": 404,
+    "ruta_media_directa_con_sesion": 404,
+    "ruta_media_sin_sesion": 302
+   }
+  },
+  "archivo_recibo_pendiente": {
+   "ok": true,
+   "detalle": {
+    "con_sesion": 200,
+    "tipo": "application/pdf",
+    "sin_sesion": 302,
+    "otra_empresa": 404
+   }
+  },
+  "mes_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "mes_modal_desborde_390": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 390,
+    "innerWidth": 390,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "mes_desborde_360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "mes_modal_desborde_360": {
+   "ok": true,
+   "detalle": {
+    "scrollWidth": 360,
+    "innerWidth": 360,
+    "ok": true,
+    "culpables": []
+   }
+  },
+  "_ids": {
+   "captura": 11,
+   "gasto_oct": 5,
+   "gasto_nov": 6,
+   "adjunto": 5
+  }
+ },
+ "fallos": [
+  "mes_modal_foco_tras_guardar_nota"
+ ]
+}

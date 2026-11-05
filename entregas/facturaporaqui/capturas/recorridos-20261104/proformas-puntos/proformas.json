@@ -1,0 +1,303 @@
+{
+  "pasos": [
+    {
+      "nombre": "Proforma creada con dos líneas desde la UI",
+      "ok": true,
+      "detalle": {
+        "status": 200,
+        "numero": "PRO-000001",
+        "total": "37.78",
+        "total_pantalla": "37.78",
+        "mensaje": "× Notificación Proforma PRO-000001 guardada. OK",
+        "lineas": [
+          [
+            "PRV-1",
+            3,
+            "9.50",
+            "10",
+            "25.65"
+          ],
+          [
+            "PRV-S",
+            2,
+            "3.60",
+            "0",
+            "7.20"
+          ]
+        ],
+        "estado": {
+          "id": "borrador",
+          "nombre": "Borrador",
+          "guardado": "borrador"
+        },
+        "desborde_1360": {
+          "scrollWidth": 1415,
+          "innerWidth": 1360,
+          "ok": false
+        }
+      }
+    },
+    {
+      "nombre": "Proforma marcada aceptada desde la ficha",
+      "ok": true,
+      "detalle": {
+        "botones_borrador": [
+          "Ver",
+          "PDF",
+          "Editar",
+          "Duplicar",
+          "Enviar por correo",
+          "Marcar como enviada",
+          "Marcar aceptada",
+          "Anular",
+          "Eliminar borrador"
+        ],
+        "mensaje": "Operación completada La proforma PRO-000001 quedó aceptada. Continuar",
+        "estado": "Aceptada",
+        "botones_aceptada": [
+          "Ver",
+          "PDF",
+          "Duplicar",
+          "Enviar por correo",
+          "Marcar rechazada",
+          "Anular",
+          "Facturar (revisar antes de emitir)"
+        ]
+      }
+    },
+    {
+      "nombre": "Segunda proforma (borrador) creada para casos de error",
+      "ok": true,
+      "detalle": {
+        "status": 200,
+        "numero": "PRO-000002"
+      }
+    },
+    {
+      "nombre": "Vendedor factura la proforma desde la UI",
+      "ok": true,
+      "detalle": {
+        "botones_vendedor": [
+          "Ver",
+          "PDF",
+          "Duplicar",
+          "Enviar por correo",
+          "Marcar rechazada",
+          "Anular",
+          "Facturar (revisar antes de emitir)"
+        ],
+        "titulo": "Nueva factura",
+        "avisos": [
+          "Al guardar se emite la factura y se envía al SRI. Revisa el cliente, los productos y la forma de pago.",
+          "La empresa está en PRUEBAS: la factura no tendrá validez tributaria y la proforma quedará facturada con ella. Para volver a cotizar, duplícala.",
+          "«PRODUCTO PRV-1»: se usa el precio de la proforma (USD 9.50) y no el actual (USD 10.00).",
+          "«PRODUCTO PRV-S»: se usa el precio de la proforma (USD 3.60) y no el actual (USD 4.00)."
+        ],
+        "lineas": [
+          {
+            "code": "PRV-1",
+            "cant": 3,
+            "price": 9.5,
+            "dscto": 10
+          },
+          {
+            "code": "PRV-S",
+            "cant": 2,
+            "price": 3.6,
+            "dscto": 0
+          }
+        ],
+        "celdas": [
+          " | PRV-1 | PRODUCTO PRV-1\nIVA 15 % | 100 | -\n+ | $9.50 | -\n2.85\n+ | $25.65",
+          " | PRV-S | PRODUCTO PRV-S\nIVA 15 % | No inventariado | -\n+ | $3.60 | -\n0.00\n+ | $7.20"
+        ],
+        "inputs_precio": 0,
+        "total": "37.78",
+        "punto": [
+          {
+            "tag": "INPUT",
+            "value": "1"
+          }
+        ],
+        "proximo": "001-001-002745707",
+        "respuesta": {
+          "resp": true,
+          "estado": "authorized",
+          "mensaje": "Factura 001-001-002745707 autorizada por el SRI.",
+          "print_url": "/media/empresas/22d1e48d-064e-490b-b610-6e2e69bf12a6/comprobantes/pdf/2026/11/304288011a5449da9_V31luZv.pdf"
+        },
+        "dialogo": "Confirmación Factura 001-001-002745707 autorizada por el SRI. ¿Desea Imprimir el Comprobante? SINO",
+        "desborde_1360": {
+          "scrollWidth": 1360,
+          "innerWidth": 1360,
+          "ok": true
+        }
+      }
+    },
+    {
+      "nombre": "Abrir otra vez «Facturar» de la proforma ya facturada",
+      "ok": true,
+      "detalle": {
+        "url": "http://127.0.0.1:8782/proformas/ver/1/",
+        "aviso": "La proforma PRO-000001 ya se facturó con la factura 001-001-002745707.",
+        "swal": null,
+        "botones": [
+          "Ver",
+          "PDF",
+          "Duplicar"
+        ]
+      }
+    },
+    {
+      "nombre": "Segundo POST de emisión con la misma proforma",
+      "ok": true,
+      "detalle": {
+        "status": 200,
+        "respuesta": {
+          "error": "La proforma PRO-000001 ya se facturó con la factura 001-001-002745707."
+        },
+        "campos": [
+          "action",
+          "csrfmiddlewaretoken",
+          "proforma_id",
+          "client",
+          "date_joined",
+          "initial-date_joined",
+          "receipt",
+          "punto",
+          "search_product",
+          "create_electronic_invoice",
+          "payment_method",
+          "time_limit",
+          "payment_type",
+          "cash",
+          "change",
+          "end_credit",
+          "initial-end_credit",
+          "medio_cobro",
+          "referencia_cobro",
+          "nota_cobro",
+          "products",
+          "additional_info"
+        ]
+      }
+    },
+    {
+      "nombre": "Proforma en borrador no se factura (GET y POST)",
+      "ok": true,
+      "detalle": {
+        "get": {
+          "status": 302,
+          "location": "/proformas/ver/2/"
+        },
+        "post": {
+          "error": "La proforma PRO-000002 está borrador: solo se facturan las proformas enviadas y vigentes, o las aceptadas."
+        }
+      }
+    },
+    {
+      "nombre": "Precio distinto al de la proforma rechazado para el vendedor",
+      "ok": true,
+      "detalle": {
+        "aceptar": "La proforma PRO-000002 quedó aceptada.",
+        "respuesta": {
+          "error": "El precio de PRODUCTO PRV-1 no coincide con el del catálogo (10.00) y tu perfil no puede cambiarlo: quita la línea y vuelve a agregarla, o factura desde una proforma."
+        }
+      }
+    }
+  ],
+  "foco_ficha": {
+    "total": 10,
+    "visibles": 9,
+    "detalle": [
+      {
+        "tag": "body",
+        "visible": false
+      },
+      {
+        "tag": "a",
+        "texto": "Abrir o cerrar menú",
+        "visible": true
+      },
+      {
+        "tag": "a",
+        "texto": "Inicio",
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "texto": "001-001",
+        "visible": true
+      },
+      {
+        "tag": "a",
+        "texto": "DEMOSTRACIÓN · Propietario \nEmpresa acti",
+        "visible": true
+      },
+      {
+        "tag": "a",
+        "texto": "Cerrar sesión",
+        "visible": true
+      },
+      {
+        "tag": "a",
+        "texto": "FacturaPorAquí",
+        "visible": true
+      },
+      {
+        "tag": "a",
+        "texto": "Comprobantes Electrónicos",
+        "visible": true
+      },
+      {
+        "tag": "a",
+        "texto": "Cotizaciones",
+        "visible": true
+      },
+      {
+        "tag": "a",
+        "texto": "Clientes y promociones",
+        "visible": true
+      }
+    ]
+  },
+  "post_emitir_es_multipart": true,
+  "campos_emision": {
+    "action": "add",
+    "csrfmiddlewaretoken": "E3Dp4BdNKOBfiBnZtsA5CdjjyKW64TqDVBRsWfu7J9hp8YKjwB1jjldv4gCpYR9z",
+    "proforma_id": "1",
+    "client": "4",
+    "date_joined": "2026-11-04",
+    "initial-date_joined": "2026-11-04 14:34:25",
+    "receipt": "01",
+    "punto": "1",
+    "search_product": "",
+    "create_electronic_invoice": "on",
+    "payment_method": "20",
+    "time_limit": "31",
+    "payment_type": "efectivo",
+    "cash": "37.78",
+    "change": "0.00",
+    "end_credit": "",
+    "initial-end_credit": "2026-11-04 14:34:25",
+    "medio_cobro": "efectivo",
+    "referencia_cobro": "",
+    "nota_cobro": "",
+    "products": "[{\"id\":12,\"name\":\"PRODUCTO PRV-1\",\"code\":\"PRV-1\",\"description\":null,\"category\":{\"id\":3,\"name\":\"CATEGORÍA FICTICIA\"},\"price\":5,\"pvp\":10,\"image\":\"/static/img/default/empty.png\",\"barcode\":\"/media/empresas/22d1e48d-064e-490b-b610-6e2e69bf12a6/codigos/2026/11/0b046ca095644137886263e7d8e5ca42.png\",\"inventoried\":true,\"stock\":100,\"with_tax\":true,\"tarifa_iva\":\"4\",\"full_name\":\"PRODUCTO PRV-1 (PRV-1) (CATEGORÍA FICTICIA)\",\"short_name\":\"PRODUCTO PRV-1 (CATEGORÍA FICTICIA)\",\"price_promotion\":0,\"price_current\":9.5,\"tarifa\":15,\"nombre_tarifa\":\"15 %\",\"cant\":3,\"dscto\":10,\"total_dscto\":2.85,\"value\":\"PRODUCTO PRV-1 (PRV-1) (CATEGORÍA FICTICIA)\",\"iva\":0.15,\"price_with_vat\":10.925,\"subtotal\":28.5,\"total\":25.65,\"total_iva\":3.85},{\"id\":14,\"name\":\"PRODUCTO PRV-S\",\"code\":\"PRV-S\",\"description\":null,\"category\":{\"id\":3,\"name\":\"CATEGORÍA FICTICIA\"},\"price\":5,\"pvp\":4,\"image\":\"/static/img/default/empty.png\",\"barcode\":\"/media/empresas/22d1e48d-064e-490b-b610-6e2e69bf12a6/codigos/2026/11/c00fb75191014a69a429ab54b466f0cc.png\",\"inventoried\":false,\"stock\":100,\"with_tax\":true,\"tarifa_iva\":\"4\",\"full_name\":\"PRODUCTO PRV-S (PRV-S) (CATEGORÍA FICTICIA)\",\"short_name\":\"PRODUCTO PRV-S (CATEGORÍA FICTICIA)\",\"price_promotion\":0,\"price_current\":3.6,\"tarifa\":15,\"nombre_tarifa\":\"15 %\",\"cant\":2,\"dscto\":0,\"total_dscto\":0,\"value\":\"PRODUCTO PRV-S (PRV-S) (CATEGORÍA FICTICIA)\",\"iva\":0.15,\"price_with_vat\":4.140000000000001,\"subtotal\":7.2,\"total\":7.2,\"total_iva\":1.08}]",
+    "additional_info": "[{\"name\":\"Proforma\",\"value\":\"PRO-000001\"}]"
+  },
+  "ids": {
+    "idProforma": 1,
+    "idBorrador": 2
+  },
+  "registro_dueno": {
+    "errores_js": [],
+    "respuestas_5xx": [],
+    "consola": []
+  },
+  "registro_vendedor": {
+    "errores_js": [],
+    "respuestas_5xx": [],
+    "consola": []
+  }
+}

@@ -1,0 +1,327 @@
+{
+ "pasos": [
+  {
+   "nombre": "inicio de sesión del propietario en la empresa A",
+   "ok": true,
+   "url": "http://127.0.0.1:8781/dashboard/"
+  },
+  {
+   "nombre": "secuencia de facturas antes de emitir",
+   "ok": true,
+   "seq0": [
+    {
+     "id": 1,
+     "punto": 1,
+     "seq": 2555771
+    }
+   ],
+   "id0": 12
+  },
+  {
+   "nombre": "efectivo menor al total: no se envía y avisa",
+   "ok": true,
+   "total": 11.5,
+   "mensajes": [
+    "El efectivo debe ser mayor o igual al total a pagar"
+   ]
+  },
+  {
+   "nombre": "el cambio se calcula en pantalla",
+   "ok": true,
+   "total": 11.5,
+   "cambio": "8.50"
+  },
+  {
+   "nombre": "contado en efectivo: emitida",
+   "ok": true,
+   "resp": {
+    "estado": 200,
+    "json": {
+     "resp": true,
+     "estado": "authorized",
+     "mensaje": "Factura 001-001-002555772 autorizada por el SRI.",
+     "print_url": "/media/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/667eaabe53494487b_LAPIqod.pdf"
+    },
+    "sinCuerpo": false
+   }
+  },
+  {
+   "nombre": "transferencia sin nota ni archivo: el servidor la rechaza y no consume número",
+   "ok": true,
+   "error": "Adjunta el comprobante del cobro o escribe una nota interna (o ambos).",
+   "aviso": "Adjunta el comprobante del cobro o escribe una nota interna (o ambos).",
+   "seqAntesRechazo": [
+    {
+     "id": 1,
+     "punto": 1,
+     "seq": 2555772
+    }
+   ],
+   "seqTrasRechazo": [
+    {
+     "id": 1,
+     "punto": 1,
+     "seq": 2555772
+    }
+   ]
+  },
+  {
+   "nombre": "transferencia con nota: emitida",
+   "ok": true,
+   "resp": {
+    "estado": 200,
+    "json": {
+     "resp": true,
+     "estado": "authorized",
+     "mensaje": "Factura 001-001-002555773 autorizada por el SRI.",
+     "print_url": "/media/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/599af5fcac4544a39_T1Z5i7W.pdf"
+    },
+    "sinCuerpo": false
+   }
+  },
+  {
+   "nombre": "transferencia con archivo PNG: emitida",
+   "ok": true,
+   "resp": {
+    "estado": 200,
+    "json": {
+     "resp": true,
+     "estado": "authorized",
+     "mensaje": "Factura 001-001-002555774 autorizada por el SRI.",
+     "print_url": "/media/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/ecbf740b29f749d79_L5sazYZ.pdf"
+    },
+    "sinCuerpo": true
+   }
+  },
+  {
+   "nombre": "R2: plazo vacío a crédito muestra el error junto al campo y no envía action=add",
+   "ok": true,
+   "plazoInicial": "",
+   "msgs": [
+    "Indica la fecha de plazo del crédito.",
+    "Indica la fecha de plazo del crédito."
+   ],
+   "grupoVisible": true,
+   "invalido": true,
+   "foco": "",
+   "adds": 0
+  },
+  {
+   "nombre": "crédito con plazo: emitida",
+   "ok": true,
+   "plazo": "2026-12-04",
+   "msgTras": [],
+   "resp": {
+    "estado": 200,
+    "json": {
+     "resp": true,
+     "estado": "authorized",
+     "mensaje": "Factura 001-001-002555775 autorizada por el SRI.",
+     "print_url": "/media/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/45bbdc43ad1a444eb_plHu3Gt.pdf"
+    },
+    "sinCuerpo": false
+   }
+  },
+  {
+   "nombre": "cuatro facturas nuevas, todas autorizadas",
+   "ok": true,
+   "estados": [
+    [
+     13,
+     "001-001-002555772",
+     "authorized"
+    ],
+    [
+     14,
+     "001-001-002555773",
+     "authorized"
+    ],
+    [
+     15,
+     "001-001-002555774",
+     "authorized"
+    ],
+    [
+     16,
+     "001-001-002555775",
+     "authorized"
+    ]
+   ]
+  },
+  {
+   "nombre": "números consecutivos desde la secuencia previa, sin hueco por el rechazo",
+   "ok": true,
+   "nums": [
+    2555772,
+    2555773,
+    2555774,
+    2555775
+   ],
+   "seq0": [
+    {
+     "id": 1,
+     "punto": 1,
+     "seq": 2555771
+    }
+   ],
+   "seqF": [
+    {
+     "id": 1,
+     "punto": 1,
+     "seq": 2555775
+    }
+   ]
+  },
+  {
+   "nombre": "efectivo: cash 20 y cambio calculado por el servidor",
+   "ok": true,
+   "id": 13,
+   "num": "001-001-002555772",
+   "seq": 2555772,
+   "receipt": 1,
+   "status": "authorized",
+   "tipo": "01",
+   "pago": "efectivo",
+   "medio": "efectivo",
+   "cash": "20.00",
+   "change": "8.50",
+   "total": "11.50",
+   "end_credit": "2026-11-04",
+   "cliente": "0912345678",
+   "clave": "0411202601099000000000110010010025557726653812717",
+   "respaldos": [],
+   "cxc": []
+  },
+  {
+   "0": {
+    "medio": "transferencia",
+    "referencia": "TRF-FICTICIA-001",
+    "nota": "Transferencia ficticia de prueba: el cliente envió el comprobante por chat.",
+    "archivo": "",
+    "archivo_tipo": "",
+    "archivo_bytes": 0,
+    "importe": "11.50",
+    "estado": "pendiente"
+   },
+   "nombre": "transferencia con nota: respaldo con nota y referencia, sin archivo",
+   "ok": true
+  },
+  {
+   "0": {
+    "medio": "transferencia",
+    "referencia": "TRF-FICTICIA-002",
+    "nota": "",
+    "archivo": "privado/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/cobros/2026/11/209512f5481f43ee8953ce5180e1d1f5.png",
+    "archivo_tipo": "png",
+    "archivo_bytes": 70,
+    "importe": "11.50",
+    "estado": "pendiente"
+   },
+   "nombre": "transferencia con archivo: respaldo PNG guardado",
+   "ok": true
+  },
+  {
+   "nombre": "crédito: plazo guardado y cuenta por cobrar por el total",
+   "ok": true,
+   "id": 16,
+   "num": "001-001-002555775",
+   "seq": 2555775,
+   "receipt": 1,
+   "status": "authorized",
+   "tipo": "01",
+   "pago": "credito",
+   "medio": "",
+   "cash": "0.00",
+   "change": "0.00",
+   "total": "11.50",
+   "end_credit": "2026-12-04",
+   "cliente": "0912345678",
+   "clave": "0411202601099000000000110010010025557752556188910",
+   "respaldos": [],
+   "cxc": [
+    {
+     "end_date": "2026-12-04",
+     "debt": "11.50",
+     "saldo": "11.50"
+    }
+   ]
+  },
+  {
+   "nombre": "factura sin desplazamiento horizontal a 390 px",
+   "ok": true,
+   "scroll": 390,
+   "ancho": 390
+  },
+  {
+   "nombre": "foco visible a 390 px (búsqueda, plazo, emitir)",
+   "ok": true,
+   "f1": {
+    "ok": true,
+    "tag": "INPUT",
+    "id": "fp-sale-search",
+    "outline": "solid 3px",
+    "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px",
+    "sel": "#fp-sale-search"
+   },
+   "f2": {
+    "ok": true,
+    "tag": "INPUT",
+    "id": "end_credit",
+    "outline": "solid 3px",
+    "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px",
+    "sel": "input[name='end_credit']"
+   },
+   "f3": {
+    "ok": true,
+    "tag": "BUTTON",
+    "id": "",
+    "outline": "solid 3px",
+    "sombra": "none",
+    "sel": "#frmForm button[type='submit']"
+   }
+  },
+  {
+   "nombre": "factura sin desplazamiento horizontal a 1360 px",
+   "ok": true,
+   "scroll": 1360,
+   "ancho": 1360
+  },
+  {
+   "nombre": "foco visible a 1360 px (búsqueda, plazo, emitir)",
+   "ok": true,
+   "f1": {
+    "ok": true,
+    "tag": "INPUT",
+    "id": "fp-sale-search",
+    "outline": "solid 3px",
+    "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px",
+    "sel": "#fp-sale-search"
+   },
+   "f2": {
+    "ok": true,
+    "tag": "INPUT",
+    "id": "end_credit",
+    "outline": "solid 3px",
+    "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px",
+    "sel": "input[name='end_credit']"
+   },
+   "f3": {
+    "ok": true,
+    "tag": "BUTTON",
+    "id": "",
+    "outline": "solid 3px",
+    "sombra": "none",
+    "sel": "#frmForm button[type='submit']"
+   }
+  },
+  {
+   "nombre": "sin errores de JavaScript ni respuestas 5xx",
+   "ok": true,
+   "js": [],
+   "http": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "http5xx": []
+}

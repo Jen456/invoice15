@@ -1,0 +1,240 @@
+{
+  "pasos": [
+    {
+      "nombre": "Vendedor: el formulario solo ofrece 001-002",
+      "ok": true,
+      "detalle": {
+        "seleccion_json": {
+          "elegibles": [
+            "001-002"
+          ],
+          "seleccionado": "001-002",
+          "puede_administrar": false
+        },
+        "bloque": {
+          "select": 0,
+          "opciones": [],
+          "oculto": "2",
+          "etiqueta": "AV. FICTICIA 123, GUAYAQUIL · Caja 2 de prueba · 001-002",
+          "proximo": "001-002-000000002",
+          "voucher": "000000002",
+          "aviso": null,
+          "selector_cabecera": [
+            "AV. FICTICIA 123, GUAYAQUILCaja 2 de prueba · 001-002"
+          ]
+        }
+      }
+    },
+    {
+      "nombre": "Vendedor emite dos facturas desde 001-002",
+      "ok": true,
+      "detalle": {
+        "primera": {
+          "proximo": "001-002-000000002",
+          "total": "11.50",
+          "r": {
+            "resp": true,
+            "estado": "authorized",
+            "mensaje": "Factura 001-002-000000002 autorizada por el SRI.",
+            "print_url": "/media/empresas/22d1e48d-064e-490b-b610-6e2e69bf12a6/comprobantes/pdf/2026/11/566ed0243c8c47c7b_xOPGBmW.pdf"
+          }
+        },
+        "segunda": {
+          "proximo": "001-002-000000003",
+          "r": {
+            "resp": true,
+            "estado": "authorized",
+            "mensaje": "Factura 001-002-000000003 autorizada por el SRI.",
+            "print_url": "/media/empresas/22d1e48d-064e-490b-b610-6e2e69bf12a6/comprobantes/pdf/2026/11/0052ac851dad4cf58_5kN6iOg.pdf"
+          }
+        }
+      }
+    },
+    {
+      "nombre": "Vendedor no puede emitir desde 001-001 enviando su id",
+      "ok": true,
+      "detalle": {
+        "status": 200,
+        "respuesta": {
+          "error": "No estás autorizado para emitir desde el punto 001-001; elige otro o pide autorización."
+        }
+      }
+    },
+    {
+      "nombre": "Consulta del próximo número de 001-001 negada al vendedor",
+      "ok": true,
+      "detalle": {
+        "respuesta": {
+          "voucher_number": "",
+          "pending": {
+            "codigo": "punto",
+            "mensaje": "No estás autorizado para emitir desde el punto 001-001; elige otro o pide autorización.",
+            "url": "/configuracion/puntos/"
+          }
+        }
+      }
+    },
+    {
+      "nombre": "Vendedor no puede elegir 001-001 como punto activo",
+      "ok": true,
+      "detalle": {
+        "status": 400,
+        "respuesta": {
+          "error": "No estás autorizado para emitir desde el punto 001-001; elige otro o pide autorización."
+        }
+      }
+    },
+    {
+      "nombre": "Vendedor: configuración de puntos y asistente negados",
+      "ok": true,
+      "detalle": {
+        "get_puntos": {
+          "status": 302,
+          "location": "/pos/sale/admin/",
+          "json": null
+        },
+        "get_estado": {
+          "status": 302,
+          "location": "/pos/sale/admin/",
+          "json": null
+        },
+        "get_asistente": {
+          "status": 302,
+          "location": "/pos/sale/admin/",
+          "json": null
+        },
+        "get_paso2": {
+          "status": 302,
+          "location": "/pos/sale/admin/",
+          "json": null
+        },
+        "post_autorizar": {
+          "status": 403,
+          "json": {
+            "error": "Tu perfil no cuenta con el permiso necesario para ingresar"
+          }
+        },
+        "post_quitar": {
+          "status": 403,
+          "json": {
+            "error": "Tu perfil no cuenta con el permiso necesario para ingresar"
+          }
+        },
+        "post_agregar": {
+          "status": 403,
+          "json": {
+            "error": "Tu perfil no cuenta con el permiso necesario para ingresar"
+          }
+        },
+        "post_numeracion": {
+          "status": 403,
+          "json": {
+            "error": "Tu perfil no cuenta con el permiso necesario para ingresar"
+          }
+        },
+        "post_desactivar": {
+          "status": 403,
+          "json": {
+            "error": "Tu perfil no cuenta con el permiso necesario para ingresar"
+          }
+        }
+      }
+    },
+    {
+      "nombre": "Vendedor ve el aviso de permiso al abrir /configuracion/puntos/",
+      "ok": true,
+      "detalle": {
+        "url": "http://127.0.0.1:8782/pos/sale/admin/",
+        "swal": null,
+        "texto": "Tu perfil no cuenta con el permiso necesario para ingresar"
+      }
+    },
+    {
+      "nombre": "Propietario: el formulario ofrece 001-001 y 001-002",
+      "ok": true,
+      "detalle": {
+        "opciones": [
+          [
+            "1",
+            "AV. FICTICIA 123, GUAYAQUIL · Punto · 001-001",
+            true
+          ],
+          [
+            "2",
+            "AV. FICTICIA 123, GUAYAQUIL · Caja 2 de prueba · 001-002",
+            false
+          ]
+        ],
+        "proximo": "001-001-002745708"
+      }
+    },
+    {
+      "nombre": "Propietario emite desde 001-001 y desde 001-002",
+      "ok": true,
+      "detalle": {
+        "desde_001": {
+          "proximo": "001-001-002745708",
+          "r": {
+            "resp": true,
+            "estado": "authorized",
+            "mensaje": "Factura 001-001-002745708 autorizada por el SRI.",
+            "print_url": "/media/empresas/22d1e48d-064e-490b-b610-6e2e69bf12a6/comprobantes/pdf/2026/11/dd3b2f858ed94f428_HlDxvh9.pdf"
+          }
+        },
+        "desde_002": {
+          "proximo": "001-002-000000004",
+          "r": {
+            "resp": true,
+            "estado": "authorized",
+            "mensaje": "Factura 001-002-000000004 autorizada por el SRI.",
+            "print_url": "/media/empresas/22d1e48d-064e-490b-b610-6e2e69bf12a6/comprobantes/pdf/2026/11/9defebe317974878b_TLXClEl.pdf"
+          }
+        }
+      }
+    }
+  ],
+  "campos_post": [
+    "action",
+    "csrfmiddlewaretoken",
+    "client",
+    "date_joined",
+    "initial-date_joined",
+    "receipt",
+    "punto",
+    "search_product",
+    "create_electronic_invoice",
+    "payment_method",
+    "time_limit",
+    "payment_type",
+    "cash",
+    "change",
+    "end_credit",
+    "initial-end_credit",
+    "medio_cobro",
+    "referencia_cobro",
+    "nota_cobro",
+    "products",
+    "additional_info"
+  ],
+  "vendedor_menu_config": {
+    "enlaces_config_visibles": 1,
+    "enlace_administrar_hidden": [
+      true
+    ]
+  },
+  "ids": {
+    "p001": 1,
+    "p002": 2,
+    "vendedor": 7
+  },
+  "registro_dueno": {
+    "errores_js": [],
+    "respuestas_5xx": [],
+    "consola": []
+  },
+  "registro_vendedor": {
+    "errores_js": [],
+    "respuestas_5xx": [],
+    "consola": []
+  }
+}

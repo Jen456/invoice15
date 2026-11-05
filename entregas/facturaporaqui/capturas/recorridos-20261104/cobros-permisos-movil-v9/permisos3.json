@@ -1,0 +1,43 @@
+{
+ "nombre": "permisos3",
+ "pasos": [
+  {
+   "nombre": "Consulta en /importacion/pendientes/ → menú «Importar por claves»: vuelve a una página HTML",
+   "ok": false,
+   "apis_de_la_pagina": [
+    "/importacion/api/documentos/"
+   ],
+   "final": "/importacion/api/documentos/",
+   "texto": "{\"bandeja\": \"pendientes\", \"documentos\": [], \"total\": 0, \"pagina\": 1, \"paginas\": 1}"
+  },
+  {
+   "nombre": "Consulta en /importacion/recibidos/ → menú «Importar por claves»: vuelve a una página HTML",
+   "ok": false,
+   "apis_de_la_pagina": [
+    "/importacion/api/documentos/"
+   ],
+   "final": "/importacion/api/documentos/",
+   "texto": "{\"bandeja\": \"pendientes\", \"documentos\": [], \"total\": 0, \"pagina\": 1, \"paginas\": 1}"
+  },
+  {
+   "nombre": "Consulta en /tributario/revision/ → menú «Importar por claves»: vuelve a una página HTML",
+   "ok": true,
+   "apis_de_la_pagina": [],
+   "final": "/tributario/revision/",
+   "texto": "Inicio Usuario: consulta.previa Usuario consulta.previa 001-001 DEMOSTRACIÓN · Consulta Empresa a"
+  },
+  {
+   "nombre": "Consulta en /contabilidad/kardex/ → menú «Importar por claves»: vuelve a una página HTML",
+   "ok": true,
+   "apis_de_la_pagina": [],
+   "final": "/contabilidad/kardex/",
+   "texto": "Inicio Usuario: consulta.previa Usuario consulta.previa 001-001 DEMOSTRACIÓN · Consulta Empresa a"
+  }
+ ],
+ "fallidas": [
+  "Consulta en /importacion/pendientes/ → menú «Importar por claves»: vuelve a una página HTML",
+  "Consulta en /importacion/recibidos/ → menú «Importar por claves»: vuelve a una página HTML"
+ ],
+ "errores_js": [],
+ "respuestas_5xx": []
+}

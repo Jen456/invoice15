@@ -1,0 +1,401 @@
+{
+ "casos": [
+  {
+   "user": "consulta.previa",
+   "lista": "/pos/sale/admin/",
+   "estado_lista": 200,
+   "url_final": "/pos/sale/admin/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/sale/admin/add/",
+     "visible": true
+    },
+    {
+     "texto": "Nuevo Registro",
+     "href": "/pos/sale/admin/add/",
+     "visible": true
+    }
+   ],
+   "click": {
+    "href": "/pos/sale/admin/add/",
+    "destino": "/pos/sale/admin/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/sale/admin/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  },
+  {
+   "user": "consulta.previa",
+   "lista": "/pos/purchase/",
+   "estado_lista": 200,
+   "url_final": "/pos/purchase/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/purchase/add/",
+     "visible": true
+    }
+   ],
+   "click": {
+    "href": "/pos/purchase/add/",
+    "destino": "/pos/purchase/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/purchase/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  },
+  {
+   "user": "consulta.previa",
+   "lista": "/pos/expenses/",
+   "estado_lista": 200,
+   "url_final": "/pos/expenses/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/expenses/add/",
+     "visible": true
+    },
+    {
+     "texto": "Guardar recibo o nota para completar después",
+     "href": "/adjuntos/capturas/",
+     "visible": true
+    },
+    {
+     "texto": "Nuevo Registro",
+     "href": "/pos/expenses/add/",
+     "visible": true
+    }
+   ],
+   "click": {
+    "href": "/pos/expenses/add/",
+    "destino": "/pos/expenses/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/expenses/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  },
+  {
+   "user": "consulta.previa",
+   "lista": "/pos/ctas/collect/",
+   "estado_lista": 200,
+   "url_final": "/pos/ctas/collect/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/ctas/collect/add/",
+     "visible": true
+    },
+    {
+     "texto": "Nuevo Registro",
+     "href": "/pos/ctas/collect/add/",
+     "visible": true
+    }
+   ],
+   "click": {
+    "href": "/pos/ctas/collect/add/",
+    "destino": "/pos/ctas/collect/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/ctas/collect/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  },
+  {
+   "user": "consulta.previa",
+   "lista": "/pos/client/",
+   "estado_lista": 200,
+   "url_final": "/pos/client/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/client/add/",
+     "visible": true
+    }
+   ],
+   "click": {
+    "href": "/pos/client/add/",
+    "destino": "/pos/client/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/client/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  },
+  {
+   "user": "consulta.previa",
+   "lista": "/pos/product/",
+   "estado_lista": 200,
+   "url_final": "/pos/product/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/product/add/",
+     "visible": true
+    },
+    {
+     "texto": "Subir Excel de Productos",
+     "href": null,
+     "visible": true
+    },
+    {
+     "texto": "Subir excel",
+     "href": null,
+     "visible": false
+    }
+   ],
+   "click": {
+    "href": "/pos/product/add/",
+    "destino": "/pos/product/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/product/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  },
+  {
+   "user": "contador.previa",
+   "lista": "/pos/sale/admin/",
+   "estado_lista": 200,
+   "url_final": "/pos/sale/admin/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/sale/admin/add/",
+     "visible": true
+    },
+    {
+     "texto": "Nuevo Registro",
+     "href": "/pos/sale/admin/add/",
+     "visible": true
+    }
+   ],
+   "click": {
+    "href": "/pos/sale/admin/add/",
+    "destino": "/pos/sale/admin/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/sale/admin/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  },
+  {
+   "user": "contador.previa",
+   "lista": "/pos/purchase/",
+   "estado_lista": 200,
+   "url_final": "/pos/purchase/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/purchase/add/",
+     "visible": true
+    }
+   ],
+   "click": {
+    "href": "/pos/purchase/add/",
+    "destino": "/pos/purchase/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/purchase/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  },
+  {
+   "user": "contador.previa",
+   "lista": "/pos/expenses/",
+   "estado_lista": 200,
+   "url_final": "/pos/expenses/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/expenses/add/",
+     "visible": true
+    },
+    {
+     "texto": "Guardar recibo o nota para completar después",
+     "href": "/adjuntos/capturas/",
+     "visible": true
+    },
+    {
+     "texto": "Nuevo Registro",
+     "href": "/pos/expenses/add/",
+     "visible": true
+    }
+   ],
+   "click": {
+    "href": "/pos/expenses/add/",
+    "destino": "/pos/expenses/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/expenses/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  },
+  {
+   "user": "contador.previa",
+   "lista": "/pos/ctas/collect/",
+   "estado_lista": 200,
+   "url_final": "/pos/ctas/collect/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/ctas/collect/add/",
+     "visible": true
+    },
+    {
+     "texto": "Nuevo Registro",
+     "href": "/pos/ctas/collect/add/",
+     "visible": true
+    }
+   ],
+   "click": {
+    "href": "/pos/ctas/collect/add/",
+    "destino": "/pos/ctas/collect/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/ctas/collect/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  },
+  {
+   "user": "contador.previa",
+   "lista": "/pos/client/",
+   "estado_lista": 200,
+   "url_final": "/pos/client/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/client/add/",
+     "visible": true
+    }
+   ],
+   "click": {
+    "href": "/pos/client/add/",
+    "destino": "/pos/client/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/client/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  },
+  {
+   "user": "vendedor.previa",
+   "lista": "/pos/product/",
+   "estado_lista": 200,
+   "url_final": "/pos/product/",
+   "botones": [
+    {
+     "texto": "Nuevo registro",
+     "href": "/pos/product/add/",
+     "visible": true
+    },
+    {
+     "texto": "Subir Excel de Productos",
+     "href": null,
+     "visible": true
+    },
+    {
+     "texto": "Subir excel",
+     "href": null,
+     "visible": false
+    }
+   ],
+   "click": {
+    "href": "/pos/product/add/",
+    "destino": "/pos/product/",
+    "mensaje": "Tu perfil no cuenta con el permiso necesario para ingresar"
+   },
+   "get_directo": {
+    "estado": 302,
+    "location": "/pos/product/"
+   },
+   "post_directo": {
+    "estado": 403,
+    "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+   }
+  }
+ ],
+ "errores_js": [],
+ "r5xx": [
+  {
+   "user": "consulta.previa",
+   "url": "http://127.0.0.1:8784/pos/sale/admin/",
+   "s": 500
+  }
+ ],
+ "despues": {
+  "sale": 2,
+  "purchase": 9,
+  "expenses": 0,
+  "ctas": 1,
+  "client": 4,
+  "product": 15
+ },
+ "antes": {
+  "sale": 2,
+  "purchase": 9,
+  "expenses": 0,
+  "ctas": 1,
+  "client": 4,
+  "product": 15
+ },
+ "proformas_consulta": []
+}

@@ -1,0 +1,34 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [],
+ "pasos": {
+  "recibo_numero_mostrado_coincide": {
+   "ok": true,
+   "detalle": [
+    {
+     "status": 201,
+     "servidor": "C-8",
+     "pantalla": "Guardado: C-8. Puedes completar sus datos después.",
+     "tarjeta_en_lista": true,
+     "archivo_limpio": true
+    },
+    {
+     "status": 201,
+     "servidor": "C-9",
+     "pantalla": "Guardado: C-9. Puedes completar sus datos después.",
+     "tarjeta_en_lista": true,
+     "archivo_limpio": true
+    },
+    {
+     "status": 201,
+     "servidor": "C-10",
+     "pantalla": "Guardado: C-10. Puedes completar sus datos después.",
+     "tarjeta_en_lista": true,
+     "archivo_limpio": true
+    }
+   ]
+  }
+ },
+ "fallos": []
+}

@@ -1,0 +1,188 @@
+{
+ "pasos": [
+  {
+   "nombre": "consulta.fact: sin acceso a «Nueva factura» y sin efectos por POST directo",
+   "ok": true,
+   "get": 200,
+   "urlFinal": "/dashboard/",
+   "add": 403,
+   "cliente": 403,
+   "nc": 200,
+   "ncTexto": "{\"error\": \"Tu perfil no puede emitir notas de cr\\u00e9dito.\"}",
+   "antes": {
+    "facturas": {
+     "1": 2555779
+    },
+    "ventas": 20,
+    "nc": 1,
+    "clientes": 8
+   },
+   "despues": {
+    "facturas": {
+     "1": 2555779
+    },
+    "ventas": 20,
+    "nc": 1,
+    "clientes": 8
+   }
+  },
+  {
+   "nombre": "contador.previa: sin acceso a «Nueva factura» y sin efectos por POST directo",
+   "ok": true,
+   "get": 200,
+   "urlFinal": "/dashboard/",
+   "add": 403,
+   "cliente": 403,
+   "nc": 200,
+   "ncTexto": "{\"error\": \"Tu perfil no puede emitir notas de cr\\u00e9dito.\"}",
+   "antes": {
+    "facturas": {
+     "1": 2555779
+    },
+    "ventas": 20,
+    "nc": 1,
+    "clientes": 8
+   },
+   "despues": {
+    "facturas": {
+     "1": 2555779
+    },
+    "ventas": 20,
+    "nc": 1,
+    "clientes": 8
+   }
+  },
+  {
+   "nombre": "vendedor: la base usa el precio vigente del catálogo, sin campo de precio, avisa y no reserva números",
+   "ok": true,
+   "hayFila": 1,
+   "ops": [
+    "Usar como base para otra factura",
+    "Cobros y respaldos",
+    "Detalle de productos",
+    "Imprimir factura ticket",
+    "Imprimir factura A4",
+    "Enviar comprobantes por email",
+    "Descargar xml",
+    "Crear nota de credito",
+    "Crear nota de débito",
+    "Crear guía de remisión"
+   ],
+   "estado": "Productos cargados. Elige el cliente de esta nueva factura; revisa el pago antes de emitir.",
+   "avisos": [
+    "PRODUCTO PRV-POCO: copiaste 2, pero hay 0 en stock. Revisa la cantidad antes de emitir.",
+    "Tu perfil usa el precio vigente del catálogo: se actualizaron 1 líneas."
+   ],
+   "lineas": [
+    [
+     "PRV-1",
+     10
+    ],
+    [
+     "PRV-S",
+     4
+    ],
+    [
+     "PRV-POCO",
+     3
+    ]
+   ],
+   "campos": 0,
+   "sinReserva": true
+  },
+  {
+   "nombre": "foco visible con teclado en «Opciones» del listado a 390 px",
+   "ok": false,
+   "mismo": true,
+   "tag": "BUTTON",
+   "id": "",
+   "outline": "none 0px rgb(255, 255, 255)",
+   "sombra": "rgba(130, 138, 145, 0.5) 0px 0px 0px 0px",
+   "sel": "#data tbody tr button.dropdown-toggle"
+  },
+  {
+   "nombre": "foco visible con teclado en el diálogo de cliente a 390 px (volver, guardar, buscar)",
+   "ok": true,
+   "vo": {
+    "ok": true,
+    "mismo": false,
+    "tag": "SELECT",
+    "id": "id_identification_type",
+    "outline": "solid 3px rgb(22, 59, 80)",
+    "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px",
+    "sel": "#fp-client-volver"
+   },
+   "gu": {
+    "ok": true,
+    "mismo": true,
+    "tag": "BUTTON",
+    "id": "fp-client-save",
+    "outline": "solid 3px rgb(22, 59, 80)",
+    "sombra": "none",
+    "sel": "#fp-client-save"
+   },
+   "bu": {
+    "ok": true,
+    "mismo": true,
+    "tag": "BUTTON",
+    "id": "fp-client-lookup",
+    "outline": "solid 3px rgb(22, 59, 80)",
+    "sombra": "none",
+    "sel": "#fp-client-lookup"
+   }
+  },
+  {
+   "nombre": "foco visible con teclado en «Opciones» del listado a 1360 px",
+   "ok": false,
+   "mismo": true,
+   "tag": "BUTTON",
+   "id": "",
+   "outline": "none 0px rgb(255, 255, 255)",
+   "sombra": "rgba(130, 138, 145, 0.5) 0px 0px 0px 0px",
+   "sel": "#data tbody tr button.dropdown-toggle"
+  },
+  {
+   "nombre": "foco visible con teclado en el diálogo de cliente a 1360 px (volver, guardar, buscar)",
+   "ok": true,
+   "vo": {
+    "ok": true,
+    "mismo": false,
+    "tag": "SELECT",
+    "id": "id_identification_type",
+    "outline": "solid 3px rgb(22, 59, 80)",
+    "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px",
+    "sel": "#fp-client-volver"
+   },
+   "gu": {
+    "ok": true,
+    "mismo": true,
+    "tag": "BUTTON",
+    "id": "fp-client-save",
+    "outline": "solid 3px rgb(22, 59, 80)",
+    "sombra": "none",
+    "sel": "#fp-client-save"
+   },
+   "bu": {
+    "ok": true,
+    "mismo": true,
+    "tag": "BUTTON",
+    "id": "fp-client-lookup",
+    "outline": "solid 3px rgb(22, 59, 80)",
+    "sombra": "none",
+    "sel": "#fp-client-lookup"
+   }
+  },
+  {
+   "nombre": "sin errores de JavaScript ni respuestas 5xx",
+   "ok": true,
+   "js": [],
+   "http": []
+  }
+ ],
+ "fallidas": [
+  "foco visible con teclado en «Opciones» del listado a 390 px",
+  "foco visible con teclado en «Opciones» del listado a 1360 px"
+ ],
+ "errores_js": [],
+ "http5xx": []
+}

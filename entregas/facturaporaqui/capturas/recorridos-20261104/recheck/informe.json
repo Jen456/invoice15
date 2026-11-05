@@ -1,0 +1,59 @@
+{
+ "pasos": [
+  {
+   "n": "listado de facturas: los botones muestran el foco al tabular",
+   "ok": true,
+   "botones": 4,
+   "sin_foco": []
+  },
+  {
+   "n": "proformas: el editor no desborda a 1360 px con el menú abierto",
+   "ok": true,
+   "desborde": 0
+  },
+  {
+   "n": "R1: «Volver» anuncia el progreso y el foco no cae en body",
+   "ok": true,
+   "alClic": {
+    "activo": "fp-client-alert",
+    "aviso": "Volviendo a la empresa de esta factura…"
+   },
+   "final": {
+    "activo": "fp-client-save",
+    "aviso": "La empresa de esta factura vuelve a estar activa. Revisa los datos y guarda el cliente."
+   }
+  },
+  {
+   "n": "selector de punto a 390 px: el menú queda dentro de la pantalla",
+   "ok": true,
+   "izq": 10,
+   "der": 360,
+   "ancho": 390,
+   "visible": true
+  },
+  {
+   "n": "comprobantes: tras guardar la nota el foco sigue en el diálogo y Escape lo cierra",
+   "ok": true,
+   "tras": {
+    "activo": "fpAdjuntosError",
+    "dentro": true,
+    "aviso": "",
+    "error": "Esta nota ya está registrada en este documento."
+   },
+   "cerrado": true
+  },
+  {
+   "n": "importación: con la empresa cambiada responde 409 y lo explica",
+   "ok": true,
+   "estado": 409,
+   "texto": "La empresa activa cambió en otra pestaña: vuelve a cargar la página para ver los datos de la empresa que tienes abierta "
+  },
+  {
+   "n": "sin errores de JavaScript",
+   "ok": true,
+   "errores": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": []
+}

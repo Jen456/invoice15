@@ -1,0 +1,316 @@
+{
+ "pasos": [
+  {
+   "nombre": "factura de origen y otro cliente elegidos",
+   "ok": true,
+   "id": 1,
+   "num": "001-001-002555760",
+   "otro": {
+    "id": 8,
+    "dni": "1724010077",
+    "nombre": "CLIENTE R1 dni-escrito-tras-el-cambio 0100"
+   },
+   "cliente_origen": "0912345678"
+  },
+  {
+   "nombre": "la opción «Usar como base para otra factura» está en Opciones",
+   "ok": true,
+   "href": "/pos/sale/admin/add/?base=1&empresa=1"
+  },
+  {
+   "nombre": "carga las líneas de la factura de origen",
+   "ok": true,
+   "cargadas": [
+    [
+     "PRV-1",
+     2,
+     "8.75",
+     7
+    ],
+    [
+     "PRV-S",
+     1,
+     "4.00",
+     29
+    ],
+    [
+     "PRV-POCO",
+     2,
+     "3.00",
+     0
+    ]
+   ],
+   "origen": [
+    [
+     "PRV-1",
+     2,
+     "8.75",
+     7
+    ],
+    [
+     "PRV-S",
+     1,
+     "4.00",
+     29
+    ],
+    [
+     "PRV-POCO",
+     2,
+     "3.00",
+     0
+    ]
+   ],
+   "estado": "Productos cargados. Elige el cliente de esta nueva factura; revisa el pago antes de emitir.",
+   "avisos": [
+    "PRODUCTO PRV-POCO: copiaste 2, pero hay 1 en stock. Revisa la cantidad antes de emitir."
+   ]
+  },
+  {
+   "nombre": "sin cliente preseleccionado (ni el de origen ni consumidor final)",
+   "ok": true,
+   "cliente": ""
+  },
+  {
+   "nombre": "solo cargar no reserva números",
+   "ok": true,
+   "seqAntes": {
+    "1": 2555777
+   },
+   "seqTrasCargar": {
+    "1": 2555777
+   },
+   "proximo": "001-001-002555778",
+   "campo": "002555778"
+  },
+  {
+   "nombre": "exige elegir cliente antes de emitir",
+   "ok": true,
+   "msgCliente": [
+    "Seleccione un cliente"
+   ],
+   "adds": 0
+  },
+  {
+   "nombre": "con una cantidad mayor al stock no se envía y lo explica (informativo)",
+   "ok": true,
+   "avisoStock": "Revisa la cantidad de PRODUCTO PRV-POCO: hay 1 en stock.",
+   "sinStock": [
+    "PRV-POCO"
+   ],
+   "diag": {
+    "invalidos": [],
+    "msgs": [],
+    "swal": "",
+    "widget": false,
+    "url": "/pos/sale/admin/add/"
+   }
+  },
+  {
+   "nombre": "emite la nueva factura con otro cliente",
+   "ok": true,
+   "resp": {
+    "estado": 200,
+    "json": {
+     "resp": true,
+     "estado": "authorized",
+     "mensaje": "Factura 001-001-002555778 autorizada por el SRI.",
+     "print_url": "/media/empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/9b5dff3f6c5c484d9_pzRNmt1.pdf"
+    },
+    "sinCuerpo": false
+   }
+  },
+  {
+   "nombre": "la nueva factura: otro cliente, autorizada y con el número siguiente del punto",
+   "ok": true,
+   "nueva": {
+    "id": 19,
+    "num": "001-001-002555778",
+    "status": "authorized",
+    "cliente": 8,
+    "total": "25.43",
+    "clave": "0411202601099000000000110010010025557787499291211",
+    "receipt": 1,
+    "pago": "efectivo",
+    "pdf": "empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/9b5dff3f6c5c484d9_pzRNmt1.pdf",
+    "xml": "empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/xml/2026/11/b275d0b0281e4f6ba_gJgPMpo.xml",
+    "lineas": [
+     [
+      "PRV-1",
+      2,
+      "8.75",
+      "0.07"
+     ],
+     [
+      "PRV-S",
+      1,
+      "4.00",
+      "0.29"
+     ],
+     [
+      "PRV-POCO",
+      1,
+      "3.00",
+      "0.00"
+     ]
+    ]
+   },
+   "seqAntes": {
+    "1": 2555777
+   },
+   "seqDespues": {
+    "1": 2555778
+   }
+  },
+  {
+   "nombre": "las líneas de la nueva coinciden con las del origen (precio y descuento; cantidad ajustada al stock donde hizo falta)",
+   "ok": true,
+   "nueva": [
+    [
+     "PRV-1",
+     2,
+     "8.75",
+     "0.07"
+    ],
+    [
+     "PRV-S",
+     1,
+     "4.00",
+     "0.29"
+    ],
+    [
+     "PRV-POCO",
+     1,
+     "3.00",
+     "0.00"
+    ]
+   ],
+   "origen": [
+    [
+     "PRV-1",
+     2,
+     "8.75",
+     "0.07"
+    ],
+    [
+     "PRV-S",
+     1,
+     "4.00",
+     "0.29"
+    ],
+    [
+     "PRV-POCO",
+     2,
+     "3.00",
+     "0.00"
+    ]
+   ],
+   "ajustadas": [
+    "PRV-POCO"
+   ]
+  },
+  {
+   "nombre": "la factura original queda intacta",
+   "ok": true,
+   "antes": {
+    "id": 1,
+    "num": "001-001-002555760",
+    "status": "authorized",
+    "cliente": 4,
+    "total": "28.88",
+    "clave": "0411202601099000000000100110010000000041234567813",
+    "receipt": 1,
+    "pago": "efectivo",
+    "pdf": "empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/70936f10b8e04d188_RRRTZix.pdf",
+    "xml": "",
+    "lineas": [
+     [
+      "PRV-1",
+      2,
+      "8.75",
+      "0.07"
+     ],
+     [
+      "PRV-S",
+      1,
+      "4.00",
+      "0.29"
+     ],
+     [
+      "PRV-POCO",
+      2,
+      "3.00",
+      "0.00"
+     ]
+    ]
+   },
+   "despues": {
+    "id": 1,
+    "num": "001-001-002555760",
+    "status": "authorized",
+    "cliente": 4,
+    "total": "28.88",
+    "clave": "0411202601099000000000100110010000000041234567813",
+    "receipt": 1,
+    "pago": "efectivo",
+    "pdf": "empresas/8d43ca75-312a-4266-9a49-7140c30ec77e/comprobantes/pdf/2026/11/70936f10b8e04d188_RRRTZix.pdf",
+    "xml": "",
+    "lineas": [
+     [
+      "PRV-1",
+      2,
+      "8.75",
+      "0.07"
+     ],
+     [
+      "PRV-S",
+      1,
+      "4.00",
+      "0.29"
+     ],
+     [
+      "PRV-POCO",
+      2,
+      "3.00",
+      "0.00"
+     ]
+    ]
+   }
+  },
+  {
+   "nombre": "enlace de base armado para otra empresa: no carga líneas",
+   "ok": true,
+   "estado": "La empresa activa cambió. Vuelve a Facturas emitidas y elige una factura de la empresa actual."
+  },
+  {
+   "nombre": "pantalla de base sin desplazamiento horizontal a 390 px",
+   "ok": true,
+   "scroll": 390,
+   "ancho": 390
+  },
+  {
+   "nombre": "pantalla de base sin desplazamiento horizontal a 1360 px",
+   "ok": true,
+   "scroll": 1360,
+   "ancho": 1360
+  },
+  {
+   "nombre": "abrir la base otra vez no reserva números",
+   "ok": true,
+   "seqDespues": {
+    "1": 2555778
+   },
+   "seqFinal": {
+    "1": 2555778
+   }
+  },
+  {
+   "nombre": "sin errores de JavaScript ni respuestas 5xx",
+   "ok": true,
+   "js": [],
+   "http": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "http5xx": []
+}

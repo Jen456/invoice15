@@ -1,0 +1,317 @@
+{
+ "pasos": [
+  {
+   "nombre": "dni-validado-en-A: la empresa activa cambia a B por POST",
+   "ok": true,
+   "estado": 302
+  },
+  {
+   "nombre": "dni-validado-en-A: al guardar en B no se crea nada en ninguna empresa",
+   "ok": true,
+   "antes": {
+    "clientes": [],
+    "usuarios": 0,
+    "membresias": 0,
+    "total_clientes": 6,
+    "total_usuarios": 10,
+    "total_membresias": 9
+   },
+   "despues": {
+    "clientes": [],
+    "usuarios": 0,
+    "membresias": 0,
+    "total_clientes": 6,
+    "total_usuarios": 10,
+    "total_membresias": 9
+   },
+   "peticiones": [
+    {
+     "accion": "validate_client",
+     "estado": 200
+    },
+    {
+     "accion": "validate_client",
+     "estado": 409
+    }
+   ]
+  },
+  {
+   "nombre": "dni-validado-en-A: aviso claro de empresa cambiada",
+   "ok": true,
+   "alerta": "La empresa activa cambió en otra pestaña. No se creó ningún cliente y lo escrito se conserva. Vuelve a la empresa de esta factura para guardarlo aquí, o recarga la página para trabajar con la empresa nueva.",
+   "campo": ""
+  },
+  {
+   "nombre": "dni-validado-en-A: el diálogo sigue abierto y conserva lo escrito",
+   "ok": true,
+   "valores": {
+    "names": "CLIENTE R1 dni-validado-en-A 0100",
+    "dni": "1723010086",
+    "address": "Av. Ficticia R1 45",
+    "email": "r1.0100.1360@example.com",
+    "mobile": "0990000077"
+   }
+  },
+  {
+   "nombre": "dni-validado-en-A: aparece «Volver a la empresa de esta factura»",
+   "ok": true,
+   "texto": "Volver a la empresa de esta factura",
+   "foco": "fp-client-alert"
+  },
+  {
+   "nombre": "dni-validado-en-A: sin desplazamiento horizontal a 1360 px con el aviso",
+   "ok": true,
+   "scroll": 1360,
+   "ancho": 1360
+  },
+  {
+   "nombre": "dni-validado-en-A: foco visible en el botón de volver",
+   "ok": true,
+   "tag": "BUTTON",
+   "id": "fp-client-volver",
+   "outline": "none 0px",
+   "sombra": "rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+   "sel": "#fp-client-volver"
+  },
+  {
+   "nombre": "dni-validado-en-A: «Volver» reactiva A sin recargar y conserva lo escrito",
+   "ok": true,
+   "estado": 302,
+   "tipo": "",
+   "alerta": "La empresa de esta factura vuelve a estar activa. Revisa los datos y guarda el cliente.",
+   "volverOculto": true,
+   "campo": "",
+   "names": "CLIENTE R1 dni-validado-en-A 0100"
+  },
+  {
+   "nombre": "dni-validado-en-A: la empresa activa vuelve a ser A",
+   "ok": true,
+   "activa": "1"
+  },
+  {
+   "nombre": "dni-validado-en-A: el guardado crea el cliente solo en A y lo selecciona en la factura",
+   "ok": true,
+   "estado": 200,
+   "fin": {
+    "clientes": [
+     {
+      "empresa": 1,
+      "dni": "1723010086"
+     }
+    ],
+    "usuarios": 1,
+    "membresias": 0,
+    "total_clientes": 7,
+    "total_usuarios": 11,
+    "total_membresias": 9
+   },
+   "texto": "Cliente guardado y seleccionado: CLIENTE R1 dni-validado-en-A 0100 (1723010086). Puedes continuar con tu factura.",
+   "seleccionado": "CLIENTE R1 dni-validado-en-A 0100 (1723010086)",
+   "lineas": [
+    "PRV-1"
+   ]
+  },
+  {
+   "nombre": "dni-validado-en-A: secuencia de peticiones",
+   "ok": true,
+   "peticiones": [
+    {
+     "accion": "validate_client",
+     "estado": 200
+    },
+    {
+     "accion": "validate_client",
+     "estado": 409
+    },
+    {
+     "accion": "cambiar_empresa",
+     "estado": 302
+    },
+    {
+     "accion": "validate_client",
+     "estado": 200
+    },
+    {
+     "accion": "validate_client",
+     "estado": 200
+    },
+    {
+     "accion": "create_client",
+     "estado": 200
+    },
+    {
+     "accion": "search_client",
+     "estado": 409
+    }
+   ]
+  },
+  {
+   "nombre": "dni-validado-en-A: la búsqueda del diálogo con la empresa cambiada se rechaza (409) y lo explica",
+   "ok": true,
+   "estado": 409,
+   "matches": "La empresa activa cambió en otra pestaña: vuelve a cargar la página para ver los datos de la empresa que tienes abierta ahora.",
+   "volver": false
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: la empresa activa cambia a B por POST",
+   "ok": true,
+   "estado": 302
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: al guardar en B no se crea nada en ninguna empresa",
+   "ok": true,
+   "antes": {
+    "clientes": [],
+    "usuarios": 0,
+    "membresias": 0,
+    "total_clientes": 7,
+    "total_usuarios": 11,
+    "total_membresias": 9
+   },
+   "despues": {
+    "clientes": [],
+    "usuarios": 0,
+    "membresias": 0,
+    "total_clientes": 7,
+    "total_usuarios": 11,
+    "total_membresias": 9
+   },
+   "peticiones": [
+    {
+     "accion": "validate_client",
+     "estado": 409
+    },
+    {
+     "accion": "validate_client",
+     "estado": 409
+    }
+   ]
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: aviso claro de empresa cambiada",
+   "ok": true,
+   "alerta": "La empresa activa cambió en otra pestaña. No se creó ningún cliente y lo escrito se conserva. Vuelve a la empresa de esta factura para guardarlo aquí, o recarga la página para trabajar con la empresa nueva.",
+   "campo": ""
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: el diálogo sigue abierto y conserva lo escrito",
+   "ok": true,
+   "valores": {
+    "names": "CLIENTE R1 dni-escrito-tras-el-cambio 0100",
+    "dni": "1724010077",
+    "address": "Av. Ficticia R1 45",
+    "email": "r1.0100.390@example.com",
+    "mobile": "0990000077"
+   }
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: aparece «Volver a la empresa de esta factura»",
+   "ok": true,
+   "texto": "Volver a la empresa de esta factura",
+   "foco": "fp-client-alert"
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: sin desplazamiento horizontal a 390 px con el aviso",
+   "ok": true,
+   "scroll": 390,
+   "ancho": 390
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: foco visible en el botón de volver",
+   "ok": true,
+   "tag": "BUTTON",
+   "id": "fp-client-volver",
+   "outline": "none 0px",
+   "sombra": "rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+   "sel": "#fp-client-volver"
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: «Volver» reactiva A sin recargar y conserva lo escrito",
+   "ok": true,
+   "estado": 302,
+   "tipo": "",
+   "alerta": "La empresa de esta factura vuelve a estar activa. Revisa los datos y guarda el cliente.",
+   "volverOculto": true,
+   "campo": "",
+   "names": "CLIENTE R1 dni-escrito-tras-el-cambio 0100"
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: la empresa activa vuelve a ser A",
+   "ok": true,
+   "activa": "1"
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: el guardado crea el cliente solo en A y lo selecciona en la factura",
+   "ok": true,
+   "estado": 200,
+   "fin": {
+    "clientes": [
+     {
+      "empresa": 1,
+      "dni": "1724010077"
+     }
+    ],
+    "usuarios": 1,
+    "membresias": 0,
+    "total_clientes": 8,
+    "total_usuarios": 12,
+    "total_membresias": 9
+   },
+   "texto": "Cliente guardado y seleccionado: CLIENTE R1 dni-escrito-tras-el-cambio 0100 (1724010077). Puedes continuar con tu factura.",
+   "seleccionado": "CLIENTE R1 dni-escrito-tras-el-cambio 0100 (1724010077)",
+   "lineas": [
+    "PRV-1"
+   ]
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: secuencia de peticiones",
+   "ok": true,
+   "peticiones": [
+    {
+     "accion": "validate_client",
+     "estado": 409
+    },
+    {
+     "accion": "validate_client",
+     "estado": 409
+    },
+    {
+     "accion": "cambiar_empresa",
+     "estado": 302
+    },
+    {
+     "accion": "validate_client",
+     "estado": 200
+    },
+    {
+     "accion": "validate_client",
+     "estado": 200
+    },
+    {
+     "accion": "create_client",
+     "estado": 200
+    },
+    {
+     "accion": "search_client",
+     "estado": 409
+    }
+   ]
+  },
+  {
+   "nombre": "dni-escrito-tras-el-cambio: la búsqueda del diálogo con la empresa cambiada se rechaza (409) y lo explica",
+   "ok": true,
+   "estado": 409,
+   "matches": "La empresa activa cambió en otra pestaña: vuelve a cargar la página para ver los datos de la empresa que tienes abierta ahora.",
+   "volver": false
+  },
+  {
+   "nombre": "sin errores de JavaScript ni respuestas 5xx",
+   "ok": true,
+   "js": [],
+   "http": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "http5xx": []
+}

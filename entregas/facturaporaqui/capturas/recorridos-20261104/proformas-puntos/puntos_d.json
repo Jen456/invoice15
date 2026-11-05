@@ -1,0 +1,136 @@
+{
+  "pasos": [
+    {
+      "nombre": "001-003 creado sin numeración y autorizado al vendedor",
+      "ok": true,
+      "detalle": {
+        "alta": "Punto de emisión 001-003 agregado.",
+        "autorizar": "vendedor.previa puede emitir desde 001-003."
+      }
+    },
+    {
+      "nombre": "Vendedor con dos autorizados: el selector solo trae 001-002 y 001-003",
+      "ok": true,
+      "detalle": {
+        "opciones": [
+          [
+            "",
+            "Elige el punto de emisión",
+            true
+          ],
+          [
+            "2",
+            "AV. FICTICIA 123, GUAYAQUIL · Caja 2 de prueba · 001-002",
+            false
+          ],
+          [
+            "3",
+            "AV. FICTICIA 123, GUAYAQUIL · Caja 3 sin numeracion · 001-003",
+            false
+          ]
+        ],
+        "etiqueta": "un punto por elegir",
+        "proximo": "Por confirmar",
+        "aviso": "Elige el punto de emisión desde el que emites (arriba, junto al nombre de la empresa).",
+        "voucher": ""
+      }
+    },
+    {
+      "nombre": "Emitir sin elegir punto: mensaje claro y nada se emite",
+      "ok": true,
+      "detalle": {
+        "confirmo": false,
+        "respuesta": null,
+        "swal": null,
+        "invalidos": [
+          "Este campo es obligatorio"
+        ]
+      }
+    },
+    {
+      "nombre": "001-003 sin numeración: aviso en el bloque y emisión rechazada",
+      "ok": false,
+      "detalle": {
+        "bloque": {
+          "opciones": [
+            [
+              "",
+              "Elige el punto de emisión",
+              false
+            ],
+            [
+              "2",
+              "AV. FICTICIA 123, GUAYAQUIL · Caja 2 de prueba · 001-002",
+              false
+            ],
+            [
+              "3",
+              "AV. FICTICIA 123, GUAYAQUIL · Caja 3 sin numeracion · 001-003",
+              true
+            ]
+          ],
+          "etiqueta": "AV. FICTICIA 123, GUAYAQUIL · Caja 3 sin numeracion · 001-003",
+          "proximo": "Por confirmar",
+          "aviso": "Configura y confirma la numeración de facturas del punto 001-003 para el ambiente PRUEBAS en «Locales y puntos de emisión».",
+          "voucher": ""
+        },
+        "emitir": {
+          "confirmo": false,
+          "respuesta": null,
+          "swal": null,
+          "invalidos": [
+            "Este campo es obligatorio"
+          ]
+        }
+      }
+    },
+    {
+      "nombre": "Volver a 001-002 muestra su próximo número",
+      "ok": true,
+      "detalle": {
+        "opciones": [
+          [
+            "",
+            "Elige el punto de emisión",
+            false
+          ],
+          [
+            "2",
+            "AV. FICTICIA 123, GUAYAQUIL · Caja 2 de prueba · 001-002",
+            true
+          ],
+          [
+            "3",
+            "AV. FICTICIA 123, GUAYAQUIL · Caja 3 sin numeracion · 001-003",
+            false
+          ]
+        ],
+        "etiqueta": "AV. FICTICIA 123, GUAYAQUIL · Caja 2 de prueba · 001-002",
+        "proximo": "001-002-000000006",
+        "aviso": null,
+        "voucher": "000000006"
+      }
+    },
+    {
+      "nombre": "Restaurado: el vendedor vuelve a tener solo 001-002",
+      "ok": true,
+      "detalle": {
+        "quitar": "vendedor.previa ya no tiene autorizado 001-003.",
+        "desactivar": "Punto de emisión 001-003 desactivado.",
+        "elegibles": [
+          "001-002"
+        ]
+      }
+    }
+  ],
+  "registro_dueno": {
+    "errores_js": [],
+    "respuestas_5xx": [],
+    "consola": []
+  },
+  "registro_vendedor": {
+    "errores_js": [],
+    "respuestas_5xx": [],
+    "consola": []
+  }
+}

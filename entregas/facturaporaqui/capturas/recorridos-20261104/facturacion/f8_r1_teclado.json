@@ -1,0 +1,62 @@
+{
+ "pasos": [
+  {
+   "nombre": "R1 con teclado (Enter) en «Volver a la empresa de esta factura»",
+   "ok": true,
+   "enfocado": "fp-client-volver",
+   "durante": {
+    "activo": "BODY",
+    "deshabilitado": true
+   },
+   "ms": 3501,
+   "red": [
+    "/empresas/cambiar/ ",
+    "/pos/sale/admin/add/ validate_client"
+   ],
+   "alerta": "La empresa de esta factura vuelve a estar activa. Revisa los datos y guarda el cliente.",
+   "volverOculto": true,
+   "activo": "fp-client-save",
+   "modal": "block",
+   "activa": "1"
+  },
+  {
+   "nombre": "R1 con teclado (Space) en «Volver a la empresa de esta factura»",
+   "ok": true,
+   "enfocado": "fp-client-volver",
+   "durante": {
+    "activo": "BODY",
+    "deshabilitado": true
+   },
+   "ms": 4200,
+   "red": [
+    "/empresas/cambiar/ ",
+    "/pos/sale/admin/add/ validate_client"
+   ],
+   "alerta": "La empresa de esta factura vuelve a estar activa. Revisa los datos y guarda el cliente.",
+   "volverOculto": true,
+   "activo": "fp-client-save",
+   "modal": "block",
+   "activa": "1"
+  },
+  {
+   "nombre": "sin errores de JavaScript",
+   "ok": false,
+   "js": [
+    "console: Failed to load resource: the server responded with a status of 409 (Conflict)",
+    "console: Failed to load resource: the server responded with a status of 409 (Conflict)",
+    "console: Failed to load resource: the server responded with a status of 409 (Conflict)",
+    "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+   ]
+  }
+ ],
+ "fallidas": [
+  "sin errores de JavaScript"
+ ],
+ "errores_js": [
+  "console: Failed to load resource: the server responded with a status of 409 (Conflict)",
+  "console: Failed to load resource: the server responded with a status of 409 (Conflict)",
+  "console: Failed to load resource: the server responded with a status of 409 (Conflict)",
+  "console: Failed to load resource: the server responded with a status of 409 (Conflict)"
+ ],
+ "http5xx": []
+}

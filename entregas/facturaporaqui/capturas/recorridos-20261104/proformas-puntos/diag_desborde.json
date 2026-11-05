@@ -1,0 +1,589 @@
+{
+ "390": {
+  "editor_vacio": {
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "ok": true,
+   "culpables": [
+    {
+     "el": "tr",
+     "right": 1092,
+     "width": 1049
+    },
+    {
+     "el": "th",
+     "right": 506,
+     "width": 269
+    },
+    {
+     "el": "th",
+     "right": 612,
+     "width": 106
+    },
+    {
+     "el": "th",
+     "right": 813,
+     "width": 201
+    },
+    {
+     "el": "th",
+     "right": 955,
+     "width": 142
+    },
+    {
+     "el": "th",
+     "right": 1067,
+     "width": 112
+    },
+    {
+     "el": "th",
+     "right": 1092,
+     "width": 25
+    },
+    {
+     "el": "span.sr-only",
+     "right": 1080,
+     "width": 1
+    }
+   ]
+  },
+  "editor_con_lineas": {
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "ok": true,
+   "culpables": [
+    {
+     "el": "tr",
+     "right": 1092,
+     "width": 1049
+    },
+    {
+     "el": "th",
+     "right": 506,
+     "width": 269
+    },
+    {
+     "el": "th",
+     "right": 612,
+     "width": 106
+    },
+    {
+     "el": "th",
+     "right": 813,
+     "width": 201
+    },
+    {
+     "el": "th",
+     "right": 955,
+     "width": 142
+    },
+    {
+     "el": "th",
+     "right": 1067,
+     "width": 112
+    },
+    {
+     "el": "th",
+     "right": 1092,
+     "width": 25
+    },
+    {
+     "el": "span.sr-only",
+     "right": 1080,
+     "width": 1
+    }
+   ]
+  },
+  "editor_tras_cerrar_menus": {
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "ok": true,
+   "culpables": [
+    {
+     "el": "tr",
+     "right": 1092,
+     "width": 1049
+    },
+    {
+     "el": "th",
+     "right": 506,
+     "width": 269
+    },
+    {
+     "el": "th",
+     "right": 612,
+     "width": 106
+    },
+    {
+     "el": "th",
+     "right": 813,
+     "width": 201
+    },
+    {
+     "el": "th",
+     "right": 955,
+     "width": 142
+    },
+    {
+     "el": "th",
+     "right": 1067,
+     "width": 112
+    },
+    {
+     "el": "th",
+     "right": 1092,
+     "width": 25
+    },
+    {
+     "el": "span.sr-only",
+     "right": 1080,
+     "width": 1
+    }
+   ]
+  },
+  "/proformas/": {
+   "url": "http://127.0.0.1:8782/proformas/",
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "ok": true,
+   "culpables": []
+  },
+  "/proformas/ver/1/": {
+   "url": "http://127.0.0.1:8782/proformas/ver/1/",
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "ok": true,
+   "culpables": [
+    {
+     "el": "table#fp-lineas.table.table-bordered.table-sm",
+     "right": 674,
+     "width": 651
+    },
+    {
+     "el": "thead",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "tr",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "th.text-right",
+     "right": 484,
+     "width": 117
+    },
+    {
+     "el": "th.text-right",
+     "right": 605,
+     "width": 120
+    },
+    {
+     "el": "th.text-right",
+     "right": 673,
+     "width": 69
+    },
+    {
+     "el": "tbody",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "tr",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "td.text-right",
+     "right": 484,
+     "width": 117
+    },
+    {
+     "el": "td.text-right",
+     "right": 605,
+     "width": 120
+    },
+    {
+     "el": "td.text-right",
+     "right": 673,
+     "width": 69
+    },
+    {
+     "el": "tr",
+     "right": 673,
+     "width": 650
+    }
+   ]
+  },
+  "/proformas/ver/2/": {
+   "url": "http://127.0.0.1:8782/proformas/ver/2/",
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "ok": true,
+   "culpables": [
+    {
+     "el": "table#fp-lineas.table.table-bordered.table-sm",
+     "right": 674,
+     "width": 651
+    },
+    {
+     "el": "thead",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "tr",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "th.text-right",
+     "right": 484,
+     "width": 117
+    },
+    {
+     "el": "th.text-right",
+     "right": 605,
+     "width": 120
+    },
+    {
+     "el": "th.text-right",
+     "right": 673,
+     "width": 69
+    },
+    {
+     "el": "tbody",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "tr",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "td.text-right",
+     "right": 484,
+     "width": 117
+    },
+    {
+     "el": "td.text-right",
+     "right": 605,
+     "width": 120
+    },
+    {
+     "el": "td.text-right",
+     "right": 673,
+     "width": 69
+    }
+   ]
+  },
+  "/proformas/update/2/": {
+   "url": "http://127.0.0.1:8782/proformas/ver/2/",
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "ok": true,
+   "culpables": [
+    {
+     "el": "table#fp-lineas.table.table-bordered.table-sm",
+     "right": 674,
+     "width": 651
+    },
+    {
+     "el": "thead",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "tr",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "th.text-right",
+     "right": 484,
+     "width": 117
+    },
+    {
+     "el": "th.text-right",
+     "right": 605,
+     "width": 120
+    },
+    {
+     "el": "th.text-right",
+     "right": 673,
+     "width": 69
+    },
+    {
+     "el": "tbody",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "tr",
+     "right": 673,
+     "width": 650
+    },
+    {
+     "el": "td.text-right",
+     "right": 484,
+     "width": 117
+    },
+    {
+     "el": "td.text-right",
+     "right": 605,
+     "width": 120
+    },
+    {
+     "el": "td.text-right",
+     "right": 673,
+     "width": 69
+    }
+   ]
+  },
+  "/configuracion/puntos/": {
+   "url": "http://127.0.0.1:8782/configuracion/puntos/",
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "ok": true,
+   "culpables": [
+    {
+     "el": "th",
+     "right": 525,
+     "width": 135
+    }
+   ]
+  },
+  "/configuracion/facturacion/paso/2/": {
+   "url": "http://127.0.0.1:8782/configuracion/facturacion/paso/2/",
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "ok": true,
+   "culpables": []
+  },
+  "/configuracion/facturacion/paso/3/": {
+   "url": "http://127.0.0.1:8782/configuracion/facturacion/paso/3/",
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "ok": true,
+   "culpables": []
+  },
+  "/pos/sale/admin/add/?proforma=2": {
+   "url": "http://127.0.0.1:8782/pos/sale/admin/add/?proforma=2",
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "ok": true,
+   "culpables": [
+    {
+     "el": "tr",
+     "right": 807,
+     "width": 781
+    },
+    {
+     "el": "th.sorting_disabled.text-center",
+     "right": 394,
+     "width": 75
+    },
+    {
+     "el": "th.sorting_disabled.text-center",
+     "right": 500,
+     "width": 106
+    },
+    {
+     "el": "th.sorting_disabled.text-center",
+     "right": 618,
+     "width": 118
+    },
+    {
+     "el": "th.sorting_disabled.text-center",
+     "right": 738,
+     "width": 120
+    },
+    {
+     "el": "th.sorting_disabled.text-center",
+     "right": 807,
+     "width": 69
+    }
+   ]
+  },
+  "registro": {
+   "errores_js": [],
+   "respuestas_5xx": [],
+   "consola": []
+  }
+ },
+ "1360": {
+  "editor_vacio": {
+   "scrollWidth": 1379,
+   "innerWidth": 1360,
+   "ok": false,
+   "culpables": [
+    {
+     "el": "table#tblLineas.table.table-bordered.table-sm",
+     "right": 1379,
+     "width": 1050
+    },
+    {
+     "el": "thead",
+     "right": 1378,
+     "width": 1049
+    },
+    {
+     "el": "tr",
+     "right": 1378,
+     "width": 1049
+    },
+    {
+     "el": "th",
+     "right": 1378,
+     "width": 25
+    },
+    {
+     "el": "span.sr-only",
+     "right": 1366,
+     "width": 1
+    },
+    {
+     "el": "tbody",
+     "right": 1378,
+     "width": 1049
+    }
+   ]
+  },
+  "editor_con_lineas": {
+   "scrollWidth": 1415,
+   "innerWidth": 1360,
+   "ok": false,
+   "culpables": [
+    {
+     "el": "table#tblLineas.table.table-bordered.table-sm",
+     "right": 1415,
+     "width": 1086
+    },
+    {
+     "el": "thead",
+     "right": 1414,
+     "width": 1085
+    },
+    {
+     "el": "tr",
+     "right": 1414,
+     "width": 1085
+    },
+    {
+     "el": "th",
+     "right": 1414,
+     "width": 61
+    },
+    {
+     "el": "span.sr-only",
+     "right": 1366,
+     "width": 1
+    },
+    {
+     "el": "tbody",
+     "right": 1414,
+     "width": 1085
+    },
+    {
+     "el": "tr",
+     "right": 1414,
+     "width": 1085
+    },
+    {
+     "el": "td",
+     "right": 1414,
+     "width": 61
+    },
+    {
+     "el": "button.btn.btn-danger.btn-xs",
+     "right": 1402,
+     "width": 36
+    },
+    {
+     "el": "i.fas.fa-times",
+     "right": 1389,
+     "width": 10
+    },
+    {
+     "el": "tr",
+     "right": 1414,
+     "width": 1085
+    },
+    {
+     "el": "td",
+     "right": 1414,
+     "width": 61
+    }
+   ]
+  },
+  "editor_tras_cerrar_menus": {
+   "scrollWidth": 1360,
+   "innerWidth": 1360,
+   "ok": true,
+   "culpables": []
+  },
+  "/proformas/": {
+   "url": "http://127.0.0.1:8782/proformas/",
+   "scrollWidth": 1360,
+   "innerWidth": 1360,
+   "ok": true,
+   "culpables": []
+  },
+  "/proformas/ver/1/": {
+   "url": "http://127.0.0.1:8782/proformas/ver/1/",
+   "scrollWidth": 1360,
+   "innerWidth": 1360,
+   "ok": true,
+   "culpables": []
+  },
+  "/proformas/ver/2/": {
+   "url": "http://127.0.0.1:8782/proformas/ver/2/",
+   "scrollWidth": 1360,
+   "innerWidth": 1360,
+   "ok": true,
+   "culpables": []
+  },
+  "/proformas/update/2/": {
+   "url": "http://127.0.0.1:8782/proformas/ver/2/",
+   "scrollWidth": 1360,
+   "innerWidth": 1360,
+   "ok": true,
+   "culpables": []
+  },
+  "/configuracion/puntos/": {
+   "url": "http://127.0.0.1:8782/configuracion/puntos/",
+   "scrollWidth": 1360,
+   "innerWidth": 1360,
+   "ok": true,
+   "culpables": []
+  },
+  "/configuracion/facturacion/paso/2/": {
+   "url": "http://127.0.0.1:8782/configuracion/facturacion/paso/2/",
+   "scrollWidth": 1360,
+   "innerWidth": 1360,
+   "ok": true,
+   "culpables": []
+  },
+  "/configuracion/facturacion/paso/3/": {
+   "url": "http://127.0.0.1:8782/configuracion/facturacion/paso/3/",
+   "scrollWidth": 1360,
+   "innerWidth": 1360,
+   "ok": true,
+   "culpables": []
+  },
+  "/pos/sale/admin/add/?proforma=2": {
+   "url": "http://127.0.0.1:8782/pos/sale/admin/add/?proforma=2",
+   "scrollWidth": 1360,
+   "innerWidth": 1360,
+   "ok": true,
+   "culpables": []
+  },
+  "registro": {
+   "errores_js": [],
+   "respuestas_5xx": [],
+   "consola": []
+  }
+ }
+}

@@ -1,0 +1,63 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [],
+ "pasos": {
+  "pantallas_v9_rutas": {
+   "ok": true,
+   "detalle": {
+    "menu": [
+     "/pos/purchase/",
+     "/importacion/recibidos/",
+     "/pos/expenses/",
+     "/adjuntos/capturas/",
+     "/importacion/nueva/",
+     "/importacion/claves/",
+     "/importacion/lotes/",
+     "/importacion/pendientes/",
+     "/adjuntos/",
+     "/tributario/libros/",
+     "/tributario/revision/",
+     "/tributario/ats/",
+     "/tributario/formularios/",
+     "/tributario/empresas/",
+     "/contabilidad/kardex/",
+     "/contabilidad/inventario/",
+     "/reports/purchase/",
+     "/reports/expenses/",
+     "/importacion/reglas/"
+    ],
+    "rutas": {
+     "/contabilidad/": "404",
+     "/contabilidad/plan/": "404",
+     "/contabilidad/cuentas/": "404",
+     "/contabilidad/plan-de-cuentas/": "404",
+     "/contabilidad/importar/": "404",
+     "/contabilidad/asientos/": "404",
+     "/contabilidad/revision/": "404",
+     "/contabilidad/cierre/": "404",
+     "/contabilidad/reportes/": "404",
+     "/contabilidad/respaldos/": "404",
+     "/tributario/revision/": "200",
+     "/adjuntos/": "200",
+     "/adjuntos/capturas/": "200",
+     "/importacion/nueva/": "200",
+     "/importacion/claves/": "200",
+     "/importacion/lotes/": "200",
+     "/importacion/pendientes/": "200",
+     "/importacion/recibidos/": "200",
+     "/importacion/reglas/": "200",
+     "/pos/purchase/": "200",
+     "/pos/purchase/add/": "200",
+     "/pos/expenses/": "200",
+     "/pos/expenses/add/": "200",
+     "/entregas/facturaporaqui/propuestas/ux-v9/index.html": "404",
+     "/referencias/frontend-v9/": "404"
+    },
+    "revision_mensual_texto": " Panel Revisión del mes Tu revisión contable · paso a paso Revisión del mes Lo que conviene mirar antes de declarar, con su causa y el enlace a cada registro. No es un cierre contable, no certifica nada y no bloquea ninguna operación. «Revisar» no significa incumplimiento: confírmalo con tu contador. Mes Ver Mes anterior Observaciones por revisar22Informativas0Cuentas vencidas al2026-11-04 La empresa no está marcada como agente de retención: no se revisan compras sin retención. CategoríaTodas la",
+    "revision_mensual_campos_archivo": 0
+   }
+  }
+ },
+ "fallos": []
+}

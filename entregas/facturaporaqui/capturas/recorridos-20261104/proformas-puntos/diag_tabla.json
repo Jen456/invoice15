@@ -1,0 +1,228 @@
+{
+ "390": {
+  "vacio": {
+   "body": "sidebar-mini layout-fixed fp-stage sidebar-closed sidebar-collapse",
+   "tabla": {
+    "left": 43,
+    "right": 347,
+    "width": 304
+   },
+   "padre": {
+    "right": 364,
+    "width": 338
+   },
+   "contenedor_overflow": null,
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "filas_display": [],
+   "thead_display": "block"
+  },
+  "con_lineas": {
+   "body": "sidebar-mini layout-fixed fp-stage sidebar-closed sidebar-collapse",
+   "tabla": {
+    "left": 43,
+    "right": 347,
+    "width": 304
+   },
+   "padre": {
+    "right": 364,
+    "width": 338
+   },
+   "contenedor_overflow": null,
+   "scrollWidth": 390,
+   "innerWidth": 390,
+   "filas_display": [
+    "grid",
+    "grid"
+   ],
+   "thead_display": "block"
+  },
+  "quitar_visible": {
+   "left": 54,
+   "right": 90,
+   "dentro": true
+  },
+  "precio_visible": {
+   "left": 199,
+   "right": 336,
+   "dentro": true
+  }
+ },
+ "1360": {
+  "vacio": {
+   "body": "sidebar-mini layout-fixed fp-stage",
+   "tabla": {
+    "left": 329,
+    "right": 1379,
+    "width": 1050
+   },
+   "padre": {
+    "right": 1298,
+    "width": 987
+   },
+   "contenedor_overflow": null,
+   "scrollWidth": 1379,
+   "innerWidth": 1360,
+   "filas_display": [],
+   "thead_display": "table-header-group"
+  },
+  "con_lineas": {
+   "body": "sidebar-mini layout-fixed fp-stage",
+   "tabla": {
+    "left": 329,
+    "right": 1415,
+    "width": 1086
+   },
+   "padre": {
+    "right": 1298,
+    "width": 987
+   },
+   "contenedor_overflow": null,
+   "scrollWidth": 1415,
+   "innerWidth": 1360,
+   "filas_display": [
+    "table-row",
+    "table-row"
+   ],
+   "thead_display": "table-header-group"
+  },
+  "menu_plegado": {
+   "body": "sidebar-mini layout-fixed fp-stage sidebar-collapse",
+   "tabla": {
+    "left": 152,
+    "right": 1281,
+    "width": 1129
+   },
+   "padre": {
+    "right": 1298,
+    "width": 1163
+   },
+   "contenedor_overflow": null,
+   "scrollWidth": 1360,
+   "innerWidth": 1360,
+   "filas_display": [
+    "table-row",
+    "table-row"
+   ],
+   "thead_display": "table-header-group"
+  }
+ },
+ "1440": {
+  "vacio": {
+   "body": "sidebar-mini layout-fixed fp-stage",
+   "tabla": {
+    "left": 329,
+    "right": 1379,
+    "width": 1050
+   },
+   "padre": {
+    "right": 1378,
+    "width": 1067
+   },
+   "contenedor_overflow": null,
+   "scrollWidth": 1440,
+   "innerWidth": 1440,
+   "filas_display": [],
+   "thead_display": "table-header-group"
+  },
+  "con_lineas": {
+   "body": "sidebar-mini layout-fixed fp-stage",
+   "tabla": {
+    "left": 329,
+    "right": 1415,
+    "width": 1086
+   },
+   "padre": {
+    "right": 1378,
+    "width": 1067
+   },
+   "contenedor_overflow": null,
+   "scrollWidth": 1440,
+   "innerWidth": 1440,
+   "filas_display": [
+    "table-row",
+    "table-row"
+   ],
+   "thead_display": "table-header-group"
+  },
+  "menu_plegado": {
+   "body": "sidebar-mini layout-fixed fp-stage sidebar-collapse",
+   "tabla": {
+    "left": 152,
+    "right": 1361,
+    "width": 1209
+   },
+   "padre": {
+    "right": 1378,
+    "width": 1243
+   },
+   "contenedor_overflow": null,
+   "scrollWidth": 1440,
+   "innerWidth": 1440,
+   "filas_display": [
+    "table-row",
+    "table-row"
+   ],
+   "thead_display": "table-header-group"
+  }
+ },
+ "1600": {
+  "vacio": {
+   "body": "sidebar-mini layout-fixed fp-stage",
+   "tabla": {
+    "left": 329,
+    "right": 1521,
+    "width": 1193
+   },
+   "padre": {
+    "right": 1538,
+    "width": 1227
+   },
+   "contenedor_overflow": null,
+   "scrollWidth": 1600,
+   "innerWidth": 1600,
+   "filas_display": [],
+   "thead_display": "table-header-group"
+  },
+  "con_lineas": {
+   "body": "sidebar-mini layout-fixed fp-stage",
+   "tabla": {
+    "left": 329,
+    "right": 1521,
+    "width": 1193
+   },
+   "padre": {
+    "right": 1538,
+    "width": 1227
+   },
+   "contenedor_overflow": null,
+   "scrollWidth": 1600,
+   "innerWidth": 1600,
+   "filas_display": [
+    "table-row",
+    "table-row"
+   ],
+   "thead_display": "table-header-group"
+  },
+  "menu_plegado": {
+   "body": "sidebar-mini layout-fixed fp-stage sidebar-collapse",
+   "tabla": {
+    "left": 152,
+    "right": 1521,
+    "width": 1369
+   },
+   "padre": {
+    "right": 1538,
+    "width": 1403
+   },
+   "contenedor_overflow": null,
+   "scrollWidth": 1600,
+   "innerWidth": 1600,
+   "filas_display": [
+    "table-row",
+    "table-row"
+   ],
+   "thead_display": "table-header-group"
+  }
+ }
+}

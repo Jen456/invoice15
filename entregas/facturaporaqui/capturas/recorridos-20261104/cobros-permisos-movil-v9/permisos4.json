@@ -1,0 +1,53 @@
+{
+ "nombre": "permisos4",
+ "pasos": [
+  {
+   "nombre": "vendedor.previa: no ve «Nuevo registro» donde no tiene permiso de alta",
+   "ok": false,
+   "res": {
+    "/pos/product/": {
+     "botones": 1,
+     "destino": "/pos/product/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    }
+   }
+  },
+  {
+   "nombre": "contador.previa: no ve «Nuevo registro» donde no tiene permiso de alta",
+   "ok": false,
+   "res": {
+    "/pos/sale/admin/": {
+     "botones": 2,
+     "destino": "/pos/sale/admin/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/purchase/": {
+     "botones": 1,
+     "destino": "/pos/purchase/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/expenses/": {
+     "botones": 2,
+     "destino": "/pos/expenses/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/ctas/collect/": {
+     "botones": 2,
+     "destino": "/pos/ctas/collect/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/client/": {
+     "botones": 1,
+     "destino": "/pos/client/",
+     "aviso": "Tu perfil no cuenta con el permiso necesario para ingresar"
+    }
+   }
+  }
+ ],
+ "fallidas": [
+  "vendedor.previa: no ve «Nuevo registro» donde no tiene permiso de alta",
+  "contador.previa: no ve «Nuevo registro» donde no tiene permiso de alta"
+ ],
+ "errores_js": [],
+ "respuestas_5xx": []
+}

@@ -1,0 +1,37 @@
+{
+ "pasos": [
+  {
+   "nombre": "dueno.demo: panel de cobros de la factura con el comprobante; archivo por la vista y no por /media",
+   "ok": true,
+   "panel": 200,
+   "archivo": 200,
+   "tipo": "image/png",
+   "bytes": 70,
+   "directo": 404
+  },
+  {
+   "nombre": "consulta.fact: panel de cobros de la factura con el comprobante; archivo por la vista y no por /media",
+   "ok": true,
+   "panel": 200,
+   "archivo": 200,
+   "tipo": "image/png",
+   "bytes": 70,
+   "directo": 404
+  },
+  {
+   "nombre": "con la empresa B activa, el cobro y el archivo de A no se sirven",
+   "ok": true,
+   "panel": 404,
+   "archivo": 404
+  },
+  {
+   "nombre": "sin errores de JavaScript ni respuestas 5xx",
+   "ok": true,
+   "js": [],
+   "http": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "http5xx": []
+}

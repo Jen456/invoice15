@@ -1,0 +1,2429 @@
+{
+ "nombre": "permisos",
+ "pasos": [
+  {
+   "nombre": "Consulta: ningún POST de alta escribe (conteos iguales en la base)",
+   "ok": true,
+   "cambios": {}
+  },
+  {
+   "nombre": "Consulta: todos los POST de alta responden 403",
+   "ok": false,
+   "no_403": [
+    [
+     "comprobante de pago (venta 1)",
+     404,
+     "{\"error\": \"Tipo de documento desconocido.\"}"
+    ]
+   ]
+  },
+  {
+   "nombre": "Vendedor: los POST de alta no escriben (solo validaciones con datos inválidos)",
+   "ok": true,
+   "cambios": {},
+   "altas": {
+    "cliente": 200,
+    "producto": 403,
+    "categoría": 403,
+    "proveedor": 403,
+    "promoción": 403,
+    "tipo de gasto": 403,
+    "gasto": 403,
+    "compra": 403,
+    "factura": 200,
+    "proforma": 400,
+    "recibo por completar": 200,
+    "comprobante de pago (venta 1)": 404,
+    "importación XML": 403,
+    "importación por claves": 403,
+    "importación API lote": 403,
+    "regla de importación": 403,
+    "punto de emisión": 403,
+    "movimiento manual de kardex": 403,
+    "cobro en CxC": 403,
+    "usuario": 403
+   }
+  },
+  {
+   "nombre": "Contador: los POST de alta no escriben",
+   "ok": true,
+   "cambios": {},
+   "altas": {
+    "cliente": 403,
+    "producto": 403,
+    "categoría": 403,
+    "proveedor": 403,
+    "promoción": 403,
+    "tipo de gasto": 403,
+    "gasto": 403,
+    "compra": 403,
+    "factura": 403,
+    "proforma": 403,
+    "recibo por completar": 200,
+    "comprobante de pago (venta 1)": 404,
+    "importación XML": 403,
+    "importación por claves": 403,
+    "importación API lote": 403,
+    "regla de importación": 403,
+    "punto de emisión": 403,
+    "movimiento manual de kardex": 400,
+    "cobro en CxC": 403,
+    "usuario": 403
+   }
+  },
+  {
+   "nombre": "Propietario: toda opción del menú probada abre su página",
+   "ok": false,
+   "rotos": [
+    [
+     "/configuracion/facturacion/",
+     200,
+     "/configuracion/facturacion/paso/5/",
+     ""
+    ]
+   ]
+  },
+  {
+   "nombre": "Propietario: no abre pantallas que no estén en su menú (salvo altas)",
+   "ok": true,
+   "fuera": []
+  },
+  {
+   "nombre": "Vendedor: toda opción del menú probada abre su página",
+   "ok": true,
+   "rotos": []
+  },
+  {
+   "nombre": "Vendedor: no abre pantallas que no estén en su menú (salvo altas)",
+   "ok": true,
+   "fuera": []
+  },
+  {
+   "nombre": "Contador: toda opción del menú probada abre su página",
+   "ok": true,
+   "rotos": []
+  },
+  {
+   "nombre": "Contador: no abre pantallas que no estén en su menú (salvo altas)",
+   "ok": true,
+   "fuera": []
+  },
+  {
+   "nombre": "Consulta: toda opción del menú probada abre su página",
+   "ok": false,
+   "rotos": [
+    [
+     "/importacion/claves/",
+     200,
+     "/pos/product/",
+     "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    ]
+   ]
+  },
+  {
+   "nombre": "Consulta: no abre pantallas que no estén en su menú (salvo altas)",
+   "ok": true,
+   "fuera": []
+  },
+  {
+   "nombre": "Consulta: las páginas que abre no muestran botones de alta",
+   "ok": false,
+   "conAltas": [
+    [
+     "/pos/sale/admin/",
+     [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ]
+    ],
+    [
+     "/pos/purchase/",
+     [
+      "Nuevo registro"
+     ]
+    ],
+    [
+     "/pos/expenses/",
+     [
+      "Nuevo registro",
+      "Guardar recibo o nota para completar después",
+      "Nuevo Registro"
+     ]
+    ],
+    [
+     "/pos/ctas/collect/",
+     [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ]
+    ],
+    [
+     "/pos/client/",
+     [
+      "Nuevo registro"
+     ]
+    ],
+    [
+     "/pos/product/",
+     [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ]
+    ],
+    [
+     "/importacion/lotes/",
+     [
+      "Importar por claves o reporte del SRI"
+     ]
+    ],
+    [
+     "/importacion/pendientes/",
+     [
+      "Importar por claves o reporte del SRI"
+     ]
+    ]
+   ]
+  },
+  {
+   "nombre": "sin errores de JavaScript",
+   "ok": true,
+   "errores": []
+  },
+  {
+   "nombre": "sin respuestas 5xx",
+   "ok": true,
+   "r": []
+  }
+ ],
+ "fallidas": [
+  "Consulta: todos los POST de alta responden 403",
+  "Propietario: toda opción del menú probada abre su página",
+  "Consulta: toda opción del menú probada abre su página",
+  "Consulta: las páginas que abre no muestran botones de alta"
+ ],
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "matriz": {
+  "Propietario": {
+   "menu": [
+    "/pos/sale/admin/",
+    "/pos/credit/note/admin/",
+    "/comprobantes/retenciones/",
+    "/comprobantes/notas-debito/",
+    "/comprobantes/guias/",
+    "/comprobantes/liquidaciones/",
+    "/pos/voucher/errors/",
+    "/proformas/",
+    "/pos/client/",
+    "/pos/promotions/",
+    "/pos/purchase/",
+    "/importacion/recibidos/",
+    "/pos/provider/",
+    "/pos/expenses/",
+    "/pos/type/expense/",
+    "/adjuntos/capturas/",
+    "/importacion/nueva/",
+    "/importacion/claves/",
+    "/importacion/lotes/",
+    "/importacion/pendientes/",
+    "/pos/category/",
+    "/pos/product/",
+    "/pos/product/stock/adjustment/",
+    "/pos/ctas/collect/",
+    "/pos/debts/pay/",
+    "/comprobantes/retenciones-recibidas/",
+    "/adjuntos/",
+    "/tributario/libros/",
+    "/tributario/revision/",
+    "/tributario/ats/",
+    "/tributario/formularios/",
+    "/tributario/empresas/",
+    "/contabilidad/kardex/",
+    "/contabilidad/inventario/",
+    "/reports/purchase/",
+    "/reports/ctas/collect/",
+    "/reports/debts/pay/",
+    "/reports/earnings/",
+    "/reports/expenses/",
+    "/reports/results/",
+    "/reports/sale/",
+    "/pos/company/update/",
+    "/configuracion/facturacion/",
+    "/configuracion/puntos/",
+    "/importacion/reglas/",
+    "/pos/receipt/",
+    "/user/",
+    "/user/update/password/",
+    "/user/update/profile/",
+    "/suscripcion/"
+   ],
+   "paginas": {
+    "/pos/sale/admin/": {
+     "nombre": "ventas",
+     "http": 200,
+     "final": "/pos/sale/admin/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Ventas",
+     "acciones": [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ],
+     "aviso": ""
+    },
+    "/pos/sale/admin/add/": {
+     "nombre": "ventas: nueva",
+     "http": 200,
+     "final": "/pos/sale/admin/add/",
+     "abre": true,
+     "en_menu": false,
+     "titulo": "Nueva factura",
+     "acciones": [
+      "Crear cliente aquí",
+      "Crear producto aquí",
+      "Emitir factura"
+     ],
+     "aviso": ""
+    },
+    "/proformas/": {
+     "nombre": "proformas",
+     "http": 200,
+     "final": "/proformas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Proformas",
+     "acciones": [
+      "Nueva proforma"
+     ],
+     "aviso": ""
+    },
+    "/proformas/add/": {
+     "nombre": "proformas: nueva",
+     "http": 200,
+     "final": "/proformas/add/",
+     "abre": true,
+     "en_menu": false,
+     "titulo": "Nueva proforma",
+     "acciones": [
+      "Guardar borrador"
+     ],
+     "aviso": ""
+    },
+    "/pos/purchase/": {
+     "nombre": "compras",
+     "http": 200,
+     "final": "/pos/purchase/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Compras",
+     "acciones": [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ],
+     "aviso": "Datos incompletos:"
+    },
+    "/pos/purchase/add/": {
+     "nombre": "compras: nueva",
+     "http": 200,
+     "final": "/pos/purchase/add/",
+     "abre": true,
+     "en_menu": false,
+     "titulo": "Nuevo registro de una Compra",
+     "acciones": [
+      "Crear proveedor",
+      "Agregar línea de gasto",
+      "Guardar registro"
+     ],
+     "aviso": "La numeración la da la liquidación que emitirás desde Compras. | La compra quedará con datos incompletos. | La compra quedará con datos incompletos:"
+    },
+    "/pos/expenses/": {
+     "nombre": "gastos",
+     "http": 200,
+     "final": "/pos/expenses/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Gastos",
+     "acciones": [
+      "Nuevo registro",
+      "Guardar recibo o nota para completar después",
+      "Nuevo Registro"
+     ],
+     "aviso": "¿Tienes factura? Regístrala en Compras como compra de gasto (sustenta el IVA y el ATS)."
+    },
+    "/pos/expenses/add/": {
+     "nombre": "gastos: nuevo",
+     "http": 200,
+     "final": "/pos/expenses/add/",
+     "abre": true,
+     "en_menu": false,
+     "titulo": "Registrar gasto",
+     "acciones": [
+      "Guardar gasto"
+     ],
+     "aviso": ""
+    },
+    "/adjuntos/capturas/": {
+     "nombre": "recibos por completar",
+     "http": 200,
+     "final": "/adjuntos/capturas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Recibos por completar",
+     "acciones": [
+      "Guardar para completar después"
+     ],
+     "aviso": ""
+    },
+    "/adjuntos/": {
+     "nombre": "consulta mensual (comprobantes de pago)",
+     "http": 200,
+     "final": "/adjuntos/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Comprobantes de pago",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/pos/ctas/collect/": {
+     "nombre": "cuentas por cobrar",
+     "http": 200,
+     "final": "/pos/ctas/collect/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Cuentas por Cobrar",
+     "acciones": [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ],
+     "aviso": ""
+    },
+    "/pos/client/": {
+     "nombre": "clientes",
+     "http": 200,
+     "final": "/pos/client/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Clientes",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": ""
+    },
+    "/pos/product/": {
+     "nombre": "productos",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": ""
+    },
+    "/importacion/nueva/": {
+     "nombre": "importación: nueva",
+     "http": 200,
+     "final": "/importacion/nueva/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Importar XML / RIDE",
+     "acciones": [
+      "Nueva importación XML / RIDE",
+      "Importar por claves o reporte del SRI",
+      "Importar"
+     ],
+     "aviso": ""
+    },
+    "/importacion/claves/": {
+     "nombre": "importación: claves/reporte",
+     "http": 200,
+     "final": "/importacion/claves/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Importar por claves o reporte del SRI",
+     "acciones": [
+      "Nueva importación XML / RIDE",
+      "Importar por claves o reporte del SRI",
+      "Subir reporte"
+     ],
+     "aviso": ""
+    },
+    "/importacion/lotes/": {
+     "nombre": "importación: lotes",
+     "http": 200,
+     "final": "/importacion/lotes/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Lotes e historial",
+     "acciones": [
+      "Nueva importación XML / RIDE",
+      "Importar por claves o reporte del SRI",
+      "Importar XML / RIDE",
+      "Importar por claves o reporte del SRI"
+     ],
+     "aviso": ""
+    },
+    "/importacion/pendientes/": {
+     "nombre": "importación: pendientes",
+     "http": 200,
+     "final": "/importacion/pendientes/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Documentos pendientes de revisión",
+     "acciones": [
+      "Nueva importación XML / RIDE",
+      "Importar por claves o reporte del SRI",
+      "Importar XML / RIDE"
+     ],
+     "aviso": ""
+    },
+    "/importacion/recibidos/": {
+     "nombre": "importación: recibidos",
+     "http": 200,
+     "final": "/importacion/recibidos/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Documentos recibidos",
+     "acciones": [
+      "Importar XML / RIDE"
+     ],
+     "aviso": ""
+    },
+    "/importacion/reglas/": {
+     "nombre": "importación: reglas",
+     "http": 200,
+     "final": "/importacion/reglas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reglas de importación y contabilización",
+     "acciones": [
+      "Guardar reglas"
+     ],
+     "aviso": ""
+    },
+    "/configuracion/puntos/": {
+     "nombre": "puntos de emisión",
+     "http": 200,
+     "final": "/configuracion/puntos/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Locales y puntos de emisión",
+     "acciones": [
+      "Agregar local",
+      "Agregar punto",
+      "Agregar local",
+      "Agregar punto",
+      "Guardar y confirmar numeración"
+     ],
+     "aviso": "Si quitas la última autorización de un usuario, recuperará el acceso a todos los puntos activos. Quitar una autorización no bloquea al usuario."
+    },
+    "/configuracion/facturacion/": {
+     "nombre": "facturación y numeración",
+     "http": 200,
+     "final": "/configuracion/facturacion/paso/5/",
+     "abre": false,
+     "en_menu": true,
+     "titulo": "Paso 5 de 5 · Revisión y confirmación",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/reports/sale/": {
+     "nombre": "reporte ventas",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/reports/results/": {
+     "nombre": "reporte resultados",
+     "http": 200,
+     "final": "/reports/results/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reporte de Resultados",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/reports/ctas/collect/": {
+     "nombre": "reporte cxc",
+     "http": 200,
+     "final": "/reports/ctas/collect/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reporte de Cuentas por Cobrar",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/tributario/": {
+     "nombre": "/tributario/ (raíz)",
+     "http": 404,
+     "final": "/tributario/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Page not found (404)",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/tributario/revision/": {
+     "nombre": "tributario: revisión",
+     "http": 200,
+     "final": "/tributario/revision/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Revisión del mes",
+     "acciones": [],
+     "aviso": "La empresa no está marcada como agente de retención: no se revisan compras sin retención."
+    },
+    "/tributario/libros/": {
+     "nombre": "tributario: libros",
+     "http": 200,
+     "final": "/tributario/libros/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Libros mensuales",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/tributario/ats/": {
+     "nombre": "tributario: ATS",
+     "http": 200,
+     "final": "/tributario/ats/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "ATS del mes",
+     "acciones": [],
+     "aviso": "El XML valida contra el esquema (0 compras). Descargar AT112026.zip | Las retenciones que emite la aplicación son electrónicas: según la norma registrada en el "
+    },
+    "/tributario/formularios/": {
+     "nombre": "tributario: 104/103",
+     "http": 200,
+     "final": "/tributario/formularios/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Borradores del 104 y del 103",
+     "acciones": [],
+     "aviso": "Borrador para que lo revise tu contador. FacturaPorAquí no presenta declaraciones: la presentas tú en el portal del SRI. Lo marcado «por confirmar» no se asignó"
+    },
+    "/tributario/empresas/": {
+     "nombre": "tributario: empresas",
+     "http": 200,
+     "final": "/tributario/empresas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Revisión de mis empresas",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/contabilidad/": {
+     "nombre": "/contabilidad/ (raíz)",
+     "http": 404,
+     "final": "/contabilidad/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Page not found (404)",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/contabilidad/kardex/": {
+     "nombre": "contabilidad: kardex",
+     "http": 200,
+     "final": "/contabilidad/kardex/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Kardex por producto",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/contabilidad/inventario/": {
+     "nombre": "contabilidad: inventario",
+     "http": 200,
+     "final": "/contabilidad/inventario/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Inventario valorizado",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/user/": {
+     "nombre": "usuarios",
+     "http": 200,
+     "final": "/user/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Usuarios",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": ""
+    }
+   },
+   "altas": {
+    "cliente": {
+     "http": 200,
+     "cuerpo": "{\"error\": {\"dni\": [\"La c\\u00e9dula no es v\\u00e1lida: revisa los 10 d\\u00edgitos.\"]}}"
+    },
+    "producto": {
+     "http": 200,
+     "cuerpo": "{\"error\": {\"price\": [\"Este campo es obligatorio.\"], \"tarifa_iva\": [\"Este campo es obligatorio.\"]}}"
+    },
+    "categoría": {
+     "http": 200,
+     "cuerpo": "{}"
+    },
+    "proveedor": {
+     "http": 200,
+     "cuerpo": "{\"error\": {\"tipo_identificacion\": [\"Elige el tipo de identificaci\\u00f3n.\"]}}"
+    },
+    "promoción": {
+     "http": 200,
+     "cuerpo": "{\"error\": \"'start_date'\"}"
+    },
+    "tipo de gasto": {
+     "http": 200,
+     "cuerpo": "{}"
+    },
+    "gasto": {
+     "http": 200,
+     "cuerpo": "{\"error\": {\"valor\": [\"Este campo es obligatorio.\"], \"medio_pago\": [\"Elige el medio de pago\"]}}"
+    },
+    "compra": {
+     "http": 200,
+     "cuerpo": "{\"error\": \"Tipo de pago: Este campo es obligatorio.\"}"
+    },
+    "factura": {
+     "http": 200,
+     "cuerpo": "{\"error\": \"Agrega al menos un producto.\"}"
+    },
+    "proforma": {
+     "http": 400,
+     "cuerpo": "{\"error\": \"Revisa los datos marcados.\", \"campos\": {\"cliente_nombre\": \"Escribe el nombre del cliente o elige uno registrado.\", \"fecha\": \"La f"
+    },
+    "recibo por completar": {
+     "http": 201,
+     "cuerpo": "{\"captura\": {\"id\": 1, \"numero\": \"C-1\", \"clave\": \"rol-captura-0001\", \"estado\": {\"id\": \"pendiente\", \"name\": \"Pendiente de completar\"}, \"archiv"
+    },
+    "comprobante de pago (venta 1)": {
+     "http": 404,
+     "cuerpo": "{\"error\": \"Tipo de documento desconocido.\"}"
+    },
+    "importación XML": {
+     "http": 302,
+     "cuerpo": ""
+    },
+    "importación por claves": {
+     "http": 302,
+     "cuerpo": ""
+    },
+    "importación API lote": {
+     "http": 201,
+     "cuerpo": "{\"lote\": {\"id\": 2, \"estado\": {\"id\": \"con_errores\", \"nombre\": \"Terminado con errores\"}, \"total_archivos\": 1, \"origen\": {\"id\": \"archivos\", \"no"
+    },
+    "regla de importación": {
+     "http": 200,
+     "cuerpo": "{\"reglas\": {\"verificar_con_sri\": true, \"exigir_verificacion\": true, \"naturaleza_compra\": \"gasto\", \"tratamiento_iva\": \"credito_tributario\", \""
+    },
+    "punto de emisión": {
+     "http": 200,
+     "cuerpo": "{\"ok\": true, \"mensaje\": \"Punto de emisi\\u00f3n 001-009 agregado.\", \"estado\": {\"setup_completo\": true, \"ambiente\": {\"codigo\": 1, \"nombre\": \"P"
+    },
+    "movimiento manual de kardex": {
+     "http": 400,
+     "cuerpo": "{\"error\": \"Falta la clave del env\\u00edo: vuelve a abrir el formulario.\", \"codigo\": \"clave\"}"
+    },
+    "cobro en CxC": {
+     "http": 200,
+     "cuerpo": "{}"
+    },
+    "usuario": {
+     "http": 200,
+     "cuerpo": "{\"error\": {\"password\": [\"La contrase\\u00f1a es obligatoria para un usuario nuevo.\"], \"groups\": [\"Este campo es obligatorio.\"]}}"
+    }
+   },
+   "conteos": {
+    "antes": {
+     "cliente": 4,
+     "producto": 15,
+     "categoria": 3,
+     "proveedor": 20,
+     "compra": 9,
+     "gasto": 0,
+     "venta": 2,
+     "promocion": 0,
+     "proforma": 0,
+     "adjunto": 0,
+     "captura": 0,
+     "lote": 0,
+     "regla": 1,
+     "punto": 1,
+     "establecimiento": 1,
+     "mov_kardex": 0,
+     "respaldo_cobro": 6
+    },
+    "despues": {
+     "cliente": 4,
+     "producto": 15,
+     "categoria": 4,
+     "proveedor": 20,
+     "compra": 9,
+     "gasto": 0,
+     "venta": 2,
+     "promocion": 0,
+     "proforma": 0,
+     "adjunto": 0,
+     "captura": 1,
+     "lote": 2,
+     "regla": 1,
+     "punto": 2,
+     "establecimiento": 1,
+     "mov_kardex": 0,
+     "respaldo_cobro": 7
+    },
+    "cambios": {
+     "categoria": [
+      3,
+      4
+     ],
+     "captura": [
+      0,
+      1
+     ],
+     "lote": [
+      0,
+      2
+     ],
+     "punto": [
+      1,
+      2
+     ],
+     "respaldo_cobro": [
+      6,
+      7
+     ]
+    }
+   }
+  },
+  "Vendedor": {
+   "menu": [
+    "/pos/sale/admin/",
+    "/pos/credit/note/admin/",
+    "/proformas/",
+    "/pos/client/",
+    "/pos/promotions/",
+    "/adjuntos/capturas/",
+    "/pos/product/",
+    "/reports/sale/",
+    "/user/update/password/",
+    "/user/update/profile/"
+   ],
+   "paginas": {
+    "/pos/sale/admin/": {
+     "nombre": "ventas",
+     "http": 200,
+     "final": "/pos/sale/admin/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Ventas",
+     "acciones": [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ],
+     "aviso": ""
+    },
+    "/pos/sale/admin/add/": {
+     "nombre": "ventas: nueva",
+     "http": 200,
+     "final": "/pos/sale/admin/add/",
+     "abre": true,
+     "en_menu": false,
+     "titulo": "Nueva factura",
+     "acciones": [
+      "Crear cliente aquí",
+      "Emitir factura"
+     ],
+     "aviso": ""
+    },
+    "/proformas/": {
+     "nombre": "proformas",
+     "http": 200,
+     "final": "/proformas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Proformas",
+     "acciones": [
+      "Nueva proforma"
+     ],
+     "aviso": ""
+    },
+    "/proformas/add/": {
+     "nombre": "proformas: nueva",
+     "http": 200,
+     "final": "/proformas/add/",
+     "abre": true,
+     "en_menu": false,
+     "titulo": "Nueva proforma",
+     "acciones": [
+      "Guardar borrador"
+     ],
+     "aviso": ""
+    },
+    "/pos/purchase/": {
+     "nombre": "compras",
+     "http": 200,
+     "final": "/proformas/add/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Nueva proforma",
+     "acciones": [
+      "Guardar borrador"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/purchase/add/": {
+     "nombre": "compras: nueva",
+     "http": 200,
+     "final": "/proformas/add/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Nueva proforma",
+     "acciones": [
+      "Guardar borrador"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/expenses/": {
+     "nombre": "gastos",
+     "http": 200,
+     "final": "/proformas/add/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Nueva proforma",
+     "acciones": [
+      "Guardar borrador"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/expenses/add/": {
+     "nombre": "gastos: nuevo",
+     "http": 200,
+     "final": "/proformas/add/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Nueva proforma",
+     "acciones": [
+      "Guardar borrador"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/adjuntos/capturas/": {
+     "nombre": "recibos por completar",
+     "http": 200,
+     "final": "/adjuntos/capturas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Recibos por completar",
+     "acciones": [
+      "Guardar para completar después"
+     ],
+     "aviso": ""
+    },
+    "/adjuntos/": {
+     "nombre": "consulta mensual (comprobantes de pago)",
+     "http": 200,
+     "final": "/adjuntos/capturas/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Recibos por completar",
+     "acciones": [
+      "Guardar para completar después"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/ctas/collect/": {
+     "nombre": "cuentas por cobrar",
+     "http": 200,
+     "final": "/adjuntos/capturas/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Recibos por completar",
+     "acciones": [
+      "Guardar para completar después"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/client/": {
+     "nombre": "clientes",
+     "http": 200,
+     "final": "/pos/client/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Clientes",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": ""
+    },
+    "/pos/product/": {
+     "nombre": "productos",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": ""
+    },
+    "/importacion/nueva/": {
+     "nombre": "importación: nueva",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/importacion/claves/": {
+     "nombre": "importación: claves/reporte",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/importacion/lotes/": {
+     "nombre": "importación: lotes",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/importacion/pendientes/": {
+     "nombre": "importación: pendientes",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/importacion/recibidos/": {
+     "nombre": "importación: recibidos",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/importacion/reglas/": {
+     "nombre": "importación: reglas",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/configuracion/puntos/": {
+     "nombre": "puntos de emisión",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/configuracion/facturacion/": {
+     "nombre": "facturación y numeración",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/reports/sale/": {
+     "nombre": "reporte ventas",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/reports/results/": {
+     "nombre": "reporte resultados",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/reports/ctas/collect/": {
+     "nombre": "reporte cxc",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/tributario/": {
+     "nombre": "/tributario/ (raíz)",
+     "http": 404,
+     "final": "/tributario/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Page not found (404)",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/tributario/revision/": {
+     "nombre": "tributario: revisión",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/tributario/libros/": {
+     "nombre": "tributario: libros",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/tributario/ats/": {
+     "nombre": "tributario: ATS",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/tributario/formularios/": {
+     "nombre": "tributario: 104/103",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/tributario/empresas/": {
+     "nombre": "tributario: empresas",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/contabilidad/": {
+     "nombre": "/contabilidad/ (raíz)",
+     "http": 404,
+     "final": "/contabilidad/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Page not found (404)",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/contabilidad/kardex/": {
+     "nombre": "contabilidad: kardex",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/contabilidad/inventario/": {
+     "nombre": "contabilidad: inventario",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/user/": {
+     "nombre": "usuarios",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    }
+   },
+   "altas": {
+    "cliente": {
+     "http": 200,
+     "cuerpo": "{\"error\": {\"dni\": [\"La c\\u00e9dula no es v\\u00e1lida: revisa los 10 d\\u00edgitos.\"]}}"
+    },
+    "producto": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "categoría": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "proveedor": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "promoción": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "tipo de gasto": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "gasto": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "compra": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "factura": {
+     "http": 200,
+     "cuerpo": "{\"error\": \"Agrega al menos un producto.\"}"
+    },
+    "proforma": {
+     "http": 400,
+     "cuerpo": "{\"error\": \"Revisa los datos marcados.\", \"campos\": {\"cliente_nombre\": \"Escribe el nombre del cliente o elige uno registrado.\", \"fecha\": \"La f"
+    },
+    "recibo por completar": {
+     "http": 200,
+     "cuerpo": "{\"captura\": {\"id\": 1, \"numero\": \"C-1\", \"clave\": \"rol-captura-0001\", \"estado\": {\"id\": \"pendiente\", \"name\": \"Pendiente de completar\"}, \"archiv"
+    },
+    "comprobante de pago (venta 1)": {
+     "http": 404,
+     "cuerpo": "{\"error\": \"Tipo de documento desconocido.\"}"
+    },
+    "importación XML": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "importación por claves": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "importación API lote": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario.\"}"
+    },
+    "regla de importación": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario.\"}"
+    },
+    "punto de emisión": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "movimiento manual de kardex": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "cobro en CxC": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "usuario": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    }
+   },
+   "conteos": {
+    "antes": {
+     "cliente": 4,
+     "producto": 15,
+     "categoria": 4,
+     "proveedor": 20,
+     "compra": 9,
+     "gasto": 0,
+     "venta": 2,
+     "promocion": 0,
+     "proforma": 0,
+     "adjunto": 0,
+     "captura": 1,
+     "lote": 2,
+     "regla": 1,
+     "punto": 2,
+     "establecimiento": 1,
+     "mov_kardex": 0,
+     "respaldo_cobro": 7
+    },
+    "despues": {
+     "cliente": 4,
+     "producto": 15,
+     "categoria": 4,
+     "proveedor": 20,
+     "compra": 9,
+     "gasto": 0,
+     "venta": 2,
+     "promocion": 0,
+     "proforma": 0,
+     "adjunto": 0,
+     "captura": 1,
+     "lote": 2,
+     "regla": 1,
+     "punto": 2,
+     "establecimiento": 1,
+     "mov_kardex": 0,
+     "respaldo_cobro": 7
+    },
+    "cambios": {}
+   }
+  },
+  "Contador": {
+   "menu": [
+    "/pos/sale/admin/",
+    "/pos/credit/note/admin/",
+    "/comprobantes/retenciones/",
+    "/comprobantes/notas-debito/",
+    "/comprobantes/guias/",
+    "/comprobantes/liquidaciones/",
+    "/pos/voucher/errors/",
+    "/proformas/",
+    "/pos/client/",
+    "/pos/purchase/",
+    "/importacion/recibidos/",
+    "/pos/provider/",
+    "/pos/expenses/",
+    "/adjuntos/capturas/",
+    "/importacion/lotes/",
+    "/importacion/pendientes/",
+    "/pos/ctas/collect/",
+    "/pos/debts/pay/",
+    "/comprobantes/retenciones-recibidas/",
+    "/adjuntos/",
+    "/tributario/libros/",
+    "/tributario/revision/",
+    "/tributario/ats/",
+    "/tributario/formularios/",
+    "/tributario/empresas/",
+    "/contabilidad/kardex/",
+    "/contabilidad/inventario/",
+    "/reports/purchase/",
+    "/reports/ctas/collect/",
+    "/reports/debts/pay/",
+    "/reports/earnings/",
+    "/reports/expenses/",
+    "/reports/results/",
+    "/reports/sale/",
+    "/user/update/password/",
+    "/user/update/profile/"
+   ],
+   "paginas": {
+    "/pos/sale/admin/": {
+     "nombre": "ventas",
+     "http": 200,
+     "final": "/pos/sale/admin/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Ventas",
+     "acciones": [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ],
+     "aviso": ""
+    },
+    "/pos/sale/admin/add/": {
+     "nombre": "ventas: nueva",
+     "http": 200,
+     "final": "/pos/sale/admin/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Ventas",
+     "acciones": [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/proformas/": {
+     "nombre": "proformas",
+     "http": 200,
+     "final": "/proformas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Proformas",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/proformas/add/": {
+     "nombre": "proformas: nueva",
+     "http": 200,
+     "final": "/proformas/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Proformas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/purchase/": {
+     "nombre": "compras",
+     "http": 200,
+     "final": "/pos/purchase/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Compras",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": "Datos incompletos:"
+    },
+    "/pos/purchase/add/": {
+     "nombre": "compras: nueva",
+     "http": 200,
+     "final": "/pos/purchase/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Compras",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar | Datos incompletos:"
+    },
+    "/pos/expenses/": {
+     "nombre": "gastos",
+     "http": 200,
+     "final": "/pos/expenses/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Gastos",
+     "acciones": [
+      "Nuevo registro",
+      "Guardar recibo o nota para completar después",
+      "Nuevo Registro"
+     ],
+     "aviso": "¿Tienes factura? Regístrala en Compras como compra de gasto (sustenta el IVA y el ATS)."
+    },
+    "/pos/expenses/add/": {
+     "nombre": "gastos: nuevo",
+     "http": 200,
+     "final": "/pos/expenses/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Gastos",
+     "acciones": [
+      "Nuevo registro",
+      "Guardar recibo o nota para completar después",
+      "Nuevo Registro"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar | ¿Tienes factura? Regístrala en Compras como compra de gasto (sustenta el IVA y "
+    },
+    "/adjuntos/capturas/": {
+     "nombre": "recibos por completar",
+     "http": 200,
+     "final": "/adjuntos/capturas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Recibos por completar",
+     "acciones": [
+      "Guardar para completar después",
+      "Registrar el gasto con este recibo",
+      "Guardar nota"
+     ],
+     "aviso": ""
+    },
+    "/adjuntos/": {
+     "nombre": "consulta mensual (comprobantes de pago)",
+     "http": 200,
+     "final": "/adjuntos/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Comprobantes de pago",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/pos/ctas/collect/": {
+     "nombre": "cuentas por cobrar",
+     "http": 200,
+     "final": "/pos/ctas/collect/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Cuentas por Cobrar",
+     "acciones": [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ],
+     "aviso": ""
+    },
+    "/pos/client/": {
+     "nombre": "clientes",
+     "http": 200,
+     "final": "/pos/client/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Clientes",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": ""
+    },
+    "/pos/product/": {
+     "nombre": "productos",
+     "http": 200,
+     "final": "/pos/client/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Clientes",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/importacion/nueva/": {
+     "nombre": "importación: nueva",
+     "http": 200,
+     "final": "/pos/client/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Clientes",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/importacion/claves/": {
+     "nombre": "importación: claves/reporte",
+     "http": 200,
+     "final": "/pos/client/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Clientes",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/importacion/lotes/": {
+     "nombre": "importación: lotes",
+     "http": 200,
+     "final": "/importacion/lotes/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Lotes e historial",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/importacion/pendientes/": {
+     "nombre": "importación: pendientes",
+     "http": 200,
+     "final": "/importacion/pendientes/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Documentos pendientes de revisión",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/importacion/recibidos/": {
+     "nombre": "importación: recibidos",
+     "http": 200,
+     "final": "/importacion/recibidos/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Documentos recibidos",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/importacion/reglas/": {
+     "nombre": "importación: reglas",
+     "http": 200,
+     "final": "/importacion/api/documentos/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/configuracion/puntos/": {
+     "nombre": "puntos de emisión",
+     "http": 200,
+     "final": "/importacion/api/documentos/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/configuracion/facturacion/": {
+     "nombre": "facturación y numeración",
+     "http": 200,
+     "final": "/importacion/api/documentos/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/reports/sale/": {
+     "nombre": "reporte ventas",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar | No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar "
+    },
+    "/reports/results/": {
+     "nombre": "reporte resultados",
+     "http": 200,
+     "final": "/reports/results/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reporte de Resultados",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/reports/ctas/collect/": {
+     "nombre": "reporte cxc",
+     "http": 200,
+     "final": "/reports/ctas/collect/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reporte de Cuentas por Cobrar",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/tributario/": {
+     "nombre": "/tributario/ (raíz)",
+     "http": 404,
+     "final": "/tributario/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Page not found (404)",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/tributario/revision/": {
+     "nombre": "tributario: revisión",
+     "http": 200,
+     "final": "/tributario/revision/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Revisión del mes",
+     "acciones": [],
+     "aviso": "La empresa no está marcada como agente de retención: no se revisan compras sin retención."
+    },
+    "/tributario/libros/": {
+     "nombre": "tributario: libros",
+     "http": 200,
+     "final": "/tributario/libros/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Libros mensuales",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/tributario/ats/": {
+     "nombre": "tributario: ATS",
+     "http": 200,
+     "final": "/tributario/ats/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "ATS del mes",
+     "acciones": [],
+     "aviso": "El XML valida contra el esquema (0 compras). Descargar AT112026.zip | Las retenciones que emite la aplicación son electrónicas: según la norma registrada en el "
+    },
+    "/tributario/formularios/": {
+     "nombre": "tributario: 104/103",
+     "http": 200,
+     "final": "/tributario/formularios/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Borradores del 104 y del 103",
+     "acciones": [],
+     "aviso": "Borrador para que lo revise tu contador. FacturaPorAquí no presenta declaraciones: la presentas tú en el portal del SRI. Lo marcado «por confirmar» no se asignó"
+    },
+    "/tributario/empresas/": {
+     "nombre": "tributario: empresas",
+     "http": 200,
+     "final": "/tributario/empresas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Revisión de mis empresas",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/contabilidad/": {
+     "nombre": "/contabilidad/ (raíz)",
+     "http": 404,
+     "final": "/contabilidad/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Page not found (404)",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/contabilidad/kardex/": {
+     "nombre": "contabilidad: kardex",
+     "http": 200,
+     "final": "/contabilidad/kardex/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Kardex por producto",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/contabilidad/inventario/": {
+     "nombre": "contabilidad: inventario",
+     "http": 200,
+     "final": "/contabilidad/inventario/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Inventario valorizado",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/user/": {
+     "nombre": "usuarios",
+     "http": 200,
+     "final": "/contabilidad/inventario/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Inventario valorizado",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    }
+   },
+   "altas": {
+    "cliente": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "producto": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "categoría": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "proveedor": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "promoción": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "tipo de gasto": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "gasto": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "compra": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "factura": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "proforma": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "recibo por completar": {
+     "http": 200,
+     "cuerpo": "{\"captura\": {\"id\": 1, \"numero\": \"C-1\", \"clave\": \"rol-captura-0001\", \"estado\": {\"id\": \"pendiente\", \"name\": \"Pendiente de completar\"}, \"archiv"
+    },
+    "comprobante de pago (venta 1)": {
+     "http": 404,
+     "cuerpo": "{\"error\": \"Tipo de documento desconocido.\"}"
+    },
+    "importación XML": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "importación por claves": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "importación API lote": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no puede importar documentos.\"}"
+    },
+    "regla de importación": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario.\"}"
+    },
+    "punto de emisión": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "movimiento manual de kardex": {
+     "http": 400,
+     "cuerpo": "{\"error\": \"Falta la clave del env\\u00edo: vuelve a abrir el formulario.\", \"codigo\": \"clave\"}"
+    },
+    "cobro en CxC": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "usuario": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    }
+   },
+   "conteos": {
+    "antes": {
+     "cliente": 4,
+     "producto": 15,
+     "categoria": 4,
+     "proveedor": 20,
+     "compra": 9,
+     "gasto": 0,
+     "venta": 2,
+     "promocion": 0,
+     "proforma": 0,
+     "adjunto": 0,
+     "captura": 1,
+     "lote": 2,
+     "regla": 1,
+     "punto": 2,
+     "establecimiento": 1,
+     "mov_kardex": 0,
+     "respaldo_cobro": 7
+    },
+    "despues": {
+     "cliente": 4,
+     "producto": 15,
+     "categoria": 4,
+     "proveedor": 20,
+     "compra": 9,
+     "gasto": 0,
+     "venta": 2,
+     "promocion": 0,
+     "proforma": 0,
+     "adjunto": 0,
+     "captura": 1,
+     "lote": 2,
+     "regla": 1,
+     "punto": 2,
+     "establecimiento": 1,
+     "mov_kardex": 0,
+     "respaldo_cobro": 7
+    },
+    "cambios": {}
+   }
+  },
+  "Consulta": {
+   "menu": [
+    "/pos/sale/admin/",
+    "/pos/credit/note/admin/",
+    "/comprobantes/retenciones/",
+    "/comprobantes/notas-debito/",
+    "/comprobantes/guias/",
+    "/comprobantes/liquidaciones/",
+    "/pos/voucher/errors/",
+    "/proformas/",
+    "/pos/client/",
+    "/pos/promotions/",
+    "/pos/purchase/",
+    "/importacion/recibidos/",
+    "/pos/provider/",
+    "/pos/expenses/",
+    "/pos/type/expense/",
+    "/adjuntos/capturas/",
+    "/importacion/claves/",
+    "/importacion/lotes/",
+    "/importacion/pendientes/",
+    "/pos/category/",
+    "/pos/product/",
+    "/pos/ctas/collect/",
+    "/pos/debts/pay/",
+    "/comprobantes/retenciones-recibidas/",
+    "/adjuntos/",
+    "/tributario/libros/",
+    "/tributario/revision/",
+    "/tributario/ats/",
+    "/tributario/formularios/",
+    "/tributario/empresas/",
+    "/contabilidad/kardex/",
+    "/contabilidad/inventario/",
+    "/reports/purchase/",
+    "/reports/ctas/collect/",
+    "/reports/debts/pay/",
+    "/reports/earnings/",
+    "/reports/expenses/",
+    "/reports/results/",
+    "/reports/sale/",
+    "/importacion/reglas/",
+    "/pos/receipt/",
+    "/user/update/password/",
+    "/user/update/profile/"
+   ],
+   "paginas": {
+    "/pos/sale/admin/": {
+     "nombre": "ventas",
+     "http": 200,
+     "final": "/pos/sale/admin/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Ventas",
+     "acciones": [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ],
+     "aviso": ""
+    },
+    "/pos/sale/admin/add/": {
+     "nombre": "ventas: nueva",
+     "http": 200,
+     "final": "/pos/sale/admin/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Ventas",
+     "acciones": [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/proformas/": {
+     "nombre": "proformas",
+     "http": 200,
+     "final": "/proformas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Proformas",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/proformas/add/": {
+     "nombre": "proformas: nueva",
+     "http": 200,
+     "final": "/proformas/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Proformas",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/pos/purchase/": {
+     "nombre": "compras",
+     "http": 200,
+     "final": "/pos/purchase/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Compras",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": "Datos incompletos:"
+    },
+    "/pos/purchase/add/": {
+     "nombre": "compras: nueva",
+     "http": 200,
+     "final": "/pos/purchase/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Compras",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar | Datos incompletos:"
+    },
+    "/pos/expenses/": {
+     "nombre": "gastos",
+     "http": 200,
+     "final": "/pos/expenses/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Gastos",
+     "acciones": [
+      "Nuevo registro",
+      "Guardar recibo o nota para completar después",
+      "Nuevo Registro"
+     ],
+     "aviso": "¿Tienes factura? Regístrala en Compras como compra de gasto (sustenta el IVA y el ATS)."
+    },
+    "/pos/expenses/add/": {
+     "nombre": "gastos: nuevo",
+     "http": 200,
+     "final": "/pos/expenses/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Gastos",
+     "acciones": [
+      "Nuevo registro",
+      "Guardar recibo o nota para completar después",
+      "Nuevo Registro"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar | ¿Tienes factura? Regístrala en Compras como compra de gasto (sustenta el IVA y "
+    },
+    "/adjuntos/capturas/": {
+     "nombre": "recibos por completar",
+     "http": 200,
+     "final": "/adjuntos/capturas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Recibos por completar",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/adjuntos/": {
+     "nombre": "consulta mensual (comprobantes de pago)",
+     "http": 200,
+     "final": "/adjuntos/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Comprobantes de pago",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/pos/ctas/collect/": {
+     "nombre": "cuentas por cobrar",
+     "http": 200,
+     "final": "/pos/ctas/collect/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Cuentas por Cobrar",
+     "acciones": [
+      "Nuevo registro",
+      "Nuevo Registro"
+     ],
+     "aviso": ""
+    },
+    "/pos/client/": {
+     "nombre": "clientes",
+     "http": 200,
+     "final": "/pos/client/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Clientes",
+     "acciones": [
+      "Nuevo registro"
+     ],
+     "aviso": ""
+    },
+    "/pos/product/": {
+     "nombre": "productos",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": ""
+    },
+    "/importacion/nueva/": {
+     "nombre": "importación: nueva",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/importacion/claves/": {
+     "nombre": "importación: claves/reporte",
+     "http": 200,
+     "final": "/pos/product/",
+     "abre": false,
+     "en_menu": true,
+     "titulo": "Listado de Productos",
+     "acciones": [
+      "Nuevo registro",
+      "Subir Excel de Productos"
+     ],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/importacion/lotes/": {
+     "nombre": "importación: lotes",
+     "http": 200,
+     "final": "/importacion/lotes/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Lotes e historial",
+     "acciones": [
+      "Importar por claves o reporte del SRI"
+     ],
+     "aviso": ""
+    },
+    "/importacion/pendientes/": {
+     "nombre": "importación: pendientes",
+     "http": 200,
+     "final": "/importacion/pendientes/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Documentos pendientes de revisión",
+     "acciones": [
+      "Importar por claves o reporte del SRI"
+     ],
+     "aviso": ""
+    },
+    "/importacion/recibidos/": {
+     "nombre": "importación: recibidos",
+     "http": 200,
+     "final": "/importacion/recibidos/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Documentos recibidos",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/importacion/reglas/": {
+     "nombre": "importación: reglas",
+     "http": 200,
+     "final": "/importacion/reglas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reglas de importación y contabilización",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/configuracion/puntos/": {
+     "nombre": "puntos de emisión",
+     "http": 200,
+     "final": "/importacion/reglas/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reglas de importación y contabilización",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/configuracion/facturacion/": {
+     "nombre": "facturación y numeración",
+     "http": 200,
+     "final": "/importacion/reglas/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Reglas de importación y contabilización",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    },
+    "/reports/sale/": {
+     "nombre": "reporte ventas",
+     "http": 200,
+     "final": "/reports/sale/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reporte de Ventas",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/reports/results/": {
+     "nombre": "reporte resultados",
+     "http": 200,
+     "final": "/reports/results/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reporte de Resultados",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/reports/ctas/collect/": {
+     "nombre": "reporte cxc",
+     "http": 200,
+     "final": "/reports/ctas/collect/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Reporte de Cuentas por Cobrar",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/tributario/": {
+     "nombre": "/tributario/ (raíz)",
+     "http": 404,
+     "final": "/tributario/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Page not found (404)",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/tributario/revision/": {
+     "nombre": "tributario: revisión",
+     "http": 200,
+     "final": "/tributario/revision/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Revisión del mes",
+     "acciones": [],
+     "aviso": "La empresa no está marcada como agente de retención: no se revisan compras sin retención."
+    },
+    "/tributario/libros/": {
+     "nombre": "tributario: libros",
+     "http": 200,
+     "final": "/tributario/libros/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Libros mensuales",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/tributario/ats/": {
+     "nombre": "tributario: ATS",
+     "http": 200,
+     "final": "/tributario/ats/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "ATS del mes",
+     "acciones": [],
+     "aviso": "El XML valida contra el esquema (0 compras). Descargar AT112026.zip | Las retenciones que emite la aplicación son electrónicas: según la norma registrada en el "
+    },
+    "/tributario/formularios/": {
+     "nombre": "tributario: 104/103",
+     "http": 200,
+     "final": "/tributario/formularios/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Borradores del 104 y del 103",
+     "acciones": [],
+     "aviso": "Borrador para que lo revise tu contador. FacturaPorAquí no presenta declaraciones: la presentas tú en el portal del SRI. Lo marcado «por confirmar» no se asignó"
+    },
+    "/tributario/empresas/": {
+     "nombre": "tributario: empresas",
+     "http": 200,
+     "final": "/tributario/empresas/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Revisión de mis empresas",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/contabilidad/": {
+     "nombre": "/contabilidad/ (raíz)",
+     "http": 404,
+     "final": "/contabilidad/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Page not found (404)",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/contabilidad/kardex/": {
+     "nombre": "contabilidad: kardex",
+     "http": 200,
+     "final": "/contabilidad/kardex/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Kardex por producto",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/contabilidad/inventario/": {
+     "nombre": "contabilidad: inventario",
+     "http": 200,
+     "final": "/contabilidad/inventario/",
+     "abre": true,
+     "en_menu": true,
+     "titulo": "Inventario valorizado",
+     "acciones": [],
+     "aviso": ""
+    },
+    "/user/": {
+     "nombre": "usuarios",
+     "http": 200,
+     "final": "/contabilidad/inventario/",
+     "abre": false,
+     "en_menu": false,
+     "titulo": "Inventario valorizado",
+     "acciones": [],
+     "aviso": "No se pudo completarTu perfil no cuenta con el permiso necesario para ingresar"
+    }
+   },
+   "altas": {
+    "cliente": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "producto": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "categoría": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "proveedor": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "promoción": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "tipo de gasto": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "gasto": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "compra": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "factura": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "proforma": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "recibo por completar": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no puede guardar recibos ni notas.\", \"codigo\": \"sin_permiso\"}"
+    },
+    "comprobante de pago (venta 1)": {
+     "http": 404,
+     "cuerpo": "{\"error\": \"Tipo de documento desconocido.\"}"
+    },
+    "importación XML": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "importación por claves": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "importación API lote": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no puede importar documentos.\"}"
+    },
+    "regla de importación": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no puede cambiar las reglas.\"}"
+    },
+    "punto de emisión": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "movimiento manual de kardex": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no puede registrar movimientos del kardex.\", \"codigo\": \"sin_permiso\"}"
+    },
+    "cobro en CxC": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    },
+    "usuario": {
+     "http": 403,
+     "cuerpo": "{\"error\": \"Tu perfil no cuenta con el permiso necesario para ingresar\"}"
+    }
+   },
+   "conteos": {
+    "antes": {
+     "cliente": 4,
+     "producto": 15,
+     "categoria": 4,
+     "proveedor": 20,
+     "compra": 9,
+     "gasto": 0,
+     "venta": 2,
+     "promocion": 0,
+     "proforma": 0,
+     "adjunto": 0,
+     "captura": 1,
+     "lote": 2,
+     "regla": 1,
+     "punto": 2,
+     "establecimiento": 1,
+     "mov_kardex": 0,
+     "respaldo_cobro": 7
+    },
+    "despues": {
+     "cliente": 4,
+     "producto": 15,
+     "categoria": 4,
+     "proveedor": 20,
+     "compra": 9,
+     "gasto": 0,
+     "venta": 2,
+     "promocion": 0,
+     "proforma": 0,
+     "adjunto": 0,
+     "captura": 1,
+     "lote": 2,
+     "regla": 1,
+     "punto": 2,
+     "establecimiento": 1,
+     "mov_kardex": 0,
+     "respaldo_cobro": 7
+    },
+    "cambios": {}
+   }
+  }
+ }
+}

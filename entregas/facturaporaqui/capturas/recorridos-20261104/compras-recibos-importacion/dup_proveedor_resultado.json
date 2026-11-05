@@ -1,0 +1,19 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [],
+ "pasos": {
+  "proveedor_correo_repetido_mensaje": {
+   "ok": false,
+   "detalle": {
+    "mensaje_en_modal": "UNIQUE constraint failed: pos_provider.company_id, pos_provider.email",
+    "validate_provider_email": {
+     "valid": false
+    }
+   }
+  }
+ },
+ "fallos": [
+  "proveedor_correo_repetido_mensaje"
+ ]
+}

@@ -1,0 +1,260 @@
+{
+ "dueno.demo@360": {
+  "menu": [
+   -62,
+   278,
+   340
+  ],
+  "boton": [
+   166,
+   278
+  ],
+  "items": [
+   [
+    -53,
+    269
+   ],
+   [
+    -53,
+    269
+   ]
+  ],
+  "recortado": true,
+  "scrollWidth": 360,
+  "innerWidth": 360
+ },
+ "dueno.demo@390": {
+  "menu": [
+   -42,
+   308,
+   350
+  ],
+  "boton": [
+   196,
+   308
+  ],
+  "items": [
+   [
+    -33,
+    299
+   ],
+   [
+    -33,
+    299
+   ]
+  ],
+  "recortado": true,
+  "scrollWidth": 390,
+  "innerWidth": 390
+ },
+ "dueno.demo@768": {
+  "menu": [
+   105,
+   455,
+   350
+  ],
+  "boton": [
+   324,
+   455
+  ],
+  "items": [
+   [
+    114,
+    446
+   ],
+   [
+    114,
+    446
+   ]
+  ],
+  "recortado": false,
+  "scrollWidth": 768,
+  "innerWidth": 768
+ },
+ "vendedor.previa@360": {
+  "menu": [
+   -62,
+   278,
+   340
+  ],
+  "boton": [
+   166,
+   278
+  ],
+  "items": [
+   [
+    -53,
+    269
+   ]
+  ],
+  "recortado": true,
+  "scrollWidth": 360,
+  "innerWidth": 360
+ },
+ "vendedor.previa@390": {
+  "menu": [
+   -42,
+   308,
+   350
+  ],
+  "boton": [
+   196,
+   308
+  ],
+  "items": [
+   [
+    -33,
+    299
+   ]
+  ],
+  "recortado": true,
+  "scrollWidth": 390,
+  "innerWidth": 390
+ },
+ "vendedor.previa@768": {
+  "menu": [
+   123,
+   473,
+   350
+  ],
+  "boton": [
+   341,
+   473
+  ],
+  "items": [
+   [
+    132,
+    464
+   ]
+  ],
+  "recortado": false,
+  "scrollWidth": 768,
+  "innerWidth": 768
+ },
+ "url_puntos": "http://127.0.0.1:8782/configuracion/puntos/",
+ "foco_puntos": {
+  "total": 14,
+  "visibles": 14,
+  "detalle": [
+   {
+    "tag": "a",
+    "texto": "Abrir o cerrar menú",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "Inicio",
+    "visible": true
+   },
+   {
+    "tag": "button",
+    "texto": "001-001",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "DEMOSTRACIÓN · Propietario \nEmpresa acti",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "Cerrar sesión",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "FacturaPorAquí",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "Comprobantes Electrónicos",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "Cotizaciones",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "Clientes y promociones",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "Compras y gastos",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "Importación de documentos",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "Bodega",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "Administrativo",
+    "visible": true
+   },
+   {
+    "tag": "a",
+    "texto": "Tributario",
+    "visible": true
+   }
+  ]
+ },
+ "foco_campos": {
+  "select_usuario": {
+   "el": "SELECT[a-user]",
+   "outline": "solid 3px rgb(23, 101, 129)",
+   "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px"
+  },
+  "boton_autorizar": {
+   "el": "BUTTON[action]",
+   "outline": "solid 3px rgb(23, 101, 129)",
+   "sombra": "rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+  },
+  "configurar_numeracion": {
+   "el": "BUTTON[]",
+   "outline": "solid 3px rgb(23, 101, 129)",
+   "sombra": "rgba(108, 117, 125, 0.11) 0px 0px 0px 0px"
+  },
+  "radio_modo": {
+   "el": "INPUT[n-mode]",
+   "outline": "solid 3px rgb(23, 101, 129)",
+   "sombra": "none"
+  }
+ },
+ "foco_ficha_botones": {
+  "el": "A[]",
+  "outline": "none 0px rgb(108, 117, 125)",
+  "sombra": "none"
+ },
+ "foco_editor": {
+  "buscar": {
+   "el": "INPUT[fp-buscar-producto]",
+   "outline": "none 0px rgb(73, 80, 87)",
+   "sombra": "rgba(68, 186, 221, 0.19) 0px 0px 0px 3px"
+  },
+  "prospecto": {
+   "el": "INPUT[fp_tipo_cliente]",
+   "outline": "solid 3px rgb(23, 101, 129)",
+   "sombra": "none"
+  },
+  "guardar": {
+   "el": "BUTTON[]",
+   "outline": "none 0px rgb(255, 255, 255)",
+   "sombra": "none"
+  }
+ },
+ "registro": {
+  "errores_js": [],
+  "respuestas_5xx": [],
+  "consola": []
+ }
+}

@@ -1,0 +1,27 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [],
+ "pasos": {
+  "compra_credito_plazo_y_cxp": {
+   "ok": true,
+   "detalle": {
+    "sin_plazo": {
+     "error": "Escribe la fecha de plazo del crédito."
+    },
+    "con_plazo": {
+     "id": 14,
+     "advertencias": []
+    },
+    "total": "9.20",
+    "cxp": "9.20",
+    "saldo": "9.20",
+    "vence": "2026-12-04",
+    "stock": 112,
+    "campo_plazo_visible_con_credito": true,
+    "oculto_con_contado": true
+   }
+  }
+ },
+ "fallos": []
+}

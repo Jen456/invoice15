@@ -1,0 +1,434 @@
+{
+ "nombre": "v9",
+ "pasos": [
+  {
+   "nombre": "menú: no hay entradas «Inicio contable», «Plan de cuentas» ni «Asientos» (las maquetas no están en el menú)",
+   "ok": true,
+   "v9EnMenu": [],
+   "menu_contable": [
+    [
+     "Libros mensuales",
+     "/tributario/libros/"
+    ],
+    [
+     "Revisión del mes",
+     "/tributario/revision/"
+    ],
+    [
+     "ATS del mes",
+     "/tributario/ats/"
+    ],
+    [
+     "Borradores del 104 y del 103",
+     "/tributario/formularios/"
+    ],
+    [
+     "Revisión de mis empresas",
+     "/tributario/empresas/"
+    ],
+    [
+     "Kardex por producto",
+     "/contabilidad/kardex/"
+    ],
+    [
+     "Inventario valorizado",
+     "/contabilidad/inventario/"
+    ],
+    [
+     "Locales y puntos de emisión",
+     "/configuracion/puntos/"
+    ]
+   ]
+  },
+  {
+   "nombre": "rutas reales de revisión, libros, ATS, borradores, kardex, inventario y puntos responden 200",
+   "ok": true,
+   "noOk": []
+  },
+  {
+   "nombre": "libro de ventas (API real) contiene las facturas autorizadas del mes que hay en la base",
+   "ok": false,
+   "numeros_base": [
+    "001-001-006604419",
+    "001-001-006604420"
+   ],
+   "filas": 0
+  },
+  {
+   "nombre": "puntos: estado.json real (establecimientos, puntos, autorizados) sin «cupo» ni «verificacion» del contrato C7",
+   "ok": true,
+   "forma": {
+    "setup_completo": true,
+    "ambiente": "{codigo,nombre}",
+    "locales": "[1]",
+    "usuarios": "[4]",
+    "seleccion": "{seleccionado,elegido_por_el_usuario,elegibles,puede_administrar,ambiente,url_seleccionar}",
+    "tipos": "[7]",
+    "mensajes": "{elige_punto,punto_desconocido,punto_inactivo,punto_no_autorizado,sin_membresia,usuario_ajeno,usuario_administra,setup_pendiente}"
+   },
+   "tiene_cupo": false,
+   "tiene_verificacion": false
+  },
+  {
+   "nombre": "rutas nuevas del contrato (C1 inicio, C2/C3 cuentas, C4 asientos, C5 evidencias) y la propuesta: 404 (no existen)",
+   "ok": true,
+   "contrato": {
+    "GET /contabilidad/": 404,
+    "GET /contabilidad/api/inicio/?empresa=1": 404,
+    "GET /contabilidad/api/cuentas/?empresa=1": 404,
+    "POST /contabilidad/api/cuentas/": 404,
+    "PATCH /contabilidad/api/cuentas/1/": 404,
+    "POST /contabilidad/api/cuentas/importar/": 404,
+    "GET /contabilidad/api/asientos/?mes=2026-11&empresa=1": 404,
+    "GET /tributario/api/revision/evidencias/?mes=2026-11": 404,
+    "POST /tributario/api/revision/evidencias/": 404,
+    "GET /tributario/": 404,
+    "GET /contabilidad/plan/": 404,
+    "GET /contabilidad/asientos/": 404,
+    "GET /contabilidad/reportes/": 404,
+    "GET /contabilidad/inicio/": 404,
+    "GET /entregas/facturaporaqui/referencias/frontend-v9/entregas/facturaporaqui/propuestas/ux-v9/index.html": 404,
+    "GET /static/propuesta.js": 404
+   }
+  },
+  {
+   "nombre": "empresa B (fuera de la lista de revisión): páginas → redirección y API → 403 complemento_pendiente",
+   "ok": true,
+   "pagina": [
+    302,
+    "/dashboard/"
+   ],
+   "api": [
+    403,
+    "complemento_pendiente"
+   ],
+   "inventario": 403
+  },
+  {
+   "nombre": "empresa B: las opciones contables del menú llevan candado",
+   "ok": true,
+   "menuB": [
+    [
+     "/tributario/libros/",
+     true
+    ],
+    [
+     "/tributario/revision/",
+     true
+    ],
+    [
+     "/tributario/ats/",
+     true
+    ],
+    [
+     "/tributario/formularios/",
+     true
+    ],
+    [
+     "/tributario/empresas/",
+     true
+    ],
+    [
+     "/contabilidad/kardex/",
+     true
+    ],
+    [
+     "/contabilidad/inventario/",
+     true
+    ]
+   ]
+  },
+  {
+   "nombre": "sin errores de JavaScript",
+   "ok": true,
+   "e": []
+  }
+ ],
+ "fallidas": [
+  "libro de ventas (API real) contiene las facturas autorizadas del mes que hay en la base"
+ ],
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "menu_contable": [
+  [
+   "Libros mensuales",
+   "/tributario/libros/"
+  ],
+  [
+   "Revisión del mes",
+   "/tributario/revision/"
+  ],
+  [
+   "ATS del mes",
+   "/tributario/ats/"
+  ],
+  [
+   "Borradores del 104 y del 103",
+   "/tributario/formularios/"
+  ],
+  [
+   "Revisión de mis empresas",
+   "/tributario/empresas/"
+  ],
+  [
+   "Kardex por producto",
+   "/contabilidad/kardex/"
+  ],
+  [
+   "Inventario valorizado",
+   "/contabilidad/inventario/"
+  ],
+  [
+   "Locales y puntos de emisión",
+   "/configuracion/puntos/"
+  ]
+ ],
+ "existentes": {
+  "revisión del mes (página)": {
+   "ruta": "/tributario/revision/",
+   "http": 200,
+   "tipo": "text/html",
+   "forma": null
+  },
+  "revisión del mes (API)": {
+   "ruta": "/tributario/api/revision/?mes=2026-11&empresa=1",
+   "http": 200,
+   "tipo": "application/json",
+   "forma": {
+    "mes": "2026-11",
+    "corte": "2026-11-04",
+    "observaciones": "[23]",
+    "por_categoria": "{devueltos,datos_ats,respaldos,numeracion,vencidas,retenciones}",
+    "pendientes": 19,
+    "informativas": 4,
+    "agente_retencion": false
+   }
+  },
+  "libro de ventas (API)": {
+   "ruta": "/tributario/api/libros/ventas/?mes=2026-11",
+   "http": 200,
+   "tipo": "application/json",
+   "forma": {
+    "libro": "ventas",
+    "nombre": "Libro de ventas",
+    "mes": "2026-11",
+    "columnas": "[23]",
+    "filas": "[0]",
+    "total_filas": 0,
+    "totales": "{documentos,cuentan,no_cuentan,bases,ivas,base_total,iva_total,total}",
+    "excluidos": "{facturas}",
+    "advertencias": "[0]"
+   }
+  },
+  "libro de compras (API)": {
+   "ruta": "/tributario/api/libros/compras/?mes=2026-11",
+   "http": 200,
+   "tipo": "application/json",
+   "forma": {
+    "libro": "compras",
+    "nombre": "Libro de compras",
+    "mes": "2026-11",
+    "columnas": "[29]",
+    "filas": "[9]",
+    "total_filas": 9,
+    "totales": "{documentos,cuentan,no_cuentan,bases,ivas,base_total,iva_total,total}",
+    "excluidos": "{}",
+    "advertencias": "[2]"
+   }
+  },
+  "ATS (API)": {
+   "ruta": "/tributario/api/ats/?mes=2026-11",
+   "http": 200,
+   "tipo": "application/json",
+   "forma": {
+    "mes": "2026-11",
+    "nombre": "AT112026",
+    "valido": true,
+    "errores_xsd": "[0]",
+    "incluidas": "[0]",
+    "excluidas": "[9]",
+    "advertencias": "[5]",
+    "esquema": "{archivo,url,publicado,descargado,sha256}"
+   }
+  },
+  "borradores 104/103 (API)": {
+   "ruta": "/tributario/api/formularios/?mes=2026-11",
+   "http": 200,
+   "tipo": "application/json",
+   "forma": {
+    "formulario": "104",
+    "mes": "2026-11",
+    "aviso": "Borrador para que lo revise tu contador.",
+    "casilleros": "[0]",
+    "por_confirmar": "[1]",
+    "no_calculados": "[5]",
+    "advertencias": "[4]",
+    "vigente_desde": "2024-04-01"
+   }
+  },
+  "revisión de mis empresas (API)": {
+   "ruta": "/tributario/api/empresas/?mes=2026-11",
+   "http": 200,
+   "tipo": "application/json",
+   "forma": {
+    "mes": "2026-11",
+    "empresas": "[1]",
+    "activa": 1
+   }
+  },
+  "kardex: productos (API)": {
+   "ruta": "/contabilidad/api/kardex/productos/",
+   "http": 200,
+   "tipo": "application/json",
+   "forma": {
+    "productos": "[13]"
+   }
+  },
+  "kardex PRV-1 (API)": {
+   "ruta": "/contabilidad/api/kardex/12/",
+   "http": 200,
+   "tipo": "application/json",
+   "forma": {
+    "producto": "{id,codigo,nombre,stock_actual}",
+    "desde": "2026-11-01",
+    "hasta": "2026-11-04",
+    "saldo_anterior": "{cantidad,valor,costo_promedio,conocido}",
+    "movimientos": "[2]",
+    "saldo_final": "{cantidad,valor,costo_promedio,conocido}",
+    "advertencias": "[3]",
+    "diferencia_stock": 102,
+    "manuales": "[0]",
+    "capacidades": "{ver,registrar,anular,bloqueo}"
+   }
+  },
+  "inventario valorizado (API)": {
+   "ruta": "/contabilidad/api/inventario/",
+   "http": 200,
+   "tipo": "application/json",
+   "forma": {
+    "fecha": "2026-11-04",
+    "filas": "[12]",
+    "totales": "{productos,valor_conocido,sin_costo,con_diferencia}"
+   }
+  },
+  "puntos de emisión (página)": {
+   "ruta": "/configuracion/puntos/",
+   "http": 200,
+   "tipo": "text/html",
+   "forma": null
+  },
+  "puntos de emisión (estado.json)": {
+   "ruta": "/configuracion/puntos/estado.json",
+   "http": 200,
+   "tipo": "application/json",
+   "forma": {
+    "setup_completo": true,
+    "ambiente": "{codigo,nombre}",
+    "locales": "[1]",
+    "usuarios": "[4]",
+    "seleccion": "{seleccionado,elegido_por_el_usuario,elegibles,puede_administrar,ambiente,url_seleccionar}",
+    "tipos": "[7]",
+    "mensajes": "{elige_punto,punto_desconocido,punto_inactivo,punto_no_autorizado,sin_membresia,usuario_ajeno,usuario_administra,setup_pendiente}"
+   }
+  },
+  "libros (página)": {
+   "ruta": "/tributario/libros/",
+   "http": 200,
+   "tipo": "text/html",
+   "forma": null
+  },
+  "kardex (página)": {
+   "ruta": "/contabilidad/kardex/",
+   "http": 200,
+   "tipo": "text/html",
+   "forma": null
+  },
+  "inventario (página)": {
+   "ruta": "/contabilidad/inventario/",
+   "http": 200,
+   "tipo": "text/html",
+   "forma": null
+  },
+  "borradores (página)": {
+   "ruta": "/tributario/formularios/",
+   "http": 200,
+   "tipo": "text/html",
+   "forma": null
+  },
+  "ATS (página)": {
+   "ruta": "/tributario/ats/",
+   "http": 200,
+   "tipo": "text/html",
+   "forma": null
+  }
+ },
+ "libro_ventas": {
+  "forma": {
+   "libro": "ventas",
+   "nombre": "Libro de ventas",
+   "mes": "2026-11",
+   "columnas": "[23]",
+   "filas": "[0]",
+   "total_filas": 0,
+   "totales": "{documentos,cuentan,no_cuentan,bases,ivas,base_total,iva_total,total}",
+   "excluidos": "{facturas}",
+   "advertencias": "[0]"
+  },
+  "base": {
+   "facturas": 2,
+   "numeros": [
+    "001-001-006604419",
+    "001-001-006604420"
+   ],
+   "total": "86.38"
+  }
+ },
+ "revision": {
+  "mes": "2026-11",
+  "corte": "2026-11-04",
+  "observaciones": "[23]",
+  "por_categoria": "{devueltos,datos_ats,respaldos,numeracion,vencidas,retenciones}",
+  "pendientes": 19,
+  "informativas": 4,
+  "agente_retencion": false
+ },
+ "puntos": {
+  "forma": {
+   "setup_completo": true,
+   "ambiente": "{codigo,nombre}",
+   "locales": "[1]",
+   "usuarios": "[4]",
+   "seleccion": "{seleccionado,elegido_por_el_usuario,elegibles,puede_administrar,ambiente,url_seleccionar}",
+   "tipos": "[7]",
+   "mensajes": "{elige_punto,punto_desconocido,punto_inactivo,punto_no_autorizado,sin_membresia,usuario_ajeno,usuario_administra,setup_pendiente}"
+  },
+  "tiene_cupo": false,
+  "tiene_verificacion": false
+ },
+ "inventario": {
+  "fecha": "2026-11-04",
+  "filas": "[12]",
+  "totales": "{productos,valor_conocido,sin_costo,con_diferencia}"
+ },
+ "kardex_productos": {
+  "productos": "[13]"
+ },
+ "contrato": {
+  "GET /contabilidad/": 404,
+  "GET /contabilidad/api/inicio/?empresa=1": 404,
+  "GET /contabilidad/api/cuentas/?empresa=1": 404,
+  "POST /contabilidad/api/cuentas/": 404,
+  "PATCH /contabilidad/api/cuentas/1/": 404,
+  "POST /contabilidad/api/cuentas/importar/": 404,
+  "GET /contabilidad/api/asientos/?mes=2026-11&empresa=1": 404,
+  "GET /tributario/api/revision/evidencias/?mes=2026-11": 404,
+  "POST /tributario/api/revision/evidencias/": 404,
+  "GET /tributario/": 404,
+  "GET /contabilidad/plan/": 404,
+  "GET /contabilidad/asientos/": 404,
+  "GET /contabilidad/reportes/": 404,
+  "GET /contabilidad/inicio/": 404,
+  "GET /entregas/facturaporaqui/referencias/frontend-v9/entregas/facturaporaqui/propuestas/ux-v9/index.html": 404,
+  "GET /static/propuesta.js": 404
+ }
+}

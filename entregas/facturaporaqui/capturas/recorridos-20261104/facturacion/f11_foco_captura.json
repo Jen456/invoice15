@@ -1,0 +1,34 @@
+{
+ "pasos": [
+  {
+   "nombre": "botones del listado con foco de teclado (evidencia)",
+   "ok": false,
+   "ver-todas": {
+    "texto": "Ver todas",
+    "focusVisible": true,
+    "outline": "none 0px",
+    "sombra": "none",
+    "fondo": "rgb(202, 70, 44)"
+   },
+   "nuevo-registro": {
+    "texto": "Nuevo registro",
+    "focusVisible": true,
+    "outline": "none 0px",
+    "sombra": "none",
+    "fondo": "rgb(202, 70, 44)"
+   },
+   "opciones": {
+    "texto": "Opciones",
+    "focusVisible": true,
+    "outline": "none 0px",
+    "sombra": "rgba(130, 138, 145, 0.5) 0px 0px 0px 0px",
+    "fondo": "rgb(90, 98, 104)"
+   }
+  }
+ ],
+ "fallidas": [
+  "botones del listado con foco de teclado (evidencia)"
+ ],
+ "errores_js": [],
+ "http5xx": []
+}

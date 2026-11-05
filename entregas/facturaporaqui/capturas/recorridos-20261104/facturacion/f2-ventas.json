@@ -1,0 +1,35 @@
+[
+ {
+  "id": 17,
+  "num": "001-001-002555776",
+  "status": "authorized",
+  "cliente": "0917718413",
+  "empleado": "dueno.demo",
+  "lineas": [
+   {
+    "code": "PRV-1",
+    "price": "8.50",
+    "cant": 1
+   },
+   {
+    "code": "SRV-18419",
+    "price": "25.00",
+    "cant": 1
+   }
+  ]
+ },
+ {
+  "id": 18,
+  "num": "001-001-002555777",
+  "status": "authorized",
+  "cliente": "0912345678",
+  "empleado": "vendedor.previa",
+  "lineas": [
+   {
+    "code": "PRV-1",
+    "price": "10.00",
+    "cant": 1
+   }
+  ]
+ }
+]

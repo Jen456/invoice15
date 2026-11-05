@@ -1,0 +1,44 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [],
+ "pasos": {
+  "gasto_tras_cambiar_empresa": {
+   "ok": true,
+   "detalle": {
+    "status": 200,
+    "respuesta": {
+     "error": {
+      "type_expense": [
+       "Escoja una opción válida. Esa opción no está entre las disponibles."
+      ]
+     }
+    },
+    "mensaje": [
+     "{\"type_expense\":[\"Escoja una opción válida. Esa opción no está entre las disponibles.\"]}"
+    ],
+    "gastos_B": [
+     0,
+     0
+    ],
+    "gastos_A": [
+     6,
+     6
+    ]
+   }
+  },
+  "compra_tras_cambiar_empresa": {
+   "ok": true,
+   "detalle": {
+    "respuesta": {
+     "error": "Elige el proveedor."
+    },
+    "compras_B": [
+     0,
+     0
+    ]
+   }
+  }
+ },
+ "fallos": []
+}

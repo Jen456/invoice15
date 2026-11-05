@@ -1,0 +1,44 @@
+{
+ "factura": {
+  "bytes": 49411,
+  "paginas": 1,
+  "ruc_proveedor": 1,
+  "apariciones": [
+   {
+    "pagina": 1,
+    "y_rel": 0.067,
+    "contexto": "16,10\r Sistema de facturación electrónica: FACTURAPORAQUI · RUC Proveedor: 0912345675001\r soporte@fa"
+   }
+  ],
+  "ultimas_lineas": [
+   "IVA 15 % 2,10",
+   "TOTAL USD 16,10",
+   "Sistema de facturación electrónica: FACTURAPORAQUI · RUC Proveedor: 0912345675001",
+   "soporte@facturaporaqui.com · Milagro, Manta y Rumiñahui 1 / 1"
+  ],
+  "ruc_en_texto": 1,
+  "diferencias_xml": []
+ },
+ "nc": {
+  "bytes": 49914,
+  "paginas": 1,
+  "ruc_proveedor": 1,
+  "apariciones": [
+   {
+    "pagina": 1,
+    "y_rel": 0.067,
+    "contexto": "16,10\r Sistema de facturación electrónica: FACTURAPORAQUI · RUC Proveedor: 0912345675001\r soporte@fa"
+   }
+  ],
+  "ultimas_lineas": [
+   "IVA 15 % 2,10",
+   "TOTAL USD 16,10",
+   "Sistema de facturación electrónica: FACTURAPORAQUI · RUC Proveedor: 0912345675001",
+   "soporte@facturaporaqui.com · Milagro, Manta y Rumiñahui 1 / 1"
+  ],
+  "ruc_en_texto": 1,
+  "diferencias_xml": []
+ },
+ "xml_nc_tiene_ruc_proveedor": true,
+ "xml_factura_tiene_ruc_proveedor": true
+}

@@ -1,0 +1,646 @@
+{
+ "fecha": "2026-11-04",
+ "codigo": "1bda737 (verificación) y 76a9c26 (correcciones, verificadas aparte)",
+ "grupos": [
+  {
+   "grupo": "proformas-puntos",
+   "pasos": [
+    {
+     "nombre": "Vista previa local en 8782 (commit 1bda737, SQLite, SRI simulado)",
+     "ok": true
+    },
+    {
+     "nombre": "Proforma con dos líneas creada desde la interfaz (dueno.demo, empresa A)",
+     "ok": true
+    },
+    {
+     "nombre": "Marcar aceptada desde la ficha",
+     "ok": true
+    },
+    {
+     "nombre": "vendedor.previa factura la proforma: la factura conserva los precios",
+     "ok": true
+    },
+    {
+     "nombre": "La proforma no se factura dos veces",
+     "ok": true
+    },
+    {
+     "nombre": "Proforma en borrador y precio manipulado",
+     "ok": true
+    },
+    {
+     "nombre": "Ficha, lista, PDF, Contador y otra empresa",
+     "ok": true
+    },
+    {
+     "nombre": "Segundo punto 001-002 creado desde la interfaz en /configuracion/puntos/",
+     "ok": true
+    },
+    {
+     "nombre": "Numeración propia de 001-002",
+     "ok": true
+    },
+    {
+     "nombre": "Autorizar a vendedor.previa solo en 001-002",
+     "ok": true
+    },
+    {
+     "nombre": "El asistente /configuracion/facturacion/ refleja el punto nuevo",
+     "ok": true
+    },
+    {
+     "nombre": "El vendedor solo puede elegir los puntos autorizados",
+     "ok": true
+    },
+    {
+     "nombre": "Cada punto numera por separado y el propietario elige cualquiera",
+     "ok": true
+    },
+    {
+     "nombre": "Acciones de configuración no permitidas al vendedor",
+     "ok": true
+    },
+    {
+     "nombre": "Entradas inválidas en la configuración",
+     "ok": false
+    },
+    {
+     "nombre": "Pantallas a 360/390 px sin desplazamiento horizontal",
+     "ok": false
+    },
+    {
+     "nombre": "Pantallas a 1360 px sin desplazamiento horizontal",
+     "ok": false
+    },
+    {
+     "nombre": "Foco visible básico",
+     "ok": false
+    },
+    {
+     "nombre": "Errores de JavaScript y respuestas 5xx",
+     "ok": true
+    }
+   ],
+   "pantallas_v9": [
+    {
+     "pantalla": "Bloque «Lugar de emisión» de la factura (create.html v9)",
+     "estado": "Conectado. search_voucher_number consulta el próximo número del punto sin reservarlo, y el campo punto se vuelve a validar en el servidor al emitir. Verificado con el propietario (lista con 2 puntos), el vendedor (campo oculto, solo el autorizado) y un punto sin numeración (aviso y sin emitir).",
+     "ruta_real": "/pos/sale/admin/add/"
+    },
+    {
+     "pantalla": "Selector de punto en la cabecera",
+     "estado": "Conectado (seleccion.json y seleccionar/). Rechaza los puntos no autorizados con 400. Defecto de recorte en móvil.",
+     "ruta_real": "/configuracion/puntos/seleccion.json, /configuracion/puntos/seleccionar/"
+    },
+    {
+     "pantalla": "Puntos (maqueta v9 ux-v9/index.html)",
+     "estado": "La maqueta es estática, con datos simulados y sin API. La pantalla real conectada es «Locales y puntos de emisión»: altas, duplicados, numeración por punto y ambiente, autorizaciones, activar y desactivar, todo verificado en la base. El límite de tres puntos de la maqueta no se aplica.",
+     "ruta_real": "/configuracion/puntos/ (y estado.json)"
+    },
+    {
+     "pantalla": "Asistente de configuración de facturación",
+     "estado": "Conectado: retoma en el paso pendiente y el paso 2 lista los puntos nuevos. Hay un 500 si point no es numérico.",
+     "ruta_real": "/configuracion/facturacion/ (paso/1..5/)"
+    },
+    {
+     "pantalla": "Facturar desde proforma (precarga en la factura)",
+     "estado": "Conectado: precarga de solo lectura, conversión dentro de la transacción de la venta, vínculo y bloqueo de doble facturación verificados en la base.",
+     "ruta_real": "/pos/sale/admin/add/?proforma=<id>"
+    },
+    {
+     "pantalla": "Proformas: lista, editor, ficha, PDF y correo (no forman parte de la maqueta v9)",
+     "estado": "Conectadas al backend: crear, aceptar, buscar, PDF y permisos verificados. El envío por correo no se ejercitó. Defectos de desborde a 1360 en el editor y de foco en los botones.",
+     "ruta_real": "/proformas/, /proformas/add/, /proformas/ver/<id>/, /proformas/pdf/<id>/"
+    }
+   ]
+  },
+  {
+   "grupo": "cobros-permisos-movil-v9",
+   "pasos": [
+    {
+     "nombre": "Vista previa local levantada (SQLite, SRI simulado) y usuario Consulta ficticio creado en A",
+     "ok": true
+    },
+    {
+     "nombre": "Cobros: factura a crédito emitida desde el formulario real con plazo obligatorio",
+     "ok": true
+    },
+    {
+     "nombre": "Cobros: abonos desde el panel «Cobros y respaldos» de /pos/ctas/collect/",
+     "ok": true
+    },
+    {
+     "nombre": "Cobros: «Nuevo registro» (/pos/ctas/collect/add/)",
+     "ok": true
+    },
+    {
+     "nombre": "Cobros: revisar el respaldo no cambia el saldo",
+     "ok": true
+    },
+    {
+     "nombre": "Cobros: eliminar un cobro falso devuelve el saldo y conserva el respaldo",
+     "ok": true
+    },
+    {
+     "nombre": "Cobros: el vendedor registra pero no revisa",
+     "ok": true
+    },
+    {
+     "nombre": "Cobros: Contador y Consulta solo ven",
+     "ok": true
+    },
+    {
+     "nombre": "Permisos por rol: matriz de pantallas y POST de alta",
+     "ok": false
+    },
+    {
+     "nombre": "Móvil y escritorio: 51 rutas del menú del propietario a 360, 390, 768 y 1360 px",
+     "ok": true
+    },
+    {
+     "nombre": "Foco visible al tabular en la factura (/pos/sale/admin/add/)",
+     "ok": true
+    },
+    {
+     "nombre": "Pantallas v9: comparación con rutas reales",
+     "ok": true
+    }
+   ],
+   "pantallas_v9": [
+    {
+     "pantalla": "Inicio contable",
+     "estado": "Solo maqueta: no existe la ruta C1 ni una entrada en el menú",
+     "ruta_real": "Ninguna: GET /contabilidad/ y /contabilidad/api/inicio/?empresa=1 responden 404. Lo más cercano real es /tributario/empresas/ con /tributario/api/empresas/ (pendientes por empresa: 19 en DEMOSTRACION) y /tributario/api/revision/."
+    },
+    {
+     "pantalla": "Plan de cuentas (incluida la importación del plan)",
+     "estado": "Solo maqueta: no hay modelo, página ni API de cuentas",
+     "ruta_real": "Ninguna: GET y POST /contabilidad/api/cuentas/, PATCH /contabilidad/api/cuentas/1/, POST /contabilidad/api/cuentas/importar/ y /contabilidad/plan/ responden 404. core/contabilidad/urls.py solo tiene kardex e inventario."
+    },
+    {
+     "pantalla": "Asientos por comprobante",
+     "estado": "Solo maqueta, bloqueada por D7 (matriz de asientos validada)",
+     "ruta_real": "Ninguna: GET /contabilidad/api/asientos/?mes=2026-11 y /contabilidad/asientos/ responden 404."
+    },
+    {
+     "pantalla": "Revisión del mes",
+     "estado": "Conectada en parte: la revisión, los libros y el ATS son reales; faltan las evidencias de presentación (C5) y el cierre o reapertura del mes",
+     "ruta_real": "/tributario/revision/ y GET /tributario/api/revision/?mes=2026-11&empresa=1: 23 observaciones reales (19 por revisar y 4 informativas, en las categorías devueltos, datos_ats, respaldos, numeracion, vencidas y retenciones), por ejemplo «Compra 70876257 de STOKES-REICHEL» como compra_incompleta. /tributario/api/ats/: AT112026 válido contra el XSD. GET y POST /tributario/api/revision/evidencias/ responden 404."
+    },
+    {
+     "pantalla": "Reportes",
+     "estado": "Conectada en parte: libros, borradores, ATS, kardex, inventario y /reports/* son reales; no existen el mayor ni los estados financieros (D5, D7 y apertura)",
+     "ruta_real": "/tributario/libros/ con /tributario/api/libros/<libro>/: compras 9 filas; ventas 0 filas, porque las 2 facturas del mes son de PRUEBAS y se cuentan en excluidos.facturas.pruebas=2. /tributario/api/formularios/: borrador del 104 con por_confirmar y no_calculados. /contabilidad/api/kardex/12/: PRV-1 con las salidas reales de 001-001-006604419 (2) y 001-001-006604420 (5), saldo con costo desconocido y advertencias. /contabilidad/api/inventario/: 12 productos, valor conocido 2063.72."
+    },
+    {
+     "pantalla": "Puntos de emisión",
+     "estado": "Conectada a la ruta existente, sin el cupo ni la verificación de C7",
+     "ruta_real": "/configuracion/puntos/ y /configuracion/puntos/estado.json: locales, puntos (001-001 y el ficticio 001-009 que creé en la prueba de permisos), 4 usuarios autorizados y la selección. No hay claves «cupo» ni «verificacion», así que el «3 de 3» y el «verificado» de la maqueta no tienen datos reales. Solo Propietario y Administrador la abren."
+    }
+   ]
+  },
+  {
+   "grupo": "facturacion",
+   "pasos": [
+    {
+     "nombre": "Vista previa local levantada (1bda737, SQLite, SRI simulado, red externa bloqueada)",
+     "ok": true
+    },
+    {
+     "nombre": "1a Factura 01 contado en efectivo con cambio",
+     "ok": true
+    },
+    {
+     "nombre": "1b Transferencia sin nota ni archivo",
+     "ok": true
+    },
+    {
+     "nombre": "1c Transferencia con nota y referencia",
+     "ok": true
+    },
+    {
+     "nombre": "1d Transferencia con comprobante PNG ficticio",
+     "ok": true
+    },
+    {
+     "nombre": "1e R2 crédito sin plazo",
+     "ok": true
+    },
+    {
+     "nombre": "1f Crédito con plazo",
+     "ok": true
+    },
+    {
+     "nombre": "1g Números consecutivos en la BD",
+     "ok": true
+    },
+    {
+     "nombre": "1h R2 en el servidor (POST directo)",
+     "ok": true
+    },
+    {
+     "nombre": "2a Alta de cliente desde la factura",
+     "ok": true
+    },
+    {
+     "nombre": "2b Alta de producto desde la factura",
+     "ok": true
+    },
+    {
+     "nombre": "2c Precio por línea del propietario",
+     "ok": true
+    },
+    {
+     "nombre": "2d Vendedor sin precio por línea",
+     "ok": true
+    },
+    {
+     "nombre": "3 R1, dni validado en A y cambio a B antes de guardar (1360 px)",
+     "ok": true
+    },
+    {
+     "nombre": "3b R1, dni escrito después del cambio (390 px)",
+     "ok": true
+    },
+    {
+     "nombre": "3c R1 con teclado",
+     "ok": true
+    },
+    {
+     "nombre": "4a Usar como base: opción y carga",
+     "ok": true
+    },
+    {
+     "nombre": "4b Usar como base: exige cliente y emite con otro",
+     "ok": true
+    },
+    {
+     "nombre": "4c Usar como base: otra empresa y vendedor",
+     "ok": true
+    },
+    {
+     "nombre": "5a Nota de crédito desde Opciones",
+     "ok": true
+    },
+    {
+     "nombre": "5b A4 de la factura y de la NC",
+     "ok": true
+    },
+    {
+     "nombre": "Permisos Consulta y Contador",
+     "ok": true
+    },
+    {
+     "nombre": "Cobros y respaldos de la factura",
+     "ok": true
+    },
+    {
+     "nombre": "Móvil 390 px y escritorio 1360 px",
+     "ok": true
+    },
+    {
+     "nombre": "Foco visible con teclado: factura y diálogos",
+     "ok": true
+    },
+    {
+     "nombre": "Foco visible con teclado: listado de facturas",
+     "ok": false
+    },
+    {
+     "nombre": "Errores JS y respuestas 5xx",
+     "ok": true
+    }
+   ],
+   "pantallas_v9": [
+    {
+     "pantalla": "Nueva factura por secciones (cliente y documento, productos y servicios, pago y resumen)",
+     "estado": "conectada: emite, el SRI simulado autoriza y numera desde la secuencia real",
+     "ruta_real": "/pos/sale/admin/add/ (action=add)"
+    },
+    {
+     "pantalla": "Diálogo «Crear cliente aquí» con R1 (aviso y «Volver a la empresa de esta factura»)",
+     "estado": "conectada: create_client, validate_client y search_client con 409 empresa_cambiada; vuelve con POST /empresas/cambiar/",
+     "ruta_real": "/pos/sale/admin/add/ + /empresas/cambiar/"
+    },
+    {
+     "pantalla": "Diálogo «Crear producto aquí»",
+     "estado": "conectada: carga el formulario real, validate_data y alta; lo añade si no tiene inventario",
+     "ruta_real": "/pos/product/add/"
+    },
+    {
+     "pantalla": "Precio por línea",
+     "estado": "conectada: lo controla el servidor con el permiso change_product (lineas_venta.comprobar_precios)",
+     "ruta_real": "/pos/sale/admin/add/"
+    },
+    {
+     "pantalla": "«¿Cómo recibiste el pago?» (medio, referencia, nota y comprobante)",
+     "estado": "conectada a core.cobros (RespaldoCobro privado). La nota o archivo de pago de v9 (payment_note, 10 MB) no se trasladó, por decisión documentada",
+     "ruta_real": "/pos/sale/admin/add/ ; /cobros/factura/<id>/ ; /cobros/respaldo/<id>/archivo/"
+    },
+    {
+     "pantalla": "Plazo obligatorio a crédito (R2)",
+     "estado": "conectada: validación local junto al campo y validación del servidor (PLAZO_CREDITO)",
+     "ruta_real": "/pos/sale/admin/add/"
+    },
+    {
+     "pantalla": "Listado «Facturas emitidas» con Opciones",
+     "estado": "conectada (foco visible defectuoso en sus botones)",
+     "ruta_real": "/pos/sale/admin/"
+    },
+    {
+     "pantalla": "«Usar como base para otra factura»",
+     "estado": "conectada: search_detail_products, sin reservar número; numera solo al emitir",
+     "ruta_real": "/pos/sale/admin/add/?base=<id>&empresa=<id>"
+    },
+    {
+     "pantalla": "Nota de crédito desde Opciones",
+     "estado": "conectada: create_credit_note, autorizada; la factura queda canceled",
+     "ruta_real": "/pos/sale/admin/ (action=create_credit_note)"
+    },
+    {
+     "pantalla": "RIDE A4 con RUC del proveedor solo en el pie",
+     "estado": "conectada: PDF guardado, fiel al XML, 'RUC Proveedor' una vez y en el pie (factura y NC)",
+     "ruta_real": "/pos/sale/admin/print/a4/<id>/ y pdf_authorized de la NC"
+    }
+   ]
+  },
+  {
+   "grupo": "compras-recibos-importacion",
+   "pasos": [
+    {
+     "nombre": "Vista previa levantada",
+     "ok": true
+    },
+    {
+     "nombre": "Compra manual: proveedor nuevo desde el modal, línea de producto y línea de gasto",
+     "ok": true
+    },
+    {
+     "nombre": "Compra a crédito",
+     "ok": true
+    },
+    {
+     "nombre": "Gasto suelto (/pos/expenses/add/)",
+     "ok": true
+    },
+    {
+     "nombre": "Permisos en compras y gastos",
+     "ok": true
+    },
+    {
+     "nombre": "Recibo solo con nota, solo con archivo y con ambos",
+     "ok": true
+    },
+    {
+     "nombre": "Reintento con la misma clave",
+     "ok": true
+    },
+    {
+     "nombre": "Completar un recibo como gasto",
+     "ok": true
+    },
+    {
+     "nombre": "Vincular un recibo a una compra existente",
+     "ok": true
+    },
+    {
+     "nombre": "Registrar un recibo como compra",
+     "ok": true
+    },
+    {
+     "nombre": "Descartar un recibo",
+     "ok": true
+    },
+    {
+     "nombre": "Vendedor: solo ve lo suyo",
+     "ok": true
+    },
+    {
+     "nombre": "Recibo con la empresa cambiada en otra pestaña",
+     "ok": true
+    },
+    {
+     "nombre": "Consulta del mes actual (/adjuntos/)",
+     "ok": true
+    },
+    {
+     "nombre": "Filtros de la consulta mensual",
+     "ok": true
+    },
+    {
+     "nombre": "Mes anterior",
+     "ok": true
+    },
+    {
+     "nombre": "Modal de respaldos por documento",
+     "ok": true
+    },
+    {
+     "nombre": "ZIP del mes por rol",
+     "ok": true
+    },
+    {
+     "nombre": "Archivo privado",
+     "ok": true
+    },
+    {
+     "nombre": "Importación de XML desde la pantalla",
+     "ok": true
+    },
+    {
+     "nombre": "Vista previa de incorporación y su estado",
+     "ok": true
+    },
+    {
+     "nombre": "Bandejas, documento y descarga",
+     "ok": true
+    },
+    {
+     "nombre": "Importación por claves",
+     "ok": true
+    },
+    {
+     "nombre": "Permisos e aislamiento en importación",
+     "ok": true
+    },
+    {
+     "nombre": "Subida de XML con la empresa cambiada en otra pestaña",
+     "ok": false
+    },
+    {
+     "nombre": "Móvil 390/360 y escritorio 1360",
+     "ok": true
+    },
+    {
+     "nombre": "Foco del modal tras guardar una nota",
+     "ok": false
+    }
+   ],
+   "pantallas_v9": [
+    {
+     "pantalla": "Revisión mensual · «Respaldos de presentación» (maqueta v9)",
+     "estado": "No conectada: la maqueta no tiene API y no existe ruta para adjuntar evidencia del período (/contabilidad/revision/ y /contabilidad/respaldos/ dan 404). La revisión real /tributario/revision/ muestra observaciones sin ningún campo de archivo.",
+     "ruta_real": "/tributario/revision/ (sin evidencia del período); los respaldos reales son por documento en /adjuntos/"
+    },
+    {
+     "pantalla": "Importación del plan de cuentas (maqueta v9)",
+     "estado": "No conectada: /contabilidad/plan/, /contabilidad/cuentas/, /contabilidad/plan-de-cuentas/ y /contabilidad/importar/ dan 404. /importacion/ importa XML/RIDE del SRI, no el plan de cuentas.",
+     "ruta_real": "ninguna"
+    },
+    {
+     "pantalla": "Asientos por comprobante y «compra con cuenta por asignar» (maqueta v9)",
+     "estado": "No conectada: /contabilidad/asientos/, /contabilidad/cierre/ y /contabilidad/reportes/ dan 404.",
+     "ruta_real": "ninguna"
+    },
+    {
+     "pantalla": "Nueva compra, listado y compra a crédito",
+     "estado": "Conectada (cálculo, stock, cuenta por pagar y duplicados en el servidor)",
+     "ruta_real": "/pos/purchase/add/, /pos/purchase/"
+    },
+    {
+     "pantalla": "Gasto suelto",
+     "estado": "Conectada (falta validar en el servidor valor > 0 y fecha)",
+     "ruta_real": "/pos/expenses/add/, /pos/expenses/"
+    },
+    {
+     "pantalla": "Recibos por completar",
+     "estado": "Conectada (API de capturas: guardar, completar, vincular, descartar, nota, archivo)",
+     "ruta_real": "/adjuntos/capturas/ y /adjuntos/api/capturas/"
+    },
+    {
+     "pantalla": "Comprobantes de pago del mes y ZIP",
+     "estado": "Conectada",
+     "ruta_real": "/adjuntos/?mes=AAAA-MM, /adjuntos/zip/, /adjuntos/<id>/archivo/"
+    },
+    {
+     "pantalla": "Importación XML/RIDE, claves, lotes, incorporar, bandejas, documento y reglas",
+     "estado": "Conectada (en la subida de XML falta la guarda de empresa cambiada)",
+     "ruta_real": "/importacion/nueva/, /importacion/claves/, /importacion/lotes/<id>/[incorporar/], /importacion/recibidos/, /importacion/pendientes/, /importacion/documentos/<id>/, /importacion/reglas/"
+    }
+   ]
+  }
+ ],
+ "defectos": [
+  {
+   "grupo": "proformas-puntos",
+   "titulo": "El selector de punto de emisión de la cabecera se corta por la izquierda en móvil",
+   "gravedad": "media",
+   "confirmado": true
+  },
+  {
+   "grupo": "proformas-puntos",
+   "titulo": "El editor de proformas genera desplazamiento horizontal a 1360 px con el menú lateral abierto",
+   "gravedad": "media",
+   "confirmado": true
+  },
+  {
+   "grupo": "proformas-puntos",
+   "titulo": "Los botones de acción de proformas no muestran el foco al navegar con teclado",
+   "gravedad": "media",
+   "confirmado": true
+  },
+  {
+   "grupo": "proformas-puntos",
+   "titulo": "El control de precio del Vendedor se puede eludir con una proforma propia o con el descuento libre",
+   "gravedad": "media",
+   "confirmado": false
+  },
+  {
+   "grupo": "proformas-puntos",
+   "titulo": "Error 500 en el paso 2 del asistente cuando point no es numérico",
+   "gravedad": "baja",
+   "confirmado": true
+  },
+  {
+   "grupo": "proformas-puntos",
+   "titulo": "Al emitir sin punto elegido, el error aparece en «Número de comprobante» y no en el selector de punto",
+   "gravedad": "baja",
+   "confirmado": true
+  },
+  {
+   "grupo": "cobros-permisos-movil-v9",
+   "titulo": "Al negar el acceso a una página, la aplicación redirige a una API JSON (se ve JSON crudo sin menú)",
+   "gravedad": "media",
+   "confirmado": true
+  },
+  {
+   "grupo": "cobros-permisos-movil-v9",
+   "titulo": "Consulta ve en el menú «Importar por claves o reporte del SRI», pero la página le niega el acceso",
+   "gravedad": "baja",
+   "confirmado": true
+  },
+  {
+   "grupo": "cobros-permisos-movil-v9",
+   "titulo": "Los listados muestran «Nuevo registro» (y «Subir Excel de Productos») a roles sin permiso de alta",
+   "gravedad": "baja",
+   "confirmado": true
+  },
+  {
+   "grupo": "facturacion",
+   "titulo": "Listado «Facturas emitidas»: sin foco visible en «Nuevo registro», «Ver todas» y «Opciones»",
+   "gravedad": "media",
+   "confirmado": true
+  },
+  {
+   "grupo": "facturacion",
+   "titulo": "R1: al pulsar «Volver a la empresa de esta factura» el foco cae a <body> sin aviso de progreso",
+   "gravedad": "baja",
+   "confirmado": true
+  },
+  {
+   "grupo": "facturacion",
+   "titulo": "Plazo de crédito en el pasado: la pantalla lo borra sin explicar y el servidor lo acepta",
+   "gravedad": "baja",
+   "confirmado": true
+  },
+  {
+   "grupo": "facturacion",
+   "titulo": "Etiqueta «Fecha limite de credito» sin tildes y distinta del mensaje junto a otro campo «Plazo»",
+   "gravedad": "baja",
+   "confirmado": true
+  },
+  {
+   "grupo": "compras-recibos-importacion",
+   "titulo": "La subida de XML no detecta que la empresa cambió en otra pestaña: el lote se crea en la otra empresa",
+   "gravedad": "media",
+   "confirmado": true
+  },
+  {
+   "grupo": "compras-recibos-importacion",
+   "titulo": "Gasto suelto: el servidor guarda valor 0 o negativo",
+   "gravedad": "media",
+   "confirmado": true
+  },
+  {
+   "grupo": "compras-recibos-importacion",
+   "titulo": "Gasto y recibo completado como gasto aceptan fecha futura",
+   "gravedad": "baja",
+   "confirmado": true
+  },
+  {
+   "grupo": "compras-recibos-importacion",
+   "titulo": "Compras → «Crear proveedor» muestra el error técnico de la base de datos si el correo ya existe",
+   "gravedad": "baja",
+   "confirmado": true
+  },
+  {
+   "grupo": "compras-recibos-importacion",
+   "titulo": "Comprobantes de pago: tras guardar una nota en el diálogo, el foco cae en body y Escape no lo cierra",
+   "gravedad": "baja",
+   "confirmado": true
+  },
+  {
+   "grupo": "compras-recibos-importacion",
+   "titulo": "Gasto o compra enviados con la empresa cambiada en otra pestaña: no se guarda nada, pero el mensaje no lo explica",
+   "gravedad": "baja",
+   "confirmado": true
+  },
+  {
+   "grupo": "compras-recibos-importacion",
+   "titulo": "Vista previa de incorporación: un documento bloqueado por el SRI también figura como «Requiere: confirmar sin verificación del SRI»",
+   "gravedad": "baja",
+   "confirmado": true
+  }
+ ]
+}

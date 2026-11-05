@@ -1,0 +1,74 @@
+{
+ "errores_js": [],
+ "respuestas_5xx": [],
+ "respuestas_4xx": [],
+ "pasos": {
+  "recibo_registrado_como_compra": {
+   "ok": true,
+   "detalle": {
+    "aviso": "Registras el recibo C-13 (taller.pdf): «Factura ficticia de taller». Al guardar la compra, el archivo queda como su respaldo; no hace falta volver a subirlo.",
+    "campo_oculto": "13",
+    "compra": {
+     "id": 12,
+     "advertencias": []
+    },
+    "estado": "completada",
+    "tipo": "compra",
+    "doc": 12,
+    "adjuntos": [
+     "privado/empresas/66162fbf-18d3-4bcf-9499-a30d7fb5f45d/comprobantes-pago/2026/11/2a7e57f8476643f28cdcbde05a7da066.pdf"
+    ],
+    "archivo_captura": "privado/empresas/66162fbf-18d3-4bcf-9499-a30d7fb5f45d/comprobantes-pago/2026/11/2a7e57f8476643f28cdcbde05a7da066.pdf",
+    "stock_sin_cambio": true,
+    "segundo_intento": {
+     "error": "Este recibo ya se registró como Compra 001-002-000004400 (dueno.demo, 04/11/2026 15:11). No se creó otro registro.",
+     "codigo": "captura_usada",
+     "captura": {
+      "id": 13,
+      "numero": "C-13",
+      "clave": "flujos3-compra-1793823087799",
+      "estado": {
+       "id": "completada",
+       "name": "Completada: registró el documento"
+      },
+      "archivo": {
+       "nombre": "taller.pdf",
+       "tipo_mime": "application/pdf",
+       "extension": "pdf",
+       "tamano": 163,
+       "tamano_texto": "1 KB",
+       "sha256": "974075d44a1b5835715354251f23d9a649442a62e47e2d320ac9b69149df5792",
+       "url": "/adjuntos/capturas/13/archivo/",
+       "url_descarga": "/adjuntos/capturas/13/archivo/?descargar=1"
+      },
+      "nota": "Factura ficticia de taller",
+      "creado_por": "dueno.demo",
+      "creado_en": "2026-11-04 15:11",
+      "fecha": "2026-11-04",
+      "completado_por": "dueno.demo",
+      "completado_en": "2026-11-04 15:11",
+      "motivo": "",
+      "documento": {
+       "tipo": "compra",
+       "tipo_nombre": "Compra",
+       "id": 12,
+       "titulo": "Compra 001-002-000004400",
+       "existe": true,
+       "url_adjuntos": "/adjuntos/api/compra/12/"
+      },
+      "adjuntos": [
+       11
+      ]
+     }
+    }
+   }
+  },
+  "vendedor_no_registra_recibo_como_compra": {
+   "ok": true,
+   "detalle": {
+    "status": 302
+   }
+  }
+ },
+ "fallos": []
+}

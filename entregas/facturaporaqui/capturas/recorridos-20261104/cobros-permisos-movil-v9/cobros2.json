@@ -1,0 +1,45 @@
+{
+ "nombre": "cobros2",
+ "pasos": [
+  {
+   "nombre": "tras revisar: aviso «Revisión guardada. El saldo no cambia.» y la tarjeta muestra Revisado",
+   "ok": true,
+   "http": 200,
+   "aviso": "Revisión guardada. El saldo no cambia.",
+   "avisos": [
+    "Revisión guardada. El saldo no cambia."
+   ],
+   "tarjeta": "$1.50 · TransferenciaRevisadoAbono ficticio del vendedor (corregido)Referencia—Registrado porvendedor.previaFecha4/11/2026, 2:39:27 p. m.Revisado porPropietario"
+  },
+  {
+   "nombre": "servidor: importe > saldo, fecha futura y archivo falso → 400 y el saldo no cambia",
+   "ok": true,
+   "excede": [
+    400,
+    "El valor (35.50) supera el saldo de la cuenta por cobrar (34.50)."
+   ],
+   "futura": [
+    400,
+    "La fecha del cobro no puede ser futura."
+   ],
+   "falso": [
+    400,
+    "El contenido del archivo no corresponde a un PDF, JPG o PNG válido."
+   ],
+   "saldo": "34.50"
+  },
+  {
+   "nombre": "con la empresa B activa, la ficha de cobros de A responde 404",
+   "ok": true,
+   "http": 404
+  },
+  {
+   "nombre": "sin errores de JavaScript",
+   "ok": true,
+   "e": []
+  }
+ ],
+ "fallidas": [],
+ "errores_js": [],
+ "respuestas_5xx": []
+}
