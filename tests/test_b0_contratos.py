@@ -190,7 +190,8 @@ class TestMenu:
             ('tributario', '/tributario/libros/'), ('tributario', '/tributario/revision/'),
             ('tributario', '/tributario/empresas/'), ('tributario', '/tributario/ats/'),
             ('tributario', '/tributario/formularios/'), ('contabilidad', '/contabilidad/kardex/'),
-           ('contabilidad', '/contabilidad/inventario/')]   # comprobantes de pago adjuntos
+           ('contabilidad', '/contabilidad/inventario/'),
+           ('configuracion', '/configuracion/diseno-factura/')]   # diseño de factura (piloto, configuracion 0005)
 
     def test_importacion_queda_igual_y_se_recrea_igual(self):
         antes = estado_menu()

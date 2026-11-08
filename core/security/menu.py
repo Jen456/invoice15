@@ -66,9 +66,10 @@ ESTRUCTURA = (
     ('Configuración', 'fas fa-cogs', 80, (
         ('/pos/company/update/', 'Empresa', 1),
         ('/configuracion/facturacion/', 'Facturación y numeración', 2),
-        ('/configuracion/puntos/', 'Locales y puntos de emisión', 3),
-        ('/importacion/reglas/', 'Reglas de importación y contabilización', 4),
-        ('/pos/receipt/', 'Numeraciones registradas', 5),
+        ('/configuracion/diseno-factura/', 'Diseño de factura', 3),   # piloto: oculto fuera de FPA_DISENO_FACTURA_PILOTO
+        ('/configuracion/puntos/', 'Locales y puntos de emisión', 4),
+        ('/importacion/reglas/', 'Reglas de importación y contabilización', 5),
+        ('/pos/receipt/', 'Numeraciones registradas', 6),
     )),
     ('Seguridad', 'fas fa-lock', 90, ()),
 )
@@ -126,6 +127,11 @@ MODULOS_NUEVOS = (
      ('view_kardex', 'add_movimientomanual', 'change_movimientomanual')),
     ('contabilidad', '/contabilidad/inventario/', 'fas fa-warehouse',
      'Inventario valorizado a una fecha, al costo promedio del kardex', ('view_kardex',)),
+    # Diseño de factura (piloto): lo crea configuracion 0005 en instalaciones existentes. Fuera del piloto el menú lo oculta
+    # (ModuleType.get_session_modules) y sus URL no abren (core/configuracion/diseno.py).
+    ('configuracion', '/configuracion/diseno-factura/', 'fas fa-palette',
+     'Estilo y colores de las facturas nuevas del comercio, con plantillas de FacturaPorAquí y vista previa',
+     ('view_disenofactura', 'change_disenofactura')),
 )
 
 

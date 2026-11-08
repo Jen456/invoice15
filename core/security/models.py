@@ -79,7 +79,7 @@ class ModuleType(models.Model):
         group = get_group(request) if request is not None else None
         if group is not None:
             module_ids = list(group.groupmodule_set.filter(module__module_type=self).values_list('module_id', flat=True))
-            queryset = Module.objects.filter(id__in=module_ids).order_by('orden', 'name')
+            queryset = Module.objects.filter(id__in=module_ids).exclude(url__in=urls_ocultas(request)).order_by('orden', 'name')
         return queryset
 
     class Meta:
@@ -233,13 +233,29 @@ class UserAccess(models.Model):
         )
 
 
+def urls_ocultas(request):
+    """Módulos que la empresa de la petición no ve en ningún menú (sidebar, cabecera, tablero) aunque su rol los tenga:
+    «Diseño de factura» fuera del piloto (FPA_DISENO_FACTURA_PILOTO). Sus URL tampoco abren (core/configuracion/views.py)."""
+    from core.configuracion.diseno import URL, diseno_habilitado
+    company = getattr(request, 'company', None)
+    memo = getattr(request, '_fpa_urls_ocultas', None)   # el menú lo pregunta una vez por grupo: una consulta por petición
+    if memo is None or memo[0] != getattr(company, 'pk', None):
+        memo = (getattr(company, 'pk', None), [] if diseno_habilitado(company) else [URL])
+        if request is not None:
+            request._fpa_urls_ocultas = memo
+    return memo[1]
+
+
 def get_session_module_types(self):
-    ids = list(self.groupmodule_set.all().values_list('module__module_type_id', flat=True).distinct())
+    ocultas = urls_ocultas(get_current_request())
+    ids = list(self.groupmodule_set.exclude(module__url__in=ocultas).values_list('module__module_type_id', flat=True).distinct())
     return ModuleType.objects.filter(id__in=ids).order_by('orden', 'name')
 
 
 def get_session_modules(self):
-    ids = list(self.groupmodule_set.filter(module__module_type__isnull=True).values_list('module_id', flat=True).distinct())
+    ocultas = urls_ocultas(get_current_request())
+    ids = list(self.groupmodule_set.filter(module__module_type__isnull=True).exclude(module__url__in=ocultas)
+               .values_list('module_id', flat=True).distinct())
     return Module.objects.filter(id__in=ids).order_by('orden', 'name')
 
 

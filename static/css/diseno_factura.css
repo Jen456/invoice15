@@ -1,0 +1,17 @@
+.fp-diseno header { margin-bottom: 1rem; }
+.fp-diseno-grid { display: grid; grid-template-columns: minmax(250px, 350px) minmax(0, 1fr); gap: 1rem; }
+.fp-diseno-panel { padding: 1rem; background: #fff; border: 1px solid #d7e3ea; border-radius: .8rem; }
+.fp-diseno fieldset { margin: 0 0 1rem; }
+.fp-diseno legend { font-size: 1.05rem; font-weight: 700; }
+.fp-diseno-opcion { display: flex; gap: .65rem; align-items: center; padding: .55rem; margin-bottom: .45rem; border: 1px solid #d7e3ea; border-radius: .5rem; cursor: pointer; }
+.fp-diseno-opcion:has(input:checked) { background: #edf6fa; border-color: #245575; }
+.fp-diseno-opcion small { display: block; color: #4c6270; }
+.fp-diseno-colores { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.fp-diseno-colores input { display: block; width: 100%; height: 2.5rem; }
+.fp-diseno iframe { width: 100%; height: 44rem; border: 1px solid #d7e3ea; }
+.fp-diseno-abrir { margin-bottom: .75rem; }
+/* En móviles el iframe no muestra el PDF: sin el recuadro vacío, la muestra se abre con el botón. */
+@media (max-width: 850px) {
+    .fp-diseno-grid { grid-template-columns: 1fr; }
+    .fp-diseno iframe { display: none; }
+}

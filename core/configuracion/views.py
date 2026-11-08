@@ -1,22 +1,31 @@
-"""Asistente de configuración de facturación: /configuracion/facturacion/ (Propietario y Administrador), y
+"""Asistente de configuración de facturación: /configuracion/facturacion/ (Propietario y Administrador),
 «Locales y puntos de emisión»: /configuracion/puntos/ (catálogo y autorizaciones para Propietario y Administrador;
-selección del punto para cualquier usuario con rol)."""
+selección del punto para cualquier usuario con rol) y «Diseño de factura»: /configuracion/diseno-factura/ (piloto;
+Propietario y Administrador)."""
+from urllib.parse import urlencode
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.http import Http404, HttpResponseRedirect, JsonResponse
+from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.utils.decorators import method_decorator
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import TemplateView
 
 from config import settings
+from core.comprobantes import ride_muestra, ride_styles
+from core.configuracion import diseno as dz
 from core.configuracion import puntos as pt
 from core.configuracion import servicios as sv
 from core.configuracion.forms import (AmbienteFirmaForm, AutorizacionForm, ConfirmacionForm, ConfirmarPuntoForm,
                                       EmpresaForm, EstablecimientoForm, NumeracionPuntoForm, PuntoForm, SecuenciaForm)
 from core.pos.models import EmissionPoint, Establishment
-from core.security.mixins import SessionGroupMixin
+from core.pos.utilities import printer
+from core.security.mixins import PERMISSION_DENIED_MESSAGE, SessionGroupMixin
 from core.tenancy.models import audit
+from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada, rechazo_empresa_cambiada
 
 
 def avisar(request, nivel, texto):
@@ -468,3 +477,96 @@ class SeleccionarView(LoginRequiredMixin, View):
         if quiere_json(request):
             return JsonResponse({'ok': True, 'seleccion': pt.seleccion_json(request)})
         return HttpResponseRedirect(destino_seguro(request))
+
+
+# ---------------------------------------------------------------- diseño de factura (piloto)
+
+class DisenoFacturaAccessMixin(SessionGroupMixin):
+    """Módulo «Diseño de factura» (Propietario y Administrador: core/tenancy/roles.py), solo para las empresas del piloto.
+
+    La empresa es siempre la de la sesión (request.company). Fuera del piloto la pantalla vuelve al tablero con un aviso y
+    la vista previa y el guardado responden 404. Un envío o una vista previa armados para otra empresa (pestaña que cambió
+    de empresa) se rechazan antes que cualquier otra cosa y sin guardar nada: el formulario normal vuelve a la pantalla
+    con el aviso; la vista previa (iframe o pestaña nueva) responde 409 con el aviso en texto, y fetch/XHR, 409 JSON
+    empresa_cambiada."""
+    pagina = True
+
+    def get_group_module(self, group):
+        return group.groupmodule_set.filter(module__url=dz.URL).first()
+
+    def has_access(self, group):
+        return self.get_group_module(group) is not None
+
+    def deny(self, request):
+        if request.method == 'GET' and not self.pagina:   # la vista previa no es una página a la que volver
+            return JsonResponse({'error': PERMISSION_DENIED_MESSAGE}, status=403)
+        return super().deny(request)
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        if (request.method != 'GET' or not self.pagina) and empresa_cambiada(request):
+            if quiere_json(request):
+                return rechazo_empresa_cambiada(request)
+            if self.pagina:   # «Guardar diseño» desde la pestaña vieja: de vuelta a la pantalla, ya con la empresa activa
+                avisar(request, messages.ERROR, EMPRESA_CAMBIADA)
+                return HttpResponseRedirect(dz.URL)
+            return HttpResponse(EMPRESA_CAMBIADA, status=409, content_type='text/plain; charset=utf-8')
+        if not dz.diseno_habilitado(getattr(request, 'company', None)):
+            if request.method == 'GET' and self.pagina:
+                messages.warning(request, dz.MENSAJE_NO_DISPONIBLE)
+                return HttpResponseRedirect('/dashboard/')
+            raise Http404
+        return super().dispatch(request, *args, **kwargs)
+
+
+class DisenoFacturaView(DisenoFacturaAccessMixin, TemplateView):
+    """Elegir una de las cinco plantillas de FacturaPorAquí y los colores del comercio; se aplica a las facturas NUEVAS."""
+    template_name = 'configuracion/diseno_factura.html'
+    http_method_names = ['get', 'post']
+
+    def get_context_data(self, current=None, form_error=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        company = self.request.company
+        current = current or dz.actual(company)
+        context.update({
+            'title': 'Diseño de factura', 'styles': ride_styles.catalog(), 'current': current, 'form_error': form_error,
+            'preview_url': self.url_muestra(current), 'tiene_diseno': dz.diseno_guardado(company) is not None,
+        })
+        return context
+
+    def url_muestra(self, current):
+        from django.urls import reverse
+        consulta = urlencode({'empresa': self.request.company.pk, 'style': current['id'], 'primary': current['primary'],
+                              'secondary': current['secondary']})
+        return f'{reverse("diseno_factura_preview")}?{consulta}'
+
+    def post(self, request, *args, **kwargs):
+        company = request.company   # nunca un id del formulario (el campo `empresa` solo sirve para el 409)
+        datos, error = dz.validar(request.POST.get('style'), request.POST.get('primary'), request.POST.get('secondary'))
+        if error:
+            # No se guarda nada. Se vuelve a mostrar lo enviado, saneado para la pantalla (normalize solo para leer).
+            current = ride_styles.normalize(request.POST.get('style'), request.POST.get('primary'), request.POST.get('secondary'))
+            return self.render_to_response(self.get_context_data(current=current, form_error=error), status=400)
+        dz.guardar(request, company, datos)
+        avisar(request, messages.SUCCESS, 'Diseño guardado. Se aplicará a las facturas nuevas; las ya emitidas no cambian.')
+        return HttpResponseRedirect(dz.URL)
+
+
+@method_decorator(xframe_options_sameorigin, name='dispatch')
+class DisenoFacturaMuestraView(DisenoFacturaAccessMixin, View):
+    """PDF de una factura de MUESTRA (comprobante ficticio en memoria) con el estilo y los colores de la consulta.
+
+    No crea filas ni archivos, no toca secuencias ni cupo. Se muestra en un iframe de la propia pantalla (X-Frame-Options
+    SAMEORIGIN solo aquí; el resto del sitio sigue en DENY) y no se guarda en ninguna caché."""
+    pagina = False
+    http_method_names = ['get']
+
+    def get(self, request, *args, **kwargs):
+        estilo = ride_styles.normalize(request.GET.get('style'), request.GET.get('primary'), request.GET.get('secondary'))
+        contexto = ride_muestra.contexto(request.company, estilo['id'], estilo['primary'], estilo['secondary'])
+        pdf = printer.create_pdf(context=contexto, template_name='sale/format/invoice.html')
+        respuesta = HttpResponse(pdf, content_type='application/pdf')
+        respuesta['Content-Disposition'] = 'inline; filename="factura-de-muestra.pdf"'
+        respuesta['Cache-Control'] = 'private, no-store'
+        return respuesta

@@ -116,6 +116,8 @@ class AuditLog(models.Model):
         ('captura_liberada', 'Recibo devuelto a pendiente al eliminar su documento'),
         ('kardex_movimiento', 'Movimiento manual del kardex registrado'),
         ('kardex_movimiento_anulado', 'Movimiento manual del kardex anulado'),
+        # Diseño de factura (core/configuracion/diseno.py)
+        ('diseno_factura_guardado', 'Diseño de factura guardado'),
     )
     created_at = models.DateTimeField(default=timezone.now, db_index=True, verbose_name='Fecha')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,

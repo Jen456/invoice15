@@ -21,6 +21,9 @@ if os.path.isfile(_env_file):
 FPA_ENTORNO = env('FPA_ENTORNO', default='desarrollo')
 # Empresas (RUC) que pueden revisar el Complemento Contable mientras D9 está pendiente; vacío = nadie (core/suscripciones/reglas.py).
 FPA_COMPLEMENTO_CONTABLE_REVISION = env.list('FPA_COMPLEMENTO_CONTABLE_REVISION', default=[])
+# Piloto de «Configuración → Diseño de factura» (RUC, misma regla que la lista anterior); vacío = nadie lo ve y las facturas
+# nuevas salen con el RIDE original (core/configuracion/diseno.py).
+FPA_DISENO_FACTURA_PILOTO = env.list('FPA_DISENO_FACTURA_PILOTO', default=[])
 
 SECRET_KEY = env('SECRET_KEY')
 # Llaves Fernet de los secretos guardados en la base (core/tenancy/cifrado.py); la primera cifra, las demás descifran.

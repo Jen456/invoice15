@@ -1,0 +1,11 @@
+{% load static %}
+{% if ride_style %}
+<link rel="stylesheet" href="{% static 'css/ride_variants.css' %}">
+<style>
+    body.fp-ride.ride-custom {
+        --ride-primary: {{ ride_style.primary }};
+        --ride-secondary: {{ ride_style.secondary }};
+        --ride-wash: {{ ride_style.wash }};
+    }
+</style>
+{% endif %}

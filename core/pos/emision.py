@@ -112,6 +112,7 @@ def preparar(comprobante):
     company = comprobante.company
     if not company.electronic_signature:
         raise ErrorEmision('Sube tu firma electrónica (.p12) en «Configuración de facturación», paso 4.')
+    primera_firma = comprobante.signed_at is None
     if comprobante.emission_date is None:
         comprobante.emission_date = _fecha_de_clave(comprobante.access_code) or timezone.localdate()
     xml, clave = comprobante.generate_xml()
@@ -123,9 +124,27 @@ def preparar(comprobante):
     except ErrorFirma as e:
         raise ErrorEmision(str(e))
     comprobante.access_code, comprobante.xml_signed, comprobante.signed_at = clave, firmado, timezone.now()
-    type(comprobante).all_companies.filter(pk=comprobante.pk).update(
-        emission_date=comprobante.emission_date, access_code=clave, xml_signed=firmado, signed_at=comprobante.signed_at)
+    campos = {'emission_date': comprobante.emission_date, 'access_code': clave, 'xml_signed': firmado,
+              'signed_at': comprobante.signed_at}
+    if primera_firma and comprobante._meta.model_name == 'sale' and comprobante.ride_diseno is None:
+        copia = _copia_del_diseno(comprobante)
+        if copia is not None:
+            comprobante.ride_diseno = campos['ride_diseno'] = copia
+    type(comprobante).all_companies.filter(pk=comprobante.pk).update(**campos)
     return comprobante
+
+
+def _copia_del_diseno(factura):
+    """Diseño de factura vigente del comercio (core/configuracion/diseno.py) para guardarlo en la factura en su primera
+    firma; los reintentos no lo cambian. Solo presentación del RIDE: el XML ya está firmado y no lo incluye. Si no se
+    pudiera leer, la factura sigue con el RIDE original: nunca frena la emisión."""
+    from core.configuracion.diseno import diseno_efectivo
+    try:
+        with transaction.atomic():
+            return diseno_efectivo(factura.company)
+    except Exception:
+        logger.exception('Diseño de factura no leído para %s; se usa el RIDE original', factura.access_code)
+        return None
 
 
 # ------------------------------------------------------------------ servicios web del SRI

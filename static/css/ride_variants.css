@@ -1,0 +1,48 @@
+/* Apply after facturaporaqui-ride.css. The same fiscal markup serves every style. */
+.fp-ride.ride-custom {
+    --ride-primary: #CA462C;
+    --ride-secondary: #E5F1F6;
+    --ride-rule: #CBD5E1;
+    --ride-ink: #163B50;
+    --ride-wash: var(--ride-secondary);
+    color: var(--ride-ink);
+}
+.fp-ride.ride-custom table.fp-ride-header { border-top-color: var(--ride-primary); }
+.fp-ride.ride-custom .numero { color: var(--ride-ink); }
+.fp-ride.ride-custom .bloque { background: var(--ride-wash); border-color: var(--ride-rule); }
+.fp-ride.ride-custom table.detalle th,
+.fp-ride.ride-custom tr.total-final td { background: var(--ride-wash); color: var(--ride-ink); }
+.fp-ride.ride-custom tr.total-final td { border-top-color: var(--ride-primary); }
+.fp-ride.ride-custom .barcode { background: #fff; }
+
+/* Classic preserves the original document when no preference is selected. */
+.fp-ride.ride-corporativo table.fp-ride-header { border: .3mm solid var(--ride-rule); border-top: 1.25mm solid var(--ride-primary); }
+.fp-ride.ride-corporativo table.fp-ride-header > tbody > tr > td { padding: 4mm 3mm 3mm !important; }
+.fp-ride.ride-corporativo .fp-ride-control { background: var(--ride-wash); }
+.fp-ride.ride-corporativo .titulo { font-size: 20pt; }
+.fp-ride.ride-corporativo .bloque { border-left: .8mm solid var(--ride-primary); background: #fff; }
+
+.fp-ride.ride-minimalista table.fp-ride-header { border-top: 0; border-bottom: .55mm solid var(--ride-primary); padding-bottom: 2mm; }
+.fp-ride.ride-minimalista .fp-ride-control { border-left: 0; }
+.fp-ride.ride-minimalista .bloque,
+.fp-ride.ride-minimalista table.detalle th { background: #fff; }
+.fp-ride.ride-minimalista .bloque { padding-left: 0; }
+.fp-ride.ride-minimalista table.detalle th { border-bottom: .4mm solid var(--ride-primary); }
+
+.fp-ride.ride-banda table.fp-ride-header { border-top: 3mm solid var(--ride-primary); border-bottom: .25mm solid var(--ride-rule); }
+.fp-ride.ride-banda table.fp-ride-header > tbody > tr > td { padding: 3mm 2.5mm 3mm !important; }
+.fp-ride.ride-banda .fp-ride-emisor { background: var(--ride-wash); }
+.fp-ride.ride-banda .fp-ride-control { border-left: 0; }
+.fp-ride.ride-banda .bloque { background: #fff; border-top: .5mm solid var(--ride-primary); }
+.fp-ride.ride-banda table.detalle th { border-top: .6mm solid var(--ride-primary); }
+
+.fp-ride.ride-compacto table.fp-ride-header { margin-bottom: 2mm; border-top-width: .6mm; }
+.fp-ride.ride-compacto table.fp-ride-header > tbody > tr > td { padding-top: 2mm; }
+.fp-ride.ride-compacto .logo { max-height: 12mm; }
+.fp-ride.ride-compacto .titulo { font-size: 15pt; margin-bottom: 1mm; }
+.fp-ride.ride-compacto .numero { margin-bottom: 1.2mm; }
+.fp-ride.ride-compacto .bloque { padding: 1.4mm 2mm; margin-bottom: 1.5mm; }
+.fp-ride.ride-compacto table.detalle { margin-top: 1.5mm; }
+.fp-ride.ride-compacto table.detalle th,
+.fp-ride.ride-compacto table.detalle td { padding-top: 1mm; padding-bottom: 1mm; }
+.fp-ride.ride-compacto .fp-ride-summary { margin-top: 3mm; }

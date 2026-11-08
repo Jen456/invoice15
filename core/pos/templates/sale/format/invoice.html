@@ -4,9 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <title>Factura {{ sale.voucher_number_full }}</title>
-    {% include 'ride/_estilos.html' %}
+    {% include 'ride/_estilos.html' %}{% comment %}
+        Diseño de factura (core/configuracion/diseno.py): ride_style sale de la copia guardada en la factura
+        (Sale.ride_diseno) o de la vista previa. Sin ride_style ni ride_muestra (facturas históricas o fuera del piloto)
+        las condiciones de abajo no emiten ni un carácter: el HTML es el mismo de antes, byte a byte.
+    {% endcomment %}{% if ride_style %}
+    {% include 'ride/_variantes_factura.html' %}{% endif %}{% if ride_muestra %}
+    <style>
+        .fp-ride .fp-ride-muestra { position: fixed; top: 120mm; left: 0; width: 190mm; text-align: center;
+            transform: rotate(-24deg); color: rgba(110, 130, 145, .28); font-size: 26pt; font-weight: 700;
+            letter-spacing: .5mm; white-space: nowrap; }
+    </style>{% endif %}
 </head>
-<body class="fp-ride">
+<body class="fp-ride{% if ride_style %} ride-custom ride-{{ ride_style.id }}{% endif %}">{% if ride_muestra %}
+<div class="fp-ride-muestra" aria-hidden="true">MUESTRA · SIN VALIDEZ TRIBUTARIA</div>{% endif %}
 {% include 'ride/_pie.html' with proveedor=sale.get_proveedor %}
 <main class="hoja">
     <table class="cabecera fp-ride-header">
