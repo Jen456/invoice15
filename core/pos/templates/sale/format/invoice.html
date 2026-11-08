@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <title>Factura {{ sale.voucher_number_full }}</title>
     {% include 'ride/_estilos.html' %}
+    {% include 'ride/_variantes_factura.html' %}
 </head>
-<body class="fp-ride">
+<body class="fp-ride{% if ride_style %} ride-custom ride-{{ ride_style.id }}{% endif %}">
 {% include 'ride/_pie.html' with proveedor=sale.get_proveedor %}
 <main class="hoja">
     <table class="cabecera fp-ride-header">
