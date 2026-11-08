@@ -3,7 +3,8 @@
 Rama `fase/diseno-factura`, desde `9584308` (producción). Paquete de origen: `Paquete_Estilos_FacturaPorAqui.zip`
 (rama de entrega `codex/entrega-diseno-factura`), integrado con las decisiones del orquestador. **Publicado el 08/11/2026 a las 08:38 UTC en app.facturaporaqui.com
 (`64c5416`), con el piloto solo en los comercios ficticios DEMOSTRACION (`0990000000001`) y OTRA-DEMO
-(`0990000002001`).** Ver «Publicación».
+(`0990000002001`); desde el 08/11 a las 15:28 UTC también en PEDESTAL-TEK S.A (`0993212164001`), a pedido de la
+propietaria.** Ver «Publicación».
 
 ## Qué hace
 
@@ -45,9 +46,11 @@ Para el piloto en pruebas: añadir `FPA_DISENO_FACTURA_PILOTO=<RUC>` a `/etc/fac
 `facturaporaqui@pruebas`. Para apagarlo, quitar el RUC y reiniciar: las facturas ya emitidas con copia conservan su
 diseño (su PDF ya está guardado) y las nuevas vuelven al RIDE original.
 
-En producción hoy: `FPA_DISENO_FACTURA_PILOTO=0990000000001,0990000002001`. Para sumar un comercio real se añade su RUC
-a esa lista, separado por coma (por ejemplo `…,0993212164001` para PEDESTAL-TEK S.A), y se reinicia el servicio. El
-archivo anterior al cambio quedó en `/root/invoice15/credenciales/pruebas.env.antes-diseno-20261108-083735` (VM101).
+En producción hoy: `FPA_DISENO_FACTURA_PILOTO=0990000000001,0990000002001,0993212164001` (los dos comercios ficticios y
+PEDESTAL-TEK S.A, añadido el 08/11 a las 15:28 UTC). Para sumar otro comercio se añade su RUC a esa lista, separado por
+coma, y se reinicia el servicio. Mientras el comercio no guarde un diseño, sus facturas siguen con el RIDE original.
+Respaldos del archivo en `/root/invoice15/credenciales/` (VM101): `pruebas.env.antes-diseno-20261108-083735` y
+`pruebas.env.antes-pedestaltek-20261108-152823`.
 
 ## Migraciones (aditivas)
 
