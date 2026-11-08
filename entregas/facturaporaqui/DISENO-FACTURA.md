@@ -1,7 +1,9 @@
 # Diseño de factura (piloto)
 
 Rama `fase/diseno-factura`, desde `9584308` (producción). Paquete de origen: `Paquete_Estilos_FacturaPorAqui.zip`
-(rama de entrega `codex/entrega-diseno-factura`), integrado con las decisiones del orquestador. Sin publicar.
+(rama de entrega `codex/entrega-diseno-factura`), integrado con las decisiones del orquestador. **Publicado el 08/11/2026 a las 08:38 UTC en app.facturaporaqui.com
+(`64c5416`), con el piloto solo en los comercios ficticios DEMOSTRACION (`0990000000001`) y OTRA-DEMO
+(`0990000002001`).** Ver «Publicación».
 
 ## Qué hace
 
@@ -42,6 +44,10 @@ módulo: no aparece en ningún menú, la pantalla vuelve al tablero con un aviso
 Para el piloto en pruebas: añadir `FPA_DISENO_FACTURA_PILOTO=<RUC>` a `/etc/facturaporaqui/pruebas.env` y reiniciar
 `facturaporaqui@pruebas`. Para apagarlo, quitar el RUC y reiniciar: las facturas ya emitidas con copia conservan su
 diseño (su PDF ya está guardado) y las nuevas vuelven al RIDE original.
+
+En producción hoy: `FPA_DISENO_FACTURA_PILOTO=0990000000001,0990000002001`. Para sumar un comercio real se añade su RUC
+a esa lista, separado por coma (por ejemplo `…,0993212164001` para PEDESTAL-TEK S.A), y se reinicia el servicio. El
+archivo anterior al cambio quedó en `/root/invoice15/credenciales/pruebas.env.antes-diseno-20261108-083735` (VM101).
 
 ## Migraciones (aditivas)
 
@@ -99,3 +105,24 @@ fiel con la copia. Ajustes en pruebas existentes: `test_b0_contratos` (lista de 
 diseño, otra pasada por configuracion 0003 sin el módulo y otra ida igual a la instalación). `tests/conftest.py` apaga
 el piloto en todas las pruebas (fixture `diseno_piloto_apagado`), aunque el entorno exporte
 `FPA_DISENO_FACTURA_PILOTO`.
+
+## Publicación (08/11/2026)
+
+- **Código:** `64c5416` = `8b1ba19` (integración) + correcciones de la revisión independiente (5 hallazgos de severidad
+  baja: menú tras la vuelta, piloto en pruebas, pestaña vieja y vista previa en móvil). Suites completas sobre `64c5416`:
+  SQLite 1791 passed + 55 skipped, PostgreSQL 1846 passed, 0 fallos.
+- **Validación previa:** RIDE contra el Anexo 2 de la ficha técnica offline v2.34 (vigente al 08/11/2026; pág. 60 sin
+  cambios desde v2.27): mismo texto fiscal que el original en los 36 PDF con estilo, clave de 49 dígitos completa, código
+  de barras legible en color, gris y B/N a 200 y 300 ppp, 62 líneas en 5 páginas sin filas partidas, contraste mínimo
+  4,69:1. Navegador con dos comercios ficticios (57/57) y ensayo de las migraciones sobre una copia del respaldo diario
+  (4 pendientes, ida de 11 s, RLS forzada, 76 tablas previas idénticas).
+- **Despliegue:** `desplegar.sh pruebas 64c5416` a las 08:37–08:38 UTC; volcado previo
+  `respaldos/pre-20261108-083748-64c54164.dump`; migraciones configuracion 0004–0005, pos 0035 y tenancy 0012; salud 200.
+- **Comprobado en producción:** los 34 PDF guardados conservan su sha256; 0 de 23 facturas con copia (no se emitió
+  nada); el módulo solo aparece a Propietario y Administrador de las empresas 2 y 3 (oculto en las otras 8 y sin
+  empresa); vista previa privada (`private, no-store`, `SAMEORIGIN`); diseño guardado y recargado en cada comercio
+  ficticio (Corporativo y Compacto con colores propios); móvil sin recuadro vacío; regresiones de solo lectura 72/72 y
+  14/14, sin errores de JavaScript ni respuestas 5xx. Guiones: `/root/capturas/fpa-diseno-publicado.mjs`,
+  `fpa-verificar-publicado.mjs` y `fpa-verificar-cierre-op.mjs` (VM101).
+- **Revertir:** con el código nuevo, `migrate configuracion 0003_modulo_puntos`, `pos 0034` y `tenancy 0011` (ver
+  «Vuelta»), y después `desplegar.sh pruebas --revertir`. Solo apagar el piloto no requiere revertir.
