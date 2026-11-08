@@ -1,5 +1,6 @@
 """Allowed PDF styles and colors. Use validated context values in the RIDE."""
 import re
+import unicodedata
 
 STYLES = {
     "clasico": ("Clásico", "Diseño actual con dos bloques de encabezado.", "#CA462C", "#E5F1F6"),
@@ -78,12 +79,26 @@ def is_valid_color(value):
     return isinstance(value, str) and HEX_COLOR.fullmatch(value) is not None
 
 
+_MARCAS_BIDI = frozenset({*range(0x202A, 0x202F), *range(0x2066, 0x206A)})
+
+
+def caracter_no_permitido(caracter):
+    """Controles, separadores de línea o párrafo y marcas bidi: los textos comerciales van en una sola línea y en orden."""
+    return unicodedata.category(caracter) in ("Cc", "Zl", "Zp") or ord(caracter) in _MARCAS_BIDI
+
+
+def _una_linea(valor, limite):
+    if not isinstance(valor, str):
+        return ""
+    return "".join(" " if caracter_no_permitido(c) else c for c in valor).strip()[:limite]
+
+
 def opciones_personalizacion(fuente=None, encabezado=None, pie_comercial=None):
     """Valores seguros para una muestra o una copia persistida."""
     return {
         "fuente": fuente if isinstance(fuente, str) and fuente in FUENTES else "original",
-        "encabezado": encabezado.strip()[:MAX_ENCABEZADO] if isinstance(encabezado, str) else "",
-        "pie_comercial": pie_comercial.strip()[:MAX_PIE_COMERCIAL] if isinstance(pie_comercial, str) else "",
+        "encabezado": _una_linea(encabezado, MAX_ENCABEZADO),
+        "pie_comercial": _una_linea(pie_comercial, MAX_PIE_COMERCIAL),
     }
 
 

@@ -7,6 +7,7 @@
 - El estilo original queda seleccionado por defecto. Se conserva la representación de las facturas con copia v1 y de las históricas sin copia. Para activar v2 en un comercio piloto, abre el editor, revisa la muestra y guarda. La primera firma conserva la copia del diseño.
 - Comprueba las fuentes disponibles en el servidor con `fc-match` para Liberation Serif, DejaVu Sans y DejaVu Serif. Valida en staging los permisos, el guardado y las migraciones con `tests/test_diseno_factura.py` y `tests/test_zz_diseno_factura_pg.py`. Mantén los valores actuales del proveedor en la configuración de los RIDE que usan el diseño original.
 - La entrega queda en una rama para integración. Consulta [la comparativa de los cinco PDF](capturas/diseno-factura-v2.jpg) y el registro en RESULTADOS-FRONTEND.md.
+- **Integración (Claude):** rama `fase/diseno-factura-v2`, con los ajustes y las limitaciones descritos en [DISENO-FACTURA.md](DISENO-FACTURA.md#diseño-de-factura-v2-entrega-de-codex-23ac7e0). La vuelta de v2 a v1 es `migrate configuracion 0005_modulo_diseno_factura` con el código nuevo antes de `--revertir`.
 
 ## Estado actual — versión operativa cerrada y publicada (Claude, 04/11/2026)
 

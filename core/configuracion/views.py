@@ -532,12 +532,14 @@ class DisenoFacturaView(DisenoFacturaAccessMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         company = self.request.company
         current = current or dz.actual(company)
+        guardado = dz.diseno_guardado(company)
         context.update({
             'title': 'Diseño de factura', 'styles': ride_styles.catalog(), 'current': current, 'form_error': form_error,
             'fuentes': [(key, value[0]) for key, value in ride_styles.FUENTES.items()],
             'max_encabezado': ride_styles.MAX_ENCABEZADO, 'max_pie': ride_styles.MAX_PIE_COMERCIAL,
             'proveedor_fijo': ride_styles.PROVEEDOR_FIJO,
-            'preview_url': self.url_muestra(current), 'tiene_diseno': dz.diseno_guardado(company) is not None,
+            'preview_url': self.url_muestra(current), 'tiene_diseno': guardado is not None,
+            'diseno_anterior': guardado is not None and guardado.version < ride_styles.VERSION_PERSONALIZADA,
         })
         return context
 

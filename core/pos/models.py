@@ -982,14 +982,18 @@ class Sale(TenantModel):
         self.receipt = receipt
         return receipt.next_number_full()
 
-    def ride_pdf(self):
-        """RIDE A4 con la plantilla y los datos actuales, en memoria (no guarda nada)."""
+    def ride_pdf(self, sin_textos_comerciales=False):
+        """RIDE A4 con la plantilla y los datos actuales, en memoria (no guarda nada). sin_textos_comerciales: para comparar
+        con el XML autorizado (regenerar_ride): el texto libre del comercio no es un dato del comprobante."""
         from core.comprobantes.ride import codigo_de_barras
         from core.comprobantes.ride_styles import context_from_copy
+        copia = self.ride_diseno
+        if sin_textos_comerciales and isinstance(copia, dict):
+            copia = {**copia, 'encabezado': '', 'pie_comercial': ''}
         # El estilo sale de la copia guardada en la factura, nunca del diseño actual del comercio: así el RIDE regenerado
         # (regenerar_ride, SalePrintA4View cuando falta el archivo) es el mismo que se emitió.
         context = {'sale': self, 'access_code_barcode': codigo_de_barras(self.access_code),
-                   'ride_style': context_from_copy(self.ride_diseno) if self.ride_diseno else None}
+                   'ride_style': context_from_copy(copia) if copia else None}
         return printer.create_pdf(context=context, template_name='sale/format/invoice.html')
 
     def generate_pdf_authorized(self):

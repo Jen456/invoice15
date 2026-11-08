@@ -87,7 +87,7 @@ def validar(estilo, principal, secundario, *, personalizacion=None):
         for campo, limite in (('encabezado', ride_styles.MAX_ENCABEZADO),
                               ('pie_comercial', ride_styles.MAX_PIE_COMERCIAL)):
             valor = personalizacion.get(campo, '')
-            if not isinstance(valor, str) or len(valor) > limite or any(ord(c) < 32 or ord(c) == 127 for c in valor):
+            if not isinstance(valor, str) or len(valor) > limite or any(ride_styles.caracter_no_permitido(c) for c in valor):
                 return None, f'El texto comercial debe ir en una sola línea y tener como máximo {limite} caracteres.'
         datos.update(ride_styles.opciones_personalizacion(fuente, personalizacion.get('encabezado'),
                                                          personalizacion.get('pie_comercial')))

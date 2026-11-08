@@ -123,7 +123,8 @@ def test_vuelta_del_diseno_y_otra_pasada_por_configuracion_0003(tmp_path):
                              ('tenancy', '0011_acciones_kardex')):   # la vuelta de DISENO-FACTURA.md
             manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
         sin_diseno = ['configuracion.0004_diseno_factura', 'configuracion.0005_modulo_diseno_factura',
-                      'pos.0035_sale_ride_diseno', 'tenancy.0012_accion_diseno_factura']
+                      'configuracion.0006_personalizacion_factura', 'pos.0035_sale_ride_diseno',
+                      'tenancy.0012_accion_diseno_factura']
         assert sorted(pendientes(env)) == sin_diseno
         assert diseno not in {m[0] for m in estado(env)['modulos']}
         # Otra pasada por 0003 (quita y vuelve a crear «Locales y puntos»): sin la tabla de 0004, ningún módulo del diseño

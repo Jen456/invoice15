@@ -65,6 +65,15 @@ class Command(BaseCommand):
         modo = 'APLICADO' if aplicar else 'ENSAYO (no se cambió nada)'
         self.stdout.write(f'{modo}: ' + ', '.join(f'{k} {v}' for k, v in resumen.items()))
 
+    @staticmethod
+    def _para_comparar(documento, nuevo):
+        """PDF que se compara con el XML: sin los textos libres del comercio (copia v2), que podrían contener justo el dato
+        que se busca y ocultar una diferencia."""
+        copia = getattr(documento, 'ride_diseno', None)
+        if isinstance(copia, dict) and (copia.get('encabezado') or copia.get('pie_comercial')):
+            return documento.ride_pdf(sin_textos_comerciales=True)
+        return nuevo
+
     def _uno(self, clave, documento, salida, aplicar, respaldo):
         modelo, _, etiqueta, prefijo = TIPOS[clave]
         with documento.xml_authorized.open('rb') as f:
@@ -72,7 +81,7 @@ class Command(BaseCommand):
         with documento.pdf_authorized.open('rb') as f:
             anterior = f.read()
         nuevo = documento.ride_pdf()
-        faltan = diferencias(nuevo, xml)
+        faltan = diferencias(self._para_comparar(documento, nuevo), xml)
         faltan_antes = diferencias(anterior, xml)
         numero = documento.voucher_number_full
         self.stdout.write(f'{etiqueta}{numero} (emitida {documento.emission_date or documento.date_joined:%d/%m/%Y}): PDF guardado '

@@ -60,12 +60,17 @@ Respaldos del archivo en `/root/invoice15/credenciales/` (VM101): `pruebas.env.a
 | `configuracion/0005_modulo_diseno_factura` | permisos, módulo del menú (`organizar_menu`) y roles (`sync_roles`) | `configuracion/0004`, `security/0003` |
 | `pos/0035_sale_ride_diseno` | `Sale.ride_diseno` (JSON nulo, no editable) | `pos/0034` |
 | `tenancy/0012_accion_diseno_factura` | acción `diseno_factura_guardado` en `AuditLog.action` | `tenancy/0011` |
+| `configuracion/0006_personalizacion_factura` | v2: `fuente`, `encabezado` y `pie_comercial` en `DisenoFactura` (sin datos nuevos) | `configuracion/0005` |
 
 Instalaciones nuevas: `start_installation` crea el módulo con `organizar_menu` (está en `MODULOS_NUEVOS`).
 
-**Vuelta**, antes de `desplegar.sh <entorno> --revertir` (que no toca la base) y **con el código nuevo** (el anterior no
+**Vuelta de v2 a v1** (conserva los diseños; las copias v2 ya emitidas conservan su PDF), antes de `desplegar.sh <entorno> --revertir` y
+**con el código nuevo**: `migrate configuracion 0005_modulo_diseno_factura`. Ensayada sobre una copia de producción: esquema,
+políticas y tablas iguales a los de la copia intacta. Un RIDE regenerado después con el código anterior pierde los textos comerciales.
+
+**Vuelta completa**, antes de `desplegar.sh <entorno> --revertir` (que no toca la base) y **con el código nuevo** (el anterior no
 conoce estas migraciones): `migrate configuracion 0003_modulo_puntos`, `migrate pos 0034_cliente_nacimiento_opcional` y
-`migrate tenancy 0011_acciones_kardex`. Se pierden los diseños guardados y las copias de las facturas; los PDF ya
+`migrate tenancy 0011_acciones_kardex` (también deshace 0006: con el código nuevo quedan 5 pendientes). Se pierden los diseños guardados y las copias de las facturas; los PDF ya
 guardados no cambian. La vuelta de 0005 quita el módulo y solo los permisos de `DisenoFactura` de los grupos, y devuelve
 «Locales y puntos», «Reglas» y «Numeraciones» a los órdenes 3, 4 y 5. Quedan las filas de `Permission` y `ContentType`,
 como en las demás vueltas. Ensayado en SQLite (ida, vuelta y otra ida sobre una instalación con menú). Tras la vuelta
@@ -87,8 +92,14 @@ empresa.
 - `regenerar_ride` usa la copia de cada factura (no el diseño actual), así que un cambio de diseño no altera un PDF
   regenerado.
 - Los estilos y sus colores por defecto están en `core/comprobantes/ride_styles.py`; un estilo nuevo necesita su
-  migración de `choices` y su CSS. La copia guarda `version` (hoy 1) para distinguir cambios futuros del CSS.
+  migración de `choices` y su CSS. La copia guarda `version` (1 o 2) para distinguir cambios futuros del CSS.
 - Sin logo, la cabecera queda sin imagen, como hoy.
+- v2: el pie del proveedor sale de `ride_styles.PROVEEDOR_FIJO` (hoy idéntico a `datos_proveedor()` y al RUC del XML). Si cambian los datos del
+  proveedor en la configuración, hay que cambiar también esa constante.
+- v2: con textos comerciales, una factura corta puede pasar a 2 páginas y la segunda llevar solo el pie comercial (pasa con
+  Corporativo, Minimalista y Banda). No se pierde ningún dato y el pie del proveedor sale en todas; ninguna regla CSS sencilla lo evita.
+- `fidelidad.py` busca cada dato en todo el texto del PDF, no campo por campo (viene de antes): un cambio de dirección matriz no se detecta si
+  la antigua sigue como dirección del establecimiento. `regenerar_ride --aplicar` conserva siempre el PDF anterior.
 - La vista previa usa la numeración configurada de facturas solo para mostrar el establecimiento y el punto; si falta,
   muestra 001-001.
 
@@ -108,6 +119,18 @@ fiel con la copia. Ajustes en pruebas existentes: `test_b0_contratos` (lista de 
 diseño, otra pasada por configuracion 0003 sin el módulo y otra ida igual a la instalación). `tests/conftest.py` apaga
 el piloto en todas las pruebas (fixture `diseno_piloto_apagado`), aunque el entorno exporte
 `FPA_DISENO_FACTURA_PILOTO`.
+
+## Diseño de factura v2 (entrega de Codex `23ac7e0`)
+
+Misma ruta, permisos, piloto y guardado por comercio. Añade cinco plantillas diferenciadas, tipografía (lista cerrada: original,
+Liberation Serif, DejaVu Sans, DejaVu Serif), encabezado comercial (100 caracteres, solo en la página 1) y pie comercial (180, después
+de los totales). Guardar desde la pantalla crea `version=2`; las filas y copias v1 siguen en v1 hasta que el comercio guarde, y la
+pantalla se lo avisa, porque la vista previa ya dibuja v2. La copia v2 lleva `fuente`, `encabezado` y `pie_comercial`. «Original FacturaPorAquí»
+guardado con su paleta, su letra y sin textos es idéntico píxel a píxel al RIDE original. El pie del proveedor sale en todas las páginas.
+
+Ajustes de la integración: `regenerar_ride` compara con el XML sin los textos comerciales (un texto con los datos del emisor escondía un
+cambio posterior); `validar` rechaza controles, separadores U+2028/U+2029 y marcas bidi; la marca de agua de la muestra no hereda la
+tipografía; aviso para quien sigue en v1. Pruebas de la entrega en `tests/test_diseno_factura_v2.py` y `tests/test_diseno_factura_v2_cruces.py`.
 
 ## Publicación (08/11/2026)
 

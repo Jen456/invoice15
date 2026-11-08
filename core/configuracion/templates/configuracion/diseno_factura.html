@@ -24,6 +24,7 @@
             <input type="hidden" name="empresa" value="{{ request.company.pk }}">
             {% if form_error %}<p class="alert alert-danger" role="alert">{{ form_error }}</p>{% endif %}
             {% if not tiene_diseno %}<p class="alert alert-info small">Aún no guardaste un diseño: tus facturas salen con el diseño original.</p>{% endif %}
+            {% if diseno_anterior %}<p class="alert alert-info small">Tus facturas siguen saliendo con la versión anterior de este diseño. La vista previa muestra cómo quedarán cuando guardes.</p>{% endif %}
             <fieldset>
                 <legend>Plantilla de FacturaPorAquí</legend>
                 {% for style in styles %}
