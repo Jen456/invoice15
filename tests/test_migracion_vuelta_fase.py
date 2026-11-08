@@ -73,8 +73,10 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
             # fase. Las 6 de adjuntos (sobre pos 0031; 0004-0006 = recibos por completar) y tenancy 0010 (acciones de los
             # recibos) sí. Las 3 de tributario (libros, revisión, ATS y borradores) cuelgan de pos 0019 e importacion 0004:
             # la vuelta empieza por `tributario zero`. Las 3 de contabilidad (kardex) cuelgan de pos 0019: antes,
-            # `contabilidad zero`; tenancy 0011 (acciones del kardex) cae con la vuelta a tenancy 0006. 39 en total.
-            assert len(pendientes(env)) == 39
+            # `contabilidad zero`; tenancy 0011 (acciones del kardex) cae con la vuelta a tenancy 0006. Diseño de factura:
+            # pos 0035 (copia en la factura, sobre pos 0034) y tenancy 0012 (acción de auditoría, sobre 0011) caen con sus
+            # apps; configuracion 0004-0005 (tabla y módulo) cuelgan de pos 0019, como 0001-0003, y no se deshacen. 41 en total.
+            assert len(pendientes(env)) == 41
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)

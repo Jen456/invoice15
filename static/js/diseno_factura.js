@@ -2,6 +2,7 @@
     const form = document.querySelector('#fp-diseno-form');
     const frame = document.querySelector('#fp-diseno-preview');
     const reset = document.querySelector('#fp-diseno-reset');
+    const abrir = document.querySelector('#fp-diseno-abrir');   // en móviles el PDF no se ve dentro del iframe
     if (!form || !frame || !reset) return;
 
     const colors = ['primary', 'secondary'].map((name) => form.elements.namedItem(name));
@@ -21,6 +22,7 @@
             url.searchParams.set('style', option.value);
             for (const input of colors) url.searchParams.set(input.name, input.value);
             frame.src = url.href;
+            if (abrir) abrir.href = url.href;
         }, 260);
     }
 

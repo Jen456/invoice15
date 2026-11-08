@@ -10,6 +10,14 @@
 - **Contrato contable v9:** [CONTRATO-CONTABLE-V9.md](CONTRATO-CONTABLE-V9.md) fija por pantalla lo que se conecta hoy, las rutas nuevas (C1–C7) con su forma exacta y solo los bloqueos reales: D7 para asientos; D5, D7 y apertura para mayor y estados financieros; la regla de cierre para cerrar o reabrir meses; el Excel y la inclusión en la lista de revisión para el piloto NEXALLTI. C1, C2, C3, C5 (evidencias) y C7 no tienen bloqueo.
 - **D9:** precios decididos por la propietaria: **$150 al año por módulo para una empresa y $250 para multiempresa**. Pendientes: impuestos, alcance multiempresa y condiciones de activación. El complemento sigue cerrado (registrado en `D9-COMPLEMENTO-CONTABLE-RECOMENDACION.md`).
 
+## Diseño de factura — integrado en `fase/diseno-factura`, sin publicar (Claude, 08/11/2026)
+
+- **Qué:** «Configuración → Diseño de factura» (`/configuracion/diseno-factura/`): cinco plantillas de FacturaPorAquí, colores del comercio, vista previa con una factura de muestra en memoria y guardado por comercio (Propietario y Administrador). Solo facturas **nuevas**: la copia del diseño se fija en `Sale.ride_diseno` en la primera firma y no cambia en los reintentos; las históricas siguen con el RIDE original, byte a byte. XML, firma, SRI, impuestos, secuenciales y cupo, sin cambios. Detalle, migraciones y orden de vuelta: [DISENO-FACTURA.md](DISENO-FACTURA.md).
+- **Piloto:** apagado por defecto. `FPA_DISENO_FACTURA_PILOTO=<RUC>` en `/etc/facturaporaqui/pruebas.env` y reinicio de `facturaporaqui@pruebas`; vacío, el módulo no aparece y las facturas nuevas no reciben copia.
+- **Migraciones:** `configuracion/0004` (tabla + RLS), `configuracion/0005` (módulo y roles), `pos/0035` (`ride_diseno`), `tenancy/0012` (acción de auditoría). Vuelta con el código nuevo **antes** de `desplegar.sh --revertir`.
+- **Logo y nombre comercial:** los de la empresa (el establecimiento no los tiene y el RIDE debe coincidir con el `nombreComercial` del XML).
+- **Para Codex:** la pantalla usa `skin.html` (`assets_body`, `breadcrumb_li`, `content`), `static/css/diseno_factura.css` y `static/js/diseno_factura.js` (el JS actualiza el iframe y el enlace «Abrir la muestra en PDF»). El formulario envía `empresa`; un 409 `empresa_cambiada` llega como JSON.
+
 ## Pendiente para Codex — v9
 
 - [ ] Conectar cada pantalla contable cuando su ruta de `CONTRATO-CONTABLE-V9.md` esté publicada; hasta entonces la maqueta sigue en `entregas/`.

@@ -36,3 +36,35 @@ def template_context(style, primary=None, secondary=None):
     components = [int(color[offset:offset + 2], 16) for offset in (1, 3, 5)]
     data["wash"] = "#" + "".join(f"{round(255 * .64 + channel * .36):02X}" for channel in components)
     return data
+
+
+# --- Integración en FacturaPorAquí (no cambian la semántica de lo anterior) ---------------------------------------
+
+def choices():
+    """(id, nombre) de los cinco estilos, para el campo `estilo` de DisenoFactura."""
+    return [(key, value[0]) for key, value in STYLES.items()]
+
+
+def catalog():
+    """Objetos {id, name, description, primary, secondary} para la pantalla «Diseño de factura»."""
+    return [{"id": key, "name": name, "description": description, "primary": primary, "secondary": secondary}
+            for key, (name, description, primary, secondary) in STYLES.items()]
+
+
+def is_valid_color(value):
+    """El color llega exactamente como #RRGGBB (lo que acepta clean_color sin usar el respaldo)."""
+    return isinstance(value, str) and HEX_COLOR.fullmatch(value) is not None
+
+
+def context_from_copy(copy):
+    """`ride_style` de la plantilla a partir de la copia guardada en la factura ({id, version, primary, secondary}).
+
+    Equivale a template_context(id, primary, secondary): la copia también lleva `version`, que template_context no
+    recibe; se conserva en el resultado para saber con qué versión del estilo se emitió. Valores dañados o desconocidos
+    caen en los de respaldo de normalize(), nunca en CSS arbitrario."""
+    if not isinstance(copy, dict):
+        return None
+    data = template_context(copy.get("id"), copy.get("primary"), copy.get("secondary"))
+    if isinstance(copy.get("version"), int):
+        data["version"] = copy["version"]
+    return data

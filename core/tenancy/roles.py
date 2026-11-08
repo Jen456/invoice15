@@ -43,6 +43,7 @@ def role_modules(role, modules):
     if role == ROLE_READONLY:
         return [m for m in staff if m.url not in {'/pos/product/stock/adjustment/', '/user/', '/pos/company/update/',
                                                   '/suscripcion/', '/configuracion/facturacion/', '/configuracion/puntos/',
+                                                  '/configuracion/diseno-factura/',   # diseño de factura: solo Propietario y Administrador
                                                   '/importacion/nueva/'}], False
     if role == ROLE_ACCOUNTANT:
         return [m for m in staff if m.url in ACCOUNTANT_URLS], 'accountant'

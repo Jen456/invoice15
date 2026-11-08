@@ -266,7 +266,8 @@ class TestAutorizaciones:
     def test_modulo_en_el_menu_y_migracion_reversible(self):
         instalado = estado_menu()
         modulo = Module.objects.get(url=URL)
-        assert (modulo.module_type.name, modulo.orden, modulo.name) == ('Configuración', 3, 'Locales y puntos de emisión')
+        # 4: «Diseño de factura» (configuracion 0005) va justo después de «Facturación y numeración».
+        assert (modulo.module_type.name, modulo.orden, modulo.name) == ('Configuración', 4, 'Locales y puntos de emisión')
         assert set(modulo.permissions.values_list('codename', flat=True)) == {'view_puntoautorizado', 'add_puntoautorizado',
                                                                                'delete_puntoautorizado'}
         for rol, tiene in ((ROLE_OWNER, True), (ROLE_ADMIN, True), (ROLE_SELLER, False), (ROLE_READONLY, False), (ROLE_ACCOUNTANT, False)):

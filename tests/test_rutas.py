@@ -17,6 +17,7 @@ ESPERADOS = {
     '/importacion/api/lotes/reporte/': 405,   # solo POST (crea un lote con el reporte del portal del SRI)
     '/contabilidad/api/kardex/movimientos/': 404,   # pide ?producto=<id> de un producto inventariado de la empresa
     '/contabilidad/kardex/exportar/': 404,          # ídem: el XLSX es del kardex de un producto
+    '/configuracion/diseno-factura/muestra.pdf': 404,   # piloto apagado en las pruebas: la vista previa no abre (la pantalla, 302)
 }
 
 

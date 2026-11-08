@@ -916,6 +916,10 @@ class Sale(TenantModel):
     anulado_sri_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', verbose_name='Marcado por')
     anulado_sri_registrado_en = models.DateTimeField(null=True, blank=True, verbose_name='Marcado en el sistema el')
     anulado_sri_stock = models.BooleanField(default=False, verbose_name='Se ajustó el inventario al anular')
+    # Diseño de factura (core/configuracion/diseno.py): copia {id, version, primary, secondary} del diseño del comercio,
+    # fijada en la primera firma (emision.preparar) y estable en los reintentos. None = RIDE original (históricas o fuera
+    # del piloto). Solo presentación: no entra en el XML ni en la firma. editable=False: fuera de SaleForm y de toJSON.
+    ride_diseno = models.JSONField(null=True, blank=True, editable=False, verbose_name='Diseño del RIDE')
 
     def __str__(self):
         return self.get_full_name()
@@ -981,7 +985,11 @@ class Sale(TenantModel):
     def ride_pdf(self):
         """RIDE A4 con la plantilla y los datos actuales, en memoria (no guarda nada)."""
         from core.comprobantes.ride import codigo_de_barras
-        context = {'sale': self, 'access_code_barcode': codigo_de_barras(self.access_code)}
+        from core.comprobantes.ride_styles import context_from_copy
+        # El estilo sale de la copia guardada en la factura, nunca del diseño actual del comercio: así el RIDE regenerado
+        # (regenerar_ride, SalePrintA4View cuando falta el archivo) es el mismo que se emitió.
+        context = {'sale': self, 'access_code_barcode': codigo_de_barras(self.access_code),
+                   'ride_style': context_from_copy(self.ride_diseno) if self.ride_diseno else None}
         return printer.create_pdf(context=context, template_name='sale/format/invoice.html')
 
     def generate_pdf_authorized(self):
