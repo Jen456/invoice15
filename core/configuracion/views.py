@@ -25,7 +25,7 @@ from core.pos.models import EmissionPoint, Establishment
 from core.pos.utilities import printer
 from core.security.mixins import PERMISSION_DENIED_MESSAGE, SessionGroupMixin
 from core.tenancy.models import audit
-from core.tenancy.pestanas import empresa_cambiada, rechazo_empresa_cambiada
+from core.tenancy.pestanas import EMPRESA_CAMBIADA, empresa_cambiada, rechazo_empresa_cambiada
 
 
 def avisar(request, nivel, texto):
@@ -486,7 +486,9 @@ class DisenoFacturaAccessMixin(SessionGroupMixin):
 
     La empresa es siempre la de la sesión (request.company). Fuera del piloto la pantalla vuelve al tablero con un aviso y
     la vista previa y el guardado responden 404. Un envío o una vista previa armados para otra empresa (pestaña que cambió
-    de empresa) responden 409 empresa_cambiada antes que cualquier otra cosa."""
+    de empresa) se rechazan antes que cualquier otra cosa y sin guardar nada: el formulario normal vuelve a la pantalla
+    con el aviso; la vista previa (iframe o pestaña nueva) responde 409 con el aviso en texto, y fetch/XHR, 409 JSON
+    empresa_cambiada."""
     pagina = True
 
     def get_group_module(self, group):
@@ -504,7 +506,12 @@ class DisenoFacturaAccessMixin(SessionGroupMixin):
         if not request.user.is_authenticated:
             return self.handle_no_permission()
         if (request.method != 'GET' or not self.pagina) and empresa_cambiada(request):
-            return rechazo_empresa_cambiada(request)
+            if quiere_json(request):
+                return rechazo_empresa_cambiada(request)
+            if self.pagina:   # «Guardar diseño» desde la pestaña vieja: de vuelta a la pantalla, ya con la empresa activa
+                avisar(request, messages.ERROR, EMPRESA_CAMBIADA)
+                return HttpResponseRedirect(dz.URL)
+            return HttpResponse(EMPRESA_CAMBIADA, status=409, content_type='text/plain; charset=utf-8')
         if not dz.diseno_habilitado(getattr(request, 'company', None)):
             if request.method == 'GET' and self.pagina:
                 messages.warning(request, dz.MENSAJE_NO_DISPONIBLE)

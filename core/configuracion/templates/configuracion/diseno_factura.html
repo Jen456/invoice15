@@ -48,8 +48,9 @@
         </form>
         <section class="fp-diseno-panel" aria-labelledby="fp-diseno-preview-title">
             <h2 class="h5" id="fp-diseno-preview-title">Vista previa A4</h2>
-            <p class="text-muted small">Factura de muestra con datos ficticios, sin validez tributaria.
-                <a id="fp-diseno-abrir" href="{{ preview_url }}" target="_blank" rel="noopener">Abrir la muestra en PDF</a></p>
+            <p class="text-muted small">Factura de muestra con datos ficticios, sin validez tributaria.</p>
+            <a id="fp-diseno-abrir" class="btn btn-outline-primary btn-sm fp-diseno-abrir" href="{{ preview_url }}"
+               target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Abrir la muestra en PDF</a>
             <iframe id="fp-diseno-preview" src="{{ preview_url }}" title="Vista previa de la factura de muestra"></iframe>
         </section>
     </div>

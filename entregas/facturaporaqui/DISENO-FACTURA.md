@@ -22,11 +22,14 @@ Rama `fase/diseno-factura`, desde `9584308` (producción). Paquete de origen: `P
   dígitos con módulo 11), con la marca «MUESTRA · SIN VALIDEZ TRIBUTARIA» en cada página. No crea filas ni archivos ni
   toca secuencias o cupo. Responde `application/pdf` en línea, `Cache-Control: private, no-store` y
   `X-Frame-Options: SAMEORIGIN` (solo esa vista; el resto del sitio sigue en `DENY`; la aplicación no envía CSP
-  `frame-ancestors`). La pantalla ofrece también «Abrir la muestra en PDF» (en móviles el iframe no muestra PDF).
+  `frame-ancestors`). La pantalla ofrece también el botón «Abrir la muestra en PDF»; en pantallas de hasta 850 px el
+  iframe se oculta (en móviles no muestra PDF) y queda solo el botón.
 - **Validación en el servidor:** estilo fuera de los cinco o color que no sea exactamente `#RRGGBB` → HTTP 400 con el
   error en el formulario y nada guardado. `normalize()` solo se usa para leer (pantalla, vista previa, copia).
 - **Empresa siempre de la sesión** (`request.company`); un id de empresa en el formulario se ignora. El campo oculto
-  `empresa` solo sirve para el 409 `empresa_cambiada` (pestaña que cambió de empresa), también en la vista previa.
+  `empresa` solo sirve para detectar una pestaña que cambió de empresa, también en la vista previa, y entonces no se
+  guarda nada: «Guardar diseño» vuelve a la pantalla (302) con el aviso de empresa cambiada; la vista previa responde
+  409 con el aviso en texto (se lee en el iframe), y fetch/XHR o `Accept: application/json`, 409 JSON `empresa_cambiada`.
 - **Auditoría:** cada guardado deja `diseno_factura_guardado` con el estilo y los colores antes y después.
 
 ## Piloto e interruptor
@@ -56,7 +59,11 @@ conoce estas migraciones): `migrate configuracion 0003_modulo_puntos`, `migrate 
 `migrate tenancy 0011_acciones_kardex`. Se pierden los diseños guardados y las copias de las facturas; los PDF ya
 guardados no cambian. La vuelta de 0005 quita el módulo y solo los permisos de `DisenoFactura` de los grupos, y devuelve
 «Locales y puntos», «Reglas» y «Numeraciones» a los órdenes 3, 4 y 5. Quedan las filas de `Permission` y `ContentType`,
-como en las demás vueltas. Ensayado en SQLite (ida, vuelta y otra ida sobre una instalación con menú).
+como en las demás vueltas. Ensayado en SQLite (ida, vuelta y otra ida sobre una instalación con menú). Tras la vuelta
+se puede volver a pasar por `configuracion 0003` (por ejemplo `migrate configuracion 0002_rls_puntos` y otra vez
+`0003_modulo_puntos`): 0003 llama a `organizar_menu` con `apps=apps` y no recrea «Diseño de factura» sin su tabla,
+aunque sus filas de `Permission` sigan en la base (antes de este arreglo lo recreaba, con la pantalla rota). Esa
+pasada usa los órdenes del menú del código nuevo («Locales y puntos» en 4), lo que solo deja un hueco en el orden.
 
 ## Logo y nombre comercial
 
@@ -80,11 +87,15 @@ empresa.
 
 `tests/test_diseno_factura.py` (51) y `tests/test_zz_diseno_factura_pg.py` (1, solo PostgreSQL: dos primeros guardados
 simultáneos dejan una fila y la RLS aísla el diseño de cada empresa). Cubren roles, cambio de comercio en la misma sesión
-(id de empresa del formulario ignorado, 409 `empresa_cambiada`), POST inválidos (400 sin guardar), piloto apagado y
+(id de empresa del formulario ignorado; pestaña vieja: 302 con aviso, 409 en texto en la vista previa y 409 JSON con
+fetch/XHR), POST inválidos (400 sin guardar), piloto apagado y
 encendido, copia en la primera firma y estable en el reintento (SRI simulado, firma con el .p12 de prueba), HTML de las
 históricas idéntico al de `9584308` (hash de la plantilla), los cinco estilos con colores claros y oscuros (mismo texto
 fiscal con pypdfium2 y clave legible con zxingcpp), 62 líneas en varias páginas, la vista previa (cabeceras, marca en cada
 página, sin filas ni archivos nuevos), descarga A4 y adjunto del correo con los mismos bytes guardados y `regenerar_ride`
 fiel con la copia. Ajustes en pruebas existentes: `test_b0_contratos` (lista de MODULOS_NUEVOS), `test_puntos_por_usuario`
 («Locales y puntos» pasa al orden 4), `test_rutas` (la vista previa responde 404 con el piloto apagado) y
-`test_migracion_vuelta_fase` (41 pendientes tras la vuelta: + pos 0035 y tenancy 0012).
+`test_migracion_vuelta_fase` (41 pendientes tras la vuelta: + pos 0035 y tenancy 0012; y una prueba nueva: vuelta del
+diseño, otra pasada por configuracion 0003 sin el módulo y otra ida igual a la instalación). `tests/conftest.py` apaga
+el piloto en todas las pruebas (fixture `diseno_piloto_apagado`), aunque el entorno exporte
+`FPA_DISENO_FACTURA_PILOTO`.

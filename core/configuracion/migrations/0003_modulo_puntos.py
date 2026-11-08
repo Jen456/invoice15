@@ -22,7 +22,9 @@ def forwards(apps, schema_editor):
     if not Module.objects.exists():
         return   # base sin instalar: lo hará start_installation
     Permission = apps.get_model('auth', 'Permission')
-    organizar_menu(apps.get_model('security', 'ModuleType'), Module, Permission)
+    # apps=apps: con los modelos de este estado, organizar_menu no crea el módulo de una app sin sus tablas (p. ej.
+    # «Diseño de factura» si se vuelve a pasar por 0003 tras deshacer 0004-0005, que dejan sus filas de Permission).
+    organizar_menu(apps.get_model('security', 'ModuleType'), Module, Permission, apps=apps)
     sync_roles(apps.get_model('auth', 'Group'), Module, apps.get_model('security', 'GroupModule'))
 
 

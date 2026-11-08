@@ -23,6 +23,13 @@ def complemento_en_revision(settings):
 
 
 @pytest.fixture(autouse=True)
+def diseno_piloto_apagado(settings):
+    """Diseño de factura fuera del piloto aunque el entorno exporte FPA_DISENO_FACTURA_PILOTO (FPA_ENV_FILE=/dev/null solo
+    anula el archivo .env); las pruebas que lo necesitan lo encienden con el fixture `piloto` de test_diseno_factura."""
+    settings.FPA_DISENO_FACTURA_PILOTO = []
+
+
+@pytest.fixture(autouse=True)
 def limpiar_cache(request):
     if 'django_db' not in request.keywords and 'db' not in request.fixturenames:
         yield

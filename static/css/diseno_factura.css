@@ -9,4 +9,9 @@
 .fp-diseno-colores { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
 .fp-diseno-colores input { display: block; width: 100%; height: 2.5rem; }
 .fp-diseno iframe { width: 100%; height: 44rem; border: 1px solid #d7e3ea; }
-@media (max-width: 850px) { .fp-diseno-grid { grid-template-columns: 1fr; } }
+.fp-diseno-abrir { margin-bottom: .75rem; }
+/* En móviles el iframe no muestra el PDF: sin el recuadro vacío, la muestra se abre con el botón. */
+@media (max-width: 850px) {
+    .fp-diseno-grid { grid-template-columns: 1fr; }
+    .fp-diseno iframe { display: none; }
+}

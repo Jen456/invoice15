@@ -36,6 +36,7 @@ from core.suscripciones.models import QuotaReservation, SubscriptionPeriod
 from core.tenancy.context import company_context
 from core.tenancy.models import (ROLE_ACCOUNTANT, ROLE_ADMIN, ROLE_OWNER, ROLE_READONLY, ROLE_SELLER, AuditLog,
                                  Membership)
+from core.tenancy.pestanas import EMPRESA_CAMBIADA
 from core.user.models import User
 from tests import helpers
 from tests.fabricas_sri import clave as clave_sri
@@ -269,6 +270,7 @@ class TestPiloto:
         assert dz.diseno_habilitado(azul)
 
     def test_conftest_lo_deja_apagado(self):
+        # tests/conftest.py (diseno_piloto_apagado) lo apaga aunque el entorno exporte FPA_DISENO_FACTURA_PILOTO.
         assert ajustes.FPA_DISENO_FACTURA_PILOTO == []
 
     def test_apagado_oculta_el_menu_y_bloquea_las_urls(self, settings, rojo):
@@ -302,8 +304,12 @@ class TestAcceso:
         assert '%23CA462C' in r.context['preview_url'] and '#' not in r.context['preview_url']
         html = r.content.decode()
         for texto in ('plantillas de FacturaPorAquí', 'facturas <strong>nuevas</strong>', 'Abrir la muestra en PDF',
-                      'target="_blank" rel="noopener"', f'name="empresa" value="{rojo.pk}"'):
+                      'target="_blank" rel="noopener"', f'name="empresa" value="{rojo.pk}"',
+                      'id="fp-diseno-abrir" class="btn btn-outline-primary'):   # botón visible: en móviles no hay iframe
             assert texto in html, texto
+        hoja = (Path(ajustes.BASE_DIR) / 'static/css/diseno_factura.css').read_text(encoding='utf-8')
+        movil = re.search(r'@media \(max-width: 850px\) \{(.*?)\n\}', hoja, flags=re.S)
+        assert movil and re.search(r'\.fp-diseno iframe \{ display: none; \}', movil.group(1))
         r = enviar(navegador, rojo, 'corporativo', '#102030', '#a0b0c0')
         assert r.status_code == 302 and r['Location'] == URL
         d = guardado(rojo)
@@ -335,10 +341,22 @@ class TestAcceso:
         r = enviar(navegador, azul, 'minimalista', '#0000AA', '#EEEEFF', company=rojo.pk, company_id=rojo.pk)
         assert r.status_code == 302
         assert (guardado(rojo).estilo, guardado(azul).estilo) == ('banda', 'minimalista')
-        # Pestaña que se abrió con rojo: 409 empresa_cambiada, sin guardar nada en ninguna.
+        # Pestaña que se abrió con rojo, sin guardar nada en ninguna. El formulario normal vuelve a la pantalla con el aviso
+        # (no una página con JSON); fetch/XHR recibe 409 JSON; la vista previa (iframe o pestaña nueva), 409 con el aviso en
+        # texto, y en JSON si lo pide.
         r = enviar(navegador, rojo, 'compacto', '#000000', '#FFFFFF')
+        assert r.status_code == 302 and r['Location'] == URL
+        assert EMPRESA_CAMBIADA in [str(m) for m in get_messages(r.wsgi_request)]
+        assert EMPRESA_CAMBIADA in navegador.get(URL).content.decode()
+        for cabecera in ({'HTTP_X_REQUESTED_WITH': 'XMLHttpRequest'}, {'HTTP_ACCEPT': 'application/json'}):
+            r = navegador.post(URL, {'empresa': rojo.pk, 'style': 'compacto', 'primary': '#000000',
+                                     'secondary': '#FFFFFF'}, **cabecera)
+            assert r.status_code == 409 and r.json()['codigo'] == 'empresa_cambiada'
+        r = navegador.get(MUESTRA, {'empresa': rojo.pk, 'style': 'compacto'})
+        assert r.status_code == 409 and r['Content-Type'].startswith('text/plain')
+        assert r.content.decode() == EMPRESA_CAMBIADA and r['X-Frame-Options'] == 'SAMEORIGIN'
+        r = navegador.get(MUESTRA, {'empresa': rojo.pk}, HTTP_ACCEPT='application/json')
         assert r.status_code == 409 and r.json()['codigo'] == 'empresa_cambiada'
-        assert navegador.get(MUESTRA, {'empresa': rojo.pk}).status_code == 409
         assert (guardado(rojo).estilo, guardado(azul).estilo) == ('banda', 'minimalista')
         assert guardado(azul).color_principal == '#0000AA' and guardado(rojo).color_principal == '#AA0000'
         texto = ' '.join(textos_pdf(navegador.get(MUESTRA).content))
