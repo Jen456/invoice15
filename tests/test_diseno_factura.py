@@ -299,7 +299,7 @@ class TestAcceso:
         assert f'href="{URL}"' in navegador.get('/dashboard/').content.decode()
         r = navegador.get(URL)
         assert r.status_code == 200 and r['X-Frame-Options'] == 'DENY'   # solo la muestra se deja enmarcar
-        assert r.context['styles'] == ride_styles.catalog() and r.context['current'] == ride_styles.normalize('clasico')
+        assert r.context['styles'] == ride_styles.catalog() and r.context['current'] == {**ride_styles.normalize('clasico'), **ride_styles.opciones_personalizacion()}
         assert r.context['form_error'] is None
         assert '%23CA462C' in r.context['preview_url'] and '#' not in r.context['preview_url']
         html = r.content.decode()
@@ -315,8 +315,8 @@ class TestAcceso:
         d = guardado(rojo)
         assert (d.estilo, d.color_principal, d.color_secundario, d.version, d.actualizado_por_id) == (
             'corporativo', '#102030', '#A0B0C0', 1, usuario.pk)
-        assert navegador.get(URL).context['current'] == {'id': 'corporativo', 'version': 1, 'primary': '#102030',
-                                                         'secondary': '#A0B0C0'}
+        assert navegador.get(URL).context['current'] == {
+            **ride_styles.normalize('corporativo', '#102030', '#A0B0C0'), **ride_styles.opciones_personalizacion()}
         assert navegador.get(MUESTRA, {'style': 'corporativo'}).status_code == 200
 
     @pytest.mark.parametrize('rol', [ROLE_READONLY, ROLE_ACCOUNTANT, ROLE_SELLER])
@@ -336,7 +336,7 @@ class TestAcceso:
         assert enviar(navegador, rojo, 'banda', '#AA0000', '#FFEEEE').status_code == 302
         navegador.post('/empresas/cambiar/', {'company': azul.id})
         assert navegador.session['company_id'] == azul.id
-        assert navegador.get(URL).context['current'] == ride_styles.normalize('clasico')   # azul aún no tiene diseño
+        assert navegador.get(URL).context['current'] == {**ride_styles.normalize('clasico'), **ride_styles.opciones_personalizacion()}
         # Un id de empresa en el formulario se ignora: se guarda en la empresa de la sesión.
         r = enviar(navegador, azul, 'minimalista', '#0000AA', '#EEEEFF', company=rojo.pk, company_id=rojo.pk)
         assert r.status_code == 302
@@ -395,15 +395,30 @@ class TestGuardado:
         assert enviar(navegador, rojo, 'clasico', '#12345', '#E5F1F6').status_code == 400
         assert guardado(rojo) is None
 
+    def test_personalizacion_se_guarda_por_empresa_y_llega_a_la_copia(self, piloto, rojo, azul):
+        navegador = entrar(helpers.crear_usuario('duena.personaliza', rojo, ROLE_OWNER), rojo)
+        textos = {'fuente': 'dejavu-serif', 'encabezado': 'Tecnología y soluciones', 'pie_comercial': 'Gracias por tu compra'}
+        r = enviar(navegador, rojo, 'banda', '#112233', '#445566', **textos)
+        assert r.status_code == 302
+        assert guardado(rojo).version == 2 and guardado(azul) is None
+        assert all(navegador.get(URL).context['current'][campo] == valor for campo, valor in textos.items())
+        with company_context(rojo):
+            assert dz.diseno_efectivo(rojo) == {**ride_styles.normalize('banda', '#112233', '#445566'),
+                                               'version': 2, **textos}
+        for invalido in ({'fuente': 'url(otro)'}, {'encabezado': 'a' * 101}, {'pie_comercial': 'primera\nsegunda'}):
+            assert enviar(navegador, rojo, 'banda', '#112233', '#445566', **invalido).status_code == 400
+        assert guardado(rojo).pie_comercial == textos['pie_comercial']
+
     def test_cada_guardado_queda_en_la_auditoria(self, piloto, rojo):
         navegador = entrar(helpers.crear_usuario('duena.auditada', rojo, ROLE_OWNER), rojo)
         enviar(navegador, rojo, 'banda', '#603d80', '#ECDCF8')
         enviar(navegador, rojo, 'compacto', '#000000', '#FFFFFF')
         registros = AuditLog.objects.filter(action='diseno_factura_guardado', company=rojo).order_by('pk')
-        banda = {'estilo': 'banda', 'color_principal': '#603D80', 'color_secundario': '#ECDCF8'}
+        base = {'version': 1, **ride_styles.opciones_personalizacion()}
+        banda = {**base, 'estilo': 'banda', 'color_principal': '#603D80', 'color_secundario': '#ECDCF8'}
         assert [r.detail for r in registros] == [
             {'antes': None, 'despues': banda},
-            {'antes': banda, 'despues': {'estilo': 'compacto', 'color_principal': '#000000', 'color_secundario': '#FFFFFF'}}]
+            {'antes': banda, 'despues': {**base, 'estilo': 'compacto', 'color_principal': '#000000', 'color_secundario': '#FFFFFF'}}]
         assert leer(rojo, lambda: DisenoFactura.objects.filter(company=rojo).count()) == 1   # uno por empresa
 
 
@@ -442,12 +457,26 @@ class TestMuestra:
             assert r.status_code == 200 and r.content[:5] == b'%PDF-'
         assert estado() == antes
 
+    def test_cinco_muestras_con_textos_y_pie_fijo(self, piloto, rojo):
+        navegador = entrar(helpers.crear_usuario('duena.textos', rojo, ROLE_OWNER), rojo)
+        for estilo in ride_styles.STYLES:
+            r = navegador.get(MUESTRA, {'style': estilo, 'fuente': 'dejavu-serif',
+                                        'encabezado': 'Marca de muestra', 'pie_comercial': 'Gracias por su compra',
+                                        'proveedor_fijo': 'No debe aparecer'})
+            assert r.status_code == 200
+            texto = ' '.join(textos_pdf(r.content))
+            assert 'Marca de muestra' in texto and 'Gracias por su compra' in texto
+            assert 'FACTURAPORAQUI · RUC Proveedor: 0941609729001' in texto
+            assert 'soporte@facturaporaqui.com · Milagro, Manta y Rumiñahui' in texto
+            assert 'No debe aparecer' not in texto
+
     def test_la_muestra_usa_el_estilo_pedido(self, piloto, rojo, contextos):
         navegador = entrar(helpers.crear_usuario('duena.estilo', rojo, ROLE_OWNER), rojo)
         navegador.get(MUESTRA, {'style': 'compacto', 'primary': '#ABCDEF', 'secondary': '#000000;}'})
         plantilla, contexto = contextos[-1]
         assert plantilla == FACTURA and contexto['ride_muestra'] is True
-        assert contexto['ride_style'] == ride_styles.template_context('compacto', '#ABCDEF', None)
+        assert contexto['ride_style'] == ride_styles.context_from_copy({
+            **ride_styles.normalize('compacto', '#ABCDEF', None), 'version': 2})
 
 
 # ---------------------------------------------------------------- copia del diseño en la factura

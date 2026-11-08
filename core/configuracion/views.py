@@ -520,6 +520,9 @@ class DisenoFacturaAccessMixin(SessionGroupMixin):
         return super().dispatch(request, *args, **kwargs)
 
 
+CAMPOS_PRESENTACION_FACTURA = ('fuente', 'encabezado', 'pie_comercial')
+
+
 class DisenoFacturaView(DisenoFacturaAccessMixin, TemplateView):
     """Elegir una de las cinco plantillas de FacturaPorAquí y los colores del comercio; se aplica a las facturas NUEVAS."""
     template_name = 'configuracion/diseno_factura.html'
@@ -531,6 +534,9 @@ class DisenoFacturaView(DisenoFacturaAccessMixin, TemplateView):
         current = current or dz.actual(company)
         context.update({
             'title': 'Diseño de factura', 'styles': ride_styles.catalog(), 'current': current, 'form_error': form_error,
+            'fuentes': [(key, value[0]) for key, value in ride_styles.FUENTES.items()],
+            'max_encabezado': ride_styles.MAX_ENCABEZADO, 'max_pie': ride_styles.MAX_PIE_COMERCIAL,
+            'proveedor_fijo': ride_styles.PROVEEDOR_FIJO,
             'preview_url': self.url_muestra(current), 'tiene_diseno': dz.diseno_guardado(company) is not None,
         })
         return context
@@ -538,15 +544,18 @@ class DisenoFacturaView(DisenoFacturaAccessMixin, TemplateView):
     def url_muestra(self, current):
         from django.urls import reverse
         consulta = urlencode({'empresa': self.request.company.pk, 'style': current['id'], 'primary': current['primary'],
-                              'secondary': current['secondary']})
+                              'secondary': current['secondary'],
+                              **{key: current.get(key, '') for key in CAMPOS_PRESENTACION_FACTURA if current.get(key)}})
         return f'{reverse("diseno_factura_preview")}?{consulta}'
 
     def post(self, request, *args, **kwargs):
         company = request.company   # nunca un id del formulario (el campo `empresa` solo sirve para el 409)
-        datos, error = dz.validar(request.POST.get('style'), request.POST.get('primary'), request.POST.get('secondary'))
+        personalizacion = {key: request.POST[key] for key in CAMPOS_PRESENTACION_FACTURA if key in request.POST}
+        datos, error = dz.validar(request.POST.get('style'), request.POST.get('primary'), request.POST.get('secondary'),
+                                  personalizacion=personalizacion or None)
         if error:
-            # No se guarda nada. Se vuelve a mostrar lo enviado, saneado para la pantalla (normalize solo para leer).
             current = ride_styles.normalize(request.POST.get('style'), request.POST.get('primary'), request.POST.get('secondary'))
+            current.update(ride_styles.opciones_personalizacion(**personalizacion))
             return self.render_to_response(self.get_context_data(current=current, form_error=error), status=400)
         dz.guardar(request, company, datos)
         avisar(request, messages.SUCCESS, 'Diseño guardado. Se aplicará a las facturas nuevas; las ya emitidas no cambian.')
@@ -564,7 +573,11 @@ class DisenoFacturaMuestraView(DisenoFacturaAccessMixin, View):
 
     def get(self, request, *args, **kwargs):
         estilo = ride_styles.normalize(request.GET.get('style'), request.GET.get('primary'), request.GET.get('secondary'))
+        copia = {**estilo, 'version': ride_styles.VERSION_PERSONALIZADA,
+                 **ride_styles.opciones_personalizacion(
+                     **{key: request.GET.get(key) for key in CAMPOS_PRESENTACION_FACTURA})}
         contexto = ride_muestra.contexto(request.company, estilo['id'], estilo['primary'], estilo['secondary'])
+        contexto['ride_style'] = ride_styles.context_from_copy(copia)
         pdf = printer.create_pdf(context=contexto, template_name='sale/format/invoice.html')
         respuesta = HttpResponse(pdf, content_type='application/pdf')
         respuesta['Content-Disposition'] = 'inline; filename="factura-de-muestra.pdf"'

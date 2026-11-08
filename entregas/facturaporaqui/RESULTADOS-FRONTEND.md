@@ -1,5 +1,13 @@
 # Resultados frontend — FacturaPorAquí
 
+## Diseño de factura v2 · cinco plantillas
+
+- Selector con miniaturas para Original FacturaPorAquí, Corporativo, Minimalista, Banda de marca y Compacto, además de color, tipografía y textos comerciales. La vista previa A4 usa la plantilla de factura real con marca de muestra.
+- La identificación fija del proveedor conserva su lugar y tipografía en cada página. Los textos comerciales van antes de la cabecera fiscal y después de los totales. La copia v2 de la factura guarda los valores efectivos del comercio.
+- Prueba local con la plantilla Django y WeasyPrint: diez PDF A4 ficticios de 3 y 62 líneas. Texto fiscal equivalente entre estilos, identificación fija completa en cada página, código de barras decodificado a 300 ppp y HTML histórico/v1 idéntico al de la base.
+- Chromium local: cinco estilos, campo de fuente, textos, enlace actualizado de vista previa y anchos de 360, 390, 768, 1024 y 1440 px. La prueba de UI usa la plantilla del editor con una envoltura local de prueba.
+- [Comparativa de cinco PDF de prueba](capturas/diseno-factura-v2.jpg). Las pruebas integradas de permisos, guardado y migraciones se entregan para ejecutar en staging. Producción se deja a cargo de la integración.
+
 ## 2026-11-04 — Revisión independiente de facturas, recibos, cobros y permisos
 
 **Base:** `c00b620`, en worktree aislado mientras Claude trabaja. No se cambió código de aplicación, contrato de datos, modelos, servicios, vistas, URL ni migraciones. Entrega documental: [REVISION-FLUJOS-20261104.md](REVISION-FLUJOS-20261104.md), reproductor en `revision-flujos-20261104/repro_regresiones.py`, HANDOFF y este registro.

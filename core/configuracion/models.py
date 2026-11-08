@@ -65,6 +65,12 @@ class DisenoFactura(TenantModel):
     estilo = models.CharField(max_length=20, choices=ride_styles.choices(), verbose_name='Estilo')
     color_principal = models.CharField(max_length=7, validators=[COLOR_HEX], verbose_name='Color principal')
     color_secundario = models.CharField(max_length=7, validators=[COLOR_HEX], verbose_name='Color secundario')
+    fuente = models.CharField(max_length=20, choices=[(key, value[0]) for key, value in ride_styles.FUENTES.items()],
+                             default='original', verbose_name='Tipografía')
+    encabezado = models.CharField(max_length=ride_styles.MAX_ENCABEZADO, blank=True, default='',
+                                 verbose_name='Encabezado comercial')
+    pie_comercial = models.CharField(max_length=ride_styles.MAX_PIE_COMERCIAL, blank=True, default='',
+                                    verbose_name='Pie comercial')
     version = models.PositiveSmallIntegerField(default=1, verbose_name='Versión del estilo')
     actualizado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
                                         related_name='+', verbose_name='Actualizado por')

@@ -1,0 +1,84 @@
+/* Invoice presentation v2. Keep the version-one stylesheet intact for saved invoices. */
+.fp-ride.ride-v2 { font-family: var(--ride-font, Arial), sans-serif; }
+.fp-ride.ride-v2 .fp-ride-footer { font-family: Arial, Helvetica, sans-serif; }
+.fp-ride.ride-v2 .fp-ride-encabezado-comercial {
+    font-size: 9pt; font-weight: 700; padding: 2mm 0; margin: 0 0 2mm;
+    border-bottom: .25mm solid var(--ride-primary); overflow-wrap: anywhere; break-after: avoid;
+}
+.fp-ride.ride-v2 .fp-ride-pie-comercial {
+    font-size: 8.5pt; padding: 2mm 0 0; margin: 4mm 0 0; overflow-wrap: anywhere;
+    border-top: .3mm solid var(--ride-primary); break-inside: avoid;
+}
+.fp-ride.ride-v2 .barcode { background: #fff; }
+.fp-ride.ride-v2 table.detalle th.num { padding-left: .6mm; white-space: nowrap; }
+.fp-ride.ride-v2:not(.ride-paleta-original) .fp-ride-summary { break-inside: avoid; }
+
+/* The default palette uses the original styling, including the invoice number. */
+.fp-ride.ride-v2.ride-paleta-original .numero { color: #CA462C; }
+.fp-ride.ride-v2.ride-paleta-original .bloque { background: #F1F8FB; border-color: #D7E5ED; }
+.fp-ride.ride-v2.ride-paleta-original table.detalle th,
+.fp-ride.ride-v2.ride-paleta-original tr.total-final td { background: #E5F1F6; }
+
+/* Corporativo — solid ribbon and ruled columns. */
+.fp-ride.ride-v2.ride-corporativo table.fp-ride-header {
+    border: .35mm solid var(--ride-dark); border-top-width: 4mm; margin-bottom: 3mm;
+}
+.fp-ride.ride-v2.ride-corporativo .fp-ride-control { background: var(--ride-wash); }
+.fp-ride.ride-v2.ride-corporativo .titulo {
+    background: var(--ride-dark); color: #fff; padding: 2mm 3mm; font-size: 18pt;
+}
+.fp-ride.ride-v2.ride-corporativo table.detalle th {
+    background: var(--ride-dark); color: #fff; border-right: .2mm solid #fff;
+}
+.fp-ride.ride-v2.ride-corporativo table.detalle td { border: .2mm solid var(--ride-rule); }
+.fp-ride.ride-v2.ride-corporativo tr.total-final td { background: var(--ride-dark); color: #fff; }
+
+/* Minimalista — airy editorial layout with open tables. */
+.fp-ride.ride-v2.ride-minimalista table.fp-ride-header {
+    border: 0; margin-bottom: 6mm;
+}
+.fp-ride.ride-v2.ride-minimalista .fp-ride-header .titulo {
+    font-size: 26pt; letter-spacing: .35mm; color: var(--ride-dark);
+}
+.fp-ride.ride-v2.ride-minimalista .fp-ride-header .fp-ride-emisor {
+    border-left: 1.2mm solid var(--ride-primary); padding-left: 3mm;
+}
+.fp-ride.ride-v2.ride-minimalista .bloque { border-top: .25mm solid var(--ride-rule); }
+.fp-ride.ride-v2.ride-minimalista table.detalle th { background: #fff; border-bottom: .45mm solid var(--ride-dark); }
+.fp-ride.ride-v2.ride-minimalista table.detalle td { padding-top: 2mm; padding-bottom: 2mm; }
+.fp-ride.ride-v2.ride-minimalista tr.total-final td {
+    color: var(--ride-dark); background: #fff; border-top: .5mm solid var(--ride-dark); font-size: 12pt;
+}
+
+/* Banda de marca — diagonal color on the title and the document edge. */
+.fp-ride.ride-v2.ride-banda table.fp-ride-header {
+    border: 0; border-bottom: .35mm solid var(--ride-rule);
+}
+.fp-ride.ride-v2.ride-banda .hoja::before {
+    content: ""; display: block; height: 9mm;
+    background-color: var(--ride-dark);
+    background-image: linear-gradient(128deg, var(--ride-dark) 60%, var(--ride-primary) 60%,
+        var(--ride-primary) 75%, var(--ride-wash) 75%, var(--ride-wash) 92%, #fff 92%);
+}
+.fp-ride.ride-v2.ride-banda .fp-ride-emisor { background: #fff; }
+.fp-ride.ride-v2.ride-banda .titulo {
+    color: #fff; font-size: 19pt; padding: 1.8mm 3mm;
+    background-color: var(--ride-dark);
+    background-image: linear-gradient(112deg, var(--ride-dark) 78%, var(--ride-wash) 78%);
+}
+.fp-ride.ride-v2.ride-banda table.detalle th { background: var(--ride-dark); color: #fff; border-top: 0; }
+.fp-ride.ride-v2.ride-banda .detalle tbody tr:nth-child(even) { background: var(--ride-wash); }
+.fp-ride.ride-v2.ride-banda tr.total-final td { border-top: .9mm solid var(--ride-primary); }
+
+/* Compacto — data-first bands and a compact total block. */
+.fp-ride.ride-v2.ride-compacto table.fp-ride-header {
+    border-top-width: 1.8mm; border-bottom: .3mm solid var(--ride-rule);
+}
+.fp-ride.ride-v2.ride-compacto .fp-ride-header .fp-ride-emisor { padding-bottom: 2mm; }
+.fp-ride.ride-v2.ride-compacto .fp-ride-control { background: var(--ride-wash); padding-bottom: 2mm; }
+.fp-ride.ride-v2.ride-compacto .bloque { border-left: 1mm solid var(--ride-primary); border-top: 0; }
+.fp-ride.ride-v2.ride-compacto table.detalle th { background: var(--ride-wash); border-bottom: .4mm solid var(--ride-dark); }
+.fp-ride.ride-v2.ride-compacto table.detalle tbody tr:nth-child(even) { background: #F5F7F9; }
+.fp-ride.ride-v2.ride-compacto tr.total-final td {
+    color: #fff; background: var(--ride-dark); border-top: 0; padding: 2mm;
+}

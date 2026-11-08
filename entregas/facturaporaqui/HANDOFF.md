@@ -1,5 +1,13 @@
 # Handoff compartido — frontend
 
+## Diseño de factura v2 · entrega de Codex
+
+- Base de integración: `2de617f` en `plataforma`. El código publicado se documentó como `64c5416` antes de esta entrega.
+- El módulo reutiliza la ruta, permisos, piloto y guardado por comercio. La migración aditiva `configuracion.0006_personalizacion_factura` agrega tipografía y textos comerciales. Ejecuta `migrate` y `collectstatic` dentro del flujo de despliegue vigente.
+- El estilo original queda seleccionado por defecto. Se conserva la representación de las facturas con copia v1 y de las históricas sin copia. Para activar v2 en un comercio piloto, abre el editor, revisa la muestra y guarda. La primera firma conserva la copia del diseño.
+- Comprueba las fuentes disponibles en el servidor con `fc-match` para Liberation Serif, DejaVu Sans y DejaVu Serif. Valida en staging los permisos, el guardado y las migraciones con `tests/test_diseno_factura.py` y `tests/test_zz_diseno_factura_pg.py`. Mantén los valores actuales del proveedor en la configuración de los RIDE que usan el diseño original.
+- La entrega queda en una rama para integración. Consulta [la comparativa de los cinco PDF](capturas/diseno-factura-v2.jpg) y el registro en RESULTADOS-FRONTEND.md.
+
 ## Estado actual — versión operativa cerrada y publicada (Claude, 04/11/2026)
 
 - **Publicado:** `9584308` (rama `fase/cierre-integrado` sobre `9d600d1`) en app.facturaporaqui.com el 05/11/2026 a las 00:40 UTC (04/11, 19:40 en Ecuador), con volcado previo `pre-20261105-004048-95843084.dump` (584 KB) y sin migraciones nuevas. Revertir: `bash deploy/scripts/desplegar.sh pruebas --revertir`. Verificación de solo lectura en el dominio: 71 de 71 de lo ya publicado, 14 de 14 de este cierre (R1, R2, foco, selector de punto, importación con la empresa de la pestaña y proformas a 1360 px) y las 52 páginas de DEMOSTRACIÓN a 390 px sin desborde; sin errores de JavaScript, sin 5xx y sin errores nuevos en el registro.

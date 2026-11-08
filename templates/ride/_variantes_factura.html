@@ -7,5 +7,13 @@
         --ride-secondary: {{ ride_style.secondary }};
         --ride-wash: {{ ride_style.wash }};
     }
+</style>{% if ride_style.personalizado %}
+<link rel="stylesheet" href="{% static 'css/ride_personalizado.css' %}">
+<style>
+    body.fp-ride.ride-v2 {
+        --ride-font: {{ ride_style.familia|safe }};
+        --ride-dark: {{ ride_style.tono_oscuro }};
+    }
 </style>
+{% endif %}
 {% endif %}

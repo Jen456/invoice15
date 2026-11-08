@@ -5,7 +5,10 @@
         <tbody><tr>
             <td><img src="{% static 'img/brand/isotipo-pie.png' %}" width="166" height="138" style="width:7mm;height:auto" alt="FacturaPorAquí"></td>
             <td class="fp-ride-provider">
-                {% if proveedor %}
+                {% if ride_style.proveedor_fijo %}
+                    <p>Sistema de facturación electrónica: {{ ride_style.proveedor_fijo.nombre }} · <span>RUC Proveedor: {{ ride_style.proveedor_fijo.ruc }}</span></p>
+                    <p>{{ ride_style.proveedor_fijo.email }} · {{ ride_style.proveedor_fijo.direccion }}</p>
+                {% elif proveedor %}
                     <p>Sistema de facturación electrónica: {{ proveedor.nombre }} · <span>RUC Proveedor: {{ proveedor.ruc }}</span></p>
                     {% if proveedor.email or proveedor.direccion %}<p>{% if proveedor.email %}{{ proveedor.email }}{% endif %}{% if proveedor.email and proveedor.direccion %} · {% endif %}{% if proveedor.direccion %}{{ proveedor.direccion }}{% endif %}</p>{% endif %}
                 {% else %}

@@ -15,3 +15,24 @@
     .fp-diseno-grid { grid-template-columns: 1fr; }
     .fp-diseno iframe { display: none; }
 }
+.fp-diseno-opcion:focus-within { outline: 2px solid #245575; outline-offset: 2px; }
+.fp-diseno-opcion input { flex: 0 0 auto; }
+.fp-diseno-mini {
+    flex: 0 0 30px; height: 38px; border: 1px solid #cbd7df; border-radius: 3px;
+    background: repeating-linear-gradient(to bottom,#fff 0 4px,#dae3e9 4px 5px) no-repeat center 16px / 20px 15px, #fff;
+    box-shadow: 0 1px 2px #163b5030;
+}
+.fp-diseno-mini--clasico { border-top: 3px solid #ca462c; }
+.fp-diseno-mini--corporativo { border-top: 7px solid #174886; }
+.fp-diseno-mini--minimalista { border-left: 3px solid #284a45; }
+.fp-diseno-mini--banda {
+    background: linear-gradient(130deg,#603d80 0 65%,#ecdcf8 65%) no-repeat top / 100% 9px,
+        repeating-linear-gradient(to bottom,#fff 0 4px,#dae3e9 4px 5px) no-repeat center 15px / 20px 17px, #fff;
+}
+.fp-diseno-mini--compacto {
+    border-top: 4px solid #21635d;
+    background: repeating-linear-gradient(to bottom,#fff 0 2px,#d6eae7 2px 4px) no-repeat center 7px / 22px 20px, #fff;
+}
+.fp-diseno-textos label { display: block; margin-top: .65rem; }
+.fp-diseno-proveedor { background: #f1f7fa; padding: .75rem; border-radius: .5rem; margin: 0 0 1rem; font-size: .82rem; overflow-wrap: anywhere; }
+.fp-diseno-proveedor p { margin: .3rem 0 0; }

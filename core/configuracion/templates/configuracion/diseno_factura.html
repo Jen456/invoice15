@@ -12,7 +12,7 @@
         <h1 class="h3">Diseño de factura</h1>
         <p>Escoge una de las plantillas de FacturaPorAquí y los colores de tu comercio para el PDF de tus facturas (RIDE).
             Se aplica a las facturas <strong>nuevas</strong>; las ya emitidas conservan el diseño con el que se emitieron.</p>
-        <p class="text-muted small">El logo, la razón social y el nombre comercial son los de <a href="/pos/company/update/">los datos de la empresa</a>, los mismos del comprobante autorizado. El estilo cambia solo colores, bordes y espaciado: los datos tributarios de la factura no cambian.</p>
+        <p class="text-muted small">El logo, la razón social y el nombre comercial son los de <a href="/pos/company/update/">los datos de la empresa</a>, los mismos del comprobante autorizado. Los textos comerciales aparecen en espacios propios, separados de los datos tributarios.</p>
     </header>
     {% for message in messages %}{% if 'configuracion' in message.tags %}
         <div class="alert {% if message.level_tag == 'error' %}alert-danger{% else %}alert-success{% endif %}" role="status">{{ message }}</div>
@@ -31,7 +31,8 @@
                         <input type="radio" name="style" value="{{ style.id }}"
                             data-primary="{{ style.primary }}" data-secondary="{{ style.secondary }}"
                             {% if style.id == current.id %}checked{% endif %}>
-                        <span><strong>{{ style.name }}</strong><small>{{ style.description }}</small></span>
+                        <span class="fp-diseno-mini fp-diseno-mini--{{ style.id }}" aria-hidden="true"></span>
+                        <span><strong>{% if style.id == 'clasico' %}Original FacturaPorAquí{% else %}{{ style.name }}{% endif %}</strong><small>{{ style.description }}</small></span>
                     </label>
                 {% endfor %}
             </fieldset>
@@ -42,6 +43,28 @@
                     <label>Secundario <input type="color" name="secondary" value="{{ current.secondary }}"></label>
                 </div>
             </fieldset>
+            <fieldset>
+                <legend>Tipografía</legend>
+                <label for="fp-diseno-fuente">Tipo de letra</label>
+                <select class="form-control" name="fuente" id="fp-diseno-fuente">
+                    {% for id, nombre in fuentes %}<option value="{{ id }}"{% if id == current.fuente %} selected{% endif %}>{{ nombre }}</option>{% endfor %}
+                </select>
+            </fieldset>
+            <fieldset class="fp-diseno-textos">
+                <legend>Textos comerciales</legend>
+                <label for="fp-diseno-encabezado">Encabezado comercial <span class="text-muted">(opcional)</span></label>
+                <input class="form-control" id="fp-diseno-encabezado" name="encabezado" type="text"
+                       maxlength="{{ max_encabezado }}" value="{{ current.encabezado }}" placeholder="Ej. Tecnología para tu negocio">
+                <label for="fp-diseno-pie">Pie comercial <span class="text-muted">(opcional)</span></label>
+                <input class="form-control" id="fp-diseno-pie" name="pie_comercial" type="text"
+                       maxlength="{{ max_pie }}" value="{{ current.pie_comercial }}" placeholder="Ej. Gracias por tu compra · ventas@tumarca.ec">
+                <small class="form-text text-muted">El pie comercial aparece después de los totales.</small>
+            </fieldset>
+            <aside class="fp-diseno-proveedor" aria-label="Identificación fija del proveedor">
+                <strong>Identificación fija del proveedor</strong>
+                <p>Sistema de facturación electrónica: {{ proveedor_fijo.nombre }} · RUC Proveedor: {{ proveedor_fijo.ruc }}<br>
+                   {{ proveedor_fijo.email }} · {{ proveedor_fijo.direccion }}</p>
+            </aside>
             <p class="small">Se aplica a las facturas nuevas de este comercio desde que lo guardes.</p>
             <button class="btn btn-primary" type="submit">Guardar diseño</button>
             <button class="btn btn-outline-secondary" id="fp-diseno-reset" type="button" hidden>Restaurar colores</button>

@@ -6,6 +6,7 @@
     if (!form || !frame || !reset) return;
 
     const colors = ['primary', 'secondary'].map((name) => form.elements.namedItem(name));
+    const textos = ['fuente', 'encabezado', 'pie_comercial'].map((name) => form.elements.namedItem(name)).filter(Boolean);
     const selected = () => form.querySelector('input[name="style"]:checked');
     const defaultColors = (option) => [option.dataset.primary, option.dataset.secondary];
     const applyColors = (values) => colors.forEach((input, index) => { input.value = values[index]; });
@@ -20,10 +21,10 @@
             const url = new URL(form.dataset.previewUrl, window.location.origin);
             if (url.origin !== window.location.origin) return;
             url.searchParams.set('style', option.value);
-            for (const input of colors) url.searchParams.set(input.name, input.value);
+            for (const input of [...colors, ...textos]) url.searchParams.set(input.name, input.value);
             frame.src = url.href;
             if (abrir) abrir.href = url.href;
-        }, 260);
+        }, 380);
     }
 
     form.addEventListener('change', (event) => {
@@ -36,6 +37,7 @@
         schedulePreview();
     });
     for (const input of colors) input.addEventListener('input', schedulePreview);
+    for (const input of textos) input.addEventListener('input', schedulePreview);
     reset.hidden = false;
     reset.addEventListener('click', () => {
         const option = selected();

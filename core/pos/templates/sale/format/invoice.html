@@ -16,10 +16,10 @@
             letter-spacing: .5mm; white-space: nowrap; }
     </style>{% endif %}
 </head>
-<body class="fp-ride{% if ride_style %} ride-custom ride-{{ ride_style.id }}{% endif %}">{% if ride_muestra %}
+<body class="fp-ride{% if ride_style %} ride-custom ride-{{ ride_style.id }}{% endif %}{% if ride_style %}{% include 'ride/_clases_factura.html' %}{% endif %}">{% if ride_muestra %}
 <div class="fp-ride-muestra" aria-hidden="true">MUESTRA · SIN VALIDEZ TRIBUTARIA</div>{% endif %}
 {% include 'ride/_pie.html' with proveedor=sale.get_proveedor %}
-<main class="hoja">
+<main class="hoja">{% if ride_style %}{% include 'ride/_encabezado_comercial.html' %}{% endif %}
     <table class="cabecera fp-ride-header">
         <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
         <tbody><tr>
@@ -117,7 +117,7 @@
             </td>
         </tr></tbody>
     </table>
-    {% endwith %}
+    {% endwith %}{% if ride_style %}{% include 'ride/_pie_comercial.html' %}{% endif %}
 </main>
 </body>
 </html>
