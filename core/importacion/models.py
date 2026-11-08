@@ -93,7 +93,8 @@ class DocumentoImportado(TenantModel):
                     ('discrepancia_sri', 'Difiere de lo autorizado en el SRI'),
                     ('no_autorizada_sri', 'El SRI no la autoriza'),
                     ('no_encontrada_sri', 'El SRI no tiene esa clave'),
-                    ('sri_no_disponible', 'El SRI no respondió'),
+                    ('sri_no_disponible', 'No se pudo confirmar con el SRI'),
+                    ('fuera_rango_sri', 'Fecha fuera del rango del SRI'),
                     ('en_proceso_sri', 'El SRI todavía la está procesando'))
     CLASIFICACION = (('pendiente', 'Sin clasificar'), ('emitido', 'Emitido por la empresa (venta)'),
                      ('recibido', 'Recibido por la empresa (compra o gasto)'), ('ajeno', 'Documento ajeno a la empresa'),
