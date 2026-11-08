@@ -3,8 +3,8 @@
 Rama `fase/diseno-factura`, desde `9584308` (producción). Paquete de origen: `Paquete_Estilos_FacturaPorAqui.zip`
 (rama de entrega `codex/entrega-diseno-factura`), integrado con las decisiones del orquestador. **Publicado el 08/11/2026 a las 08:38 UTC en app.facturaporaqui.com
 (`64c5416`), con el piloto solo en los comercios ficticios DEMOSTRACION (`0990000000001`) y OTRA-DEMO
-(`0990000002001`); desde el 08/11 a las 15:28 UTC también en PEDESTAL-TEK S.A (`0993212164001`), a pedido de la
-propietaria.** Ver «Publicación».
+(`0990000002001`); desde el 08/11 también en las cinco empresas de la cuenta `pedestaltek`, a pedido de la propietaria. v2 publicada en
+`773c168` el 08/11 a las 23:25 UTC.** Ver «Publicación» y «Publicación de v2».
 
 ## Qué hace
 
@@ -46,11 +46,11 @@ Para el piloto en pruebas: añadir `FPA_DISENO_FACTURA_PILOTO=<RUC>` a `/etc/fac
 `facturaporaqui@pruebas`. Para apagarlo, quitar el RUC y reiniciar: las facturas ya emitidas con copia conservan su
 diseño (su PDF ya está guardado) y las nuevas vuelven al RIDE original.
 
-En producción hoy: `FPA_DISENO_FACTURA_PILOTO=0990000000001,0990000002001,0993212164001` (los dos comercios ficticios y
-PEDESTAL-TEK S.A, añadido el 08/11 a las 15:28 UTC). Para sumar otro comercio se añade su RUC a esa lista, separado por
-coma, y se reinicia el servicio. Mientras el comercio no guarde un diseño, sus facturas siguen con el RIDE original.
-Respaldos del archivo en `/root/invoice15/credenciales/` (VM101): `pruebas.env.antes-diseno-20261108-083735` y
-`pruebas.env.antes-pedestaltek-20261108-152823`.
+En producción hoy: los dos comercios ficticios y las cinco empresas de la cuenta `pedestaltek` (la lista de RUC está en
+`/etc/facturaporaqui/pruebas.env`). Para sumar otro comercio se añade su RUC a esa lista, separado por coma, y se reinicia
+el servicio. Mientras el comercio no guarde un diseño, sus facturas siguen con el RIDE original.
+Respaldos del archivo en `/root/invoice15/credenciales/` (VM101): `pruebas.env.antes-diseno-20261108-083735`,
+`pruebas.env.antes-pedestaltek-20261108-152823` y `pruebas.env.antes-pedestaltek-5-20261108-222741`.
 
 ## Migraciones (aditivas)
 
@@ -152,3 +152,17 @@ tipografía; aviso para quien sigue en v1. Pruebas de la entrega en `tests/test_
   `fpa-verificar-publicado.mjs` y `fpa-verificar-cierre-op.mjs` (VM101).
 - **Revertir:** con el código nuevo, `migrate configuracion 0003_modulo_puntos`, `pos 0034` y `tenancy 0011` (ver
   «Vuelta»), y después `desplegar.sh pruebas --revertir`. Solo apagar el piloto no requiere revertir.
+
+## Publicación de v2 (08/11/2026)
+
+- **Código:** `773c168` = entrega de Codex `23ac7e0` + ajustes de la integración. Suites completas sobre `773c168`: SQLite 1827 passed + 55 skipped,
+  PostgreSQL 1882 passed, 0 fallos.
+- **Validación previa:** copia de producción (1 pendiente → 0 con `configuracion 0006`, RLS forzada, 83 tablas previas iguales, los diseños v1 siguen en v1, vuelta de v2 a v1
+  y vuelta completa); navegador con dos comercios ficticios sobre una base que venía de v1; RIDE v2 contra el Anexo 2 (ficha v2.34): 240 casos con el texto fiscal idéntico al original, clave
+  en un renglón, código de barras legible, contraste mínimo 4,66:1 y pie del proveedor en 812 de 812 páginas. Sin copia y con copia v1, los mismos bytes que `64c5416`. «Original FacturaPorAquí» guardado en
+  v2 con su paleta, su letra y sin textos: 0 píxeles distintos del RIDE original.
+- **Despliegue:** `desplegar.sh pruebas 773c168` a las 23:25 UTC; volcado previo `respaldos/pre-20261108-232530-773c168e.dump`; solo `configuracion 0006`; salud 200.
+- **Comprobado en producción:** los 35 PDF guardados conservan su sha256 y 0 de 24 facturas tienen copia; las cinco empresas de `pedestaltek` y los dos ficticios en el piloto, y las otras tres fuera;
+  sin diseño guardado, plantilla original; pie del proveedor en 60 de 60 páginas (5 plantillas × 4 tipografías, 62 líneas, código y fuentes publicados); diseño v2 guardado por comercio ficticio (22/22);
+  regresiones de solo lectura 72/72 y 14/14, sin errores de JavaScript ni respuestas 5xx. Guiones: `/root/capturas/fpa-diseno-v2-publicado.mjs` y `/root/invoice15/diseno-v2/produccion/produccion_v2.py` (VM101).
+- **Revertir:** ver «Vuelta de v2 a v1» en «Migraciones».
