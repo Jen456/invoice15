@@ -469,7 +469,8 @@ def registrar_clave(company, usuario, clave, origen, archivo_pdf=None, lote=None
 
 MOTIVOS_SRI = {'sin_resultados': ('no_encontrada_sri', 'El SRI no tiene un comprobante autorizado con esa clave.'),
                'no_autorizado': ('no_autorizada_sri', 'El SRI responde que la clave NO está autorizada.'),
-               'no_disponible': ('sri_no_disponible', 'El SRI no respondió; se puede reintentar más tarde.'),
+               'no_disponible': ('sri_no_disponible', 'No se pudo confirmar la autorización con el SRI. Puedes reintentar.'),
+               'fuera_de_rango': ('fuera_rango_sri', 'La fecha de emisión está fuera del rango de la consulta automática del SRI.'),
                'en_proceso': ('en_proceso_sri', 'El SRI todavía está procesando el comprobante; se reintenta más tarde.'),
                'clave_invalida': ('no_encontrada_sri', 'La clave no es válida.')}
 
@@ -496,7 +497,8 @@ def recuperar_xml(documento, usuario):
         motivo = MOTIVOS_SRI[consulta.estado]
     DocumentoImportado.objects.filter(pk=documento.pk).update(estado_verificacion=motivo[0], verificado_en=timezone.now())
     documento.refresh_from_db()
-    evento('xml_no_recuperado', motivo[1], documento=documento, usuario=usuario, intentos=consulta.intentos, mensajes=consulta.mensajes)
+    evento('xml_no_recuperado', motivo[1], documento=documento, usuario=usuario, intentos=consulta.intentos,
+           mensajes=consulta.mensajes, estados_sri=consulta.estados_sri)
     return documento
 
 
@@ -513,6 +515,8 @@ def verificar_en_sri(documento, usuario):
         else:
             oficial = _datos_documento(resultado)
             diferencias = [c for c in CAMPOS_VERIFICADOS if getattr(documento, c) != oficial[c]]
+            if resultado.comprobante.clave_acceso != documento.clave_acceso:
+                diferencias.insert(0, 'clave_acceso')
             if diferencias:
                 estado, mensaje = 'discrepancia_sri', 'El archivo importado difiere de lo autorizado en el SRI: ' + ', '.join(diferencias) + '.'
             else:
@@ -528,7 +532,7 @@ def verificar_en_sri(documento, usuario):
     DocumentoImportado.objects.filter(pk=documento.pk).update(**cambios)
     documento.refresh_from_db()
     evento('verificacion', mensaje, documento=documento, usuario=usuario, estado=estado, diferencias=diferencias,
-           intentos=consulta.intentos)
+           intentos=consulta.intentos, mensajes=consulta.mensajes, estados_sri=consulta.estados_sri)
     return documento
 
 

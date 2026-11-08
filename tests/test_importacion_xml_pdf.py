@@ -298,6 +298,36 @@ class TestConsultaSri:
         consulta = sri_autorizacion.consultar_autorizacion(f.clave())
         assert consulta.estado == 'no_disponible' and consulta.intentos == 1 + limites.SRI_REINTENTOS == len(caido.llamadas)
 
+    @pytest.mark.parametrize('codigo', ['80', '99'])
+    def test_rechazo_por_fecha_de_consulta_no_es_rechazo_de_factura(self, monkeypatch, codigo):
+        clave = f.clave()
+        motivo = SimpleNamespace(
+            identificador=codigo, mensaje='ERROR AL CONSULTAR',
+            informacionAdicional='No es posible validar la clave de acceso ya que la fecha de emision esta fuera del rango permitido.',
+        )
+        respuesta = SimpleNamespace(
+            claveAccesoConsultada=clave,
+            autorizaciones=SimpleNamespace(autorizacion=[SimpleNamespace(
+                estado='RECHAZADA', mensajes=SimpleNamespace(mensaje=[motivo]))]),
+        )
+        cliente = SimpleNamespace(service=SimpleNamespace(autorizacionComprobante=lambda _: respuesta))
+        monkeypatch.setattr(emision, '_cliente', lambda *args: cliente)
+        consulta = sri_autorizacion.consultar_autorizacion(clave)
+        assert consulta.estado == 'fuera_de_rango'
+        assert consulta.estados_sri == ['RECHAZADA'] and consulta.xml is None and consulta.intentos == 1
+        assert any(f'[{codigo}]' in mensaje for mensaje in consulta.mensajes)
+
+    @pytest.mark.parametrize('estado', ['RECHAZADA', 'ESTADO NUEVO', '', None])
+    def test_respuesta_no_concluyente_no_se_toma_como_no_autorizada(self, monkeypatch, estado):
+        sri = SRISimulado({f.clave(): f.factura()}, estado=estado)
+        monkeypatch.setattr(emision, '_cliente', sri)
+        assert sri_autorizacion.consultar_autorizacion(f.clave()).estado == 'no_disponible'
+
+    def test_autorizado_con_espacios_conserva_el_xml_procesable(self, monkeypatch):
+        monkeypatch.setattr(emision, '_cliente', SRISimulado({f.clave(): f.factura()}, estado=' autorizado  '))
+        consulta = sri_autorizacion.consultar_autorizacion(f.clave())
+        assert consulta.estado == 'autorizado' and procesar_xml_sri(consulta.xml).aceptado
+
     def test_clave_invalida_no_consulta(self, monkeypatch):
         sri = SRISimulado()
         monkeypatch.setattr(emision, '_cliente', sri)

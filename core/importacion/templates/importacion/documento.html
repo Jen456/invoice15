@@ -4,11 +4,20 @@
 <div class="fp-comprobantes fp-importacion fp-importacion-documento" data-documento="{{ documento.pk }}">
     <header class="fp-welcome"><span class="fp-eyebrow">{{ detalle.tipo_documento }} importada</span><h1>{{ detalle.numero|default:"Documento pendiente de XML" }}</h1>
         <p>{{ detalle.emisor.razon_social }} ({{ detalle.emisor.ruc }}) → {{ detalle.receptor.razon_social }} ({{ detalle.receptor.identificacion }}) · {{ documento.fecha_emision|date:"d/m/Y" }}</p></header>
-    {% include 'importacion/_mensajes.html' %}<p class="fp-import-note">Revisa el documento, sus impuestos y sus posibles vínculos. Aprobarlo no crea una transacción ni un asiento contable.</p>{% if detalle.estados.verificacion.id != 'verificada_sri' %}<div class="alert alert-warning" role="status">La autorización declarada en el archivo no equivale a una verificación en el SRI. Estado actual: {{ detalle.estados.verificacion.nombre }}.</div>{% endif %}
+    {% include 'importacion/_mensajes.html' %}<p class="fp-import-note">Revisa el documento, sus impuestos y sus posibles vínculos. Aprobarlo no crea una transacción ni un asiento contable.</p>{% if detalle.estados.verificacion.id == 'fuera_rango_sri' %}
+    <div class="alert alert-warning" role="status">
+        La fecha de emisión queda fuera del rango de la consulta automática del SRI.
+        Consulta la clave de acceso en el <a href="https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezComprobantes.jsf"
+        target="_blank" rel="noopener noreferrer">portal oficial del SRI</a>.
+    </div>
+    {% elif detalle.estados.verificacion.id == 'declarada_en_archivo' %}
+    <div class="alert alert-warning" role="status">La autorización está declarada en el archivo y falta verificarla en el SRI.</div>
+    {% endif %}
     <section class="card fp-retencion-panel mb-3"><div class="card-body">
         <dl class="row mb-0">
             <dt class="col-sm-4">Clasificación</dt><dd class="col-sm-8"><span class="fp-import-tag" data-state="{{ detalle.estados.clasificacion.id }}">{{ detalle.estados.clasificacion.nombre }}</span></dd>
             <dt class="col-sm-4">Verificación</dt><dd class="col-sm-8"><span class="fp-import-tag" data-state="{{ detalle.estados.verificacion.id }}">{{ detalle.estados.verificacion.nombre }}</span></dd>
+            {% if documento.verificado_en %}<dt class="col-sm-4">Última consulta al SRI</dt><dd class="col-sm-8">{{ documento.verificado_en|date:"d/m/Y H:i" }}</dd>{% endif %}
             <dt class="col-sm-4">Revisión</dt><dd class="col-sm-8">{{ detalle.estados.revision.nombre }}</dd>
             <dt class="col-sm-4">Contabilidad</dt><dd class="col-sm-8">{{ detalle.estados.contable.nombre }}</dd>
             <dt class="col-sm-4">Clave de acceso</dt><dd class="col-sm-8 text-break">{{ detalle.clave_acceso }}</dd>

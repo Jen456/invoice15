@@ -600,10 +600,13 @@ class Documento(Pagina):
         datos = request.POST.dict()
         try:
             if datos.get('accion') == 'verificar':
-                sv.verificar_en_sri(documento, request.user)
+                documento = sv.verificar_en_sri(documento, request.user)
+                estado = documento.get_estado_verificacion_display()
+                nivel = messages.SUCCESS if documento.estado_verificacion == 'verificada_sri' else messages.WARNING
+                messages.add_message(request, nivel, f'Resultado de la consulta al SRI: {estado}.')
             else:
                 sv.revisar(documento, request.user, datos.get('accion'), datos)
-            messages.success(request, 'Listo.')
+                messages.success(request, 'Listo.')
         except sv.ErrorImportacion as e:
             messages.error(request, str(e))
         return HttpResponseRedirect(reverse('importacion_documento', args=[pk]))
