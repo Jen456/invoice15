@@ -1,10 +1,11 @@
-# Diseño de factura (piloto)
+# Diseño de factura
 
 Rama `fase/diseno-factura`, desde `9584308` (producción). Paquete de origen: `Paquete_Estilos_FacturaPorAqui.zip`
 (rama de entrega `codex/entrega-diseno-factura`), integrado con las decisiones del orquestador. **Publicado el 08/11/2026 a las 08:38 UTC en app.facturaporaqui.com
 (`64c5416`), con el piloto solo en los comercios ficticios DEMOSTRACION (`0990000000001`) y OTRA-DEMO
 (`0990000002001`); desde el 08/11 también en las cinco empresas de la cuenta `pedestaltek`, a pedido de la propietaria. v2 publicada en
-`773c168` el 08/11 a las 23:25 UTC.** Ver «Publicación» y «Publicación de v2».
+`773c168` el 08/11 a las 23:25 UTC. Desde el 10/11/2026 (`e0f2902`), para todas las empresas, también las que se
+registren.** Ver «Publicación», «Publicación de v2» y «Publicación para todas las empresas».
 
 ## Qué hace
 
@@ -37,8 +38,8 @@ Rama `fase/diseno-factura`, desde `9584308` (producción). Paquete de origen: `P
 
 ## Piloto e interruptor
 
-`FPA_DISENO_FACTURA_PILOTO` (lista de RUC, separados por coma), con la regla del Complemento Contable: `*` solo vale en
-desarrollo y en las pruebas automáticas, y un RUC que comparte otra empresa no habilita. Vacía (por defecto), nadie ve el
+`FPA_DISENO_FACTURA_PILOTO` (lista de RUC, separados por coma), o `*`: todas las empresas, también las que se registren después, en
+cualquier entorno (desde `e0f2902`). En una lista, un RUC que comparte otra empresa no habilita. Vacía (por defecto), nadie ve el
 módulo: no aparece en ningún menú, la pantalla vuelve al tablero con un aviso, la vista previa y el guardado responden
 404, y las facturas nuevas no reciben copia. Los PDF ya guardados se siguen sirviendo siempre.
 
@@ -46,9 +47,9 @@ Para el piloto en pruebas: añadir `FPA_DISENO_FACTURA_PILOTO=<RUC>` a `/etc/fac
 `facturaporaqui@pruebas`. Para apagarlo, quitar el RUC y reiniciar: las facturas ya emitidas con copia conservan su
 diseño (su PDF ya está guardado) y las nuevas vuelven al RIDE original.
 
-En producción hoy: los dos comercios ficticios y las cinco empresas de la cuenta `pedestaltek` (la lista de RUC está en
-`/etc/facturaporaqui/pruebas.env`). Para sumar otro comercio se añade su RUC a esa lista, separado por coma, y se reinicia
-el servicio. Mientras el comercio no guarde un diseño, sus facturas siguen con el RIDE original.
+En producción hoy: `FPA_DISENO_FACTURA_PILOTO=*` (todas las empresas, desde el 10/11/2026). Para volver a un piloto se
+pone una lista de RUC y se reinicia el servicio; la lista anterior está en
+`credenciales/pruebas.env.antes-diseno-todas-20261111-013602`. Mientras el comercio no guarde un diseño, sus facturas siguen con el RIDE original.
 Respaldos del archivo en `/root/invoice15/credenciales/` (VM101): `pruebas.env.antes-diseno-20261108-083735`,
 `pruebas.env.antes-pedestaltek-20261108-152823` y `pruebas.env.antes-pedestaltek-5-20261108-222741`.
 
@@ -166,3 +167,20 @@ tipografía; aviso para quien sigue en v1. Pruebas de la entrega en `tests/test_
   sin diseño guardado, plantilla original; pie del proveedor en 60 de 60 páginas (5 plantillas × 4 tipografías, 62 líneas, código y fuentes publicados); diseño v2 guardado por comercio ficticio (22/22);
   regresiones de solo lectura 72/72 y 14/14, sin errores de JavaScript ni respuestas 5xx. Guiones: `/root/capturas/fpa-diseno-v2-publicado.mjs` y `/root/invoice15/diseno-v2/produccion/produccion_v2.py` (VM101).
 - **Revertir:** ver «Vuelta de v2 a v1» en «Migraciones».
+
+## Publicación para todas las empresas (10/11/2026)
+
+- **Pedido:** la propietaria, después de probarlo en las empresas de `pedestaltek`: todas las empresas, presentes y las que lleguen.
+- **Código:** `e0f2902`: `*` en `FPA_DISENO_FACTURA_PILOTO` vale en cualquier entorno (antes solo en desarrollo y en las
+  pruebas automáticas). Prueba nueva: una empresa registrada después, con el plan gratuito, ve el módulo, abre la pantalla
+  y guarda; sin guardar, su factura sigue con el RIDE original. Suite SQLite completa: 1828 passed, 55 skipped. Pruebas del
+  módulo en PostgreSQL: 90 passed.
+- **Despliegue:** `desplegar.sh pruebas e0f2902` (sin migraciones) y `FPA_DISENO_FACTURA_PILOTO=*` con reinicio, a las 01:36 UTC
+  del 11/11 (20:36 del 10/11 en Ecuador). Respaldo del entorno: `credenciales/pruebas.env.antes-diseno-todas-20261111-013602`.
+- **Comprobado en producción:** 12 de 12 empresas habilitadas y con el menú visible, y una empresa nueva simulada en memoria
+  también; lo ven Propietario y Administrador (como antes). Las que no guardaron diseño siguen con la plantilla original;
+  los 43 PDF guardados conservan su sha256 (4 de 30 facturas con copia, emitidas antes del cambio). Navegador con los
+  comercios ficticios 22/22, regresiones de solo lectura 72/72 y 14/14, sin errores en el registro. Guion:
+  `/root/invoice15/diseno-v2/produccion/general.py` (VM101).
+- **Volver a un piloto:** poner la lista de RUC en `FPA_DISENO_FACTURA_PILOTO` y reiniciar `facturaporaqui@pruebas`; las
+  facturas ya emitidas con copia conservan su PDF y las nuevas de las empresas fuera de la lista vuelven al RIDE original.
