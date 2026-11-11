@@ -66,7 +66,7 @@ ESTRUCTURA = (
     ('Configuración', 'fas fa-cogs', 80, (
         ('/pos/company/update/', 'Empresa', 1),
         ('/configuracion/facturacion/', 'Facturación y numeración', 2),
-        ('/configuracion/diseno-factura/', 'Diseño de factura', 3),   # piloto: oculto fuera de FPA_DISENO_FACTURA_PILOTO
+        ('/configuracion/diseno-factura/', 'Diseño de factura', 3),   # oculto si la empresa no está habilitada (FPA_DISENO_FACTURA_PILOTO)
         ('/configuracion/puntos/', 'Locales y puntos de emisión', 4),
         ('/importacion/reglas/', 'Reglas de importación y contabilización', 5),
         ('/pos/receipt/', 'Numeraciones registradas', 6),

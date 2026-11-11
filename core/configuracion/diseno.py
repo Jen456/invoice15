@@ -1,9 +1,10 @@
-"""«Configuración → Diseño de factura» (piloto): cinco plantillas de FacturaPorAquí y la presentación del comercio para el RIDE
+"""«Configuración → Diseño de factura»: cinco plantillas de FacturaPorAquí y la presentación del comercio para el RIDE
 de las facturas NUEVAS.
 
-- Piloto: FPA_DISENO_FACTURA_PILOTO (RUC), con la regla de complemento_habilitado (core/suscripciones/reglas.py): «*» solo
-  en desarrollo y en las pruebas automáticas; un RUC de la lista que comparte otra empresa no habilita. Fuera del piloto el
-  módulo no aparece en el menú, sus URL no abren y las facturas nuevas no reciben copia (RIDE original).
+- Interruptor: FPA_DISENO_FACTURA_PILOTO. «*» = todas las empresas, también las que se registren después, en cualquier
+  entorno (así está en producción desde el 10/11/2026). Una lista de RUC = solo esas (piloto); un RUC de la lista que comparte
+  otra empresa no habilita. Vacía, nadie. Sin habilitar, el módulo no aparece en el menú, sus URL no abren y las facturas
+  nuevas no reciben copia (RIDE original). Habilitada pero sin diseño guardado, la factura sigue con el RIDE original.
 - DisenoFactura (core/configuracion/models.py): uno por empresa; sin fila, sin personalización.
 - Copia en la factura: core/pos/emision.preparar() guarda diseno_efectivo() en Sale.ride_diseno en la PRIMERA firma; los
   reintentos no la cambian. Sale.ride_pdf() arma el RIDE desde esa copia; sin copia (históricas), el original.
@@ -23,12 +24,11 @@ ERROR_COLOR = 'El color {nombre} debe tener el formato #RRGGBB (por ejemplo, #CA
 
 
 def diseno_habilitado(company):
-    """La empresa está en el piloto (FPA_DISENO_FACTURA_PILOTO)."""
-    from core.suscripciones.reglas import ENTORNOS_LOCALES
+    """La empresa puede usar el diseño de factura: FPA_DISENO_FACTURA_PILOTO es «*» (todas) o incluye su RUC."""
     if company is None:
         return False
     lista = {str(x).strip() for x in getattr(settings, 'FPA_DISENO_FACTURA_PILOTO', None) or [] if str(x).strip()}
-    if '*' in lista and getattr(settings, 'FPA_ENTORNO', '') in ENTORNOS_LOCALES:
+    if '*' in lista:   # todas, en cualquier entorno (a diferencia del Complemento Contable, no es de pago)
         return True
     if not company.ruc or company.ruc not in lista:
         return False

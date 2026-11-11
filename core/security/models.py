@@ -235,7 +235,7 @@ class UserAccess(models.Model):
 
 def urls_ocultas(request):
     """Módulos que la empresa de la petición no ve en ningún menú (sidebar, cabecera, tablero) aunque su rol los tenga:
-    «Diseño de factura» fuera del piloto (FPA_DISENO_FACTURA_PILOTO). Sus URL tampoco abren (core/configuracion/views.py)."""
+    «Diseño de factura» si la empresa no está habilitada (FPA_DISENO_FACTURA_PILOTO). Sus URL tampoco abren (core/configuracion/views.py)."""
     from core.configuracion.diseno import URL, diseno_habilitado
     company = getattr(request, 'company', None)
     memo = getattr(request, '_fpa_urls_ocultas', None)   # el menú lo pregunta una vez por grupo: una consulta por petición

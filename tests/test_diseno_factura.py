@@ -69,7 +69,7 @@ INVALIDOS = (
 
 @pytest.fixture
 def piloto(settings):
-    settings.FPA_DISENO_FACTURA_PILOTO = ['*']   # «*» vale solo en local y en las pruebas automáticas
+    settings.FPA_DISENO_FACTURA_PILOTO = ['*']   # «*»: todas las empresas
 
 
 @pytest.fixture
@@ -263,11 +263,23 @@ class TestPiloto:
             assert dz.diseno_efectivo(rojo) == {'id': 'minimalista', 'version': 1, 'primary': '#102030', 'secondary': '#A0B0C0'}
         helpers.crear_empresa('COPIA DEL RUC', ruc=rojo.ruc)   # un RUC compartido no habilita
         assert not dz.diseno_habilitado(rojo)
+        settings.FPA_DISENO_FACTURA_PILOTO = [rojo.ruc, '*']
+        for entorno in ('produccion', 'pruebas', 'pruebas_automaticas'):   # «*» vale también en un despliegue
+            settings.FPA_ENTORNO = entorno
+            assert dz.diseno_habilitado(azul) and dz.diseno_habilitado(rojo)   # con «*», también el RUC compartido
+        assert not dz.diseno_habilitado(None)
+
+    def test_todas_incluye_las_empresas_que_llegan_despues(self, settings):
         settings.FPA_DISENO_FACTURA_PILOTO = ['*']
-        settings.FPA_ENTORNO = 'produccion'
-        assert not dz.diseno_habilitado(azul)                 # «*» no vale en un despliegue
-        settings.FPA_ENTORNO = 'pruebas_automaticas'
-        assert dz.diseno_habilitado(azul)
+        settings.FPA_ENTORNO = 'pruebas'   # el de app.facturaporaqui.com
+        nueva = helpers.crear_empresa('LLEGA DESPUES', plan=None)   # registrada después, con el plan gratuito
+        navegador = entrar(helpers.crear_usuario('duena.nueva', nueva, ROLE_OWNER), nueva)
+        assert f'href="{URL}"' in navegador.get('/dashboard/').content.decode()
+        assert navegador.get(URL).status_code == 200
+        assert guardado(nueva) is None and dz.diseno_efectivo(nueva) is None   # sin guardar: RIDE original
+        assert enviar(navegador, nueva, 'banda', '#112233', '#445566').status_code == 302
+        with company_context(nueva):
+            assert dz.diseno_efectivo(nueva)['id'] == 'banda'
 
     def test_conftest_lo_deja_apagado(self):
         # tests/conftest.py (diseno_piloto_apagado) lo apaga aunque el entorno exporte FPA_DISENO_FACTURA_PILOTO.
