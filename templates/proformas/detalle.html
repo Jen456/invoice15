@@ -15,14 +15,21 @@
         <div class="card-body">
             <p class="text-muted small mb-3">Documento sin validez tributaria: es una cotización, no una factura.</p>
             {% if v %}
-                <div class="alert {% if v.sin_validez_tributaria %}alert-warning{% else %}alert-info{% endif %}" role="status">
+                <div class="alert {% if v.sin_validez_tributaria %}alert-warning{% else %}alert-info{% endif %} fp-ya-facturada" role="status">
+                    <p class="mb-1"><b>Ya facturada</b> con la factura <a href="{{ v.url_factura }}" target="_blank" rel="noopener">{{ v.numero }}</a>: no se puede facturar otra vez.</p>
                     <p class="mb-1"><b>Factura vinculada:</b> {{ v.numero }} · {{ v.estado.nombre }} · USD {{ v.total }}
                         {% if v.sin_validez_tributaria %}<span class="badge badge-warning">PRUEBAS · sin validez tributaria</span>{% endif %}</p>
                     {% if v.aviso_ambiente %}<p class="mb-1">{{ v.aviso_ambiente }}</p>{% endif %}
                     {% if v.aviso %}<p class="mb-1">{{ v.aviso }}</p>{% endif %}
-                    <p class="mb-0"><a href="{{ v.url_lista }}">Facturas emitidas</a>{% if v.url_ride %} · <a href="{{ v.url_ride }}" target="_blank" rel="noopener">RIDE de la factura</a>{% endif %}</p>
+                    <p class="mb-0"><a href="{{ v.url_factura }}" target="_blank" rel="noopener">Ver la factura</a> · <a href="{{ v.url_lista }}">Facturas emitidas</a>{% if v.url_ride %} · <a href="{{ v.url_ride }}" target="_blank" rel="noopener">RIDE de la factura</a>{% endif %}</p>
                 </div>
             {% endif %}
+            {% with b=proforma.borrador_factura %}{% if b %}
+                <div class="alert alert-secondary fp-borrador-factura" role="status">
+                    <p class="mb-1"><b>Factura en borrador sin emitir</b>{% if b.actualizado_por %} · guardada por {{ b.actualizado_por }}{% endif %}. Todavía no se envió nada al SRI ni se usó número, cupo o stock.</p>
+                    <p class="mb-0"><a href="{{ b.url }}">Continuar la factura en borrador</a> · para editar, rechazar o anular la proforma, primero descarta el borrador.</p>
+                </div>
+            {% endif %}{% endwith %}
             <div class="row">
                 <div class="col-lg-6">
                     <h4 class="h6 text-uppercase text-muted">Cliente{% if proforma.cliente.es_prospecto %} (prospecto){% endif %}</h4>
@@ -39,8 +46,10 @@
                     <dl class="row mb-3">
                         <dt class="col-sm-5">Fecha</dt><dd class="col-sm-7">{{ p.fecha|date:"d/m/Y" }}</dd>
                         <dt class="col-sm-5">Válida hasta</dt><dd class="col-sm-7">{{ p.valida_hasta|date:"d/m/Y" }}{% if proforma.dias_para_vencer is not None %} ({{ proforma.dias_para_vencer }} días){% endif %}</dd>
-                        <dt class="col-sm-5">Vendedor</dt><dd class="col-sm-7">{{ proforma.vendedor.nombre|default:"—" }}</dd>
-                        <dt class="col-sm-5">Forma de pago sugerida</dt><dd class="col-sm-7">{{ proforma.forma_pago_sugerida.nombre|default:"—" }}</dd>
+                        <dt class="col-sm-5">Emisor</dt><dd class="col-sm-7">{{ proforma.empresa.razon_social }} · RUC {{ proforma.empresa.ruc }}</dd>
+                        <dt class="col-sm-5">Vendedor</dt><dd class="col-sm-7">{{ proforma.vendedor.nombre|default:"—" }}{% if proforma.ocultar_vendedor %} <span class="badge badge-light fp-vendedor-oculto">oculto en el PDF</span>{% endif %}</dd>
+                        <dt class="col-sm-5">Preparada por</dt><dd class="col-sm-7">{{ proforma.creada_por|default:"—" }}</dd>
+                        <dt class="col-sm-5">Forma de pago sugerida</dt><dd class="col-sm-7">{{ proforma.forma_pago|default:"—" }}{% if proforma.medio_pago_sugerido and proforma.forma_pago_sugerida %} <small class="text-muted">(SRI: {{ proforma.forma_pago_sugerida.id }} · {{ proforma.forma_pago_sugerida.nombre }})</small>{% endif %}</dd>
                         <dt class="col-sm-5">Correos enviados</dt><dd class="col-sm-7">{{ p.envios }}{% if p.enviada_a %} · {{ p.enviada_a }}{% endif %}</dd>
                         {% if proforma.origen %}<dt class="col-sm-5">Duplicada de</dt><dd class="col-sm-7"><a href="{% url 'proforma_detail' proforma.origen.id %}">{{ proforma.origen.numero }}</a></dd>{% endif %}
                         {% if p.motivo %}<dt class="col-sm-5">Motivo</dt><dd class="col-sm-7">{{ p.motivo }}</dd>{% endif %}

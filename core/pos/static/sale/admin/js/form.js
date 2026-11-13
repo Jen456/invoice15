@@ -95,6 +95,9 @@ var sale = {
                     targets: [2],
                     render: function (data, type, row) {
                         var nombre = $('<div>').text(data).html();
+                        if (row.codigo_porcentaje !== undefined) {
+                            return nombre + '<br>' + sale.celdaTarifa(row);   // factura en borrador: IVA de esta línea
+                        }
                         return row.nombre_tarifa ? nombre + '<br><small class="text-muted">IVA ' + $('<div>').text(row.nombre_tarifa).html() + '</small>' : nombre;
                     }
                 },
@@ -185,8 +188,75 @@ var sale = {
     precioEditable: function () {
         return $('.fp-sale-editor').attr('data-precio-editable') === '1';
     },
+    tarifas: [],
+    escapar: function (x) {   // para atributos: también comillas ($('<div>').text(x).html() no las escapa)
+        return String(x === null || x === undefined ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    },
+    tarifaEditable: function () {
+        return $('.fp-sale-editor').attr('data-tarifa-editable') === '1';
+    },
+    celdaTarifa: function (row) {
+        // IVA de la línea en la factura en borrador de una proforma: se revisa para ESTA factura; el catálogo no cambia.
+        var esc = sale.escapar, catalogo = row.tarifa_catalogo !== row.codigo_porcentaje ?
+            ' <small class="text-muted">(catálogo: ' + esc(row.nombre_tarifa_catalogo) + ')</small>' : '';
+        if (!sale.tarifaEditable() || !sale.tarifas.length) {
+            return '<small class="text-muted">IVA ' + esc(row.nombre_tarifa) + '</small>' + catalogo;
+        }
+        var opciones = sale.tarifas.map(function (t) {
+            return '<option value="' + esc(t.codigo) + '"' + (t.codigo === row.codigo_porcentaje ? ' selected' : '') + '>IVA ' +
+                esc(t.nombre) + '</option>';
+        }).join('');
+        return '<select class="form-control form-control-sm fp-tarifa-linea" name="tarifa_linea" aria-label="IVA de ' +
+            esc(row.name) + ' en esta factura">' + opciones + '</select>' + catalogo;
+    },
+    cambiarTarifa: function (indice, codigo) {
+        var linea = this.detail.products[indice], tarifa = this.tarifas.find(function (t) { return t.codigo === codigo; });
+        if (!linea || !tarifa) return;
+        linea.codigo_porcentaje = tarifa.codigo;
+        linea.tarifa_iva = tarifa.codigo;
+        linea.tarifa = tarifa.tarifa;
+        linea.nombre_tarifa = tarifa.nombre;
+        this.listProducts();   // recalcula subtotales, IVA y total con la tarifa de la línea
+    },
+    datosBorrador: function () {
+        // Lo mismo que envía «Emitir factura», para guardarlo sin emitir.
+        var params = new FormData(fvSale.form);
+        ['input_search_product', 'cant', 'price_current', 'dscto_unitary', 'tarifa_linea'].forEach(function (value) {
+            params.delete(value);
+        });
+        params.append('products', JSON.stringify(sale.detail.products));
+        params.append('additional_info', JSON.stringify(sale.detail.additional_info.filter(value => !$.isEmptyObject(value.name) && !$.isEmptyObject(value.value))));
+        return params;
+    },
+    enviarBorrador: function (accion, exito) {
+        var params = accion === 'guardar_borrador' ? sale.datosBorrador() : new FormData();
+        params.set('action', accion);
+        params.set('borrador_id', $('input[name="borrador_id"]').val());
+        $.ajax({
+            url: pathname, type: 'POST', data: params, dataType: 'json', processData: false, contentType: false,
+            headers: {'X-CSRFToken': csrftoken},
+            beforeSend: function () { loading({'text': '...'}); },
+            success: function (r) {
+                if (r.error) {
+                    message_error(r.error);
+                    return;
+                }
+                exito(r);
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                message_error((jqXHR.responseJSON && jqXHR.responseJSON.error) || (errorThrown + ' ' + textStatus));
+            },
+            complete: function () { $.LoadingOverlay('hide'); }
+        });
+    },
     addProduct: function (item) {
         var index = this.detail.products.findIndex(value => value.code === item.code);
+        if (index === -1 && this.tarifas.length && item.codigo_porcentaje === undefined) {
+            // Producto agregado a una factura en borrador: empieza con la tarifa del catálogo y se puede revisar igual.
+            item.codigo_porcentaje = item.tarifa_catalogo = item.tarifa_iva;
+            item.nombre_tarifa_catalogo = item.nombre_tarifa;
+        }
         if (index === -1) {
             this.detail.products.push(item);
         } else {
@@ -283,14 +353,14 @@ var sale = {
                     targets: [-2],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return '<input type="text" class="form-control" placeholder="Ingrese un nombre" autocomplete="off" name="additional_info_name" value="' + row.name + '">';
+                        return '<input type="text" class="form-control" placeholder="Ingrese un nombre" autocomplete="off" name="additional_info_name" value="' + sale.escapar(row.name) + '">';
                     }
                 },
                 {
                     targets: [-1],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return '<input type="text" class="form-control" placeholder="Ingrese un valor" autocomplete="off" name="additional_info_value" value="' + row.value + '">';
+                        return '<input type="text" class="form-control" placeholder="Ingrese un valor" autocomplete="off" name="additional_info_value" value="' + sale.escapar(row.value) + '">';
                     }
                 },
                 {
@@ -322,6 +392,11 @@ var sale = {
         sale.listAdditionalInfo();
         if (datos.forma_pago) {
             $('select[name="payment_method"]').val(datos.forma_pago).trigger('change');
+        }
+        if (datos.borrador) {   // factura en borrador: tarifas de IVA, condición y medio de cobro guardados
+            sale.tarifas = datos.tarifas || [];
+            if (datos.condicion_pago) select_payment_type.val(datos.condicion_pago).trigger('change');
+            if (datos.medio_cobro) select_medio_cobro.val(datos.medio_cobro).trigger('change');
         }
         if (datos.cliente) {
             select_client.select2('trigger', 'select', {data: datos.cliente});
@@ -643,7 +718,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
             }
             var list_url = $(fvSale.form).attr('data-url');
             var params = new FormData(fvSale.form);
-            ['input_search_product', 'cant', 'price_current', 'dscto_unitary'].forEach(function (value) {
+            ['input_search_product', 'cant', 'price_current', 'dscto_unitary', 'tarifa_linea'].forEach(function (value) {
                 params.delete(value);
             });
             params.append('products', JSON.stringify(sale.detail.products));
@@ -769,12 +844,31 @@ $(function () {
             parent.find('.bootstrap-touchspin-postfix').children().html(sale.detail.products[tr.row].total_dscto.toFixed(2));
             $('td:last', tblProducts.row(tr.row).node()).html('$' + sale.detail.products[tr.row].total.toFixed(2));
         })
+        .on('change', 'select[name="tarifa_linea"]', function () {
+            sale.cambiarTarifa(tblProducts.cell($(this).closest('td, li')).index().row, $(this).val());
+        })
         .on('click', 'a[rel="remove"]', function () {
             var tr = tblProducts.cell($(this).closest('td, li')).index();
             sale.detail.products.splice(tr.row, 1);
             tblProducts.row(tr.row).remove().draw();
             sale.calculateInvoice();
         });
+
+    // Factura en borrador de una proforma: guardar sin emitir y descartar (la proforma queda como estaba).
+    $('.fp-guardar-borrador').on('click', function () {
+        sale.enviarBorrador('guardar_borrador', function (r) {
+            alert_sweetalert({'message': r.mensaje, 'timer': 4000, 'callback': function () {}});
+        });
+    });
+    $('.fp-descartar-borrador').on('click', function () {
+        dialog_action({
+            'content': 'Se borrará la factura en borrador (no se envió nada al SRI). La proforma queda como está. ¿Continuar?',
+            'success': function () {
+                sale.enviarBorrador('descartar_borrador', function (r) { location.href = r.url; });
+            },
+            'cancel': function () {}
+        });
+    });
 
     $('.btnSearchProducts').on('click', function () {
         tblSearchProducts = $('#tblSearchProducts').DataTable({

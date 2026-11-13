@@ -15,7 +15,7 @@ from django.views.generic import TemplateView, View
 
 from core.pos.choices import PAYMENT_METHOD
 from core.proformas import servicios as sv
-from core.proformas.models import Proforma
+from core.proformas.models import MEDIOS_PAGO_PROFORMA, Proforma
 from core.security.mixins import GroupPermissionMixin
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ def sin_opcion():
 
 
 def fila_de(pk, ctx):
-    return sv.fila(Proforma.objects.select_related('venta', 'vendedor').get(pk=pk), **ctx)
+    return sv.fila(Proforma.objects.select_related('venta', 'vendedor', 'borrador_factura').get(pk=pk), **ctx)
 
 
 def configuracion_acciones():
@@ -102,6 +102,22 @@ class ProformaListView(GroupPermissionMixin, TemplateView):
             return JsonResponse({'proforma': fila_de(p.pk, ctx),
                                  'mensaje': sv.MENSAJES['estado_cambiado'].format(numero=p.numero_completo,
                                                                                   estado=sv._estado_en_texto(p, ctx['hoy']))})
+        if accion == 'convertir':
+            # «Convertir en factura»: crea o reabre la factura en borrador (no emite nada). Las mismas condiciones que
+            # muestran el botón: rol (change_proforma + add_sale), plan, cupo y facturación configurada.
+            puede, motivo = ctx['facturable']
+            if not puede:
+                raise sv.ErrorProforma(motivo or sv.MENSAJES['facturar_sin_permiso'], estado_http=403)
+            borrador, creado = sv.convertir(datos.get('id'), request.user, request)
+            numero = borrador.proforma.numero_completo
+            return JsonResponse({'url': sv.url_borrador(borrador.pk), 'creado': creado, 'borrador_id': borrador.pk,
+                                 'mensaje': sv.MENSAJES['borrador_creado' if creado else 'borrador_abierto'].format(numero=numero)})
+        if accion == 'descartar_borrador':
+            sv._exigir(ctx['permisos'], 'descartar_borrador')
+            p = sv.descartar_borrador(datos.get('id'), request.user, request)
+            return JsonResponse({'proforma': fila_de(p.pk, ctx),
+                                 'mensaje': sv.MENSAJES['borrador_descartado'].format(numero=p.numero_completo,
+                                                                                      estado=sv._estado_en_texto(p, ctx['hoy']))})
         if accion == 'enviar_correo':
             sv._exigir(ctx['permisos'], 'enviar_correo')
             p = sv.enviar_por_correo(datos.get('id'), request.user, datos.get('destinatarios', ''), datos.get('mensaje', ''),
@@ -141,7 +157,8 @@ class BusquedasMixin:
 
     def contexto_editor(self, context, title, action, proforma=None):
         context.update({'title': title, 'action': action, 'list_url': URL_LISTA, 'formas_pago': PAYMENT_METHOD,
-                        'config': sv.configuracion_editor(), 'proforma': proforma, 'aviso_estado': None})
+                        'medios_pago': MEDIOS_PAGO_PROFORMA, 'config': sv.configuracion_editor(), 'proforma': proforma,
+                        'aviso_estado': None})
         return context
 
 
@@ -173,6 +190,10 @@ class ProformaUpdateView(BusquedasMixin, GroupPermissionMixin, TemplateView):
         if self.proforma.estado not in Proforma.PUEDEN_VENCER:
             messages.info(request, sv.MENSAJES['no_editable'].format(numero=self.proforma.numero_completo,
                                                                      estado=sv._estado_en_texto(self.proforma)))
+            return HttpResponseRedirect(url_ver(self.proforma.pk))
+        if sv.borrador_de(self.proforma) is not None:
+            messages.info(request, sv.MENSAJES['con_borrador'].format(numero=self.proforma.numero_completo,
+                                                                      accion=sv.VERBOS['editar']))
             return HttpResponseRedirect(url_ver(self.proforma.pk))
         return super().get(request, *args, **kwargs)
 

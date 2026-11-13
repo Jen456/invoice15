@@ -85,6 +85,8 @@ class AuditLog(models.Model):
         ('proforma_eliminada', 'Borrador de proforma eliminado'),
         ('proforma_facturada', 'Proforma facturada'),
         ('proforma_venta_eliminada', 'Proforma liberada al eliminar su factura'),
+        ('proforma_convertida', 'Proforma convertida en borrador de factura'),
+        ('proforma_borrador_descartado', 'Borrador de factura de una proforma descartado'),
         # Fase contable: Compras
         ('purchase_complete', 'Compra: datos del comprobante completados'),
         ('purchase_debt_adjust', 'Compra: cuenta por pagar ajustada al total con IVA'),

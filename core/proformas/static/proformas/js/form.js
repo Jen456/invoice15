@@ -198,6 +198,8 @@ var fpForm = {
         $('#fp-valida-hasta').val(p.valida_hasta);
         fpForm.validaHastaTocada = true;
         $('#fp-forma-pago').val(p.forma_pago_sugerida ? p.forma_pago_sugerida.id : '');
+        $('#fp-medio-pago').val(p.medio_pago_sugerido ? p.medio_pago_sugerido.id : '');
+        $('#fp-ocultar-vendedor').prop('checked', !!p.ocultar_vendedor);
         $('#fp-condiciones').val(p.condiciones);
         var omitidas = [];
         p.lineas.forEach(function (l) {
@@ -249,6 +251,13 @@ $(function () {
         }
     });
     $('#fp-valida-hasta').on('change', function () { fpForm.validaHastaTocada = true; });
+    // El medio de pago («Transferencia bancaria») elige su forma de pago del SRI (20); el servidor aplica la misma regla.
+    $('#fp-medio-pago').on('change', function () {
+        var forma = (fpForm.config.forma_sri_de_medio || {})[this.value];
+        if (forma) {
+            $('#fp-forma-pago').val(forma);
+        }
+    });
 
     var buscador = $('#fp-buscar-producto');
     buscador.autocomplete({

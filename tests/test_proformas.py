@@ -875,7 +875,7 @@ process.stdout.write(JSON.stringify({escapar: fpAcciones.escapar(hostil), botone
         assert lector.nombres <= {'class', 'href', 'title', 'aria-label', 'type', 'data-accion', 'data-id', 'disabled',
                                   'aria-hidden'}, lector.nombres
         assert '" onfocus="alert(1)" autofocus="\'' in lector.valores    # el texto llega entero al title
-        assert 'Facturar: " onfocus="alert(1)" autofocus="\'' in lector.valores
+        assert 'Convertir en factura: " onfocus="alert(1)" autofocus="\'' in lector.valores
 
     def test_list_js_usa_render_text(self):
         js = (Path(settings.BASE_DIR) / 'core/proformas/static/proformas/js/list.js').read_text()
