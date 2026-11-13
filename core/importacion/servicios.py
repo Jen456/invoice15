@@ -3,7 +3,8 @@
 1. Importación: crear_lote guarda cada archivo una sola vez por empresa (SHA-256) y crea una entrada por archivo;
    crear_lote_de_claves crea una entrada por clave de acceso (lista pegada o reporte del portal del SRI: reporte_sri).
 2. Validación: procesar_entrada analiza XML (xml_sri), PDF (ride_pdf → clave → XML del SRI) o una clave (→ XML del SRI).
-3. Verificación: verificar_en_sri compara el documento con lo que el SRI tiene autorizado.
+3. Verificación: verificar_en_sri compara el documento con lo que el SRI tiene autorizado y guarda el intento (reintentar
+   actualiza el mismo documento). Lo que declara el XML, lo que respondió el SRI y la revisión interna son cosas distintas.
 4. Clasificación: emitido / recibido / ajeno / revisión manual, por coincidencia EXACTA del RUC de la empresa.
 5. Revisión y vinculación: revisar(...) aprueba, descarta, clasifica a mano o vincula con una compra o venta existente.
 6. Propuesta contable: revisable; nunca se marca como contabilizado (no hay libro mayor).
@@ -16,23 +17,26 @@ empresa+ambiente+clave): si dos importaciones chocan, la que pierde reutiliza lo
 """
 import hashlib
 import logging
+from datetime import timedelta
 from decimal import Decimal
 
 from django.core.files.base import ContentFile
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from core.importacion import clave_acceso, limites, reporte_sri
 from core.importacion.models import (ArchivoImportado, DocumentoImportado, EntradaLote, EventoImportacion, ImpuestoImportado,
                                      LoteImportacion, ReglaImportacion)
 from core.importacion.ride_pdf import procesar_ride_pdf
-from core.importacion.sri_autorizacion import consultar_autorizacion
+from core.importacion.sri_autorizacion import MOTIVOS_FALLO, consultar_autorizacion
 from core.importacion.xml_sri import MENSAJE_NO_SOPORTADO, NOMBRES, SOPORTADOS, procesar_xml_sri
 
 PENDIENTES = ('en_cola', 'procesando')
 ORIGEN_DOCUMENTO = {'claves': 'lista', 'reporte': 'reporte'}   # origen del lote → origen del documento registrado por su clave
 REINTENTABLES = ('sri_no_disponible', 'en_proceso_sri', 'no_encontrada_sri')   # el SRI puede responder más tarde
 REINTENTABLES_AUTOMATICOS = ('sri_no_disponible', 'en_proceso_sri')             # la tarea programada reintenta solo estos
+SIN_REINTENTO_AUTOMATICO = ('fuera_de_rango', 'clave_invalida')                 # ...salvo estos intentos, que no cambiarían
 CAMPOS_VERIFICADOS = ('emisor_ruc', 'receptor_identificacion', 'fecha_emision', 'numero', 'total_sin_impuestos', 'total_iva',
                       'importe_total')
 
@@ -184,7 +188,11 @@ def procesar_lote(lote, usuario, maximo=limites.PROCESAR_POR_PETICION, presupues
         for documento in lote.documentos.filter(estado_procesamiento='procesado', verificado_en__isnull=True)[:maximo]:
             if not queda_tiempo():
                 break
-            verificar_en_sri(documento, usuario)
+            try:
+                verificar_en_sri(documento, usuario)
+            except ErrorImportacion as e:   # otra petición ya consulta este documento: no se consulta dos veces
+                if e.codigo != 'consulta_en_curso':
+                    raise
     return actualizar_estado_lote(lote)
 
 
@@ -342,8 +350,9 @@ def _entrada_clave(entrada, usuario):
         _anotar_comparacion(entrada, documento)
     else:
         entrada.estado = 'pendiente_xml'
-        motivo = documento.get_estado_verificacion_display()
-        entrada.errores = [{'codigo': documento.estado_verificacion, 'texto': f'Sin XML autorizado: {motivo.lower()}.'}]
+        motivo = (documento.get_ultima_consulta_resultado_display() if documento.estado_verificacion == 'sri_no_disponible'
+                  and documento.ultima_consulta_resultado else documento.get_estado_verificacion_display())
+        entrada.errores = [{'codigo': documento.estado_verificacion, 'texto': f'Sin XML autorizado: {motivo[:1].lower() + motivo[1:]}.'}]
 
 
 def _anotar_comparacion(entrada, documento):
@@ -393,7 +402,10 @@ def _completar(documento, resultado, origen, archivo):
         documento.estado_verificacion, documento.verificado_en = 'verificada_sri', timezone.now()
         documento.archivo_xml = documento.archivo_xml or archivo
     else:
-        documento.estado_verificacion = resultado.verificacion
+        # Un XML subido solo DECLARA su autorización: no reemplaza lo que el SRI ya respondió sobre la clave (p. ej. «no la
+        # autoriza» o «no tiene esa clave»); para cambiarlo se vuelve a verificar.
+        if documento.estado_verificacion not in DocumentoImportado.VERIFICACION_CONCLUYENTE:
+            documento.estado_verificacion = resultado.verificacion
         documento.archivo_xml = archivo
     documento.clasificacion = clasificar(documento.company, documento.emisor_ruc, documento.receptor_identificacion)
     documento.save()
@@ -466,74 +478,178 @@ def registrar_clave(company, usuario, clave, origen, archivo_pdf=None, lote=None
 
 
 # ------------------------------------------------------------------ 3. verificación en el SRI
+#
+# Tres dimensiones separadas (entregas/facturaporaqui/primera-entrega/verificar-sri.md): lo que DECLARA el XML
+# (autorizacion_del_xml), lo que RESPONDIÓ el SRI (estado_verificacion) y la revisión interna del comercio
+# (estado_revision: la verificación no la cambia). Cada consulta deja su intento en el mismo documento (verificado_en y
+# ultima_consulta_*) y en la bitácora: reintentar es volver a consultar ese documento; nunca crea otro documento, compra ni
+# venta. Una consulta fallida (sin respuesta, error, fuera de rango…) nunca es un rechazo y no reemplaza la última respuesta
+# concluyente del SRI (DocumentoImportado.VERIFICACION_CONCLUYENTE).
 
-MOTIVOS_SRI = {'sin_resultados': ('no_encontrada_sri', 'El SRI no tiene un comprobante autorizado con esa clave.'),
-               'no_autorizado': ('no_autorizada_sri', 'El SRI responde que la clave NO está autorizada.'),
-               'no_disponible': ('sri_no_disponible', 'No se pudo confirmar la autorización con el SRI. Puedes reintentar.'),
-               'fuera_de_rango': ('fuera_rango_sri', 'La fecha de emisión está fuera del rango de la consulta automática del SRI.'),
-               'en_proceso': ('en_proceso_sri', 'El SRI todavía está procesando el comprobante; se reintenta más tarde.'),
-               'clave_invalida': ('no_encontrada_sri', 'La clave no es válida.')}
+RESULTADOS_CONCLUYENTES = ('autorizado', 'discrepancia', 'no_autorizado', 'no_encontrado',
+                           'rechazo_anterior')   # este último solo lo deja la migración 0009
+ESTADO_DEL_RESULTADO = {'autorizado': 'verificada_sri', 'discrepancia': 'discrepancia_sri', 'no_autorizado': 'no_autorizada_sri',
+                        'no_encontrado': 'no_encontrada_sri', 'en_proceso': 'en_proceso_sri',
+                        **{r: 'sri_no_disponible' for r in DocumentoImportado.CONSULTA_FALLIDA}}
+MENSAJES_CONSULTA = {
+    'no_encontrado': 'El SRI no tiene un comprobante con esa clave: se trata como no autorizado. Si el emisor lo envió hace '
+                     'poco, reintenta más tarde.',
+    'no_autorizado': 'Rechazo confirmado: el SRI responde que el comprobante NO está autorizado.',
+    'en_proceso': 'El SRI todavía está procesando el comprobante; se puede reintentar más tarde.',
+    'fuera_de_rango': 'No se pudo verificar: el SRI no admite la consulta automática para esta fecha de emisión (no se '
+                      'pronunció sobre el comprobante). Consulta la clave en el portal del SRI.',
+    'clave_invalida': 'No se consultó al SRI: la clave de acceso no es válida.',
+}
+GENERICOS_SRI = ('El SRI no encontró un comprobante con esa clave.', 'El SRI todavía está procesando el comprobante.',
+                 'La fecha de emisión está fuera del rango de la consulta automática.')
+MENSAJE_EN_CURSO = ('Ya hay una consulta al SRI en curso para este documento (otro clic, otra pestaña u otra persona). Espera '
+                    'unos segundos y actualiza la página: no hace falta volver a pedirla.')
 
 
-def recuperar_xml(documento, usuario):
-    """Pide al SRI el XML autorizado de un documento que solo tiene la clave. Sin XML, queda pendiente con el motivo."""
-    consulta = consultar_autorizacion(documento.clave_acceso)
-    if consulta.estado == 'autorizado':
-        resultado = procesar_xml_sri(consulta.xml)
-        if resultado.aceptado and resultado.comprobante.clave_acceso == documento.clave_acceso:
-            archivo, _ = guardar_archivo(documento.company, usuario, f'{documento.clave_acceso}.xml', consulta.xml, 'xml', origen='sri')
-            registrar_xml(documento.company, usuario, resultado, archivo, documento.lote, origen='sri')
-            documento.refresh_from_db()
-            # las entradas que esperaban este XML (RIDE, clave manual o clave en lote) quedan procesadas
-            for entrada in EntradaLote.objects.filter(documento=documento, estado='pendiente_xml'):
-                entrada.estado, entrada.errores, entrada.procesado_en = 'procesado', [], timezone.now()
-                _anotar_comparacion(entrada, documento)
-                entrada.save()
-                actualizar_estado_lote(entrada.lote)
-            return documento
-        motivo = ('discrepancia_sri', 'El SRI devolvió un XML que no se pudo validar: ' +
-                  '; '.join(e.texto for e in resultado.errores)[:300])
+def autorizacion_del_xml(documento):
+    """Lo que declara el XML importado sobre su autorización, sin confirmar nada: {'id', 'nombre', 'numero', 'fecha'}.
+    'sin_xml' (solo la clave), 'del_sri' (el XML lo entregó el SRI), 'declarada' (el archivo trae la autorización) o
+    'sin_autorizacion' (el archivo trae el comprobante sin la autorización)."""
+    if documento.estado_procesamiento != 'procesado':
+        return {'id': 'sin_xml', 'nombre': 'Todavía no hay XML: solo la clave de acceso', 'numero': '', 'fecha': None}
+    declarada = (documento.datos or {}).get('autorizacion_declarada')
+    if documento.archivo_xml_id and documento.archivo_xml.origen == 'sri':
+        nombre = 'XML entregado por el SRI'
+        identificador = 'del_sri'
+    elif declarada == 'AUTORIZADO' or documento.numero_autorizacion:
+        nombre, identificador = 'El XML declara la autorización (AUTORIZADO); no es una confirmación del SRI', 'declarada'
     else:
-        motivo = MOTIVOS_SRI[consulta.estado]
-    DocumentoImportado.objects.filter(pk=documento.pk).update(estado_verificacion=motivo[0], verificado_en=timezone.now())
-    documento.refresh_from_db()
-    evento('xml_no_recuperado', motivo[1], documento=documento, usuario=usuario, intentos=consulta.intentos,
-           mensajes=consulta.mensajes, estados_sri=consulta.estados_sri)
+        nombre, identificador = 'El XML trae el comprobante sin la autorización del SRI', 'sin_autorizacion'
+    return {'id': identificador, 'nombre': nombre, 'numero': documento.numero_autorizacion, 'fecha': documento.fecha_autorizacion}
+
+
+def _detalle_sri(consulta):
+    """Lo que dijo el SRI (o cada intento fallido), sin las frases que ya resume el mensaje."""
+    return '; '.join(m.rstrip('.') for m in consulta.mensajes if m not in GENERICOS_SRI)
+
+
+def _resultado_de(consulta):
+    """(resultado, mensaje) de una consulta que no trajo un XML autorizado."""
+    resultado = {'sin_resultados': 'no_encontrado', 'no_autorizado': 'no_autorizado', 'en_proceso': 'en_proceso',
+                 'fuera_de_rango': 'fuera_de_rango', 'clave_invalida': 'clave_invalida'}.get(consulta.estado)
+    if resultado is None:   # no_disponible
+        resultado = consulta.motivo if consulta.motivo in MOTIVOS_FALLO else 'respuesta_inesperada'
+        mensaje = f'No se pudo verificar en el SRI: {MOTIVOS_FALLO[resultado]}. Puedes reintentar.'
+    else:
+        mensaje = MENSAJES_CONSULTA[resultado]
+    detalle = _detalle_sri(consulta)
+    return resultado, (f'{mensaje} Detalle: {detalle}.' if detalle and resultado != 'no_encontrado' else mensaje)
+
+
+def _comparar(documento, oficial):
+    """(resultado, mensaje, diferencias) del XML autorizado que devolvió el SRI frente al documento importado."""
+    if not oficial.aceptado:
+        return ('respuesta_inesperada', 'No se pudo verificar en el SRI: el XML que devolvió no se pudo validar (' +
+                '; '.join(e.texto for e in oficial.errores)[:300] + ').', [])
+    if oficial.comprobante.clave_acceso != documento.clave_acceso:   # el SRI respondió por otra clave: no es una discrepancia
+        return 'respuesta_inesperada', 'No se pudo verificar en el SRI: el XML que devolvió es de otra clave de acceso.', []
+    datos = _datos_documento(oficial)
+    diferencias = [c for c in CAMPOS_VERIFICADOS if getattr(documento, c) != datos[c]]
+    if diferencias:
+        return 'discrepancia', 'El archivo importado difiere de lo autorizado en el SRI: ' + ', '.join(diferencias) + '.', diferencias
+    return 'autorizado', 'Coincide con el comprobante autorizado en el SRI.', []
+
+
+def _reservar_consulta(documento):
+    """Marca la consulta en curso con una actualización condicionada (atómica también en SQLite): de dos clics, dos pestañas
+    o dos personas a la vez, solo una consulta al SRI. Una marca vieja (proceso cortado) caduca sola."""
+    ahora = timezone.now()
+    libre = Q(consulta_en_curso__isnull=True) | Q(consulta_en_curso__lt=ahora - timedelta(seconds=limites.SRI_CONSULTA_EN_CURSO_SEGUNDOS))
+    if not DocumentoImportado.objects.filter(libre, pk=documento.pk).update(consulta_en_curso=ahora):
+        raise ErrorImportacion(MENSAJE_EN_CURSO, 'consulta_en_curso')
+    return ahora
+
+
+def _liberar_consulta(documento, reserva):
+    DocumentoImportado.objects.filter(pk=documento.pk, consulta_en_curso=reserva).update(consulta_en_curso=None)
+
+
+def _registrar_intento(documento, usuario, resultado, mensaje, consulta=None, diferencias=(), tipo_evento='verificacion',
+                       reserva=None):
+    """Guarda el intento en el documento (fila bloqueada: dos consultas a la vez no se pisan) y en la bitácora.
+
+    Una respuesta concluyente del SRI fija el estado; las demás (en proceso o fallida) solo lo cambian si no había una
+    respuesta concluyente anterior. Devuelve el mismo documento, actualizado."""
+    with transaction.atomic():
+        fila = DocumentoImportado.objects.select_for_update().get(pk=documento.pk)
+        conservado = (resultado not in RESULTADOS_CONCLUYENTES
+                      and fila.estado_verificacion in DocumentoImportado.VERIFICACION_CONCLUYENTE)
+        estado = fila.estado_verificacion if conservado else ESTADO_DEL_RESULTADO[resultado]
+        ahora = timezone.now()
+        cambios = {'estado_verificacion': estado, 'verificado_en': ahora, 'ultima_consulta_por': usuario,
+                   'ultima_consulta_resultado': resultado, 'ultima_consulta_mensaje': mensaje[:500]}
+        if resultado in RESULTADOS_CONCLUYENTES:
+            cambios['respuesta_sri_en'] = ahora
+        if reserva is not None and fila.consulta_en_curso == reserva:
+            cambios['consulta_en_curso'] = None
+        if estado == 'discrepancia_sri' and not conservado and fila.clasificacion in ('emitido', 'recibido'):
+            cambios['clasificacion'] = 'revision_manual'
+        DocumentoImportado.objects.filter(pk=fila.pk).update(**cambios)
+        documento.refresh_from_db()
+        if tipo_evento:
+            evento(tipo_evento, mensaje, documento=documento, usuario=usuario, estado=estado, resultado=resultado,
+                   conservado=conservado, diferencias=list(diferencias), intentos=consulta.intentos if consulta else 0,
+                   mensajes=consulta.mensajes if consulta else [], estados_sri=consulta.estados_sri if consulta else [])
     return documento
+
+
+def recuperar_xml(documento, usuario, reserva=None):
+    """Pide al SRI el XML autorizado de un documento que solo tiene la clave. Sin XML, queda pendiente con el resultado del
+    intento (por qué no se obtuvo)."""
+    consulta = consultar_autorizacion(documento.clave_acceso)
+    if consulta.estado != 'autorizado':
+        resultado, mensaje = _resultado_de(consulta)
+        return _registrar_intento(documento, usuario, resultado, mensaje, consulta, tipo_evento='xml_no_recuperado',
+                                  reserva=reserva)
+    oficial = procesar_xml_sri(consulta.xml)
+    if not oficial.aceptado or oficial.comprobante.clave_acceso != documento.clave_acceso:
+        resultado, mensaje, _ = _comparar(documento, oficial)
+        return _registrar_intento(documento, usuario, resultado, mensaje, consulta, tipo_evento='xml_no_recuperado',
+                                  reserva=reserva)
+    archivo, _ = guardar_archivo(documento.company, usuario, f'{documento.clave_acceso}.xml', consulta.xml, 'xml', origen='sri')
+    _, duplicado = registrar_xml(documento.company, usuario, oficial, archivo, documento.lote, origen='sri')
+    documento.refresh_from_db()
+    if duplicado:   # otra consulta o un XML subido lo completó mientras tanto: se compara con él, como al verificar
+        resultado, mensaje, diferencias = _comparar(documento, oficial)
+        return _registrar_intento(documento, usuario, resultado, mensaje, consulta, diferencias, reserva=reserva)
+    # las entradas que esperaban este XML (RIDE, clave manual o clave en lote) quedan procesadas
+    for entrada in EntradaLote.objects.filter(documento=documento, estado='pendiente_xml'):
+        entrada.estado, entrada.errores, entrada.procesado_en = 'procesado', [], timezone.now()
+        _anotar_comparacion(entrada, documento)
+        entrada.save()
+        actualizar_estado_lote(entrada.lote)
+    # registrar_xml ya dejó el evento «xml_recibido»
+    return _registrar_intento(documento, usuario, 'autorizado', 'Se obtuvo del SRI el XML autorizado.', consulta,
+                              tipo_evento=None, reserva=reserva)
 
 
 def verificar_en_sri(documento, usuario):
-    """Compara el documento importado con lo que el SRI tiene autorizado para su clave."""
-    if documento.estado_procesamiento == 'pendiente_xml':
-        return recuperar_xml(documento, usuario)
-    consulta = consultar_autorizacion(documento.clave_acceso)
-    diferencias = []
-    if consulta.estado == 'autorizado':
-        resultado = procesar_xml_sri(consulta.xml)
-        if not resultado.aceptado:
-            estado, mensaje = 'discrepancia_sri', 'El XML que devolvió el SRI no se pudo validar.'
-        else:
-            oficial = _datos_documento(resultado)
-            diferencias = [c for c in CAMPOS_VERIFICADOS if getattr(documento, c) != oficial[c]]
-            if resultado.comprobante.clave_acceso != documento.clave_acceso:
-                diferencias.insert(0, 'clave_acceso')
-            if diferencias:
-                estado, mensaje = 'discrepancia_sri', 'El archivo importado difiere de lo autorizado en el SRI: ' + ', '.join(diferencias) + '.'
-            else:
-                estado, mensaje = 'verificada_sri', 'Coincide con el comprobante autorizado en el SRI.'
-                if documento.archivo_xml_id is None:
-                    archivo, _ = guardar_archivo(documento.company, usuario, f'{documento.clave_acceso}.xml', consulta.xml, 'xml', origen='sri')
-                    DocumentoImportado.objects.filter(pk=documento.pk).update(archivo_xml=archivo)
-    else:
-        estado, mensaje = MOTIVOS_SRI[consulta.estado]
-    cambios = {'estado_verificacion': estado, 'verificado_en': timezone.now()}
-    if estado == 'discrepancia_sri' and documento.clasificacion in ('emitido', 'recibido'):
-        cambios['clasificacion'] = 'revision_manual'
-    DocumentoImportado.objects.filter(pk=documento.pk).update(**cambios)
-    documento.refresh_from_db()
-    evento('verificacion', mensaje, documento=documento, usuario=usuario, estado=estado, diferencias=diferencias,
-           intentos=consulta.intentos, mensajes=consulta.mensajes, estados_sri=consulta.estados_sri)
-    return documento
+    """Consulta en el SRI la clave del documento, compara lo autorizado con lo importado y guarda el resultado y el intento.
+
+    Reintentar es volver a llamarla: actualiza el mismo documento y su intento, nunca crea otro documento, compra ni venta.
+    Con una consulta ya en curso para ese documento no consulta otra vez: ErrorImportacion con código 'consulta_en_curso'."""
+    reserva = _reservar_consulta(documento)
+    try:
+        documento.refresh_from_db()
+        if documento.estado_procesamiento == 'pendiente_xml':
+            return recuperar_xml(documento, usuario, reserva=reserva)
+        consulta = consultar_autorizacion(documento.clave_acceso)
+        if consulta.estado != 'autorizado':
+            resultado, mensaje = _resultado_de(consulta)
+            return _registrar_intento(documento, usuario, resultado, mensaje, consulta, reserva=reserva)
+        oficial = procesar_xml_sri(consulta.xml)
+        resultado, mensaje, diferencias = _comparar(documento, oficial)
+        if resultado == 'autorizado' and documento.archivo_xml_id is None:
+            archivo, _ = guardar_archivo(documento.company, usuario, f'{documento.clave_acceso}.xml', consulta.xml, 'xml', origen='sri')
+            DocumentoImportado.objects.filter(pk=documento.pk).update(archivo_xml=archivo)
+        return _registrar_intento(documento, usuario, resultado, mensaje, consulta, diferencias, reserva=reserva)
+    finally:
+        _liberar_consulta(documento, reserva)
 
 
 # ------------------------------------------------------------------ 4. clasificación y contraparte
@@ -675,8 +791,8 @@ def _exigir_revisable(documento, regla, datos):
                                f'(este está como «{documento.get_clasificacion_display()}»).')
     if documento.estado_revision not in ('pendiente',):
         raise ErrorImportacion(f'El documento ya está «{documento.get_estado_revision_display()}». Reábrelo para cambiarlo.')
-    if documento.estado_verificacion in ('no_autorizada_sri', 'no_encontrada_sri', 'discrepancia_sri'):
-        raise ErrorImportacion(f'No se puede incorporar: {documento.get_estado_verificacion_display().lower()}.')
+    if documento.estado_verificacion in DocumentoImportado.VERIFICACION_BLOQUEA:
+        raise ErrorImportacion(f'No se puede incorporar: {documento.verificacion_en_frase()}.')
     if documento.estado_verificacion != 'verificada_sri' and regla.exigir_verificacion and not datos.get('confirmar_sin_verificar'):
         raise ErrorImportacion('El documento no está verificado en el SRI. Verifícalo o confirma que lo incorporas sin verificar.')
 

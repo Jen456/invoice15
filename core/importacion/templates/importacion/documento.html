@@ -4,21 +4,36 @@
 <div class="fp-comprobantes fp-importacion fp-importacion-documento" data-documento="{{ documento.pk }}">
     <header class="fp-welcome"><span class="fp-eyebrow">{{ detalle.tipo_documento }} importada</span><h1>{{ detalle.numero|default:"Documento pendiente de XML" }}</h1>
         <p>{{ detalle.emisor.razon_social }} ({{ detalle.emisor.ruc }}) → {{ detalle.receptor.razon_social }} ({{ detalle.receptor.identificacion }}) · {{ documento.fecha_emision|date:"d/m/Y" }}</p></header>
-    {% include 'importacion/_mensajes.html' %}<p class="fp-import-note">Revisa el documento, sus impuestos y sus posibles vínculos. Aprobarlo no crea una transacción ni un asiento contable.</p>{% if detalle.estados.verificacion.id == 'fuera_rango_sri' %}
-    <div class="alert alert-warning" role="status">
-        La fecha de emisión queda fuera del rango de la consulta automática del SRI.
-        Consulta la clave de acceso en el <a href="https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezComprobantes.jsf"
-        target="_blank" rel="noopener noreferrer">portal oficial del SRI</a>.
-    </div>
-    {% elif detalle.estados.verificacion.id == 'declarada_en_archivo' %}
-    <div class="alert alert-warning" role="status">La autorización está declarada en el archivo y falta verificarla en el SRI.</div>
-    {% endif %}
+    {% include 'importacion/_mensajes.html' %}<p class="fp-import-note">Revisa el documento, sus impuestos y sus posibles vínculos. Aprobarlo no crea una transacción ni un asiento contable.</p>
+    {% with v=detalle.verificacion_sri %}
+    <section class="card fp-retencion-panel mb-3 fp-import-verificacion" id="fp-import-verificacion" data-verificacion="{{ v.sri.id }}" aria-labelledby="fp-verificacion-titulo"><div class="card-body">
+        <span class="fp-eyebrow">Autorización del comprobante</span><h2 class="h5" id="fp-verificacion-titulo">Verificación en el SRI</h2>
+        <dl class="row mb-2">
+            <dt class="col-sm-4">Respuesta del SRI</dt>
+            <dd class="col-sm-8"><span class="fp-import-tag" data-state="{{ v.sri.id }}">{{ v.sri.nombre }}</span>
+                <small class="d-block text-muted">{{ v.sri.explicacion }}</small>
+                {% if v.sri.respuesta_en %}<small class="d-block text-muted">Última respuesta concluyente del SRI: {{ v.sri.respuesta_en_texto }}.</small>{% endif %}</dd>
+            <dt class="col-sm-4">Autorización declarada en el XML</dt>
+            <dd class="col-sm-8" data-xml="{{ v.xml.id }}">{{ v.xml.nombre }}{% if v.xml.numero %}<small class="d-block text-muted text-break">N.º {{ v.xml.numero }}{% if v.xml.fecha_texto %} · {{ v.xml.fecha_texto }}{% endif %}</small>{% endif %}</dd>
+            <dt class="col-sm-4">Última consulta al SRI</dt>
+            <dd class="col-sm-8" id="fp-ultima-consulta">{% if v.ultima_consulta %}<time datetime="{{ v.ultima_consulta.en }}">{{ v.ultima_consulta.en_texto }}</time>{% if v.ultima_consulta.usuario %} · por {{ v.ultima_consulta.usuario }}{% endif %}
+                <strong class="d-block" data-resultado="{{ v.ultima_consulta.resultado.id }}">{{ v.ultima_consulta.resultado.nombre|default:"Resultado no registrado" }}</strong>
+                {% if v.ultima_consulta.mensaje %}<small class="d-block">{{ v.ultima_consulta.mensaje }}</small>{% endif %}
+                {% if v.ultima_consulta.conserva_respuesta_anterior %}<small class="d-block text-muted">Este intento no cambió la respuesta anterior del SRI.</small>{% endif %}
+            {% else %}Todavía no se ha consultado al SRI.{% endif %}</dd>
+            <dt class="col-sm-4">Revisión interna del comercio</dt>
+            <dd class="col-sm-8">{{ v.revision_interna.nombre }}<small class="d-block text-muted">La decide tu equipo. Consultar al SRI no la cambia.</small></dd>
+        </dl>
+        {% if v.fuera_de_rango %}<div class="alert alert-warning" role="status">El SRI no admite la consulta automática para esta fecha de emisión: no se pronunció sobre el comprobante. Consulta la clave de acceso en el <a href="https://srienlinea.sri.gob.ec/comprobantes-electronicos-internet/publico/validezComprobantes.jsf" target="_blank" rel="noopener noreferrer">portal oficial del SRI</a>.</div>{% endif %}
+        {% if v.en_curso %}<div class="alert alert-info" role="status">Hay una consulta al SRI en curso para este documento. Actualiza la página en unos segundos para ver su resultado.</div>{% endif %}
+        {% if puede_revisar and 'verificar' in detalle.acciones %}<form method="post" class="fp-import-verificar">{% csrf_token %}<input type="hidden" name="accion" value="verificar">
+            <button type="submit" class="btn btn-sm btn-outline-secondary" data-espera="Consultando al SRI…">{% if v.ultima_consulta %}Volver a verificar en el SRI{% else %}Verificar en el SRI{% endif %}</button>
+            <small class="fp-import-verificar-estado text-muted" role="status" aria-live="polite">{% if v.ultima_consulta %}Repite la consulta sobre este mismo documento: no crea otro documento, compra ni venta.{% endif %}</small></form>{% endif %}
+    </div></section>
+    {% endwith %}
     <section class="card fp-retencion-panel mb-3"><div class="card-body">
         <dl class="row mb-0">
             <dt class="col-sm-4">Clasificación</dt><dd class="col-sm-8"><span class="fp-import-tag" data-state="{{ detalle.estados.clasificacion.id }}">{{ detalle.estados.clasificacion.nombre }}</span></dd>
-            <dt class="col-sm-4">Verificación</dt><dd class="col-sm-8"><span class="fp-import-tag" data-state="{{ detalle.estados.verificacion.id }}">{{ detalle.estados.verificacion.nombre }}</span></dd>
-            {% if documento.verificado_en %}<dt class="col-sm-4">Última consulta al SRI</dt><dd class="col-sm-8">{{ documento.verificado_en|date:"d/m/Y H:i" }}</dd>{% endif %}
-            <dt class="col-sm-4">Revisión</dt><dd class="col-sm-8">{{ detalle.estados.revision.nombre }}</dd>
             <dt class="col-sm-4">Contabilidad</dt><dd class="col-sm-8">{{ detalle.estados.contable.nombre }}</dd>
             <dt class="col-sm-4">Clave de acceso</dt><dd class="col-sm-8 text-break">{{ detalle.clave_acceso }}</dd>
         </dl>
@@ -72,7 +87,7 @@
     {% if puede_revisar %}<section class="card fp-retencion-panel mb-3"><div class="card-body"><h2 class="h5">Acciones</h2>
         {% if 'crear_compra' in detalle.acciones and detalle.urls.compra %}<a href="{{ detalle.urls.compra }}" class="btn btn-sm fpa-btn-pagar mb-2">Crear compra</a>{% endif %}
         {% if 'registrar_retencion' in detalle.acciones and detalle.urls.retencion_recibida %}<a href="{{ detalle.urls.retencion_recibida }}" class="btn btn-sm fpa-btn-pagar mb-2">Registrar retención recibida</a>{% endif %}
-        {% for accion in detalle.acciones %}{% if accion != 'vincular_compra' and accion != 'vincular_venta' and accion != 'crear_compra' and accion != 'registrar_retencion' %}
+        {% for accion in detalle.acciones %}{% if accion != 'vincular_compra' and accion != 'vincular_venta' and accion != 'crear_compra' and accion != 'registrar_retencion' and accion != 'verificar' %}
             <form method="post" class="fp-import-action">{% csrf_token %}<input type="hidden" name="accion" value="{{ accion }}">
                 {% if accion == 'aprobar' %}{% include "importacion/_confirmar.html" %}{% endif %}
                 {% if accion == 'clasificar' %}<select aria-label="Clasificación del documento" name="clasificacion" class="form-control form-control-sm d-inline-block w-auto"><option value="recibido">Recibido</option><option value="emitido">Emitido</option><option value="ajeno">Ajeno</option></select>{% endif %}

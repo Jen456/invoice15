@@ -4,6 +4,8 @@ La empresa es siempre la activa de la sesión (request.company, validada por mem
 la cambia. Los objetos se buscan con el gestor de empresa: un id de otra empresa responde 404.
 """
 import json
+from datetime import timedelta
+
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
@@ -69,6 +71,58 @@ def _si(valor):
     return str(valor if valor is not None else '').strip().lower() in ('1', 'true', 'on', 'si', 'sí')
 
 
+EXPLICACION_VERIFICACION = {
+    'verificada_sri': 'El SRI respondió AUTORIZADO para esta clave y lo autorizado coincide con el XML importado.',
+    'no_autorizada_sri': 'El SRI respondió NO AUTORIZADO para esta clave: no se puede incorporar.',
+    'no_encontrada_sri': 'El SRI respondió que no tiene un comprobante con esta clave. Se trata como no autorizado (no se puede '
+                         'incorporar), pero no es un rechazo: si el emisor lo envió hace poco, vuelve a verificar más tarde.',
+    'discrepancia_sri': 'El SRI autoriza esta clave, pero el XML importado no coincide con lo autorizado: no se puede incorporar.',
+    'declarada_en_archivo': 'Solo lo declara el archivo: el SRI todavía no lo confirmó. Si tus reglas exigen la verificación, '
+                            'incorporarlo sin ella requiere confirmarlo expresamente.',
+    'sin_autorizacion': 'El archivo no trae la autorización y el SRI todavía no la confirmó.',
+    'sri_no_disponible': 'No se pudo consultar al SRI: no es un rechazo. Revisa el motivo de la última consulta y vuelve a '
+                         'intentarlo.',
+    'en_proceso_sri': 'El SRI todavía no autoriza ni rechaza el comprobante: vuelve a verificar más tarde.',
+}
+EXPLICACION_RECHAZO_ANTERIOR = ('Se consultó con la versión anterior, que no guardaba el estado exacto del SRI: puede ser un '
+                                'rechazo o una consulta que el SRI no admitió (p. ej. por la fecha). Sigue sin poder '
+                                'incorporarse: vuelve a verificar para saberlo.')
+NIVEL_CONSULTA = {'autorizado': messages.SUCCESS}   # lo demás es un aviso: la consulta se hizo; el panel dice si impide incorporar
+
+
+def _hora(valor):
+    return timezone.localtime(valor).strftime('%d/%m/%Y %H:%M:%S') if valor else ''
+
+
+def verificacion_dict(d):
+    """La verificación en sus tres dimensiones separadas (lo que declara el XML, lo que respondió el SRI y la revisión
+    interna del comercio) y el último intento de consulta (fecha, usuario, resultado y mensaje)."""
+    ultima = None
+    if d.verificado_en:
+        usuario = d.ultima_consulta_por if d.ultima_consulta_por_id else None
+        ultima = {'en': d.verificado_en, 'en_texto': _hora(d.verificado_en),
+                  'usuario': (usuario.names or usuario.username) if usuario else None,
+                  'resultado': {'id': d.ultima_consulta_resultado, 'nombre': d.get_ultima_consulta_resultado_display()},
+                  'mensaje': d.ultima_consulta_mensaje,
+                  'fallida': d.ultima_consulta_resultado in DocumentoImportado.CONSULTA_FALLIDA,
+                  'conserva_respuesta_anterior': (d.ultima_consulta_resultado not in sv.RESULTADOS_CONCLUYENTES and
+                                                  d.estado_verificacion in DocumentoImportado.VERIFICACION_CONCLUYENTE)}
+    limite = timezone.now() - timedelta(seconds=limites.SRI_CONSULTA_EN_CURSO_SEGUNDOS)
+    return {
+        'sri': {'id': d.estado_verificacion, 'nombre': d.get_estado_verificacion_display(),
+                'explicacion': (EXPLICACION_RECHAZO_ANTERIOR if d.ultima_consulta_resultado == 'rechazo_anterior'
+                                else EXPLICACION_VERIFICACION.get(d.estado_verificacion, '')), 'respuesta_en': d.respuesta_sri_en,
+                'respuesta_en_texto': _hora(d.respuesta_sri_en),
+                'concluyente': d.estado_verificacion in DocumentoImportado.VERIFICACION_CONCLUYENTE,
+                'bloquea': d.estado_verificacion in DocumentoImportado.VERIFICACION_BLOQUEA},
+        'xml': {**sv.autorizacion_del_xml(d), 'fecha_texto': _hora(d.fecha_autorizacion)},
+        'revision_interna': {'id': d.estado_revision, 'nombre': d.get_estado_revision_display()},
+        'ultima_consulta': ultima,
+        'fuera_de_rango': d.ultima_consulta_resultado == 'fuera_de_rango',
+        'en_curso': bool(d.consulta_en_curso and d.consulta_en_curso > limite),
+    }
+
+
 def documento_dict(d, detalle=False):
     item = {
         'id': d.pk, 'clave_acceso': d.clave_acceso, 'cod_doc': d.cod_doc, 'tipo_documento': d.get_cod_doc_display(), 'version': d.version,
@@ -82,7 +136,9 @@ def documento_dict(d, detalle=False):
                      'total_iva': d.total_iva, 'total_ice': d.total_ice, 'total_irbpnr': d.total_irbpnr, 'importe_total': d.importe_total},
         'estados': {
             'procesamiento': {'id': d.estado_procesamiento, 'nombre': d.get_estado_procesamiento_display()},
-            'verificacion': {'id': d.estado_verificacion, 'nombre': d.get_estado_verificacion_display(), 'en': d.verificado_en},
+            'verificacion': {'id': d.estado_verificacion, 'nombre': d.get_estado_verificacion_display(), 'en': d.verificado_en,
+                             'resultado': d.ultima_consulta_resultado,
+                             'concluyente': d.estado_verificacion in DocumentoImportado.VERIFICACION_CONCLUYENTE},
             'clasificacion': {'id': d.clasificacion, 'nombre': d.get_clasificacion_display()},
             'revision': {'id': d.estado_revision, 'nombre': d.get_estado_revision_display()},
             'contable': {'id': d.estado_contable, 'nombre': d.get_estado_contable_display()},
@@ -90,6 +146,7 @@ def documento_dict(d, detalle=False):
         'proveedor': {'id': d.proveedor_id, 'nombre': d.proveedor.name} if d.proveedor_id else None,
         'cliente': {'id': d.cliente_id, 'nombre': d.cliente.user.names} if d.cliente_id else None,
         'compra_id': d.compra_id, 'venta_id': d.venta_id, 'advertencias': d.advertencias, 'creado': d.creado,
+        'verificacion_sri': verificacion_dict(d),
     }
     if detalle:
         comprobante = desde_xml.comprobante_completo(d) if d.estado_procesamiento == 'procesado' else {}
@@ -338,7 +395,8 @@ class DocumentosApi(ApiMixin, View):
         bandeja = request.GET.get('bandeja', 'pendientes')
         if bandeja not in BANDEJAS:
             return error('Bandeja no válida.')
-        consulta = DocumentoImportado.objects.select_related('proveedor', 'cliente__user').filter(BANDEJAS[bandeja])
+        consulta = (DocumentoImportado.objects.select_related('proveedor', 'cliente__user', 'archivo_xml', 'ultima_consulta_por')
+                    .filter(BANDEJAS[bandeja]))
         cod_doc = (request.GET.get('cod_doc') or '').strip()
         if cod_doc:
             if cod_doc not in TIPOS_IMPORTADOS:
@@ -361,10 +419,16 @@ class DocumentoApi(ApiMixin, View):
 
 
 class VerificarDocumentoApi(ApiMixin, View):
+    """Consulta (o vuelve a consultar) el documento en el SRI. El resultado y el intento van en documento.verificacion_sri;
+    con otra consulta en curso para el mismo documento responde 409 `consulta_en_curso` sin consultar otra vez."""
     permission_required = REVISAR
 
     def post(self, request, pk):
-        documento = sv.verificar_en_sri(get_object_or_404(DocumentoImportado, pk=pk), request.user)
+        documento = get_object_or_404(DocumentoImportado, pk=pk)
+        try:
+            documento = sv.verificar_en_sri(documento, request.user)
+        except sv.ErrorImportacion as e:
+            return error(str(e), 409 if e.codigo == 'consulta_en_curso' else 400, codigo=e.codigo)
         return JsonResponse({'documento': documento_dict(documento, detalle=True)})
 
 
@@ -601,15 +665,24 @@ class Documento(Pagina):
         try:
             if datos.get('accion') == 'verificar':
                 documento = sv.verificar_en_sri(documento, request.user)
-                estado = documento.get_estado_verificacion_display()
-                nivel = messages.SUCCESS if documento.estado_verificacion == 'verificada_sri' else messages.WARNING
-                messages.add_message(request, nivel, f'Resultado de la consulta al SRI: {estado}.')
+                messages.add_message(request, NIVEL_CONSULTA.get(documento.ultima_consulta_resultado, messages.WARNING),
+                                     mensaje_consulta(documento))
             else:
                 sv.revisar(documento, request.user, datos.get('accion'), datos)
                 messages.success(request, 'Listo.')
         except sv.ErrorImportacion as e:
-            messages.error(request, str(e))
+            (messages.info if e.codigo == 'consulta_en_curso' else messages.error)(request, str(e))
         return HttpResponseRedirect(reverse('importacion_documento', args=[pk]))
+
+
+def mensaje_consulta(documento):
+    """Aviso tras «Verificar en el SRI»: el resultado de ESTE intento y, si falló, que se conserva la respuesta anterior."""
+    hora = timezone.localtime(documento.verificado_en).strftime('%d/%m/%Y %H:%M:%S')
+    texto = f'Resultado de la consulta al SRI ({hora}): {documento.get_ultima_consulta_resultado_display()}.'
+    if (documento.ultima_consulta_resultado not in sv.RESULTADOS_CONCLUYENTES
+            and documento.estado_verificacion in DocumentoImportado.VERIFICACION_CONCLUYENTE):
+        texto += f' Se conserva la respuesta anterior del SRI: {documento.get_estado_verificacion_display()}.'
+    return texto
 
 
 class Reglas(Pagina):

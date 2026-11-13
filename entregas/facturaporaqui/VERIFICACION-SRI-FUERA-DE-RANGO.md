@@ -8,7 +8,10 @@ Al reproducir la primera respuesta con Suds 1.2.0, la implementación anterior d
 
 ## Integración
 
-- Integra sobre la base vigente y aplica la migración aditiva `importacion.0008_estado_fuera_rango_sri`.
-- Ejecuta `tests/test_importacion_xml_pdf.py` y `tests/test_importacion_flujo.py` con el entorno del proyecto. Se añadieron pruebas del caso observado y del botón.
-- Repite la consulta desde el detalle de la factura de El Rosado después de desplegar. Debe mostrar **Fecha fuera del rango del SRI** si persiste la misma respuesta. No se deben reimportar ni editar masivamente los estados históricos.
+**Actualizado en la primera entrega:** esta corrección se integró y se amplió en `primera-entrega/verificar-sri.md`.
+El fuera de rango dejó de ser un estado propio (`fuera_rango_sri`). Ahora es una consulta fallida, «No se pudo verificar
+en el SRI», con el resultado `fuera_de_rango` en el último intento y el mismo enlace al portal. La migración
+`importacion.0009` traduce los estados. Después de desplegar, la factura de El Rosado debe mostrar **No se pudo
+verificar: fecha fuera del rango de la consulta del SRI** si el SRI repite la misma respuesta.
+
 - El cambio conserva el flujo de autorización del emisor y los permisos y pasos de revisión de la compra. La consulta manual en el portal es independiente de la verificación del XML.

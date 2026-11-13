@@ -23,9 +23,12 @@ Estado al 14/10/2026: implementado en `plataforma`, **sin publicar**. App `core/
 2. **Validación** (`procesar_entrada`):
    - XML → `procesar_xml_sri`.
    - PDF → `procesar_ride_pdf` → clave → `consultar_autorizacion` → mismo procesador de XML.
-3. **Verificación** (`verificar_en_sri`):
+3. **Verificación** (`verificar_en_sri`; detalle en `primera-entrega/verificar-sri.md`):
    - Compara emisor, receptor, fecha, número, base, IVA y total con el comprobante autorizado en el SRI.
    - Lo que el archivo declara (`declarada_en_archivo`) es distinto de lo verificado (`verificada_sri`).
+   - Una consulta fallida (`sri_no_disponible`, con su motivo) nunca es un rechazo. Tampoco borra una respuesta
+     concluyente anterior del SRI.
+   - Cada intento queda en el documento (`verificado_en`, `ultima_consulta_*`). Reintentar no crea otro documento.
 4. **Clasificación** (`clasificar`), por coincidencia **exacta** con el RUC de la empresa activa, sin recortar identificaciones:
    - emitido: el emisor es la empresa;
    - recibido: el receptor es la empresa;

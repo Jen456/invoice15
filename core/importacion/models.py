@@ -87,15 +87,39 @@ class DocumentoImportado(TenantModel):
     ORIGENES = (('xml', 'Archivo XML'), ('pdf', 'RIDE en PDF'), ('sri', 'Consulta al SRI'), ('manual', 'Clave escrita a mano'),
                 ('lista', 'Lista de claves de acceso'), ('reporte', 'Reporte del portal del SRI'))
     PROCESAMIENTO = (('pendiente_xml', 'Pendiente del XML autorizado'), ('procesado', 'Procesado'))
-    VERIFICACION = (('sin_autorizacion', 'El archivo no trae autorización'),
-                    ('declarada_en_archivo', 'Autorización declarada en el archivo (sin verificar)'),
-                    ('verificada_sri', 'Verificada en el SRI'),
+    # Verificación en el SRI (entregas/facturaporaqui/primera-entrega/verificar-sri.md). Lo que declara el XML, lo que
+    # respondió el SRI y la revisión interna del comercio (estado_revision) son cosas distintas: el XML solo «declara»;
+    # una consulta fallida nunca es un rechazo ni borra la última respuesta concluyente del SRI.
+    VERIFICACION = (('sin_autorizacion', 'El XML no trae autorización (sin verificar en el SRI)'),
+                    ('declarada_en_archivo', 'Autorización declarada en el XML (sin confirmar en el SRI)'),
+                    ('verificada_sri', 'Autorización confirmada en el SRI'),
                     ('discrepancia_sri', 'Difiere de lo autorizado en el SRI'),
-                    ('no_autorizada_sri', 'El SRI no la autoriza'),
+                    ('no_autorizada_sri', 'Rechazo confirmado por el SRI (NO AUTORIZADO)'),
                     ('no_encontrada_sri', 'El SRI no tiene esa clave'),
-                    ('sri_no_disponible', 'No se pudo confirmar con el SRI'),
-                    ('fuera_rango_sri', 'Fecha fuera del rango del SRI'),
+                    ('sri_no_disponible', 'No se pudo verificar en el SRI'),
                     ('en_proceso_sri', 'El SRI todavía la está procesando'))
+    # Respuestas concluyentes del SRI: un intento posterior que falla no las cambia. Las que impiden incorporar.
+    VERIFICACION_CONCLUYENTE = ('verificada_sri', 'no_autorizada_sri', 'no_encontrada_sri', 'discrepancia_sri')
+    VERIFICACION_BLOQUEA = ('no_autorizada_sri', 'no_encontrada_sri', 'discrepancia_sri')
+    # Resultado del último intento de consulta (uno por documento: reintentar lo reemplaza; la bitácora guarda todos).
+    RESULTADOS_CONSULTA = (('autorizado', 'Autorización confirmada'),
+                           ('discrepancia', 'Autorizada en el SRI, pero el archivo importado difiere'),
+                           ('no_autorizado', 'Rechazo confirmado: NO AUTORIZADO'),
+                           ('no_encontrado', 'El SRI no tiene un comprobante con esa clave'),
+                           ('en_proceso', 'El SRI todavía la está procesando'),
+                           ('fuera_de_rango', 'No se pudo verificar: fecha fuera del rango de la consulta del SRI'),
+                           ('tiempo_agotado', 'No se pudo verificar: tiempo de espera agotado'),
+                           ('sin_conexion', 'No se pudo verificar: error de red'),
+                           ('servicio_no_disponible', 'No se pudo verificar: servicio del SRI no disponible'),
+                           ('error_sri', 'No se pudo verificar: error del servicio del SRI'),
+                           ('respuesta_inesperada', 'No se pudo verificar: respuesta inesperada del SRI'),
+                           ('clave_invalida', 'No se consultó: la clave de acceso no es válida'),
+                           ('sin_respuesta', 'No se pudo verificar: sin respuesta del SRI'),
+                           ('rechazo_anterior', 'El SRI no la autorizó en una consulta anterior a esta versión (sin el estado '
+                                                'exacto)'))
+    # 'sin_respuesta' y 'rechazo_anterior' solo los deja la migración 0009 en los documentos de antes.
+    CONSULTA_FALLIDA = ('fuera_de_rango', 'tiempo_agotado', 'sin_conexion', 'servicio_no_disponible', 'error_sri',
+                        'respuesta_inesperada', 'clave_invalida', 'sin_respuesta')
     CLASIFICACION = (('pendiente', 'Sin clasificar'), ('emitido', 'Emitido por la empresa (venta)'),
                      ('recibido', 'Recibido por la empresa (compra o gasto)'), ('ajeno', 'Documento ajeno a la empresa'),
                      ('revision_manual', 'Requiere revisión manual'))
@@ -139,7 +163,16 @@ class DocumentoImportado(TenantModel):
     # Estados (uno por etapa)
     estado_procesamiento = models.CharField(max_length=20, choices=PROCESAMIENTO, default='procesado', verbose_name='Procesamiento')
     estado_verificacion = models.CharField(max_length=25, choices=VERIFICACION, default='sin_autorizacion', verbose_name='Verificación')
-    verificado_en = models.DateTimeField(null=True, blank=True, verbose_name='Verificado en el SRI el')
+    # Último intento de consulta al SRI, con cualquier resultado (verificado_en conserva su nombre de siempre).
+    verificado_en = models.DateTimeField(null=True, blank=True, verbose_name='Última consulta al SRI')
+    ultima_consulta_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                            related_name='+', verbose_name='Última consulta al SRI hecha por')
+    ultima_consulta_resultado = models.CharField(max_length=25, choices=RESULTADOS_CONSULTA, blank=True, default='',
+                                                 verbose_name='Resultado de la última consulta al SRI')
+    ultima_consulta_mensaje = models.CharField(max_length=500, blank=True, default='',
+                                               verbose_name='Detalle de la última consulta al SRI')
+    respuesta_sri_en = models.DateTimeField(null=True, blank=True, verbose_name='Última respuesta concluyente del SRI')
+    consulta_en_curso = models.DateTimeField(null=True, blank=True, verbose_name='Consulta al SRI en curso desde')
     clasificacion = models.CharField(max_length=20, choices=CLASIFICACION, default='pendiente', verbose_name='Clasificación')
     estado_revision = models.CharField(max_length=15, choices=REVISION, default='pendiente', verbose_name='Revisión')
     estado_contable = models.CharField(max_length=15, choices=CONTABLE, default='sin_propuesta', verbose_name='Contabilidad')
@@ -178,6 +211,20 @@ class DocumentoImportado(TenantModel):
     def get_cod_doc_display(self):
         from core.importacion.xml_sri import NOMBRES
         return NOMBRES.get(self.cod_doc, self.cod_doc)
+
+    def get_estado_verificacion_display(self):
+        """Nombre del estado de verificación. Un «no autorizada» que viene de la versión anterior (que no guardaba el estado
+        exacto del SRI: una consulta rechazada por la fecha también quedaba así) no se presenta como rechazo confirmado;
+        sigue sin poder incorporarse hasta volver a verificarlo."""
+        if self.estado_verificacion == 'no_autorizada_sri' and self.ultima_consulta_resultado == 'rechazo_anterior':
+            return 'El SRI no la autorizó (consulta anterior: vuelve a verificar)'
+        return self._get_FIELD_display(self._meta.get_field('estado_verificacion'))
+
+    def verificacion_en_frase(self):
+        """Estado de verificación dentro de una frase («No se puede incorporar: …»): sin mayúscula inicial, con las siglas
+        intactas."""
+        texto = self.get_estado_verificacion_display()
+        return texto[:1].lower() + texto[1:]
 
 
 class ImpuestoImportado(TenantModel):

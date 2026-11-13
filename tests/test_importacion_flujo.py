@@ -214,11 +214,12 @@ class TestVerificacionYRevision:
         r = web.post(f'/importacion/documentos/{documento.pk}/', {'accion': 'verificar', 'empresa': empresa.pk}, follow=True)
         assert r.status_code == 200
         html = r.content.decode()
-        assert 'Resultado de la consulta al SRI: Fecha fuera del rango del SRI.' in html
-        assert 'portal oficial del SRI' in html and 'Última consulta al SRI' in html
+        assert 'No se pudo verificar: fecha fuera del rango de la consulta del SRI.' in html and 'Resultado de la consulta al SRI (' in html
+        assert 'portal oficial del SRI' in html and 'Última consulta al SRI' in html and 'Rechazo confirmado' not in html
         with company_context(empresa):
             documento.refresh_from_db()
-            assert documento.estado_verificacion == 'fuera_rango_sri'
+            # una consulta fallida con su motivo (no un estado aparte ni un rechazo): no bloquea, pide confirmar sin verificar
+            assert (documento.estado_verificacion, documento.ultima_consulta_resultado) == ('sri_no_disponible', 'fuera_de_rango')
             assert documento.clasificacion == 'recibido' and documento.estado_revision == 'pendiente'
             assert documento.verificado_en and documento.compra_id is None
             assert documento.eventos.filter(tipo='verificacion').latest('pk').datos['estados_sri'] == ['RECHAZADA']

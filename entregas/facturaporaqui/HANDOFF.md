@@ -1761,7 +1761,7 @@ El Vendedor no tiene nada de la importación. El Contador y Consulta ven pero no
 | `POST /importacion/api/entradas/<id>/clave/` | add | `clave` (form o JSON) | `{entrada}`; registra la clave y busca el XML en el SRI |
 | `GET /importacion/api/documentos/` | view | `?bandeja=pendientes\|recibidos\|emitidos\|ajenos\|sin_xml\|todos&q=&pagina=` | `{bandeja, documentos, total, pagina, paginas}` |
 | `GET /importacion/api/documentos/<id>/` | view | — | `{documento}` con el detalle completo |
-| `POST /importacion/api/documentos/<id>/verificar/` | change | — | `{documento}` |
+| `POST /importacion/api/documentos/<id>/verificar/` | change | — | `{documento}` (el intento en `documento.verificacion_sri.ultima_consulta`); 409 `consulta_en_curso` si ya se está consultando ese documento |
 | `POST /importacion/api/documentos/<id>/revisar/` | change | `accion` y sus datos (form o JSON) | `{documento}` o 400 con `error` |
 | `GET` / `POST /importacion/api/reglas/` | view / change | campos de la regla (JSON: solo cambia lo que envías) | `{reglas, puede_editar, opciones}` |
 | `GET /importacion/archivos/<id>/descargar/` | view | — | descarga privada (XML o PDF), `no-store` |
@@ -1808,8 +1808,10 @@ Las páginas de los módulos (`/importacion/nueva/`, `lotes/`, `lotes/<id>/`, `p
 **Estados y transiciones del documento:**
 - **Procesamiento:** `pendiente_xml` (solo la clave, sin importes) → `procesado` cuando llega el XML (subido o del SRI).
 - **Verificación:**
-  - `sin_autorizacion` o `declarada_en_archivo` → (verificar) → `verificada_sri`, `discrepancia_sri`, `no_autorizada_sri`, `no_encontrada_sri` o `sri_no_disponible`.
-  - Lo declarado en el archivo **no** prueba autenticidad: muéstralo distinto de «Verificada en el SRI».
+  - `sin_autorizacion` o `declarada_en_archivo` → (verificar) → `verificada_sri`, `discrepancia_sri`, `no_autorizada_sri`, `no_encontrada_sri`, `en_proceso_sri` o `sri_no_disponible`.
+  - Lo declarado en el archivo **no** prueba autenticidad: muéstralo distinto de «Autorización confirmada en el SRI».
+  - `sri_no_disponible` es una consulta fallida, no un rechazo. El motivo está en `estados.verificacion.resultado`: `tiempo_agotado`, `sin_conexion`, `servicio_no_disponible`, `error_sri`, `fuera_de_rango`, `respuesta_inesperada` o `clave_invalida`.
+  - Un fallo no reemplaza una respuesta concluyente anterior. Lo explica `primera-entrega/verificar-sri.md`.
   - `discrepancia_sri` pasa la clasificación a `revision_manual`.
 - **Clasificación:**
   - `emitido`, `recibido`, `ajeno` o `revision_manual`; `pendiente` mientras falta el XML.
