@@ -343,6 +343,8 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-stage #fp-totales { background: #f3f9fb; border: 1px solid #cbdfe8; }
 .fp-stage #fp-totales tr:last-child { background: #163B50; color: white; font-size: 1.2rem; }
 .fp-stage .fp-proforma-aviso, .fp-stage-note { border-left: 4px solid #44BADD; padding: 1rem; background: #E5F1F6; border-radius: 12px; overflow-wrap: anywhere; }
+/* El aviso de la proforma que se factura usa .alert-info (texto blanco de AdminLTE) sobre este fondo claro: texto oscuro. */
+.fp-stage .fp-proforma-aviso, .fp-stage .fp-proforma-aviso .alert-link { color: #163B50; }
 .fp-stage .fp-stage-duplicate { background: #fff5df; border: 1px solid #b88025; border-radius: 12px; padding: 1rem 1rem 1rem 2.5rem; margin-top: 1rem; }
 .fp-stage .fp-anulado-form { border: 1px solid #cbdfe8; padding: 1.25rem; border-radius: 14px; background: white; }
 .fp-stage .fp-anulado-form .form-check { margin: 1.2rem 0; padding-left: 1.8rem; }
