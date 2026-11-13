@@ -23,15 +23,17 @@
     {% if proforma_facturar %}
         <div class="alert alert-info fp-proforma-aviso" role="status">
             <p class="mb-1"><b>Facturando la proforma {{ proforma_facturar.numero }} (total USD {{ proforma_facturar.total }})</b></p>
+            {% if proforma_borrador %}<p class="mb-1 fp-borrador-estado">Factura en borrador · total USD {{ proforma_borrador.totales.total }}. «Emitir factura» es lo único que la envía al SRI.</p>{% endif %}
             <ul class="mb-1 pl-3">
                 {% for aviso in proforma_avisos %}<li>{{ aviso }}</li>{% endfor %}
             </ul>
             <a href="{{ proforma_facturar.url_ver }}" class="alert-link">Volver a la proforma</a>
         </div>
         <input type="hidden" name="proforma_id" value="{{ proforma_facturar.id }}">
+        {% if proforma_borrador %}<input type="hidden" name="borrador_id" value="{{ proforma_borrador.id }}">{% endif %}
     {% endif %}
     {% permisos_de 'add_product' 'add_client' 'change_product' as fp_alta %}
-    <div class="fp-sale-editor" data-company="{{ company.pk }}" data-precio-editable="{% if fp_alta.change_product %}1{% else %}0{% endif %}">
+    <div class="fp-sale-editor" data-company="{{ company.pk }}" data-precio-editable="{% if fp_alta.change_product %}1{% else %}0{% endif %}"{% if proforma_borrador %} data-tarifa-editable="{% if tarifa_editable %}1{% else %}0{% endif %}"{% endif %}>
     <section id="fp-sale-base" class="fp-sale-base" aria-labelledby="fp-sale-base-title" data-list-url="{{ list_url }}" hidden>
         <div class="fp-sale-base-heading"><i class="fas fa-copy" aria-hidden="true"></i><h2 id="fp-sale-base-title">Una nueva factura, con los mismos productos</h2></div>
         <p>Elige el cliente y revisa cantidades, precios y pago. El sistema asignará un número nuevo del punto de emisión activo al emitir.</p>
@@ -116,9 +118,19 @@
     <button type="submit" class="btn btn-primary btn-flat">
         <i class="fas fa-file-invoice-dollar"></i> <span id="fp-sale-submit-label">Emitir factura</span>
     </button>
+    {% if proforma_borrador %}
+    <button type="button" class="btn btn-outline-primary btn-flat fp-guardar-borrador">
+        <i class="fas fa-save" aria-hidden="true"></i> Guardar borrador
+    </button>
+    {% endif %}
     <button type="button" class="btn btn-outline-secondary btn-flat btnAdditionalInfo">
         <i class="fas fa-folder-plus"></i> Información adicional
     </button>
+    {% if proforma_borrador %}
+    <button type="button" class="btn btn-outline-danger btn-flat fp-descartar-borrador">
+        <i class="fas fa-eraser" aria-hidden="true"></i> Descartar borrador
+    </button>
+    {% endif %}
     <a href="{{ list_url }}" class="btn btn-danger btn-flat">
         <i class="fas fa-times"></i> Cancelar
     </a>
