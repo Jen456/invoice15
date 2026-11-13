@@ -8,12 +8,14 @@ Las firmas electrónicas y los respaldos nunca se entregan por esta vía.
 import mimetypes
 import os
 from pathlib import PurePosixPath
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, Http404, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseRedirect
+from django.urls import reverse
 
+from core.tenancy.models import Membership
 from core.tenancy.storage import GLOBAL_PREFIXES, TENANT_ROOT
 
 BLOCKED_SUFFIXES = {'.p12', '.pfx', '.key', '.pem'}
@@ -45,10 +47,21 @@ def can_access(request, relative):
     return parts[0] in GLOBAL_PREFIXES
 
 
+def falta_elegir_empresa(request, relative):
+    """Sin empresa activa, ¿el archivo es de una empresa del usuario? (p. ej. al volver a entrar por un enlace)."""
+    parts = relative.parts
+    if parts[0] != TENANT_ROOT or len(parts) <= 2 or getattr(request, 'company', None) is not None:
+        return False
+    empresas = Membership.objects.active().filter(user=request.user).values_list('company__uuid', flat=True)
+    return parts[1] in {str(uuid) for uuid in empresas}
+
+
 @login_required
 def protected_media(request, path):
     relative, absolute = resolve_media_path(path)
     if not can_access(request, relative):
+        if falta_elegir_empresa(request, relative):
+            return HttpResponseRedirect(f"{reverse('company_select')}?{urlencode({'next': request.path})}")
         raise Http404
     content_type = mimetypes.guess_type(absolute)[0] or 'application/octet-stream'
     if settings.FPA_X_ACCEL_PREFIX:

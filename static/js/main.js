@@ -33,6 +33,15 @@ var page = {
         }
     },
     initial: function () {
+        // El menú abierto se recuerda por posición: con otra empresa (otro rol, otros módulos) se olvida, también si el
+        // cambio se hizo en otra pestaña.
+        var empresa = $('meta[name="fpa-empresa"]').attr('content') || '';
+        if (empresa && localStorage.getItem('fpa_menu_empresa') !== empresa) {
+            localStorage.removeItem(this.components.vertical.module_header);
+            localStorage.removeItem(this.components.vertical.submodule);
+            localStorage.removeItem(this.components.vertical.single_module);
+            localStorage.setItem('fpa_menu_empresa', empresa);
+        }
         console.log(localStorage);
         var element = null;
         // vertical
