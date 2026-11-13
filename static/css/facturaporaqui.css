@@ -218,8 +218,8 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-importacion progress { width: 100%; height: 12px; accent-color: #176581; border-radius: 20px; margin: .75rem 0; }
 .fp-import-tag { display: inline-block; border: 1px solid #b9d6e3; background: #e5f1f6; color: #163B50; border-radius: 20px; padding: .3rem .65rem; font-size: .85rem; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
 .fp-import-tag[data-state=verificada_sri], .fp-import-tag[data-state=procesado] { background: #e4f3ee; border-color: #b1d7c9; color: #225d48; }
-.fp-import-tag[data-state=declarada_en_archivo], .fp-import-tag[data-state=duplicado], .fp-import-tag[data-state=pendiente_clave] { background: #fff3dc; border-color: #e4c88d; color: #765419; }
-.fp-import-tag[data-state=ajeno], .fp-import-tag[data-state=discrepancia_sri], .fp-import-tag[data-state=no_autorizada_sri], .fp-import-tag[data-state=rechazado] { background: #fff0ed; color: #a8381f; border-color: #e9b4a8; }
+.fp-import-tag[data-state=declarada_en_archivo], .fp-import-tag[data-state=sin_autorizacion], .fp-import-tag[data-state=sri_no_disponible], .fp-import-tag[data-state=en_proceso_sri], .fp-import-tag[data-state=duplicado], .fp-import-tag[data-state=pendiente_clave] { background: #fff3dc; border-color: #e4c88d; color: #765419; }
+.fp-import-tag[data-state=ajeno], .fp-import-tag[data-state=discrepancia_sri], .fp-import-tag[data-state=no_autorizada_sri], .fp-import-tag[data-state=no_encontrada_sri], .fp-import-tag[data-state=rechazado] { background: #fff0ed; color: #a8381f; border-color: #e9b4a8; }
 .fp-import-tag[data-state=recibido] { background: #163B50; color: white; }
 .fp-import-filters { display: flex; flex-wrap: wrap; gap: 1rem; padding: 1.25rem; background: white; border: 1px solid #cbdfe8; border-radius: 14px; margin-bottom: 1rem; align-items: end; }
 .fp-import-filters > div { flex: 1 1 230px; min-width: 0; }

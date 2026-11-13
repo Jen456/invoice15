@@ -15,6 +15,8 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
+from core.importacion.models import DocumentoImportado
+
 
 @dataclass(frozen=True)
 class RetencionLineaLeida:
@@ -57,7 +59,7 @@ class RetencionLeida:
     sustentos: tuple[SustentoLeido, ...]
 
 
-VERIFICACIONES_QUE_BLOQUEAN = ('no_autorizada_sri', 'no_encontrada_sri', 'discrepancia_sri')
+VERIFICACIONES_QUE_BLOQUEAN = DocumentoImportado.VERIFICACION_BLOQUEA   # rechazo confirmado, sin la clave o con discrepancia
 URL_RETENCIONES_RECIBIDAS = '/comprobantes/retenciones-recibidas/'
 
 
@@ -95,7 +97,7 @@ def retencion_recibida_de(documento) -> RetencionLeida:
     if documento.clasificacion != 'recibido':
         raise _error('Solo se registra una retención que recibió la empresa (la empresa es el sujeto retenido).', 'no_recibido')
     if documento.estado_verificacion in VERIFICACIONES_QUE_BLOQUEAN:
-        raise _error(f'No se puede registrar: {documento.get_estado_verificacion_display().lower()}.', 'verificacion')
+        raise _error(f'No se puede registrar: {documento.verificacion_en_frase()}.', 'verificacion')
     retencion = comprobante_completo(documento).get('retencion') or {}
     docs = retencion.get('docs_sustento') or []
     if not docs:
@@ -176,7 +178,7 @@ def bloqueos_retencion(documento) -> list[dict]:
     if documento.estado_procesamiento != 'procesado' or documento.archivo_xml_id is None:
         bloqueo('sin_xml', 'El documento todavía no tiene su XML autorizado.')
     if documento.estado_verificacion in VERIFICACIONES_QUE_BLOQUEAN:
-        bloqueo('verificacion', f'No se puede registrar: {documento.get_estado_verificacion_display().lower()}.')
+        bloqueo('verificacion', f'No se puede registrar: {documento.verificacion_en_frase()}.')
     if documento.estado_revision == 'descartado':
         bloqueo('descartado', 'El documento está descartado: reábrelo antes.')
     if documento.estado_revision == 'vinculado':
