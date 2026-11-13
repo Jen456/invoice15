@@ -62,6 +62,20 @@ Codex (conectar cada pantalla v9 cuando su ruta esté publicada y los tres ajust
 - **Contrato contable v9:** [CONTRATO-CONTABLE-V9.md](CONTRATO-CONTABLE-V9.md) fija por pantalla lo que se conecta hoy, las rutas nuevas (C1–C7) con su forma exacta y solo los bloqueos reales: D7 para asientos; D5, D7 y apertura para mayor y estados financieros; la regla de cierre para cerrar o reabrir meses; el Excel y la inclusión en la lista de revisión para el piloto NEXALLTI. C1, C2, C3, C5 (evidencias) y C7 no tienen bloqueo.
 - **D9:** precios decididos por la propietaria: **$150 al año por módulo para una empresa y $250 para multiempresa**. Pendientes: impuestos, alcance multiempresa y condiciones de activación. El complemento sigue cerrado (registrado en `D9-COMPLEMENTO-CONTABLE-RECOMENDACION.md`).
 
+## Primera entrega del documento «Mejoras de la aplicación» v12 (13/11/2026) — en revisión, SIN publicar
+
+- **Rama:** `fase/primera-entrega`, desde `96d39e1` (= producción `e0f2902` + documentación). Une `fase/pe-panel-empresa`,
+  `fase/pe-verificar-sri` (incluye la entrega de Codex `31b4e6f`) y `fase/pe-convertir-factura`. Se publica después de revisar el PR.
+- **Alcance:** §12 panel y empresa activa (+ primer punto de §7), §12 verificación en el SRI de documentos importados, §1/§13
+  «Convertir en factura», IVA por línea, transferencia y ocultar el vendedor de la proforma. Fuera: diseño de factura (ya
+  publicado), cobertura de ventas históricas (§12) y el resto del documento.
+- **Detalle:** [primera-entrega/](primera-entrega/) (`panel-empresa-activa.md`, `verificar-sri.md`, `convertir-en-factura.md`).
+- **Migraciones:** importacion 0008-0009 (estados y último intento; traduce los estados guardados), proformas 0004
+  (borrador de factura y ocultar vendedor), tenancy 0013 (acciones de auditoría). Aditivas y reversibles.
+- **Al publicar:** los 4 documentos importados «no autorizada» de producción (empresa 17) quedan bloqueados con la nota
+  «vuelve a verificar», porque la versión anterior no guardaba qué respondió el SRI; conviene verificarlos de nuevo.
+- **wt-cierre:** el arreglo «sin empresa» pendiente queda incluido y ampliado en esta rama; no integrarlo por separado.
+
 ## Diseño de factura — publicado en piloto, `64c5416` (Claude, 08/11/2026 08:38 UTC)
 
 - **Qué:** «Configuración → Diseño de factura» (`/configuracion/diseno-factura/`): cinco plantillas de FacturaPorAquí, colores del comercio, vista previa con una factura de muestra en memoria y guardado por comercio (Propietario y Administrador). Solo facturas **nuevas**: la copia del diseño se fija en `Sale.ride_diseno` en la primera firma y no cambia en los reintentos; las históricas siguen con el RIDE original, byte a byte. XML, firma, SRI, impuestos, secuenciales y cupo, sin cambios. Detalle, migraciones y orden de vuelta: [DISENO-FACTURA.md](DISENO-FACTURA.md).
