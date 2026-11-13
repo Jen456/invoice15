@@ -50,7 +50,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             else:
                 data['error'] = 'No ha seleccionado ninguna opción'
         except Exception as e:
-            data['error'] = str(e)
+            data = {'error': str(e)}   # `data` puede ser ya una lista (gráficos): data['error'] daba TypeError (500)
         return HttpResponse(json.dumps(data), content_type='application/json')
 
     def get_context_data(self, **kwargs):

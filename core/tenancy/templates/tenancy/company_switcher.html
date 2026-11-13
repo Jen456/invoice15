@@ -1,20 +1,22 @@
 {% if company %}
-    <li class="nav-item dropdown">
-        <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
+    {# Empresa activa (request.company, la misma de la barra lateral): nombre comercial y RUC #}
+    <li class="nav-item dropdown fp-empresa-activa" data-empresa-ruc="{{ company.ruc }}">
+        <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false" title="{{ company.tradename }} · RUC {{ company.ruc }}">
             <i class="fa-solid fa-building" aria-hidden="true"></i>
-            <span class="d-none d-md-inline">{{ company.tradename }}{% if session_group %} · {{ session_group.name }}{% endif %}</span>
-            <span class="sr-only">Empresa activa: {{ company.tradename }}</span>
+            {# nombre (recortado si es largo) sobre el RUC: la cabecera no se desborda a 768 px #}
+            <span class="fp-empresa-texto d-none d-md-inline-flex"><span class="fp-empresa-nombre">{{ company.tradename }}</span><small class="fp-empresa-ruc">RUC {{ company.ruc }}</small></span>
+            <span class="sr-only">Empresa activa: {{ company.tradename }}, RUC {{ company.ruc }}</span>
             <i class="fas fa-caret-down" aria-hidden="true"></i>
         </a>
         <div class="dropdown-menu dropdown-menu-right" style="max-width: calc(100vw - 16px);">
-            <span class="dropdown-header text-wrap">{{ company.tradename }}{% if session_group %} · {{ session_group.name }}{% endif %}</span>
+            <span class="dropdown-header text-wrap">{{ company.tradename }} · RUC {{ company.ruc }}{% if session_group %} · {{ session_group.name }}{% endif %}</span>
             <div class="dropdown-divider"></div>
             {% for m in user_memberships %}
                 {% if m.company_id != company.id %}
                     <form method="post" action="{% url 'company_switch' %}" class="m-0">
                         {% csrf_token %}
                         <input type="hidden" name="company" value="{{ m.company_id }}">
-                        <button type="submit" class="dropdown-item">{{ m.company.tradename }} <small class="text-muted">{{ m.group.name }}</small></button>
+                        <button type="submit" class="dropdown-item">{{ m.company.tradename }} <small class="text-muted">RUC {{ m.company.ruc }} · {{ m.group.name }}</small></button>
                     </form>
                 {% endif %}
             {% endfor %}

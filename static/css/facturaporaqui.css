@@ -33,6 +33,8 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 /* Ajustes posteriores a la publicación: textos completos y acciones móviles. */
 .sidebar .user-panel .info{min-width:0;flex:1;white-space:normal}
 .sidebar .user-panel .info a{white-space:normal;overflow-wrap:anywhere}
+.sidebar .user-panel .info small{color:#b9d3de;overflow-wrap:anywhere}
+.fp-empresa-activa>.nav-link{display:flex;align-items:center;gap:6px;height:auto;min-height:2.5rem}.fp-empresa-texto{flex-direction:column;align-items:flex-start;min-width:0;max-width:min(20vw,300px);line-height:1.15}.fp-empresa-nombre{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fp-empresa-ruc{white-space:nowrap;opacity:.8}@media (max-width:991.98px){.layout-top-nav .fp-empresa-texto{display:none!important}}
 .fp-chart-legend{list-style:none;padding:12px 0;margin:0;display:flex;flex-wrap:wrap;gap:8px 18px}
 .fp-chart-legend li{min-width:0;max-width:100%}
 .fp-chart-legend button{display:flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--fp-ink);text-align:left;overflow-wrap:anywhere;min-height:44px;max-width:100%;padding:6px;font:inherit}
