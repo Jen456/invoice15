@@ -1,6 +1,6 @@
 from django.urls import path
 
-from core.contabilidad import views
+from core.contabilidad import views, vistas_capacidades
 
 urlpatterns = [
     path('kardex/', views.KardexPagina.as_view(), name='contabilidad_kardex'),
@@ -12,4 +12,6 @@ urlpatterns = [
     path('api/kardex/movimientos/<int:pk>/anular/', views.AnularMovimiento.as_view(), name='contabilidad_kardex_anular'),
     path('api/kardex/<int:producto_id>/', views.KardexApi.as_view(), name='contabilidad_kardex_api'),
     path('api/inventario/', views.InventarioApi.as_view(), name='contabilidad_inventario_api'),
+    # Contrato de capacidades: responde también con el complemento cerrado o sin plan (reglas.RUTAS_DE_CAPACIDADES).
+    path('api/capacidades/', vistas_capacidades.CapacidadesApi.as_view(), name='contabilidad_capacidades'),
 ]

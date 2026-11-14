@@ -1,7 +1,10 @@
 """Acceso al Complemento Contable en el servidor (core/suscripciones): /tributario/ y /contabilidad/ exigen, además del plan
 pagado, que la empresa activa esté en la lista de revisión FPA_COMPLEMENTO_CONTABLE_REVISION (D9 pendiente: no se habilita
 comercialmente). Páginas, API, descargas y envíos; cambio de empresa; resumen del contador; «*» solo en local; la captura
-rápida de recibos no se bloquea. El resto de las pruebas corre con «*» (conftest)."""
+rápida de recibos no se bloquea. El resto de las pruebas corre con «*» (conftest).
+
+Única ruta de esos dos prefijos que responde con el complemento cerrado: GET /contabilidad/api/capacidades/, que explica el
+bloqueo sin dar datos contables (tests/test_capacidades.py, que además recorre todas las demás y comprueba que siguen cerradas)."""
 import pytest
 from django.contrib.auth.models import Group
 

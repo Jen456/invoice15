@@ -28,6 +28,10 @@ RUTAS_COMPLEMENTO_CONTABLE = ('/tributario/', '/contabilidad/')
 MENSAJE_COMPLEMENTO = ('El Complemento Contable (libros, revisión del mes, ATS, borradores del 104 y del 103, kardex e '
                        'inventario valorizado) todavía no está disponible: su precio y sus condiciones están por anunciar.')
 ENTORNOS_LOCALES = ('desarrollo', 'pruebas_automaticas')
+# Contrato de capacidades (core/contabilidad/capacidades.py): la ruta que EXPLICA por qué el complemento está cerrado, sin
+# plan o en solo consulta tiene que responder justo en esos casos, así que no exige ni complemento ni plan. No devuelve
+# ningún dato contable y no abre nada más: la coincidencia es exacta, no por prefijo.
+RUTAS_DE_CAPACIDADES = ('/contabilidad/api/capacidades/',)
 
 
 # Incluidos solo en los planes ilimitados (Ilimitado y Multiempresa), por decisión comercial del 15/10/2026.
@@ -53,7 +57,7 @@ MINUTOS_PAGO_PENDIENTE = 15
 
 
 def requiere_plan(path):
-    return path.startswith(RUTAS_DE_PAGO)
+    return path.startswith(RUTAS_DE_PAGO) and path not in RUTAS_DE_CAPACIDADES
 
 
 def requiere_ilimitado(path):
@@ -61,7 +65,7 @@ def requiere_ilimitado(path):
 
 
 def requiere_complemento(path):
-    return path.startswith(RUTAS_COMPLEMENTO_CONTABLE)
+    return path.startswith(RUTAS_COMPLEMENTO_CONTABLE) and path not in RUTAS_DE_CAPACIDADES
 
 
 def complemento_habilitado(company):

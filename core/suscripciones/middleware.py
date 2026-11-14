@@ -45,6 +45,18 @@ def _solo_consulta(request):
     return accion.startswith('search') or accion in ACCIONES_DE_CONSULTA
 
 
+def causa_licencia(request):
+    """Lo que el contrato de capacidades añade a un 403 de licencia, sin quitar nada de lo que ya llevaba: la causa y, en
+    las rutas del Complemento Contable, el estado de su licencia (el mismo objeto de GET /contabilidad/api/capacidades/).
+    En las demás rutas de pago ese objeto no se envía: describe el complemento y diría «complemento pendiente» en un
+    rechazo de ventas o de importación, que es del plan."""
+    datos = {'causa': 'licencia'}
+    if requiere_complemento(request.path):
+        from core.contabilidad.capacidades import licencia   # aquí dentro: capacidades importa este módulo
+        datos['licencia'] = licencia(request)
+    return datos
+
+
 class PlanMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -80,7 +92,8 @@ class PlanMiddleware:
             from core.tenancy.pestanas import empresa_cambiada, rechazo_empresa_cambiada
             if empresa_cambiada(request):   # pestaña abierta con otra empresa: primero eso, para que recargue
                 return rechazo_empresa_cambiada(request)
-            return JsonResponse({'error': mensaje, 'plan': plan, 'codigo': 'complemento_pendiente'}, status=403)
+            return JsonResponse({'error': mensaje, 'plan': plan, 'codigo': 'complemento_pendiente', **causa_licencia(request)},
+                                status=403)
         from core.tenancy.pestanas import empresa_cambiada, rechazo_empresa_cambiada
         if request.method != 'GET' and empresa_cambiada(request):   # pestaña abierta con otra empresa: primero eso
             return rechazo_empresa_cambiada(request)
@@ -90,4 +103,4 @@ class PlanMiddleware:
                 return HttpResponseRedirect(URL_SUSCRIPCION)
             messages.warning(request, mensaje + ' Pide al propietario de la empresa que active el plan.')
             return HttpResponseRedirect('/dashboard/')
-        return JsonResponse({'error': mensaje, 'plan': plan}, status=403)
+        return JsonResponse({'error': mensaje, 'plan': plan, 'codigo': 'plan', **causa_licencia(request)}, status=403)
