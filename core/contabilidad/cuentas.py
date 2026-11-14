@@ -141,25 +141,42 @@ def _texto(valor):
     return ' '.join(valor.split())
 
 
+def falla_del_codigo(codigo):
+    """Por qué no se puede guardar ese código (ya sin espacios sobrantes): la entrada de TEXTOS que lo dice, o None si
+    vale. La misma regla para el alta y para cada fila de una importación del plan."""
+    if not codigo:
+        return 'codigo'
+    if len(codigo) > CODIGO_CUENTA_MAX:
+        return 'codigo_largo'
+    if not codigo.isprintable():   # caracteres de control o invisibles: dos códigos distintos que se verían iguales
+        return 'codigo_caracteres'
+    return None
+
+
+def falla_del_nombre(nombre):
+    """Lo mismo que `falla_del_codigo`, para el nombre."""
+    if not nombre:
+        return 'nombre'
+    if len(nombre) > NOMBRE_CUENTA_MAX:
+        return 'nombre_largo'
+    if not nombre.isprintable():
+        return 'nombre_caracteres'
+    return None
+
+
 def _codigo(datos, errores):
     codigo = _texto(datos.get('codigo'))
-    if not codigo:
-        errores.agregar('codigo', TEXTOS['codigo'])
-    elif len(codigo) > CODIGO_CUENTA_MAX:
-        errores.agregar('codigo', TEXTOS['codigo_largo'])
-    elif not codigo.isprintable():   # caracteres de control o invisibles: dos códigos distintos que se verían iguales
-        errores.agregar('codigo', TEXTOS['codigo_caracteres'])
+    falla = falla_del_codigo(codigo)
+    if falla:
+        errores.agregar('codigo', TEXTOS[falla])
     return codigo or ''
 
 
 def _nombre(datos, errores):
     nombre = _texto(datos.get('nombre'))
-    if not nombre:
-        errores.agregar('nombre', TEXTOS['nombre'])
-    elif len(nombre) > NOMBRE_CUENTA_MAX:
-        errores.agregar('nombre', TEXTOS['nombre_largo'])
-    elif not nombre.isprintable():
-        errores.agregar('nombre', TEXTOS['nombre_caracteres'])
+    falla = falla_del_nombre(nombre)
+    if falla:
+        errores.agregar('nombre', TEXTOS[falla])
     return nombre or ''
 
 
@@ -267,17 +284,23 @@ def _version(datos, errores):
     return version
 
 
-def _desciende(posible_descendiente_id, cuenta_id):
-    """True si `posible_descendiente_id` es la propia cuenta o cuelga de ella (a cualquier profundidad). Una consulta: el
-    árbol de la empresa cabe en memoria y la profundidad no añade consultas."""
-    padres = dict(Cuenta.objects.order_by().values_list('pk', 'padre_id'))
-    vistos, actual = set(), posible_descendiente_id
+def cuelga_de(padres, posible_descendiente, cuenta):
+    """True si `posible_descendiente` es la propia `cuenta` o cuelga de ella (a cualquier profundidad) en el árbol
+    `padres` (`{cuenta: su padre, o None en la raíz}`). Es la regla «sin ciclos»: una cuenta no puede pasar bajo algo que
+    cuelga de ella. Vale para ids de cuentas guardadas y para los códigos de un archivo que todavía no se importó."""
+    vistos, actual = set(), posible_descendiente
     while actual is not None and actual not in vistos:
-        if actual == cuenta_id:
+        if actual == cuenta:
             return True
         vistos.add(actual)
         actual = padres.get(actual)
     return False
+
+
+def _desciende(posible_descendiente_id, cuenta_id):
+    """`cuelga_de` sobre las cuentas guardadas de la empresa. Una consulta: el árbol cabe en memoria y la profundidad no
+    añade consultas."""
+    return cuelga_de(dict(Cuenta.objects.order_by().values_list('pk', 'padre_id')), posible_descendiente_id, cuenta_id)
 
 
 def _cambios(cuenta, datos, errores):
