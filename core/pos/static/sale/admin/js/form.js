@@ -1107,7 +1107,7 @@ $(function () {
         // El servidor emite con la fecha de hoy: un plazo copiado de una fecha pasada lo rechazaría.
         var hoy = moment().startOf('day');
         var minimo = e.date && e.date.isAfter(hoy, 'day') ? e.date : hoy;
-        input_end_credit.datetimepicker('minDate', minimo);
+        input_end_credit.datetimepicker('minDate', minimo.toDate());   // un Date: el calendario conserva su idioma
         if ($('input[name="borrador_id"]').length && String(input_end_credit.val() || '').trim() !== '') {
             // Factura en borrador: cambiar «Fecha» no sustituye en silencio el vencimiento guardado o ya elegido (fijar el
             // mínimo no toca la fecha puesta). Se vuelve a validar: si no vale, el campo queda marcado.
