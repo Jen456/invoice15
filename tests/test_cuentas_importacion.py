@@ -8,6 +8,7 @@ confirmación idempotente y recalculada; nada creado antes de confirmar; archivo
 la pestaña y licencia; auditoría; 5 000 filas; seguridad por filas (PostgreSQL). La concurrencia real va en
 tests/test_zz_cuentas_concurrencia_pg.py."""
 import csv
+import functools
 import hashlib
 import io
 import json
@@ -116,6 +117,42 @@ def xlsx_con_entidad(donde, codificacion=None):
         declarada = 'UTF-16' if codificacion.startswith('utf-16') else codificacion
         partes[retocada] = (f'<?xml version="1.0" encoding="{declarada}"?>' + partes[retocada]).encode(codificacion)
     return xlsx_con(partes)
+
+
+@functools.lru_cache(maxsize=None)
+def xlsx_con_relleno(parte, metodo, relleno=32):
+    """El plan de siempre con `parte` comprimida con `metodo` y `relleno` MB de espacios detrás de su contenido. El
+    directorio del ZIP declara solo el contenido (su tamaño y su suma): lo demás no se ve sin descomprimir. Una parte que
+    no es del libro (xl/media/…) trae 1 KB de contenido."""
+    partes = partes_de(xlsx_de(*PLAN))
+    contenido = partes.pop(parte, b'x' * 1024)
+    salida = io.BytesIO()
+    with zipfile.ZipFile(salida, 'w', zipfile.ZIP_DEFLATED) as comprimido:
+        for nombre, datos in partes.items():
+            comprimido.writestr(nombre, datos)
+        info = zipfile.ZipInfo(parte)
+        info.compress_type = metodo
+        with comprimido.open(info, 'w') as destino:
+            destino.write(contenido)
+            for _ in range(relleno):
+                destino.write(b' ' * importar_cuentas.MB)
+    datos = bytearray(salida.getvalue())
+    entrada = datos.rindex(b'PK\x01\x02')   # la última del directorio del ZIP: ahí se declaran su suma y su tamaño
+    struct.pack_into('<L', datos, entrada + 16, zlib.crc32(contenido))
+    struct.pack_into('<L', datos, entrada + 24, len(contenido))
+    return bytes(datos)
+
+
+# Un logo SVG tal como lo exporta un programa de dibujo: con el DOCTYPE estándar del SVG.
+SVG = ('<?xml version="1.0" encoding="utf-8"?>\n'
+       '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n'
+       '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="10" height="10"><rect width="10" height="10"/></svg>\n')
+
+
+def retocar(partes, nombre, viejo, nuevo):
+    texto = partes[nombre].decode()
+    assert texto.count(viejo) == 1, (nombre, viejo)
+    partes[nombre] = texto.replace(viejo, nuevo).encode()
 
 
 def archivo(contenido, nombre='plan.csv'):
@@ -434,6 +471,59 @@ class TestLectura:
         assert (extension, encabezados) == ('xlsx', ['Código', 'Nombre'])
         assert [fila['c'][0] for fila in filas] == ['1', '1.1', '1.1.01', '1.1.02', '2']
         assert pico < 16 * importar_cuentas.MB, f'{pico / importar_cuentas.MB:.0f} MB'
+
+    @pytest.mark.parametrize('parte', ['xl/media/relleno.bin', '[Content_Types].xml'])
+    @pytest.mark.parametrize('metodo', [zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA], ids=['bzip2', 'lzma'])
+    def test_xlsx_con_una_parte_comprimida_de_otra_forma(self, entrar, empresa, parte, metodo):
+        """Un XLSX guarda sus partes tal cual o comprimidas con deflate (ECMA-376, parte 2, anexo C). Con bzip2 o lzma,
+        `ZipFile` descomprime de una vez cada trozo leído, sin tope, y solo después lo recorta a lo que declara la parte:
+        leerla a trozos no acota nada. Un archivo de unos kilobytes que declara 1 KB y trae 32 MB de relleno ocupaba esos
+        32 MB (en bzip2, 418 bytes son 512 MB). Se rechaza antes de abrir la parte, la vaya a leer el lector o no."""
+        datos = xlsx_con_relleno(parte, metodo)
+        assert len(datos) < 100_000
+        tracemalloc.start()
+        try:
+            with pytest.raises(api.ErrorApi) as negativa:
+                importar_cuentas.leer(datos)
+            pico = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+        assert (negativa.value.codigo, str(negativa.value)) == ('formato', T['formato'])
+        assert pico < 16 * importar_cuentas.MB, f'{pico / importar_cuentas.MB:.0f} MB'
+        respuesta = subir(entrar, empresa, datos, 'plan.xlsx')
+        assert respuesta.status_code == 400 and respuesta.json() == {'error': T['formato'], 'codigo': 'formato'}
+        assert lotes(empresa) == []
+
+    def test_xlsx_con_un_logo_svg(self, entrar, empresa):
+        """Un logo SVG insertado en el libro queda tal cual en xl/media, y el que sale de un programa de dibujo trae el
+        DOCTYPE del SVG. Esa parte no es XML del libro: se revisa (tamaño, suma, cifrado y compresión) pero no pasa al
+        lector, y su DOCTYPE no rechaza el archivo."""
+        partes = partes_de(xlsx_de(*PLAN))
+        partes['xl/media/image1.svg'] = SVG.encode()
+        retocar(partes, '[Content_Types].xml', '<Default Extension="rels"',
+                '<Default Extension="svg" ContentType="image/svg+xml"/><Default Extension="rels"')
+        respuesta = subir(entrar, empresa, xlsx_con(partes), 'plan.xlsx')
+        assert respuesta.status_code == 200, respuesta.content
+        assert [f['codigo'] for f in respuesta.json()['lote']['filas']] == ['1', '1.1', '1.1.01', '1.1.02', '2']
+
+    def test_una_hoja_guardada_como_imagen_no_llega_al_lector(self, entrar, empresa):
+        """Las partes que no terminan en .xml ni en .rels no llegan al lector, digan lo que digan las relaciones del libro.
+        Una hoja con entidades guardada como xl/media/hoja.png, a la que apunta workbook.xml.rels, se leería con la entidad
+        expandida si el lector recibiera el archivo tal cual (lo comprueba la primera parte de la prueba): no la recibe,
+        el libro se queda sin hoja y es 400 `formato`."""
+        partes = partes_de(xlsx_con_entidad('hoja'))
+        partes['xl/media/hoja.png'] = partes.pop('xl/worksheets/sheet1.xml')
+        retocar(partes, 'xl/_rels/workbook.xml.rels', 'worksheets/sheet1.xml', 'media/hoja.png')
+        retocar(partes, '[Content_Types].xml', '/xl/worksheets/sheet1.xml', '/xl/media/hoja.png')
+        datos = xlsx_con(partes)
+        libro = openpyxl.load_workbook(io.BytesIO(datos), read_only=True)
+        try:
+            assert list(libro.worksheets[0].iter_rows(min_row=2, max_row=2, values_only=True)) == [('1', 'ActivoActivo')]
+        finally:
+            libro.close()
+        respuesta = subir(entrar, empresa, datos, 'plan.xlsx')
+        assert respuesta.status_code == 400 and respuesta.json() == {'error': T['formato'], 'codigo': 'formato'}
+        assert lotes(empresa) == []
 
     def test_hoja_con_una_celda_perdida_muy_lejos(self, entrar, empresa):
         """Una celda con formato en la última fila de la hoja no obliga a recorrer un millón de filas con contenido: las

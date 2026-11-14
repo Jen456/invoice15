@@ -450,10 +450,12 @@ cerrarlas) o guarda el archivo de nuevo desde la hoja de cálculo.» Un salto de
 cerradas vale, y se guarda como un espacio. Las hojas de cálculo exportan siempre las comillas bien cerradas: esto solo
 alcanza a un CSV escrito a mano.
 
-Un XLSX que declara entidades XML (un `DOCTYPE` en cualquiera de sus partes) no se abre: 400 `formato`, «El XLSX trae
-declaraciones que una hoja de cálculo no escribe (DOCTYPE): ábrelo y guárdalo de nuevo como XLSX, o súbelo como CSV
-UTF-8.» Ninguna hoja de cálculo las escribe, y con ellas unos kilobytes ocupan gigas de memoria al leerlos. Tampoco se
-abre un XLSX con una parte dañada o cifrada, aunque no sea la hoja.
+Un XLSX que declara entidades XML (un `DOCTYPE` en cualquiera de sus partes XML, las `.xml` y las `.rels`) no se abre:
+400 `formato`, «El XLSX trae declaraciones que una hoja de cálculo no escribe (DOCTYPE): ábrelo y guárdalo de nuevo como
+XLSX, o súbelo como CSV UTF-8.» Ninguna hoja de cálculo las escribe en esas partes, y con ellas unos kilobytes ocupan gigas
+de memoria al leerlos. Las imágenes y los objetos incrustados no pasan al lector: un logo SVG, que sí puede traer su
+`DOCTYPE`, no impide subir el libro. Tampoco se abre un XLSX con una parte dañada o cifrada, o comprimida de otra forma
+que la de un XLSX (bzip2, lzma…), aunque no sea la hoja: 400 `formato` con el texto general.
 
 **Columnas.** Se reconocen por su encabezado, sin distinguir mayúsculas ni tildes:
 
@@ -572,7 +574,7 @@ Envío JSON: `{"empresa", "clave", "duplicadas": "omitir" | "actualizar_nombre"}
 | 400 | `validacion` | falta `archivo`; `duplicadas` falta o no es válido; en el mapeo, una columna que no está o que se repite |
 | 400 | `archivo_grande` | más de 2 MB, XLSX de más de 20 MB al abrirlo, demasiadas celdas fuera de la tabla o demasiado texto en la tabla («El archivo trae demasiado texto para un plan de cuentas: deja solo las columnas del plan (código, nombre, padre y tipo) y súbelo de nuevo.») |
 | 400 | `demasiadas_filas` | más de 5 000 filas de cuentas |
-| 400 | `formato` | no es CSV ni XLSX, está dañado, vacío o solo trae encabezados, tiene más de 40 columnas, es un `.xls` o un libro con contraseña, el CSV no está en UTF-8 o tiene las comillas mal cerradas, o el XLSX declara entidades XML (`DOCTYPE`). `error` dice cuál |
+| 400 | `formato` | no es CSV ni XLSX, está dañado, vacío o solo trae encabezados, tiene más de 40 columnas, es un `.xls` o un libro con contraseña, el CSV no está en UTF-8 o tiene las comillas mal cerradas, o el XLSX declara entidades XML (`DOCTYPE`) en una de sus partes XML o trae una parte dañada, cifrada o comprimida de otra forma que la de un XLSX. `error` dice cuál |
 | 400 | `faltan_columnas` | al confirmar sin columna de código o de nombre; trae `resumen` |
 | 400 | `filas_con_error` | al confirmar con alguna fila en error; trae `resumen` |
 | 404 | `lote` | el lote no existe o es de otra empresa |
