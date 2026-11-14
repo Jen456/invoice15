@@ -99,7 +99,7 @@ FUNCIONES = (
             {'ver': 'view_kardex', 'registrar': 'add_movimientomanual', 'anular': 'change_movimientomanual'},
             ruta='/contabilidad/kardex/'),
     Funcion('inventario', 'Inventario valorizado', CONTABILIDAD, {'ver': 'view_kardex'}, ruta='/contabilidad/inventario/'),
-    # Bloque 1 (C2, C3 y C1 del contrato v9). Cada una pasa a disponible en el commit que publica su ruta.
+    # Bloque 1 (C2, C3 y C1 del contrato v9).
     Funcion('plan_cuentas', 'Plan de cuentas', CONTABILIDAD,
             # `editar` incluye activar y desactivar: una cuenta no se borra.
             {'ver': 'view_cuenta', 'crear': 'add_cuenta', 'editar': 'change_cuenta'}, ruta='/contabilidad/api/cuentas/'),
@@ -108,8 +108,9 @@ FUNCIONES = (
             # de las que ya existen pide además editar.
             {'ver': 'add_cuenta', 'importar': 'add_cuenta', 'actualizar_nombre': 'change_cuenta'},
             ruta='/contabilidad/api/cuentas/importar/'),
+    # Lo abre quien ve el kardex, la revisión del mes o el plan de cuentas: basta uno.
     Funcion('inicio', 'Inicio contable', CONTABILIDAD, {'ver': ('view_kardex', 'view_revision', 'view_cuenta')},
-            construccion=PENDIENTE, que_falta='El inicio contable está en construcción.', ruta='/contabilidad/api/inicio/'),
+            ruta='/contabilidad/api/inicio/'),
     # Bloques siguientes de la orden de cierre. La decisión citada bloquea su regla o su activación, no la construcción.
     Funcion('evidencias', 'Evidencias de presentación', TRIBUTARIO, POR_DEFINIR, construccion=PENDIENTE,
             que_falta='El registro de evidencias de presentación del 104, del 103 y del ATS está en construcción.'),

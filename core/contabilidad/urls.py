@@ -1,6 +1,6 @@
 from django.urls import path
 
-from core.contabilidad import views, vistas_capacidades, vistas_cuentas, vistas_importar_cuentas
+from core.contabilidad import views, vistas_capacidades, vistas_cuentas, vistas_importar_cuentas, vistas_inicio
 
 urlpatterns = [
     path('kardex/', views.KardexPagina.as_view(), name='contabilidad_kardex'),
@@ -14,6 +14,8 @@ urlpatterns = [
     path('api/inventario/', views.InventarioApi.as_view(), name='contabilidad_inventario_api'),
     # Contrato de capacidades: responde también con el complemento cerrado o sin plan (reglas.RUTAS_DE_CAPACIDADES).
     path('api/capacidades/', vistas_capacidades.CapacidadesApi.as_view(), name='contabilidad_capacidades'),
+    # Inicio contable (C1 del contrato contable v9)
+    path('api/inicio/', vistas_inicio.InicioApi.as_view(), name='contabilidad_inicio'),
     # Plan de cuentas por empresa (C2 del contrato contable v9)
     path('api/cuentas/', vistas_cuentas.CuentasApi.as_view(), name='contabilidad_cuentas'),
     path('api/cuentas/<int:pk>/', vistas_cuentas.CuentaApi.as_view(), name='contabilidad_cuenta'),
