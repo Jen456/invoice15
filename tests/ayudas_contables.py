@@ -214,6 +214,44 @@ def filas_del_libro(empresa, cuentas):
         }
 
 
+def inicio_directo(empresa, corte=date(2025, 12, 31), modalidad='saldos', **campos):
+    """La fila del candado sin el servicio de la Parte B (`inicio_contable.configurar`): por saldos, contabilidad y
+    operaciones desde el día siguiente al corte; por historial, `historial_desde` = corte + 1 y `historial_hasta` el que se
+    pase (por defecto el 30/06 siguiente)."""
+    from datetime import timedelta
+    desde = corte + timedelta(days=1)
+    datos = dict(modalidad=modalidad, fecha_corte=corte, contabilidad_desde=desde, operaciones_desde=desde,
+                 creado_por_nombre=AUTOR[1], actualizado_por_nombre=AUTOR[1])
+    if modalidad == 'historial':
+        hasta = campos.pop('historial_hasta', date(desde.year, 6, 30))
+        datos.update(historial_desde=desde, historial_hasta=hasta, operaciones_desde=hasta + timedelta(days=1))
+    datos.update(campos)
+    with company_context(empresa):
+        return InicioContable.objects.create(**datos)
+
+
+def lineas_de(*filas):
+    """`[(cuenta, debe, haber[, {tercero, documento, concepto…}])]` → las líneas que recibe diario.contabilizar."""
+    return [{'cuenta_id': cuenta.pk, 'debe': Decimal(str(debe)), 'haber': Decimal(str(haber)), **(extra[0] if extra else {})}
+            for cuenta, debe, haber, *extra in filas]
+
+
+def contabilizar(empresa, filas, *, tipo='manual', fecha=date(2026, 1, 15), concepto='Asiento de prueba',
+                 motivo='Prueba del diario', autor=AUTOR, **otros):
+    """diario.contabilizar con el candado, en la empresa (las pruebas del diario usan el servicio, no `asiento_directo`)."""
+    from core.contabilidad import candado, diario
+    with company_context(empresa), candado.libro():
+        return diario.contabilizar(tipo=tipo, fecha=fecha, concepto=concepto, lineas=lineas_de(*filas), autor=autor,
+                                   motivo=motivo, **otros)
+
+
+def reversar(empresa, asiento, *, motivo='Reverso de prueba', autor=AUTOR, **otros):
+    """diario.reversar con el candado, en la empresa. Devuelve `(reverso, repetido)`."""
+    from core.contabilidad import candado, diario
+    with company_context(empresa), candado.libro():
+        return diario.reversar(asiento.pk, motivo=motivo, autor=autor, **otros)
+
+
 # ---------------------------------------------------------------- apertura (Parte B y corte 2)
 
 def apertura_directa(empresa, **campos):
