@@ -8,18 +8,20 @@ var fpAcciones = {
     etiquetas: {
         ver: 'Ver', pdf: 'PDF', editar: 'Editar', duplicar: 'Duplicar', enviar_correo: 'Enviar por correo',
         marcar_enviada: 'Marcar como enviada', aceptar: 'Marcar aceptada', rechazar: 'Marcar rechazada', anular: 'Anular',
-        facturar: 'Facturar (revisar antes de emitir)', eliminar: 'Eliminar borrador'
+        facturar: 'Convertir en factura', eliminar: 'Eliminar borrador', descartar_borrador: 'Descartar la factura en borrador'
     },
     iconos: {
         ver: 'fas fa-eye', pdf: 'fas fa-file-pdf', editar: 'fas fa-edit', duplicar: 'fas fa-copy',
         enviar_correo: 'fas fa-envelope', marcar_enviada: 'fas fa-paper-plane', aceptar: 'fas fa-check',
-        rechazar: 'fas fa-times', anular: 'fas fa-ban', facturar: 'fas fa-file-invoice-dollar', eliminar: 'fas fa-trash'
+        rechazar: 'fas fa-times', anular: 'fas fa-ban', facturar: 'fas fa-file-invoice-dollar', eliminar: 'fas fa-trash',
+        descartar_borrador: 'fas fa-eraser'
     },
     clases: {
         facturar: 'btn-primary', eliminar: 'btn-danger', anular: 'btn-outline-danger', rechazar: 'btn-outline-danger',
-        aceptar: 'btn-success'
+        aceptar: 'btn-success', descartar_borrador: 'btn-outline-danger'
     },
-    enlaces: {ver: 'ver', pdf: 'pdf', editar: 'editar', facturar: 'facturar', eliminar: 'eliminar'},
+    // «Convertir en factura» (facturar) no es un enlace: es un POST que crea o reabre la factura en borrador y abre la venta.
+    enlaces: {ver: 'ver', pdf: 'pdf', editar: 'editar', eliminar: 'eliminar'},
     escapar: function (x) {
         return String(x === null || x === undefined ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;')
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -48,8 +50,8 @@ var fpAcciones = {
         });
         if (p.facturar_bloqueado) {
             html += '<button type="button" class="btn btn-flat btn-outline-secondary mb-1" disabled title="' + esc(p.facturar_bloqueado) +
-                '" aria-label="Facturar: ' + esc(p.facturar_bloqueado) + '"><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i>' +
-                (completos ? ' Facturar' : '') + '</button>';
+                '" aria-label="Convertir en factura: ' + esc(p.facturar_bloqueado) + '"><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i>' +
+                (completos ? ' Convertir en factura' : '') + '</button>';
             if (completos) {
                 html += '<p class="small text-muted mb-0">' + esc(p.facturar_bloqueado) + '</p>';
             }
@@ -96,10 +98,38 @@ var fpAcciones = {
             $('#fp-modal-motivo').modal('show');
             return;
         }
+        if (accion === 'facturar') {
+            // Crea la factura en borrador (o reabre la que ya tiene) y abre la venta para revisarla: no emite nada. Un doble
+            // clic o dos pestañas reciben el mismo borrador (el servidor bloquea la proforma).
+            if (fpAcciones.convirtiendo) {
+                return;
+            }
+            fpAcciones.convirtiendo = true;
+            $.ajax({
+                url: fpAcciones.config.url_lista, type: 'POST', data: {action: 'convertir', id: p.id}, dataType: 'json',
+                headers: {'X-CSRFToken': csrftoken},
+                beforeSend: function () { loading({'text': '...'}); },
+                success: function (respuesta) {
+                    if (respuesta.error) {
+                        fpAcciones.convirtiendo = false;
+                        message_error(respuesta.error);
+                        return;
+                    }
+                    location.href = respuesta.url;
+                },
+                error: function (jqXHR) {
+                    fpAcciones.convirtiendo = false;
+                    fpAcciones.error(jqXHR);
+                },
+                complete: function () { $.LoadingOverlay('hide'); }
+            });
+            return;
+        }
         var texto = {
             duplicar: 'Se creará un borrador nuevo con la fecha de hoy. ¿Continuar?',
             marcar_enviada: '¿Marcar la proforma como enviada al cliente?',
-            aceptar: '¿Marcar la proforma como aceptada por el cliente?'
+            aceptar: '¿Marcar la proforma como aceptada por el cliente?',
+            descartar_borrador: 'Se borrará la factura en borrador (no se envió nada al SRI). La proforma queda como está. ¿Continuar?'
         }[accion];
         if (!texto) {
             return;

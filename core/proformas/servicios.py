@@ -11,6 +11,8 @@ Reglas comunes:
 - ningún texto escrito por el usuario va a los `messages` de Django (se insertan en un literal JS).
 Una proforma no usa Receipt, reservar_numero, cupo, stock, cuentas por cobrar ni el SRI: al facturarla, todo eso lo
 hace la venta (SaleCreateView), en cuya transacción la proforma se bloquea antes que la secuencia y se marca al final.
+«Convertir en factura» crea o reabre la factura en borrador de la proforma (BorradorFactura, una por proforma), que
+tampoco usa nada de eso: solo «Emitir factura» firma y envía (primera-entrega/convertir-en-factura.md).
 """
 import json
 import logging
@@ -19,15 +21,17 @@ from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from types import SimpleNamespace
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Case, Max, Prefetch, Q, Value, When
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from core.pos.choices import NOMBRE_TARIFA_IVA, PAYMENT_METHOD, PORCENTAJE_IVA
+from core.pos.choices import (FORMA_PAGO_SRI_DE_MEDIO, NOMBRE_TARIFA_IVA, PAYMENT_METHOD, PAYMENT_TYPE, PORCENTAJE_IVA,
+                              TARIFAS_IVA)
 from core.pos.clientes import correo_valido, separar_correos, unir_correos
-from core.proformas.models import ContadorProforma, Proforma, ProformaDetalle
+from core.proformas.models import MEDIOS_PAGO_PROFORMA, BorradorFactura, ContadorProforma, Proforma, ProformaDetalle
 from core.tenancy.context import require_company
 
 logger = logging.getLogger(__name__)
@@ -47,6 +51,8 @@ MAX_CONDICIONES = 2000
 MAX_BUSQUEDA = 100
 MAX_FILAS = 1000
 MAX_ENTERO = 999999999999   # ids y cantidades recibidos: nunca desbordan una columna de la base
+MAX_INFO_ADICIONAL = 15     # campos de <infoAdicional> (informacion_adicional en core/pos/models.py)
+MAX_TEXTO_ADICIONAL = 300   # caracteres por campo (XSD del SRI)
 CENTAVO = Decimal('0.01')
 TELEFONO = re.compile(r'[0-9+() -]{7,20}')
 FECHA_ISO = re.compile(r'\d{4}-\d{2}-\d{2}')
@@ -98,6 +104,17 @@ MENSAJES = {
     'total_maximo': 'El total de la proforma supera USD 9.999.999,99.',
     'revisa': 'Revisa los datos marcados.',
     'pdf_fallo': 'No se pudo generar el PDF de la proforma {numero}. Inténtalo de nuevo.',
+    # Factura en borrador («Convertir en factura»)
+    'con_borrador': ('La proforma {numero} tiene una factura en borrador sin emitir: emítela o descártala antes de '
+                     '{accion}.'),
+    'sin_borrador': 'La proforma {numero} no tiene una factura en borrador.',
+    'borrador_no_existe': 'La factura en borrador ya no existe: se emitió o se descartó. Vuelve a la proforma.',
+    'borrador_creado': ('Se creó la factura en borrador de la proforma {numero}. Revísala y pulsa «Emitir factura» para '
+                        'enviarla al SRI.'),
+    'borrador_abierto': 'La proforma {numero} ya tiene una factura en borrador: se abre esa misma.',
+    'borrador_guardado': 'Factura en borrador guardada. No se envió nada al SRI.',
+    'borrador_descartado': 'Se descartó la factura en borrador de la proforma {numero}: sigue {estado}.',
+    'info_adicional': 'La información adicional admite hasta 15 campos de 300 caracteres como máximo.',
 }
 
 # Errores por campo (en ErrorProforma.campos).
@@ -112,6 +129,7 @@ CAMPOS = {
     'fecha': 'La fecha no es válida o es futura.',
     'valida_hasta': 'La validez debe ir de la fecha de la proforma hasta 365 días después.',
     'forma_pago_sugerida': 'Elige una forma de pago de la lista.',
+    'medio_pago_sugerido': 'Elige un medio de pago de la lista.',
     'condiciones': 'Las condiciones admiten hasta 2000 caracteres.',
     'lineas': 'Agrega al menos un producto.',
     'lineas_max': 'Una proforma admite hasta 200 líneas.',
@@ -139,6 +157,13 @@ AVISOS = {
     'prospecto': 'La proforma es para un prospecto: registra al cliente antes de emitir.',
     'pruebas': ('La empresa está en PRUEBAS: la factura no tendrá validez tributaria y la proforma quedará facturada con '
                 'ella. Para volver a cotizar, duplícala.'),
+    # Factura en borrador
+    'borrador': ('Factura en borrador: todavía no se envió nada al SRI ni se usó número, cupo o stock. Revisa los datos y '
+                 'pulsa «Emitir factura» para emitirla.'),
+    'notas_recortadas': ('Las condiciones de la proforma pasan a «Notas» en la información adicional, que admite 300 '
+                         'caracteres: revisa el texto recortado.'),
+    'stock_borrador': '«{nombre}»: el borrador tiene {cant} y hay {stock} en stock. Corrige la cantidad antes de emitir.',
+    'tarifa_revisada': '«{nombre}»: esta factura usa IVA {elegida}; el catálogo tiene {catalogo} y no cambia.',
 }
 
 AVISO_EDITAR_ENVIADA = 'Al guardar, la proforma vuelve a borrador y tendrás que enviarla de nuevo.'
@@ -166,8 +191,11 @@ ACCIONES_POR_ESTADO = {
 PERMISO_DE_ACCION = {'ver': 'view_proforma', 'pdf': 'view_proforma', 'duplicar': 'add_proforma',
                      'editar': 'change_proforma', 'enviar_correo': 'change_proforma', 'marcar_enviada': 'change_proforma',
                      'aceptar': 'change_proforma', 'rechazar': 'change_proforma', 'anular': 'change_proforma',
-                     'eliminar': 'delete_proforma'}
+                     'eliminar': 'delete_proforma', 'descartar_borrador': 'change_proforma'}
 ACCIONES_DE_CONSULTA = ('ver', 'pdf')
+# Con una factura en borrador la proforma no se edita, rechaza ni anula (el borrador quedaría desfasado o sin proforma
+# facturable): primero se emite o se descarta. Sí se ve, se descarga, se duplica y se reenvía.
+BLOQUEADAS_POR_BORRADOR = ('editar', 'rechazar', 'anular')
 
 # acción: (estados guardados de origen, destino, exige vigente, campo de fecha, código de auditoría)
 TRANSICIONES = {
@@ -306,7 +334,8 @@ def bloquear(proforma_id):
 
 def obtener(proforma_id):
     """Proforma de la empresa activa con lo que usa `detalle` (sin bloqueo); ErrorProforma 404 si no existe."""
-    p = (Proforma.objects.select_related('venta', 'vendedor', 'creada_por', 'origen', 'company')
+    p = (Proforma.objects.select_related('venta', 'vendedor', 'creada_por', 'origen', 'company',
+                                         'borrador_factura__actualizado_por')
          .prefetch_related(Prefetch('detalles', ProformaDetalle.objects.select_related('product')))
          .filter(pk=_id(proforma_id)).first())
     if p is None:
@@ -371,6 +400,8 @@ def _acciones_de_estado(p, hoy=None):
         acciones.remove('eliminar')
     if 'facturar' in acciones and p.venta_id is not None:
         acciones.remove('facturar')
+    if p.venta_id is None and borrador_de(p) is not None:
+        acciones = [a for a in acciones if a not in BLOQUEADAS_POR_BORRADOR] + ['descartar_borrador']
     return acciones
 
 
@@ -510,14 +541,26 @@ def validar(datos, proforma=None):
     forma_pago = _texto(datos, 'forma_pago_sugerida').strip()
     if forma_pago and forma_pago not in dict(PAYMENT_METHOD):
         campos['forma_pago_sugerida'] = CAMPOS['forma_pago_sugerida']
+    medio = _texto(datos, 'medio_pago_sugerido').strip()
+    if medio and medio not in dict(MEDIOS_PAGO_PROFORMA):
+        campos['medio_pago_sugerido'] = CAMPOS['medio_pago_sugerido']
+    elif medio in FORMA_PAGO_SRI_DE_MEDIO:
+        forma_pago = FORMA_PAGO_SRI_DE_MEDIO[medio]   # la forma del SRI sale del medio: transferencia → 20
+        campos.pop('forma_pago_sugerida', None)
     condiciones = _texto(datos, 'condiciones').replace('\r\n', '\n').strip()
     if len(condiciones) > MAX_CONDICIONES:
         campos['condiciones'] = CAMPOS['condiciones']
     lineas = _validar_lineas(datos, campos)
     if campos:
         raise ErrorProforma(MENSAJES['revisa'], campos=campos)
-    cabecera.update(fecha=fecha, valida_hasta=valida_hasta, forma_pago_sugerida=forma_pago, condiciones=condiciones)
+    cabecera.update(fecha=fecha, valida_hasta=valida_hasta, forma_pago_sugerida=forma_pago, medio_pago_sugerido=medio,
+                    condiciones=condiciones, ocultar_vendedor=_si(datos.get('ocultar_vendedor')))
     return cabecera, lineas
+
+
+def _si(valor):
+    """Casilla de un formulario: marcada si llega 'on' (FormData), '1' o 'true'; sin el campo, no marcada."""
+    return str(valor if valor is not None else '').strip().lower() in ('on', '1', 'true', 'si', 'sí')
 
 
 IMPORTES = ('subtotal_gravado', 'subtotal_cero', 'total_iva', 'total_descuento', 'total')   # los que asigna calcular()
@@ -568,6 +611,7 @@ def editar(proforma_id, datos, usuario):
     if p.estado not in Proforma.PUEDEN_VENCER:
         raise ErrorProforma(MENSAJES['no_editable'].format(numero=p.numero_completo, estado=_estado_en_texto(p)),
                             estado_http=409, url=f'{URL_LISTA}ver/{p.pk}/')
+    _exigir_sin_borrador(p, 'editar')
     cabecera, lineas = validar(datos, p)
     for campo, valor in cabecera.items():
         setattr(p, campo, valor)
@@ -608,8 +652,9 @@ def duplicar(proforma_id, usuario):
         'cliente_direccion': original.cliente_direccion}
     hoy = _hoy()
     copia = Proforma(estado='borrador', fecha=hoy, valida_hasta=hoy + timedelta(days=VALIDEZ_POR_DEFECTO),
-                     condiciones=original.condiciones, forma_pago_sugerida=original.forma_pago_sugerida, origen=original,
-                     vendedor=usuario, creada_por=usuario, **datos_cliente)
+                     condiciones=original.condiciones, forma_pago_sugerida=original.forma_pago_sugerida,
+                     medio_pago_sugerido=original.medio_pago_sugerido, ocultar_vendedor=original.ocultar_vendedor,
+                     origen=original, vendedor=usuario, creada_por=usuario, **datos_cliente)
     calcular(copia, lineas)
     copia.numero = siguiente_numero()
     copia.numero_completo = formatear_numero(copia.numero)
@@ -630,6 +675,8 @@ def cambiar_estado(proforma_id, accion, usuario, motivo='', request=None):
     if vigente and p.esta_vencida():
         raise ErrorProforma(MENSAJES['vencida'].format(numero=p.numero_completo, fecha=_fecha_texto(p.valida_hasta),
                                                        accion=VERBOS[accion]), estado_http=409)
+    if accion in BLOQUEADAS_POR_BORRADOR:
+        _exigir_sin_borrador(p, accion)
     detalle = {}
     if accion in ('rechazar', 'anular'):
         p.motivo = ' '.join(str(motivo or '').split())[:MAX_MOTIVO]
@@ -668,10 +715,21 @@ def contexto_pdf(proforma):
             'estado': proforma.estado_visible(), 'estado_nombre': proforma.nombre_estado(),
             'establecimiento': (punto.establishment.address if punto else '') or empresa.establishment_address,
             'proveedor': emision.datos_proveedor(),
-            'forma_pago': proforma.get_forma_pago_sugerida_display() if proforma.forma_pago_sugerida else '',
-            'vendedor': _nombre_usuario(proforma.vendedor) if proforma.vendedor_id else '',
+            'forma_pago': nombre_forma_pago(proforma),
+            # «Ocultar el vendedor en el PDF»: solo aquí (también en la copia del correo); la ficha y la auditoría lo
+            # conservan. El emisor es siempre la empresa de la proforma, nunca el nombre del usuario que la preparó.
+            'vendedor': _nombre_usuario(proforma.vendedor) if proforma.vendedor_id and not proforma.ocultar_vendedor else '',
             'factura': venta.voucher_number_full if venta else '',
             'factura_pruebas': venta is not None and venta.environment_type != emision.PRODUCCION}
+
+
+def nombre_forma_pago(proforma):
+    """Cómo se lee la forma de pago en la proforma: el medio («Transferencia bancaria») o, sin él, la forma del SRI."""
+    if proforma.medio_pago_sugerido and proforma.medio_pago_sugerido != 'otro':
+        return proforma.get_medio_pago_sugerido_display()
+    if proforma.forma_pago_sugerida:
+        return proforma.get_forma_pago_sugerida_display()
+    return proforma.get_medio_pago_sugerido_display() if proforma.medio_pago_sugerido else ''
 
 
 def generar_pdf(proforma):
@@ -883,10 +941,13 @@ def _mismas_lineas(proforma, venta):
 
 
 @transaction.atomic
-def marcar_facturada(proforma, venta, usuario, request=None):
+def marcar_facturada(proforma, venta, usuario, request=None, borrador=None):
     """Vincula la venta y deja la proforma «facturada» con un UPDATE condicional (sin venta y en un estado facturable),
     que no depende del bloqueo (SQLite no bloquea filas) ni de que el objeto en memoria esté al día. Si no actualiza
-    exactamente 1 fila lanza ErrorProforma: dentro de la transacción de la venta, eso la deshace entera."""
+    exactamente 1 fila lanza ErrorProforma: dentro de la transacción de la venta, eso la deshace entera.
+
+    La factura en borrador de la proforma, si la había, se borra en la misma transacción: ya es esta factura (y si la venta
+    se deshace, vuelve con ella). `borrador` es el que se emitió: la auditoría añade su id y las tarifas revisadas."""
     from core.pos.notas_credito import es_consumidor_final
     ahora, hoy = timezone.now(), _hoy()
     cambios = dict(venta=venta, estado='facturada', facturada_en=ahora, facturada_por=usuario, actualizada_en=ahora)
@@ -903,11 +964,27 @@ def marcar_facturada(proforma, venta, usuario, request=None):
             raise ErrorProforma(MENSAJES['no_existe'], estado_http=404, url=URL_LISTA)
         raise _error_ya_facturada(actual) if actual.venta_id is not None else _error_no_facturable(actual, hoy)
     proforma.refresh_from_db(fields=['venta', 'estado', 'cliente', 'facturada_en', 'facturada_por', 'actualizada_en'])
+    BorradorFactura.objects.filter(proforma_id=proforma.pk).delete()
     total_proforma, total_factura = _dinero(proforma.total), _dinero(venta.total)
+    extra = {}
+    if borrador is not None:
+        extra = {'borrador_id': int(borrador.pk), 'tarifas_revisadas': _tarifas_revisadas(venta)}
     _auditar(request, usuario, 'proforma_facturada', proforma, venta_id=int(venta.pk), factura=venta.voucher_number_full,
              total_proforma=total_proforma, total_factura=total_factura,
              coincide=total_proforma == total_factura and _mismas_lineas(proforma, venta),
-             ambiente=int(venta.environment_type))
+             ambiente=int(venta.environment_type), **extra)
+
+
+def _tarifas_revisadas(venta):
+    """Líneas de la factura con una tarifa distinta de la del catálogo: ['P0: 15 % → 0 %', …] (texto, para AuditLog)."""
+    from core.pos.models import codigo_de_linea
+    revisadas = []
+    for d in venta.saledetail_set.select_related('product'):
+        catalogo, usada = tarifa_de_producto(d.product), codigo_de_linea(d)
+        if usada != catalogo:
+            revisadas.append(f'{d.product.code}: {NOMBRE_TARIFA_IVA.get(catalogo, catalogo)} → '
+                             f'{NOMBRE_TARIFA_IVA.get(usada, usada)}')
+    return revisadas
 
 
 def liberar_por_venta_eliminada(venta):
@@ -930,12 +1007,289 @@ def liberar_por_venta_eliminada(venta):
               estado='aceptada' if aceptada_en is not None else 'enviada')
 
 
+# ---------------------------------------------------------------- factura en borrador («Convertir en factura»)
+
+def borrador_de(proforma):
+    """Factura en borrador de la proforma, o None. Usa la de select_related('borrador_factura') si se pidió."""
+    try:
+        return proforma.borrador_factura
+    except ObjectDoesNotExist:
+        return None
+
+
+def url_borrador(borrador_id):
+    return f'{URL_VENTAS}add/?borrador={int(borrador_id)}'
+
+
+def _borrador_guardado(proforma_pk):
+    return BorradorFactura.objects.filter(proforma_id=proforma_pk).first()
+
+
+def borrador_de_proforma(proforma_id):
+    """Borrador de la proforma `proforma_id` (sin bloqueo), o None. ErrorProforma 404 si el id no es válido."""
+    return _borrador_guardado(_id(proforma_id))
+
+
+def _exigir_sin_borrador(p, accion):
+    if _borrador_guardado(p.pk) is not None:
+        raise ErrorProforma(MENSAJES['con_borrador'].format(numero=p.numero_completo, accion=VERBOS[accion]),
+                            estado_http=409, url=_url_ver(p.pk))
+
+
+def _info_adicional_inicial(p):
+    """«Proforma: PRO-…» (decisión 3: se puede quitar) y las condiciones como «Notas», en un campo de hasta 300 caracteres
+    sin saltos de línea (lo que admite <campoAdicional>). Devuelve (campos, avisos)."""
+    info, avisos = [{'name': 'Proforma', 'value': p.numero_completo}], []
+    notas = ' '.join(p.condiciones.split())
+    if notas:
+        if len(notas) > MAX_TEXTO_ADICIONAL:
+            avisos.append(AVISOS['notas_recortadas'])
+        info.append({'name': 'Notas', 'value': notas[:MAX_TEXTO_ADICIONAL]})
+    return info, avisos
+
+
+@transaction.atomic
+def convertir(proforma_id, usuario, request=None):
+    """«Convertir en factura» → (borrador, creado). Crea la factura en borrador de la proforma con su cliente, líneas
+    (cantidad, precio y descuento de la proforma, tarifa de IVA actual del producto), forma y medio de pago, «Proforma» y
+    las condiciones como «Notas»; o devuelve la que ya tiene. No reserva número, cupo ni stock, no crea la venta y no firma
+    ni envía nada: eso lo hace solo «Emitir factura».
+
+    La proforma se bloquea primero (orden fijo proforma → borrador → secuencia): dos conversiones a la vez (doble clic,
+    dos pestañas) se ordenan y la segunda recibe el mismo borrador. Donde no hay bloqueo de filas (SQLite) lo garantiza la
+    restricción OneToOne: el INSERT perdedor falla y se devuelve el que ganó."""
+    p = bloquear(proforma_id)
+    _exigir_facturable(p)
+    existente = _borrador_guardado(p.pk)
+    if existente is not None:
+        return existente, False
+    precarga = precarga_para_venta(p.pk)   # las reglas de siempre: sin productos eliminados, stock, tarifa actual
+    lineas = [{'product': int(l['id']), 'nombre': l['name'], 'cant': int(l['cant']), 'price': _dinero(l['price_current']),
+               'dscto': int(round(l['dscto'])), 'codigo_porcentaje': l['tarifa_iva']} for l in precarga['lineas']]
+    info, avisos_notas = _info_adicional_inicial(p)
+    propios = (AVISOS['emitir'], AVISOS['pruebas'], AVISOS['prospecto'])   # se calculan al abrir el borrador
+    borrador = BorradorFactura(proforma=p, cliente_id=p.cliente_id, payment_type=PAYMENT_TYPE[0][0],
+                               payment_method=p.forma_pago_sugerida, medio_cobro=p.medio_pago_sugerido, lineas=lineas,
+                               info_adicional=info, avisos=[a for a in precarga['avisos'] if a not in propios] + avisos_notas,
+                               creado_por=usuario, actualizado_por=usuario)
+    try:
+        with transaction.atomic():
+            borrador.save()
+    except IntegrityError:   # otra conversión lo creó a la vez: se devuelve ese
+        return _borrador_guardado(p.pk), False
+    _auditar(request, usuario, 'proforma_convertida', p, borrador_id=int(borrador.pk), lineas=len(lineas))
+    return borrador, True
+
+
+def obtener_borrador(borrador_id):
+    b = BorradorFactura.objects.select_related('proforma', 'cliente__user').filter(pk=_id(borrador_id)).first()
+    if b is None:
+        raise ErrorProforma(MENSAJES['borrador_no_existe'], estado_http=404, url=URL_LISTA)
+    return b
+
+
+def tarifas_guardadas(borrador):
+    """{producto: tarifa} de las líneas guardadas en el borrador (las que revisó quien podía revisarlas)."""
+    return {l['product']: l['codigo_porcentaje'] for l in borrador.lineas}
+
+
+def _fila_de_borrador(producto, linea):
+    """Línea del borrador en el formato del POS, con la tarifa elegida para esta factura (la del catálogo se informa).
+    fp_base: el POS no recorta en silencio una cantidad mayor que el stock; avisa y el servidor la valida al emitir."""
+    codigo, catalogo = linea['codigo_porcentaje'], tarifa_de_producto(producto)
+    item = producto.toJSON()
+    item.update({'cant': int(linea['cant']), 'price_current': float(Decimal(linea['price'])), 'dscto': float(linea['dscto']),
+                 'total_dscto': 0.0, 'pvp': float(producto.pvp), 'value': producto.get_full_name(),
+                 'codigo_porcentaje': codigo, 'tarifa_iva': codigo, 'tarifa': float(PORCENTAJE_IVA.get(codigo, 0)),
+                 'nombre_tarifa': NOMBRE_TARIFA_IVA.get(codigo, codigo), 'tarifa_catalogo': catalogo,
+                 'nombre_tarifa_catalogo': NOMBRE_TARIFA_IVA.get(catalogo, catalogo), 'fp_base': True})
+    return item
+
+
+def totales_de_borrador(lineas):
+    """Importes del borrador con calcular_linea_iva y totales_de_lineas: los mismos que guardará la venta y llevará el XML
+    (misma tarifa por línea, cantidad y descuento)."""
+    from core.pos.models import calcular_linea_iva, totales_de_lineas
+    calculadas = []
+    for l in lineas:
+        linea = SimpleNamespace(price=Decimal(l['price']), cant=int(l['cant']), dscto=(Decimal(int(l['dscto'])) / 100),
+                                product_id=l['product'])
+        calcular_linea_iva(linea, l['codigo_porcentaje'])
+        calculadas.append(linea)
+    gravado, cero, iva, descuento = totales_de_lineas(calculadas)
+    return {'subtotal_gravado': _dinero(gravado), 'subtotal_cero': _dinero(cero), 'total_descuento': _dinero(descuento),
+            'total_iva': _dinero(iva), 'total': _dinero(gravado + cero + iva), 'impuestos_por_tarifa': impuestos_json(calculadas)}
+
+
+def precarga_de_borrador(borrador_id, hoy=None):
+    """Datos para abrir la venta con la factura en borrador. SOLO LECTURA: no reserva número, cupo ni stock. Mismo formato
+    que precarga_para_venta, con la tarifa de cada línea, el pago guardado y `borrador` (id, url y totales calculados como
+    los calculará la venta). ErrorProforma con `url` si el borrador ya no existe o la proforma ya no se puede facturar."""
+    from core.pos import emision
+    from core.pos.models import Product
+    hoy = hoy or _hoy()
+    b = obtener_borrador(borrador_id)
+    p = b.proforma
+    _exigir_facturable(p, hoy)
+    avisos = [AVISOS['borrador']]
+    if require_company().environment_type != emision.PRODUCCION:
+        avisos.append(AVISOS['pruebas'])
+    avisos += [str(a) for a in (b.avisos or [])]
+    ids = [l['product'] for l in b.lineas]
+    productos = {x.pk: x for x in Product.objects.select_related('category').filter(pk__in=ids)}
+    filas, vigentes = [], []
+    for linea in b.lineas:
+        producto = productos.get(linea['product'])
+        if producto is None:
+            avisos.append(AVISOS['producto_eliminado'].format(descripcion=linea.get('nombre', '')))
+            continue
+        if producto.inventoried and producto.stock < linea['cant']:
+            avisos.append(AVISOS['stock_borrador'].format(nombre=producto.name, cant=linea['cant'], stock=producto.stock))
+        catalogo = tarifa_de_producto(producto)
+        if linea['codigo_porcentaje'] != catalogo:
+            avisos.append(AVISOS['tarifa_revisada'].format(
+                nombre=producto.name, elegida=NOMBRE_TARIFA_IVA.get(linea['codigo_porcentaje'], linea['codigo_porcentaje']),
+                catalogo=NOMBRE_TARIFA_IVA.get(catalogo, catalogo)))
+        filas.append(_fila_de_borrador(producto, linea))
+        vigentes.append(linea)
+    if not filas:
+        raise ErrorProforma(MENSAJES['sin_lineas_facturables'].format(numero=p.numero_completo), estado_http=409,
+                            url=_url_ver(p.pk))
+    prospecto = None
+    if b.cliente_id is None and p.cliente_id is None:
+        prospecto = {'nombre': p.cliente_nombre, 'identificacion': p.cliente_identificacion, 'correo': p.cliente_correo,
+                     'telefono': p.cliente_telefono, 'direccion': p.cliente_direccion}
+        avisos.append(AVISOS['prospecto'])
+    cliente = b.cliente if b.cliente_id else None
+    return {'proforma': {'id': int(p.pk), 'numero': p.numero_completo, 'total': _dinero(p.total),
+                         'valida_hasta': p.valida_hasta.isoformat(), 'url_ver': _url_ver(p.pk)},
+            'cliente': cliente.toJSON() if cliente is not None else None, 'prospecto': prospecto, 'lineas': filas,
+            'forma_pago': b.payment_method, 'medio_cobro': b.medio_cobro, 'condicion_pago': b.payment_type,
+            'info_adicional': list(b.info_adicional or []), 'avisos': avisos,
+            'tarifas': [{'codigo': c, 'nombre': NOMBRE_TARIFA_IVA.get(c, n), 'tarifa': float(PORCENTAJE_IVA.get(c, 0))}
+                        for c, n in TARIFAS_IVA],
+            'borrador': {'id': int(b.pk), 'url': url_borrador(b.pk), 'url_ver': _url_ver(p.pk),
+                         'actualizado': _momento(b.actualizado_en), 'totales': totales_de_borrador(vigentes)}}
+
+
+def _borrador_para_cambiar(borrador_id):
+    """(proforma bloqueada, borrador), en el orden fijo proforma → borrador; ErrorProforma si el borrador ya no existe."""
+    pk = _id(borrador_id)
+    proforma_id = BorradorFactura.objects.filter(pk=pk).values_list('proforma_id', flat=True).first()
+    if proforma_id is None:
+        raise ErrorProforma(MENSAJES['borrador_no_existe'], estado_http=404, url=URL_LISTA)
+    p = bloquear(proforma_id)
+    b = BorradorFactura.objects.filter(pk=pk, proforma_id=p.pk).first()
+    if b is None:
+        raise ErrorProforma(MENSAJES['borrador_no_existe'], estado_http=404, url=_url_ver(p.pk))
+    return p, b
+
+
+def _info_adicional(crudo):
+    """[{name, value}] de la pantalla de venta: textos de hasta 300 caracteres, como mucho 15 campos; se omiten los vacíos."""
+    if isinstance(crudo, str):
+        try:
+            crudo = json.loads(crudo) if crudo.strip() else []
+        except ValueError:
+            crudo = None
+    if not isinstance(crudo, list):
+        raise ErrorProforma(MENSAJES['info_adicional'])
+    campos = []
+    for item in crudo:
+        if not isinstance(item, dict):
+            raise ErrorProforma(MENSAJES['info_adicional'])
+        nombre, valor = (' '.join(str(item.get(k) or '').split()) for k in ('name', 'value'))
+        if not nombre or not valor:
+            continue
+        if len(nombre) > MAX_TEXTO_ADICIONAL or len(valor) > MAX_TEXTO_ADICIONAL:
+            raise ErrorProforma(MENSAJES['info_adicional'])
+        campos.append({'name': nombre, 'value': valor})
+    if len(campos) > MAX_INFO_ADICIONAL:
+        raise ErrorProforma(MENSAJES['info_adicional'])
+    return campos
+
+
+@transaction.atomic
+def guardar_borrador(borrador_id, datos, request, usuario):
+    """«Guardar borrador» en la venta: cliente, líneas con su tarifa de IVA, pago e información adicional tal como están en
+    la pantalla, con las validaciones de la venta (lineas_venta: precio y tarifa distintos del catálogo exigen permiso o
+    venir de la proforma o del borrador). No toca número, cupo, stock, el SRI ni el producto del catálogo."""
+    from core.pos import lineas_venta
+    from core.pos.choices import MEDIOS_DE_PAGO
+    from core.pos.models import Client
+    p, b = _borrador_para_cambiar(borrador_id)
+    lineas = lineas_venta.validar(datos.get('products', ''), tarifas=True)
+    lineas_venta.comprobar_precios(request, lineas, p)
+    lineas_venta.comprobar_tarifas(request, lineas, tarifas_guardadas(b))
+    texto_cliente = str(datos.get('client') or '').strip()
+    cliente = None
+    if texto_cliente:
+        numero = _entero(texto_cliente)
+        cliente = Client.objects.filter(pk=numero).first() if numero is not None else None
+        if cliente is None:
+            raise ErrorProforma(CAMPOS['cliente'])
+    condicion = str(datos.get('payment_type') or '').strip()
+    forma = str(datos.get('payment_method') or '').strip()
+    medio = str(datos.get('medio_cobro') or '').strip()
+    if condicion not in dict(PAYMENT_TYPE):
+        raise ErrorProforma('Elige la condición de pago: contado o crédito.')
+    if forma and forma not in dict(PAYMENT_METHOD):
+        raise ErrorProforma('Elige la forma de pago del SRI.')
+    if medio and medio not in dict(MEDIOS_DE_PAGO):
+        raise ErrorProforma('Elige el medio de cobro.')
+    b.cliente, b.payment_type, b.payment_method, b.medio_cobro = cliente, condicion, forma, medio
+    b.lineas = [{'product': int(l['producto'].pk), 'nombre': l['producto'].name, 'cant': int(l['cant']),
+                 'price': _dinero(l['precio']), 'dscto': int((l['dscto'] * 100).to_integral_value()),
+                 'codigo_porcentaje': l['tarifa']} for l in lineas]
+    b.info_adicional = _info_adicional(datos.get('additional_info', '[]'))
+    b.avisos = []   # los de la conversión ya se revisaron; los de stock y tarifa se recalculan al abrirlo
+    b.actualizado_por = usuario
+    b.save()
+    return b
+
+
+@transaction.atomic
+def descartar_borrador(proforma_id, usuario, request=None):
+    """Borra la factura en borrador: la proforma queda como estaba (nunca cambió de estado) y se puede editar, anular o
+    convertir de nuevo. Nada que deshacer en número, cupo, stock o SRI, porque el borrador no los usó."""
+    p = bloquear(proforma_id)
+    b = _borrador_guardado(p.pk)
+    if b is None:
+        raise ErrorProforma(MENSAJES['sin_borrador'].format(numero=p.numero_completo), estado_http=409, url=_url_ver(p.pk))
+    borrador_id = int(b.pk)
+    b.delete()
+    _auditar(request, usuario, 'proforma_borrador_descartado', p, borrador_id=borrador_id)
+    return p
+
+
+def descartar_borrador_por_id(borrador_id, usuario, request=None):
+    proforma_id = BorradorFactura.objects.filter(pk=_id(borrador_id)).values_list('proforma_id', flat=True).first()
+    if proforma_id is None:
+        raise ErrorProforma(MENSAJES['borrador_no_existe'], estado_http=404, url=URL_LISTA)
+    return descartar_borrador(proforma_id, usuario, request)
+
+
+def borrador_para_emitir(proforma, borrador_id):
+    """Dentro de la transacción de la venta, con la proforma ya bloqueada: el borrador que se emite, de ESA proforma."""
+    b = BorradorFactura.objects.filter(pk=_id(borrador_id), proforma_id=proforma.pk).first()
+    if b is None:
+        raise ErrorProforma(MENSAJES['borrador_no_existe'], estado_http=409, url=_url_ver(proforma.pk))
+    return b
+
+
+def _borrador_json(b):
+    if b is None:
+        return None
+    return {'id': int(b.pk), 'url': url_borrador(b.pk), 'actualizado': _momento(b.actualizado_en),
+            'actualizado_por': _nombre_usuario(b.actualizado_por) if b.actualizado_por_id else ''}
+
+
 # ---------------------------------------------------------------- consultas y JSON de las pantallas
 
 def consultar(estado='', desde='', hasta='', q='', hoy=None):
     """Proformas de la lista (como mucho MAX_FILAS, las más recientes primero), sin consultas por fila."""
     hoy = hoy or _hoy()
-    qs = Proforma.objects.select_related('venta', 'vendedor')
+    qs = Proforma.objects.select_related('venta', 'vendedor', 'borrador_factura')
     if estado == 'vencida':
         qs = qs.filter(estado__in=Proforma.PUEDEN_VENCER, valida_hasta__lt=hoy)
     elif estado in Proforma.PUEDEN_VENCER:
@@ -970,6 +1324,9 @@ def _venta_json(venta):
             'fecha': (venta.emission_date or venta.date_joined).isoformat(), 'total': _dinero(venta.total),
             'url_lista': URL_VENTAS,
             'url_ride': f'{URL_VENTAS}print/a4/{venta.pk}/' if venta.status in ESTADOS_RIDE else None,
+            # «Ya facturada»: enlace directo a esa factura (su RIDE si está autorizada; si no, su comprobante impreso).
+            'url_factura': (f'{URL_VENTAS}print/a4/{venta.pk}/' if venta.status in ESTADOS_RIDE
+                            else f'{URL_VENTAS}print/invoice/{venta.pk}/'),
             'aviso': aviso}
 
 
@@ -1031,6 +1388,11 @@ def detalle(proforma, permisos, facturable, plan_vencido, hoy=None):
         'condiciones': p.condiciones,
         'forma_pago_sugerida': ({'id': p.forma_pago_sugerida, 'nombre': p.get_forma_pago_sugerida_display()}
                                 if p.forma_pago_sugerida else None),
+        'medio_pago_sugerido': ({'id': p.medio_pago_sugerido, 'nombre': p.get_medio_pago_sugerido_display()}
+                                if p.medio_pago_sugerido else None),
+        'forma_pago': nombre_forma_pago(p),   # como se lee en el PDF
+        'ocultar_vendedor': p.ocultar_vendedor,
+        'borrador_factura': _borrador_json(borrador_de(p)) if p.venta_id is None else None,
         'origen': {'id': int(p.origen_id), 'numero': p.origen.numero_completo} if p.origen_id else None,
         'motivo': p.motivo, 'enviada_a': p.enviada_a,
         'creada_por': _nombre_usuario(p.creada_por) if p.creada_por_id else '',
@@ -1047,4 +1409,4 @@ def configuracion_editor(hoy=None):
     hoy = hoy or _hoy()
     return {'hoy': hoy.isoformat(), 'valida_hasta': (hoy + timedelta(days=VALIDEZ_POR_DEFECTO)).isoformat(),
             'validez_por_defecto': VALIDEZ_POR_DEFECTO, 'max_validez': MAX_VALIDEZ, 'max_lineas': MAX_LINEAS,
-            'max_destinatarios': MAX_DESTINATARIOS}
+            'max_destinatarios': MAX_DESTINATARIOS, 'forma_sri_de_medio': dict(FORMA_PAGO_SRI_DE_MEDIO)}

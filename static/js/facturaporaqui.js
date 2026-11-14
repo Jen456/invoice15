@@ -12,6 +12,15 @@
         jQuery.extend(true, jQuery.fn.dataTable.defaults, {
             language: {search: 'Buscar:', lengthMenu: 'Mostrar _MENU_ registros', info: '_START_–_END_ de _TOTAL_ registros', infoEmpty: 'Sin registros', infoFiltered: '(de _MAX_ registros)', zeroRecords: 'No se encontraron resultados', emptyTable: 'Todavía no hay registros', loadingRecords: 'Cargando…', processing: 'Procesando…', paginate: {first: 'Primero', last: 'Último', next: 'Siguiente', previous: 'Anterior'}, aria: {sortAscending: ': ordenar ascendente', sortDescending: ': ordenar descendente'}}
         });
+        // 409 empresa_cambiada (pestaña abierta con otra empresa): functions.js ya avisa en español; sin la alerta técnica.
+        var modoError = jQuery.fn.dataTable.ext.errMode;
+        jQuery.fn.dataTable.ext.errMode = function (settings, nota, mensaje) {
+            var xhr = settings && settings.jqXHR;
+            if (xhr && xhr.status === 409 && (xhr.responseJSON || {}).codigo === 'empresa_cambiada') { return; }
+            if (typeof modoError === 'function') { return modoError(settings, nota, mensaje); }
+            if (modoError === 'throw') { throw new Error(mensaje); }
+            if (modoError === 'alert') { window.alert(mensaje); }
+        };
     }
     document.addEventListener('click', function (event) {
         var button = event.target.closest('.fp-toggle-secret');

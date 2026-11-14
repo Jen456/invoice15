@@ -33,6 +33,8 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 /* Ajustes posteriores a la publicación: textos completos y acciones móviles. */
 .sidebar .user-panel .info{min-width:0;flex:1;white-space:normal}
 .sidebar .user-panel .info a{white-space:normal;overflow-wrap:anywhere}
+.sidebar .user-panel .info small{color:#b9d3de;overflow-wrap:anywhere}
+.fp-empresa-activa>.nav-link{display:flex;align-items:center;gap:6px;height:auto;min-height:2.5rem}.fp-empresa-texto{flex-direction:column;align-items:flex-start;min-width:0;max-width:min(20vw,300px);line-height:1.15}.fp-empresa-nombre{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fp-empresa-ruc{white-space:nowrap;opacity:.8}@media (max-width:991.98px){.layout-top-nav .fp-empresa-texto{display:none!important}}
 .fp-chart-legend{list-style:none;padding:12px 0;margin:0;display:flex;flex-wrap:wrap;gap:8px 18px}
 .fp-chart-legend li{min-width:0;max-width:100%}
 .fp-chart-legend button{display:flex;align-items:center;gap:8px;border:0;background:transparent;color:var(--fp-ink);text-align:left;overflow-wrap:anywhere;min-height:44px;max-width:100%;padding:6px;font:inherit}
@@ -216,8 +218,8 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-importacion progress { width: 100%; height: 12px; accent-color: #176581; border-radius: 20px; margin: .75rem 0; }
 .fp-import-tag { display: inline-block; border: 1px solid #b9d6e3; background: #e5f1f6; color: #163B50; border-radius: 20px; padding: .3rem .65rem; font-size: .85rem; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
 .fp-import-tag[data-state=verificada_sri], .fp-import-tag[data-state=procesado] { background: #e4f3ee; border-color: #b1d7c9; color: #225d48; }
-.fp-import-tag[data-state=declarada_en_archivo], .fp-import-tag[data-state=duplicado], .fp-import-tag[data-state=pendiente_clave] { background: #fff3dc; border-color: #e4c88d; color: #765419; }
-.fp-import-tag[data-state=ajeno], .fp-import-tag[data-state=discrepancia_sri], .fp-import-tag[data-state=no_autorizada_sri], .fp-import-tag[data-state=rechazado] { background: #fff0ed; color: #a8381f; border-color: #e9b4a8; }
+.fp-import-tag[data-state=declarada_en_archivo], .fp-import-tag[data-state=sin_autorizacion], .fp-import-tag[data-state=sri_no_disponible], .fp-import-tag[data-state=en_proceso_sri], .fp-import-tag[data-state=duplicado], .fp-import-tag[data-state=pendiente_clave] { background: #fff3dc; border-color: #e4c88d; color: #765419; }
+.fp-import-tag[data-state=ajeno], .fp-import-tag[data-state=discrepancia_sri], .fp-import-tag[data-state=no_autorizada_sri], .fp-import-tag[data-state=no_encontrada_sri], .fp-import-tag[data-state=rechazado] { background: #fff0ed; color: #a8381f; border-color: #e9b4a8; }
 .fp-import-tag[data-state=recibido] { background: #163B50; color: white; }
 .fp-import-filters { display: flex; flex-wrap: wrap; gap: 1rem; padding: 1.25rem; background: white; border: 1px solid #cbdfe8; border-radius: 14px; margin-bottom: 1rem; align-items: end; }
 .fp-import-filters > div { flex: 1 1 230px; min-width: 0; }
@@ -341,6 +343,8 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-stage #fp-totales { background: #f3f9fb; border: 1px solid #cbdfe8; }
 .fp-stage #fp-totales tr:last-child { background: #163B50; color: white; font-size: 1.2rem; }
 .fp-stage .fp-proforma-aviso, .fp-stage-note { border-left: 4px solid #44BADD; padding: 1rem; background: #E5F1F6; border-radius: 12px; overflow-wrap: anywhere; }
+/* El aviso de la proforma que se factura usa .alert-info (texto blanco de AdminLTE) sobre este fondo claro: texto oscuro. */
+.fp-stage .fp-proforma-aviso, .fp-stage .fp-proforma-aviso .alert-link { color: #163B50; }
 .fp-stage .fp-stage-duplicate { background: #fff5df; border: 1px solid #b88025; border-radius: 12px; padding: 1rem 1rem 1rem 2.5rem; margin-top: 1rem; }
 .fp-stage .fp-anulado-form { border: 1px solid #cbdfe8; padding: 1.25rem; border-radius: 14px; background: white; }
 .fp-stage .fp-anulado-form .form-check { margin: 1.2rem 0; padding-left: 1.8rem; }

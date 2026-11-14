@@ -117,14 +117,22 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
 
     def get(self, request, *args, **kwargs):
         # Facturar una proforma (?proforma=<id>): la pantalla se abre precargada y no guarda nada (core/proformas).
+        # Su factura en borrador («Convertir en factura», ?borrador=<id>): se abre con lo guardado, tampoco guarda nada. Si
+        # la proforma ya tiene borrador, ?proforma= abre ese mismo borrador (nunca dos facturas para una proforma).
         self.precarga = None
-        if 'proforma' in request.GET:
+        if 'proforma' in request.GET or 'borrador' in request.GET:
             from core.proformas import servicios as proformas
             if 'change_proforma' not in proformas.permisos_de(request):
                 messages.error(request, proformas.MENSAJES['facturar_sin_permiso'])
                 return HttpResponseRedirect(proformas.URL_LISTA)
             try:
-                self.precarga = proformas.precarga_para_venta(request.GET['proforma'])
+                if 'borrador' in request.GET:
+                    self.precarga = proformas.precarga_de_borrador(request.GET['borrador'])
+                else:
+                    borrador = proformas.borrador_de_proforma(request.GET['proforma'])
+                    if borrador is not None:
+                        return HttpResponseRedirect(proformas.url_borrador(borrador.pk))
+                    self.precarga = proformas.precarga_para_venta(request.GET['proforma'])
             except proformas.ErrorProforma as e:
                 messages.error(request, e.mensaje)
                 return HttpResponseRedirect(e.url or proformas.URL_LISTA)
@@ -156,17 +164,34 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
             return HttpResponse(json.dumps({'error': SIN_EMPRESA, 'codigo': 'sin_empresa'}), status=409,
                                 content_type='application/json')
         try:
-            if action == 'add':
+            if action in ('guardar_borrador', 'descartar_borrador'):
+                # Factura en borrador de una proforma: guardar o descartar sin número, cupo, stock ni SRI.
+                from core.proformas import servicios as proformas
+                if 'change_proforma' not in proformas.permisos_de(request):
+                    raise ValueError(proformas.MENSAJES['facturar_sin_permiso'])
+                if action == 'guardar_borrador':
+                    borrador = proformas.guardar_borrador(request.POST.get('borrador_id'), request.POST, request, request.user)
+                    data = {'mensaje': proformas.MENSAJES['borrador_guardado'], 'borrador': {'id': borrador.pk}}
+                else:
+                    p = proformas.descartar_borrador_por_id(request.POST.get('borrador_id'), request.user, request)
+                    data = {'mensaje': proformas.MENSAJES['borrador_descartado'].format(
+                        numero=p.numero_completo, estado=proformas._estado_en_texto(p)), 'url': proformas._url_ver(p.pk)}
+            elif action == 'add':
                 if request.POST['receipt'] == VOUCHER_TYPE[2][0] and request.company.environment_type == emision.PRODUCCION:
                     raise ValueError('El ticket de venta no está disponible en Producción: emite una factura.')
                 proforma_id, proforma = (request.POST.get('proforma_id') or '').strip(), None
+                borrador_id, borrador = (request.POST.get('borrador_id') or '').strip(), None
                 with transaction.atomic():
-                    if proforma_id:
+                    if proforma_id or borrador_id:
                         # Factura de una proforma: se bloquea ANTES de reservar el número (orden fijo proforma → secuencia).
                         from core.proformas import servicios as proformas
                         if 'change_proforma' not in proformas.permisos_de(request):
                             raise ValueError(proformas.MENSAJES['facturar_sin_permiso'])
+                        if not proforma_id:
+                            raise ValueError(proformas.MENSAJES['borrador_no_existe'])
                         proforma = proformas.bloquear_para_facturar(proforma_id, request.POST['receipt'])
+                        if borrador_id:   # «Emitir factura» desde su factura en borrador: tarifa de IVA por línea
+                            borrador = proformas.borrador_para_emitir(proforma, borrador_id)
                     sale = Sale()
                     sale.date_joined = timezone.localdate()   # la fecha de emisión es la de hoy; no se elige
                     sale.company = request.company
@@ -177,7 +202,7 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     sale.receipt = pt.receipt_para_emitir(request, request.POST['receipt'], electronica, request.POST.get('punto'))
                     # Líneas validadas antes de reservar el número; un error deshace todo (número incluido). Va después del punto:
                     # un formulario de otra empresa avisa primero del punto de emisión.
-                    lineas = lineas_venta.validar(request.POST.get('products', ''))
+                    lineas = lineas_venta.validar(request.POST.get('products', ''), tarifas=borrador is not None)
                     sale.voucher_number = sale.generate_voucher_number()
                     sale.voucher_number_full = sale.get_voucher_number_full()
                     sale.employee_id = request.user.id
@@ -228,9 +253,12 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     sale.save()
                     # Precio distinto del catálogo: con permiso o desde la proforma que se factura (core/pos/lineas_venta.py).
                     lineas_venta.comprobar_precios(request, lineas, proforma)
+                    if borrador is not None:   # tarifa distinta del catálogo: con permiso o la guardada en el borrador
+                        lineas_venta.comprobar_tarifas(request, lineas, proformas.tarifas_guardadas(borrador))
                     for linea in lineas:   # las líneas, en el orden de la factura (XML y RIDE)
+                        # Sin tarifa propia ('') calculate_detail pone la del producto, como siempre.
                         SaleDetail.objects.create(sale=sale, product=linea['producto'], cant=linea['cant'], price=linea['precio'],
-                                                  dscto=linea['dscto'])
+                                                  dscto=linea['dscto'], codigo_porcentaje=linea['tarifa'] or '')
                     for linea in sorted(lineas, key=lambda x: x['producto'].pk):   # orden fijo: dos ventas no se interbloquean
                         lineas_venta.descontar_stock(linea)   # F() y stock suficiente: no pisa el catálogo ni otra venta
                     sale.calculate_detail()
@@ -259,7 +287,7 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                         emision.preparar(sale)
                     if proforma is not None:
                         # UPDATE condicional: si otra conversión ganó, ErrorProforma deshace toda esta venta.
-                        proformas.marcar_facturada(proforma, sale, request.user, request)
+                        proformas.marcar_facturada(proforma, sale, request.user, request, borrador=borrador)
                 if sale.create_electronic_invoice:
                     # Ya confirmada la venta: un fallo desde aquí nunca la borra ni libera su número.
                     data = sale.generate_electronic_invoice()
@@ -363,6 +391,9 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
             context['proforma_precarga'] = precarga
             context['proforma_facturar'] = precarga['proforma']
             context['proforma_avisos'] = precarga['avisos']
+            # Factura en borrador: «Guardar borrador», «Descartar borrador» y la tarifa de IVA por línea (con change_product).
+            context['proforma_borrador'] = precarga.get('borrador')
+            context['tarifa_editable'] = bool(precarga.get('borrador')) and lineas_venta.puede_cambiar_precio(self.request)
         return context
 
 

@@ -205,7 +205,7 @@ class TestLoteDeClaves:
         documento = entradas[0].documento
         assert (documento.origen, documento.estado_verificacion, documento.clasificacion) == ('lista', 'verificada_sri', 'recibido')
         assert documento.importe_total == Decimal('135.00') and leer(empresa, lambda: documento.archivo_xml.origen) == 'sri'
-        assert entradas[2].errores == [{'codigo': 'no_encontrada_sri', 'texto': 'Sin XML autorizado: el sri no tiene esa clave.'}]
+        assert entradas[2].errores == [{'codigo': 'no_encontrada_sri', 'texto': 'Sin XML autorizado: el SRI no tiene esa clave.'}]
         assert entradas[2].documento.estado_procesamiento == 'pendiente_xml' and entradas[2].documento.importe_total == 0
 
     def test_sri_caido_y_en_proceso_se_reintentan_sin_duplicar(self, empresa, dueno, sri):

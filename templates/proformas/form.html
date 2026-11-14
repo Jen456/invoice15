@@ -70,14 +70,31 @@
             <input type="date" id="fp-valida-hasta" name="valida_hasta" class="form-control" required>
             <div class="invalid-feedback" data-campo="valida_hasta"></div>
         </div>
-        <div class="form-group col-lg-6">
-            <label for="fp-forma-pago">Forma de pago sugerida</label>
-            <select id="fp-forma-pago" name="forma_pago_sugerida" class="form-control">
+        <div class="form-group col-sm-6 col-lg-3">
+            <label for="fp-medio-pago">Medio de pago</label>
+            <select id="fp-medio-pago" name="medio_pago_sugerido" class="form-control" aria-describedby="fp-medio-pago-ayuda">
                 <option value="">Sin indicar</option>
-                {% for codigo, nombre in formas_pago %}<option value="{{ codigo }}">{{ nombre }}</option>{% endfor %}
+                {% for codigo, nombre in medios_pago %}<option value="{{ codigo }}">{{ nombre }}</option>{% endfor %}
             </select>
+            <small id="fp-medio-pago-ayuda" class="form-text text-muted">Así lo lee tu cliente en la proforma («Transferencia bancaria»).</small>
+            <div class="invalid-feedback" data-campo="medio_pago_sugerido"></div>
+        </div>
+        <div class="form-group col-sm-6 col-lg-3">
+            <label for="fp-forma-pago">Forma de pago del SRI</label>
+            <select id="fp-forma-pago" name="forma_pago_sugerida" class="form-control" aria-describedby="fp-forma-pago-ayuda">
+                <option value="">Sin indicar</option>
+                {% for codigo, nombre in formas_pago %}<option value="{{ codigo }}">{{ codigo }} · {{ nombre }}</option>{% endfor %}
+            </select>
+            <small id="fp-forma-pago-ayuda" class="form-text text-muted">La de la factura. Con un medio de pago se elige sola (transferencia: 20).</small>
             <div class="invalid-feedback" data-campo="forma_pago_sugerida"></div>
         </div>
+    </div>
+    <div class="form-group">
+        <div class="custom-control custom-checkbox">
+            <input type="checkbox" id="fp-ocultar-vendedor" name="ocultar_vendedor" value="on" class="custom-control-input" aria-describedby="fp-ocultar-vendedor-ayuda">
+            <label class="custom-control-label" for="fp-ocultar-vendedor">Ocultar el vendedor en el PDF</label>
+        </div>
+        <small id="fp-ocultar-vendedor-ayuda" class="form-text text-muted">El PDF muestra solo la empresa emisora. Quién preparó la proforma queda registrado en el sistema.</small>
     </div>
 
     <div class="card p-3 fp-stage-group"><h2 class="h5">2 · Productos y condiciones</h2>

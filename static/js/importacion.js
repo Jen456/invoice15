@@ -192,6 +192,25 @@
         pagination.querySelector('[data-page=next]').addEventListener('click', () => load(page + 1));
         load();
     }
+    // «Verificar en el SRI»: envío normal del formulario. La página responde con el resultado de la consulta y la muestra
+    // con su fecha, usuario y mensaje (antes la llamada a la API recargaba la página sin decir nada y el botón parecía no
+    // hacer nada). Aquí solo se evita el doble envío y se avisa que la consulta puede tardar; el servidor también impide
+    // dos consultas a la vez del mismo documento.
+    root.querySelectorAll('.fp-import-verificar').forEach(form => {
+        const button = form.querySelector('button[type=submit]'), status = form.querySelector('[role=status]');
+        const original = button.textContent, nota = status ? status.textContent : '';
+        form.addEventListener('submit', event => {
+            if (form.dataset.enviando) { event.preventDefault(); return; }
+            form.dataset.enviando = '1';
+            button.disabled = true; button.setAttribute('aria-busy', 'true'); button.textContent = button.dataset.espera || original;
+            if (status) status.textContent = 'Consultando al SRI: puede tardar hasta un minuto. No cierres esta página.';
+        });
+        window.addEventListener('pageshow', event => {   // al volver con «Atrás», el botón vuelve a estar disponible
+            if (!event.persisted) return;
+            delete form.dataset.enviando; button.disabled = false; button.removeAttribute('aria-busy'); button.textContent = original;
+            if (status) status.textContent = nota;
+        });
+    });
     // Las confirmaciones son casillas explícitas, también en el fallback sin JavaScript.
     const docId = root.dataset.documento;
     if (docId) root.querySelectorAll('.fp-import-action').forEach(form => form.addEventListener('submit', async event => {

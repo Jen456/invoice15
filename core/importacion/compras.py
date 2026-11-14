@@ -18,6 +18,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from django.db import transaction
 from django.utils import timezone
 
+from core.importacion.models import DocumentoImportado
 from core.pos.catalogos_sri import (BASE_POR_CODIGO, CODIGOS_CON_TARIFA_VARIABLE, FORMAS_PAGO, PLAZO_ATS_DIAS, SUSTENTOS,
                                     TARIFA_POR_CODIGO, UMBRAL_BANCARIZACION)
 from core.pos.compras import MAX_CANTIDAD, MAX_LINEAS
@@ -30,7 +31,7 @@ CODIGOS_DE_COMPRA = ('01', '04', '05')
 # Claves que xml_sri escribe desde la Etapa 2 (§1.8); un documento anterior sin ellas se vuelve a leer de su XML
 CLAVES_NUEVAS = {'01': ('detalles',), '04': ('detalles', 'doc_modificado'), '05': ('doc_modificado', 'motivos'),
                  '07': ('retencion',)}
-VERIFICACIONES_QUE_BLOQUEAN = ('no_autorizada_sri', 'no_encontrada_sri', 'discrepancia_sri')
+VERIFICACIONES_QUE_BLOQUEAN = DocumentoImportado.VERIFICACION_BLOQUEA   # rechazo confirmado, sin la clave o con discrepancia
 # Regla de importación (naturaleza, tratamiento del IVA) → sustento sugerido (Tabla 5)
 SUSTENTO_SUGERIDO = {('inventario', 'credito_tributario'): '06', ('inventario', 'costo_gasto'): '07',
                      ('gasto', 'credito_tributario'): '01', ('gasto', 'costo_gasto'): '02',
@@ -326,7 +327,7 @@ def _bloqueos(documento, proveedor, lineas):
     elif documento.cod_doc not in CODIGOS_DE_COMPRA:
         bloqueo('tipo_no_admitido', 'Solo se crean compras desde facturas, notas de crédito y notas de débito.')
     if documento.estado_verificacion in VERIFICACIONES_QUE_BLOQUEAN:
-        bloqueo('verificacion', f'No se puede incorporar: {documento.get_estado_verificacion_display().lower()}.')
+        bloqueo('verificacion', f'No se puede incorporar: {documento.verificacion_en_frase()}.')
     if documento.ambiente != 2:
         bloqueo('ambiente_pruebas', 'El documento es del ambiente de PRUEBAS del SRI: no sustenta una compra.')
     if documento.compra_id:

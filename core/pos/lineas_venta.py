@@ -8,26 +8,38 @@ el producto del catálogo.
 Cambiar el precio no amplía facultades: lo puede hacer quien ya puede fijar precios en el catálogo (`change_product`), y
 una factura que sale de una proforma conserva el precio de esa proforma (como hasta ahora). El resto factura al precio
 vigente del catálogo (el de la promoción, si la hay).
+
+Tarifa de IVA por línea: solo en la factura en borrador de una proforma (`tarifas=True`; core/proformas). La línea guarda
+la tarifa elegida (SaleDetail.codigo_porcentaje) y de ella salen el XML, el RIDE y los totales; el producto no cambia.
+Una tarifa distinta de la del catálogo exige el mismo permiso que el precio (`change_product`) o ser la que ya quedó
+guardada en el borrador. En la venta de siempre la tarifa es la del producto, como hasta ahora (lo que envíe el navegador
+se ignora).
 """
 import json
 from decimal import Decimal
 
-from core.proformas.servicios import CENTAVO, LINEAS, MAX_CANTIDAD, MAX_PRECIO, _decimal, _entero
+from core.pos.choices import NOMBRE_TARIFA_IVA, TARIFAS_IVA
+from core.proformas.servicios import CENTAVO, LINEAS, MAX_CANTIDAD, MAX_PRECIO, _decimal, _entero, tarifa_de_producto
 
 SIN_LINEAS = 'Agrega al menos un producto.'
 PRECIO_SIN_PERMISO = ('El precio de {nombre} no coincide con el del catálogo ({catalogo}) y tu perfil no puede cambiarlo: quita la '
                       'línea y vuelve a agregarla, o factura desde una proforma.')
 SIN_STOCK = 'No hay stock suficiente de {nombre}: quedan {stock}. Revisa la cantidad.'
 PERMISO_PRECIO = 'change_product'
+TARIFA_INVALIDA = 'La tarifa de IVA no es válida: elige 15 %, 5 %, 0 %, exento o no objeto de IVA.'
+TARIFA_SIN_PERMISO = ('La tarifa de IVA de {nombre} ({tarifa}) no es la del catálogo ({catalogo}) y tu perfil no puede '
+                      'cambiarla: pide a quien administra el catálogo que revise esta factura.')
 
 
 class ErrorLineas(ValueError):
     pass
 
 
-def validar(crudas):
-    """[{producto, cant, precio, dscto (fracción), catalogo}] o ErrorLineas con el primer problema (número de línea y motivo).
-    `crudas` es la lista del POS (JSON o lista): {id, cant, price_current, dscto (porcentaje)}."""
+def validar(crudas, tarifas=False):
+    """[{producto, cant, precio, dscto (fracción), catalogo, tarifa}] o ErrorLineas con el primer problema (número de línea y
+    motivo). `crudas` es la lista del POS (JSON o lista): {id, cant, price_current, dscto (porcentaje)} y, con
+    `tarifas=True` (factura en borrador de una proforma), `codigo_porcentaje`; sin él, la del catálogo. Con tarifas=False
+    `tarifa` es None y la venta usa la del producto, como siempre."""
     from core.pos.models import Product
     if isinstance(crudas, str):
         try:
@@ -56,8 +68,14 @@ def validar(crudas):
         dscto = _decimal(cruda.get('dscto') if cruda.get('dscto') not in ('', None) else 0)
         if dscto is None or dscto != dscto.to_integral_value() or not 0 <= dscto <= 100:
             raise ErrorLineas(f'Línea {n} ({producto.name}): {LINEAS["dscto"]}')
+        tarifa = None
+        if tarifas:
+            tarifa = str(cruda.get('codigo_porcentaje') or '').strip() or tarifa_de_producto(producto)
+            if tarifa not in dict(TARIFAS_IVA):
+                raise ErrorLineas(f'Línea {n} ({producto.name}): {TARIFA_INVALIDA}')
         lineas.append({'producto': producto, 'cant': cant, 'precio': precio.quantize(CENTAVO),
-                       'dscto': (dscto / 100).quantize(CENTAVO), 'catalogo': Decimal(str(producto.get_price_current())).quantize(CENTAVO)})
+                       'dscto': (dscto / 100).quantize(CENTAVO), 'catalogo': Decimal(str(producto.get_price_current())).quantize(CENTAVO),
+                       'tarifa': tarifa})
     return lineas
 
 
@@ -78,6 +96,21 @@ def comprobar_precios(request, lineas, proforma=None):
     for l in lineas:
         if l['precio'] != l['catalogo'] and l['precio'] not in de_proforma.get(l['producto'].pk, set()):
             raise ErrorLineas(PRECIO_SIN_PERMISO.format(nombre=l['producto'].name, catalogo=f'{l["catalogo"]:.2f}'))
+
+
+def comprobar_tarifas(request, lineas, guardadas=None):
+    """Una tarifa distinta de la del catálogo exige `change_product` o ser la que ya quedó guardada en la factura en
+    borrador para ese producto (`guardadas`: {producto: tarifa}). Nunca cambia el producto."""
+    distintas = [l for l in lineas if l.get('tarifa') and l['tarifa'] != tarifa_de_producto(l['producto'])]
+    if not distintas or puede_cambiar_precio(request):
+        return
+    guardadas = guardadas or {}
+    for l in distintas:
+        if guardadas.get(l['producto'].pk) != l['tarifa']:
+            catalogo = tarifa_de_producto(l['producto'])
+            raise ErrorLineas(TARIFA_SIN_PERMISO.format(nombre=l['producto'].name,
+                                                        tarifa=NOMBRE_TARIFA_IVA.get(l['tarifa'], l['tarifa']),
+                                                        catalogo=NOMBRE_TARIFA_IVA.get(catalogo, catalogo)))
 
 
 def descontar_stock(linea):

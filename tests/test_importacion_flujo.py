@@ -208,6 +208,22 @@ class TestVerificacionYRevision:
         sri.comprobantes[f.clave()], sri.estado = f.factura(), 'NO AUTORIZADO'
         assert self.verificar(empresa, documento, dueno).estado_verificacion == 'no_autorizada_sri'
 
+    def test_boton_muestra_fuera_de_rango_y_conserva_revision(self, empresa, documento, web, monkeypatch):
+        monkeypatch.setattr(sv, 'consultar_autorizacion', lambda clave: sri_autorizacion.ResultadoConsulta(
+            'fuera_de_rango', clave, mensajes=['[80] Consulta fuera de rango'], intentos=1, estados_sri=['RECHAZADA']))
+        r = web.post(f'/importacion/documentos/{documento.pk}/', {'accion': 'verificar', 'empresa': empresa.pk}, follow=True)
+        assert r.status_code == 200
+        html = r.content.decode()
+        assert 'No se pudo verificar: fecha fuera del rango de la consulta del SRI.' in html and 'Resultado de la consulta al SRI (' in html
+        assert 'portal oficial del SRI' in html and 'Última consulta al SRI' in html and 'Rechazo confirmado' not in html
+        with company_context(empresa):
+            documento.refresh_from_db()
+            # una consulta fallida con su motivo (no un estado aparte ni un rechazo): no bloquea, pide confirmar sin verificar
+            assert (documento.estado_verificacion, documento.ultima_consulta_resultado) == ('sri_no_disponible', 'fuera_de_rango')
+            assert documento.clasificacion == 'recibido' and documento.estado_revision == 'pendiente'
+            assert documento.verificado_en and documento.compra_id is None
+            assert documento.eventos.filter(tipo='verificacion').latest('pk').datos['estados_sri'] == ['RECHAZADA']
+
     def test_aprobar_exige_verificacion_y_genera_propuesta_que_cuadra(self, empresa, dueno, documento, sri):
         with company_context(empresa):
             regla = sv.reglas_de(empresa)

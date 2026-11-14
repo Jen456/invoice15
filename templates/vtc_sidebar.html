@@ -5,12 +5,20 @@
         <span class="brand-text font-weight-light">FacturaPorAquí</span>
     </a>
     <div class="sidebar">
-        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+        {# Empresa activa: la misma de la cabecera (request.company), con su RUC. Antes aquí iba solo el nombre del usuario, #}
+        {# que puede parecer el de otra empresa (p. ej. una cuenta llamada como la empresa de su dueña). #}
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex{% if company %} fp-empresa-activa{% endif %}"{% if company %} data-empresa-ruc="{{ company.ruc }}"{% endif %}>
             <div class="image">
-                <img src="{{ request.user.get_image }}" class="img-circle elevation-2" alt="User Image">
+                <img src="{% if company %}{{ company.get_image }}{% else %}{{ request.user.get_image }}{% endif %}" class="img-circle elevation-2" alt="">
             </div>
             <div class="info">
-                <a class="d-block">{{ request.user.get_short_name }}</a>
+                {% if company %}
+                    <a class="d-block" href="{% url 'company_select' %}" title="Ver todas mis empresas">{{ company.tradename }}</a>
+                    <small class="d-block">RUC {{ company.ruc }}</small>
+                    <small class="d-block">Usuario: {{ request.user.get_short_name|default:request.user.username }}</small>
+                {% else %}
+                    <a class="d-block">{{ request.user.get_short_name }}</a>
+                {% endif %}
             </div>
         </div>
         <nav class="mt-2 fp-menu-procesos" aria-label="Procesos y comprobantes de tu empresa">

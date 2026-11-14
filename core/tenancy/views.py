@@ -11,6 +11,16 @@ from core.tenancy.middleware import SESSION_KEY
 from core.tenancy.models import Membership, audit
 
 
+def destino_interno(request, destino):
+    """`next` del selector: solo una ruta interna de este sitio (p. ej. la revisión del mes desde el resumen del contador o
+    un archivo de la empresa abierto por un enlace); cualquier otra cosa (otro sitio, //, \\) vale ''."""
+    destino = destino or ''
+    if destino.startswith('/') and not destino.startswith('//') and url_has_allowed_host_and_scheme(
+            destino, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return destino
+    return ''
+
+
 @login_required
 def company_select(request):
     memberships = Membership.objects.active().filter(user=request.user).select_related('company', 'group') \
@@ -19,6 +29,7 @@ def company_select(request):
         'title': 'Selecciona una empresa',
         'memberships': memberships,
         'active_company': getattr(request, 'company', None),
+        'destino': destino_interno(request, request.GET.get('next')),   # company_switch la vuelve a validar
     })
 
 
@@ -49,11 +60,7 @@ def company_switch(request):
     request.session.pop('url_last', None)
     set_module(request, None)
     audit(request, action, company=company)
-    # `next` (opcional): solo una ruta interna de este sitio, p. ej. la revisión del mes desde el resumen del contador.
-    destino = request.POST.get('next', '')
-    if not (destino.startswith('/') and not destino.startswith('//') and url_has_allowed_host_and_scheme(
-            destino, allowed_hosts={request.get_host()}, require_https=request.is_secure())):
-        destino = settings.LOGIN_REDIRECT_URL
+    destino = destino_interno(request, request.POST.get('next')) or settings.LOGIN_REDIRECT_URL   # `next`: opcional
     if 'application/json' in request.headers.get('Accept', ''):   # diálogo de la factura (R1): confirmación comprobable
         return JsonResponse({'ok': True, 'company': company.pk})
     return HttpResponseRedirect(destino)

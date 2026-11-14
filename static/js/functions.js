@@ -437,3 +437,29 @@ function identificacion_valida(tipo, numero) {
     }
     return true;
 }
+
+// Empresa con la que se armó la página (<meta name="fpa-empresa">, templates/base.html): cada petición AJAX de jQuery al
+// mismo sitio la manda en X-FPA-Empresa y, si en otra pestaña se cambió de empresa, el servidor responde 409
+// empresa_cambiada sin datos de la empresa activa (core/tenancy/pestanas.py). El aviso va después de los manejadores de
+// cada pantalla (que pueden mostrar su propio mensaje) y no se cierra solo.
+if (window.jQuery) {
+    jQuery.ajaxPrefilter(function (options, original, jqXHR) {
+        var meta = document.querySelector('meta[name="fpa-empresa"]');
+        if (options.crossDomain || !meta || !meta.content) {
+            return;
+        }
+        jqXHR.setRequestHeader('X-FPA-Empresa', meta.content);
+        jqXHR.fail(function (xhr) {
+            var cuerpo = xhr.responseJSON;
+            if (!cuerpo) {
+                try { cuerpo = JSON.parse(xhr.responseText); } catch (e) { cuerpo = {}; }
+            }
+            if (xhr.status !== 409 || !cuerpo || cuerpo.codigo !== 'empresa_cambiada') {
+                return;
+            }
+            window.setTimeout(function () {
+                alert_sweetalert({'type': 'warning', 'title': 'Vuelve a cargar la página', 'message': cuerpo.error, 'callback': function () {}});
+            }, 0);
+        });
+    });
+}

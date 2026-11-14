@@ -14,6 +14,7 @@
                                 <form method="post" action="{% url 'company_switch' %}">
                                     {% csrf_token %}
                                     <input type="hidden" name="company" value="{{ m.company.id }}">
+                                    {% if destino %}<input type="hidden" name="next" value="{{ destino }}">{% endif %}
                                     <button type="submit" class="btn btn-block {% if active_company and active_company.id == m.company.id %}btn-primary{% else %}btn-outline-primary{% endif %} text-left">
                                         <strong>{{ m.company.tradename }}</strong>
                                         <small class="d-block">{{ m.company.business_name }} · RUC {{ m.company.ruc }} · {{ m.group.name }}</small>

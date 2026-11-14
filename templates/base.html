@@ -8,6 +8,7 @@
     <meta name="description" content="">
     <meta name="author" content="{{ dashboard.author }}">
     <meta content="width=device-width, initial-scale=1" name="viewport">
+    {% if company %}<meta name="fpa-empresa" content="{{ company.pk }}">{% endif %}{# empresa de la página: cabecera X-FPA-Empresa (core/tenancy/pestanas.py) #}
     <link rel="shortcut icon" href="{% static 'img/brand/favicon.png' %}"/>
     <!--CSS-->
     <link rel="stylesheet" href="{% static 'lib/bootstrap-4.6.0/css/bootstrap.min.css' %}"/>

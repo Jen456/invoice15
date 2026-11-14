@@ -23,6 +23,9 @@ PDF_MEMORIA_BYTES = 768 * MB
 # Consulta de autorización al SRI
 SRI_TIEMPO_SEGUNDOS = 10
 SRI_REINTENTOS = 1                  # un intento adicional si no responde (no si responde «sin resultados»)
+# Marca de «consulta en curso» de un documento (doble clic, dos pestañas): caduca sola pasado este tiempo, más que la consulta
+# más lenta (2 intentos × (WSDL + llamada) × 10 s + 1 s ≈ 41 s), por si el proceso se cortó a mitad de la consulta.
+SRI_CONSULTA_EN_CURSO_SEGUNDOS = 90
 
 # Procesamiento por petición (el navegador pide «procesar» hasta terminar el lote). gunicorn corta a los 60 s: no se
 # empieza otro archivo ni otra verificación después de PRESUPUESTO_PETICION_SEGUNDOS. Peor caso de una tarea:

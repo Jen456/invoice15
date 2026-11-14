@@ -3,6 +3,10 @@
 No usan Receipt, reservar_numero, cupo, stock, cuentas por cobrar ni el SRI. Las líneas usan los nombres de campo de
 SaleDetail para reutilizar calcular_linea_iva, impuestos_por_tarifa y totales_de_lineas (core/pos/models.py): la factura
 que nace de una proforma calcula los mismos importes.
+
+«Convertir en factura» crea (o reabre) un BorradorFactura: la factura en borrador de esa proforma, con cliente, líneas,
+tarifa de IVA por línea, pago e información adicional. Tampoco usa número, cupo, stock ni el SRI: todo eso ocurre solo al
+pulsar «Emitir factura» en la venta (core/pos/views/sale/views.py). Ver primera-entrega/convertir-en-factura.md.
 """
 from decimal import Decimal
 
@@ -10,8 +14,17 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from core.pos.choices import NOMBRE_TARIFA_IVA, PAYMENT_METHOD
+from core.pos.choices import NOMBRE_TARIFA_IVA, PAYMENT_METHOD, PAYMENT_TYPE
 from core.tenancy.models_base import TenantModel
+
+
+# Medio de pago sugerido, como lo lee el cliente en la proforma. Mismos códigos que MEDIOS_DE_PAGO (core/pos/choices.py):
+# al facturar pasa a Sale.medio_cobro y su forma de pago del SRI sale de FORMA_PAGO_SRI_DE_MEDIO (transferencia → 20).
+MEDIOS_PAGO_PROFORMA = (
+    ('efectivo', 'Efectivo'), ('transferencia', 'Transferencia bancaria'), ('deposito', 'Depósito bancario'),
+    ('cheque', 'Cheque'), ('tarjeta_debito', 'Tarjeta de débito'), ('tarjeta_credito', 'Tarjeta de crédito'),
+    ('compensacion', 'Compensación de deudas'), ('otro', 'Otro'),
+)
 
 
 class ContadorProforma(TenantModel):
@@ -49,6 +62,11 @@ class Proforma(TenantModel):
     condiciones = models.TextField(blank=True, default='', verbose_name='Condiciones')
     forma_pago_sugerida = models.CharField(max_length=2, choices=PAYMENT_METHOD, blank=True, default='',
                                            verbose_name='Forma de pago sugerida')
+    # db_default: las inserciones que no nombran la columna (SQL directo, migraciones antiguas) siguen funcionando.
+    medio_pago_sugerido = models.CharField(max_length=15, choices=MEDIOS_PAGO_PROFORMA, blank=True, default='', db_default='',
+                                           verbose_name='Medio de pago sugerido')
+    # Solo el PDF (y su copia por correo): `vendedor` y `creada_por` se guardan igual y se ven en la ficha y la auditoría.
+    ocultar_vendedor = models.BooleanField(default=False, db_default=False, verbose_name='Ocultar el vendedor en el PDF')
     subtotal_gravado = models.DecimalField(max_digits=9, decimal_places=2, default=Decimal('0.00'),
                                            verbose_name='Subtotal gravado')
     subtotal_cero = models.DecimalField(max_digits=9, decimal_places=2, default=Decimal('0.00'),
@@ -154,3 +172,39 @@ class ProformaDetalle(TenantModel):
     @property
     def nombre_tarifa(self):
         return NOMBRE_TARIFA_IVA.get(self.codigo_porcentaje, self.codigo_porcentaje)
+
+
+class BorradorFactura(TenantModel):
+    """Factura en borrador de una proforma («Convertir en factura»). Una por proforma (OneToOne): convertir otra vez o con
+    doble clic reabre la misma. No tiene número, cupo, stock, cuenta por cobrar ni XML: se emite solo con «Emitir factura»
+    en la venta, que lo borra en su misma transacción (marcar_facturada). Descartarlo deja la proforma como estaba.
+
+    `lineas`: [{product, nombre, cant, price ("10.00"), dscto (porcentaje entero), codigo_porcentaje}] en el orden de la
+    factura. `codigo_porcentaje` es la tarifa de IVA elegida para ESTA operación (tabla 17); nunca cambia el producto."""
+    proforma = models.OneToOneField(Proforma, on_delete=models.CASCADE, related_name='borrador_factura',
+                                    verbose_name='Proforma')
+    cliente = models.ForeignKey('pos.Client', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+                                verbose_name='Cliente')
+    payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPE, default=PAYMENT_TYPE[0][0],
+                                    verbose_name='Condición de pago')
+    payment_method = models.CharField(max_length=2, choices=PAYMENT_METHOD, blank=True, default='',
+                                      verbose_name='Forma de pago del SRI')
+    medio_cobro = models.CharField(max_length=15, choices=MEDIOS_PAGO_PROFORMA, blank=True, default='',
+                                   verbose_name='Medio de cobro')
+    lineas = models.JSONField(default=list, verbose_name='Líneas')
+    info_adicional = models.JSONField(default=list, verbose_name='Información adicional')
+    avisos = models.JSONField(default=list, verbose_name='Avisos de la conversión')
+    creado_en = models.DateTimeField(default=timezone.now, editable=False, verbose_name='Creado el')
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='+', verbose_name='Creado por')
+    actualizado_en = models.DateTimeField(auto_now=True, verbose_name='Actualizado el')
+    actualizado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                        related_name='+', verbose_name='Actualizado por')
+
+    class Meta:
+        verbose_name = 'Borrador de factura'
+        verbose_name_plural = 'Borradores de factura'
+        default_permissions = ()
+
+    def __str__(self):
+        return f'Borrador de factura de {self.proforma_id}'

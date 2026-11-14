@@ -531,6 +531,14 @@ El número va en `.fp-numero` del título.
 
 ## 8. Facturar — `GET /pos/sale/admin/add/?proforma=<pk>` (pantalla de venta, modificada)
 
+> **Primera entrega (13/11/2026, rama `fase/pe-convertir-factura`): «Convertir en factura».** El botón `facturar` ya no
+> es un enlace: hace `POST /proformas/` `action=convertir`, que crea o reabre la **factura en borrador** de la proforma
+> (una por proforma) y abre `/pos/sale/admin/add/?borrador=<id>`. Ahí se guarda o descarta sin emitir y se revisa el IVA
+> por línea. Solo «Emitir factura» firma y envía. Con un borrador, `?proforma=<pk>` redirige a él y la proforma no se
+> edita, rechaza ni anula (acción nueva `descartar_borrador`). Por eso la frase «No existen facturas en borrador» de
+> abajo ya no vale para ese camino. Detalle, mensajes y migraciones: `primera-entrega/convertir-en-factura.md`. El resto
+> de esta pantalla (precarga de solo lectura con `?proforma=` sin borrador) no cambió.
+
 **Distinción clave para la interfaz**
 - «Facturar» en la proforma **solo abre** la pantalla de venta precargada: no crea nada ni gasta número, cupo ni stock.
 - «Emitir factura» en la venta **crea la factura y la envía al SRI en el mismo paso**. No existen facturas en borrador.

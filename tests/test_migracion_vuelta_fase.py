@@ -80,15 +80,18 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
                 manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
             # 19 de la fase + tenancy 0008/0009 (acciones de locales/puntos y de cobros, sobre tenancy 0007) + pos 0032/0033/0034
             # (medio de cobro, etiquetas de condición de pago y nacimiento opcional, sobre pos 0031: una app tiene una sola hoja)
-            # + importacion 0007 (lotes de claves, sobre 0006: la vuelta a importacion 0004 la deshace). Las tablas de locales y
+            # + importacion 0007-0009 (lotes de claves, fuera de rango del SRI y último intento de la verificación, sobre 0006:
+            # la vuelta a importacion 0004 las deshace). Las tablas de locales y
             # puntos (configuracion 0001-0003) y de respaldos (cobros 0001-0003) cuelgan de pos 0019 y no se deshacen con la
             # fase. Las 6 de adjuntos (sobre pos 0031; 0004-0006 = recibos por completar) y tenancy 0010 (acciones de los
             # recibos) sí. Las 3 de tributario (libros, revisión, ATS y borradores) cuelgan de pos 0019 e importacion 0004:
             # la vuelta empieza por `tributario zero`. Las 3 de contabilidad (kardex) cuelgan de pos 0019: antes,
             # `contabilidad zero`; tenancy 0011 (acciones del kardex) cae con la vuelta a tenancy 0006. Diseño de factura:
             # pos 0035 (copia en la factura, sobre pos 0034) y tenancy 0012 (acción de auditoría, sobre 0011) caen con sus
-            # apps; configuracion 0004-0005 (tabla y módulo) cuelgan de pos 0019, como 0001-0003, y no se deshacen. 41 en total.
-            assert len(pendientes(env)) == 41
+            # apps; configuracion 0004-0005 (tabla y módulo) cuelgan de pos 0019, como 0001-0003, y no se deshacen. «Convertir en
+            # factura» (primera entrega): proformas 0004 (borrador de factura) cae con `proformas zero` y tenancy 0013 (sus dos
+            # acciones de auditoría, sobre 0012) con la vuelta a tenancy 0006. 45 en total.
+            assert len(pendientes(env)) == 45
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)
@@ -122,9 +125,10 @@ def test_vuelta_del_diseno_y_otra_pasada_por_configuracion_0003(tmp_path):
         for app, destino in (('configuracion', '0003_modulo_puntos'), ('pos', '0034_cliente_nacimiento_opcional'),
                              ('tenancy', '0011_acciones_kardex')):   # la vuelta de DISENO-FACTURA.md
             manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
+        # tenancy 0013 (acciones del borrador de factura) va sobre 0012: la vuelta a tenancy 0011 la deshace también.
         sin_diseno = ['configuracion.0004_diseno_factura', 'configuracion.0005_modulo_diseno_factura',
                       'configuracion.0006_personalizacion_factura', 'pos.0035_sale_ride_diseno',
-                      'tenancy.0012_accion_diseno_factura']
+                      'tenancy.0012_accion_diseno_factura', 'tenancy.0013_acciones_borrador_factura']
         assert sorted(pendientes(env)) == sin_diseno
         assert diseno not in {m[0] for m in estado(env)['modulos']}
         # Otra pasada por 0003 (quita y vuelve a crear «Locales y puntos»): sin la tabla de 0004, ningún módulo del diseño
