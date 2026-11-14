@@ -256,8 +256,13 @@ def crear(request, datos):
                 return _repetida(existente, pedido, errores)
             if padre_id is not None and _grupo_bloqueado(padre_id) is None:
                 errores.agregar('padre_id', TEXTOS['padre'])
-            if 'codigo' not in errores:
-                _codigo_repetido(codigo, errores)
+            if 'codigo' not in errores and _codigo_repetido(codigo, errores):
+                # Quien escriba el plan sin esperar en la cola pudo guardar este mismo envío después de la lectura por
+                # clave de arriba: ese «ya existe» sería su propia cuenta. Se mira la clave otra vez antes de rechazarlo.
+                existente = Cuenta.objects.filter(clave=clave).first()
+                if existente is not None:
+                    del errores['codigo']
+                    return _repetida(existente, pedido, errores)
             errores.comprobar()
             cuenta = Cuenta(company=request.company, clave=clave, codigo=codigo, nombre=nombre, tipo=tipo, padre_id=padre_id,
                             creada_por=_usuario(request), actualizada_por=_usuario(request))

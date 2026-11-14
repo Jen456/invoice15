@@ -132,6 +132,41 @@ def test_misma_clave_una_sola_cuenta(cola):
     assert AuditLog.objects.filter(action='cuenta_creada', company=empresa).count() == 1
 
 
+def test_el_envio_repetido_que_lee_la_clave_antes_de_que_el_primero_confirme(monkeypatch):
+    """El orden que hacía fallar de vez en cuando a `test_misma_clave_una_sola_cuenta[sin_cola]`, aquí forzado. Sin la
+    cola, el segundo envío busca su clave (todavía nada), el primero se guarda y confirma, y solo entonces el segundo busca
+    el código y lo encuentra. Es su propia cuenta: la recibe con `repetido`, no un «ya existe»."""
+    monkeypatch.setattr(cuentas, 'serializar', lambda empresa: None)
+    empresa, usuarios = preparar()
+    segundo_leyo_la_clave, primero_confirmo, hilo = threading.Event(), threading.Event(), threading.local()
+    buscar_el_codigo = cuentas._codigo_repetido
+
+    def buscar_cuando_el_primero_confirme(codigo, errores):
+        if getattr(hilo, 'es_el_segundo', False):
+            segundo_leyo_la_clave.set()
+            assert primero_confirmo.wait(timeout=30), 'el primer envío no terminó'
+        return buscar_el_codigo(codigo, errores)
+    monkeypatch.setattr(cuentas, '_codigo_repetido', buscar_cuando_el_primero_confirme)
+
+    def primero():
+        assert segundo_leyo_la_clave.wait(timeout=30), 'el segundo envío no llegó a buscar el código'
+        try:
+            return alta(empresa, *usuarios[0], clave='cuenta-cruzada-1', codigo='1.1.01')()
+        finally:
+            primero_confirmo.set()
+
+    def segundo():
+        hilo.es_el_segundo = True
+        return alta(empresa, *usuarios[1], clave='cuenta-cruzada-1', codigo='1.1.01')()
+
+    resultados, errores = en_paralelo([primero, segundo])
+    assert not errores, errores
+    with company_context(empresa):
+        cuenta = Cuenta.objects.get()
+    assert sorted(resultados) == [('hecho', (cuenta.pk, False)), ('hecho', (cuenta.pk, True))]
+    assert AuditLog.objects.filter(action='cuenta_creada', company=empresa).count() == 1
+
+
 def test_mismo_codigo_con_claves_distintas_una_sola_cuenta(cola):
     empresa, usuarios = preparar()
     codigos = ('1.1.01a', '1.1.01A', ' 1.1.01a ')   # el mismo código para la empresa: sin distinguir mayúsculas ni espacios

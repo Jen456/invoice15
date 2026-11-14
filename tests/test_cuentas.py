@@ -272,6 +272,32 @@ class TestAlta:
         assert (repetida.status_code, repetida.json()['codigo'], repetida.json()['cuenta']) == (409, 'clave_usada', actual)
         assert cuantas(empresa) == 1
 
+    @pytest.mark.parametrize('nombre, estado, repetido', [('Caja', 200, True), ('Bancos', 409, None)])
+    def test_el_envio_repetido_que_se_cruza_con_el_primero(self, entrar, empresa, monkeypatch, nombre, estado, repetido):
+        """Quien escriba el plan sin esperar en la cola por empresa puede guardar un envío entre que su repetición busca
+        la clave (todavía nada) y busca el código (ya está). Ese «ya existe» sería su propia cuenta: la repetición recibe
+        lo de siempre, la cuenta con `repetido` o, si traía otro contenido, 409 `clave_usada`. Aquí el cruce se simula;
+        el de verdad, con dos conexiones, está en tests/test_zz_cuentas_concurrencia_pg.py."""
+        datos = {'empresa': empresa.pk, 'clave': 'cuenta-cruzada-01', 'codigo': '1.1.01', 'nombre': nombre, 'tipo': 'movimiento'}
+        buscar_el_codigo = cuentas._codigo_repetido
+
+        def el_primero_se_guarda_justo_antes(codigo, errores):
+            if not Cuenta.objects.filter(clave='cuenta-cruzada-01').exists():   # la lectura por clave no la encontró
+                Cuenta.objects.create(clave='cuenta-cruzada-01', codigo='1.1.01', nombre='Caja', tipo='movimiento')
+            return buscar_el_codigo(codigo, errores)
+        monkeypatch.setattr(cuentas, '_codigo_repetido', el_primero_se_guarda_justo_antes)
+        respuesta = enviar(entrar, API, datos)
+        assert respuesta.status_code == estado, respuesta.content
+        cuerpo = respuesta.json()
+        assert (cuerpo['cuenta']['codigo'], cuerpo['cuenta']['nombre'], cuerpo['cuenta']['version']) == ('1.1.01', 'Caja', 1)
+        assert cuerpo.get('repetido') is repetido and cuerpo.get('codigo') == (None if repetido else 'clave_usada')
+        # el mismo código con otra clave sigue siendo «ya existe»
+        otra = enviar(entrar, API, {**datos, 'clave': 'cuenta-cruzada-02'})
+        assert errores_de(otra) == {'codigo': [T['codigo_repetido'].format(codigo='1.1.01')]}
+        # Ninguno de estos envíos creó nada. (El cruce simulado ocurre dentro de la transacción del envío: cuando este
+        # termina en un rechazo se deshace con él, así que aquí no se cuentan las cuentas.)
+        assert not AuditLog.objects.filter(action='cuenta_creada').exists()
+
     def test_formulario(self, entrar, empresa):
         """El alta admite también un formulario (multipart), como la subida del archivo de importación."""
         datos = {'empresa': empresa.pk, 'clave': 'cuenta-formulario', 'codigo': '3', 'nombre': 'Patrimonio', 'tipo': 'grupo'}
