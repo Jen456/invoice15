@@ -17,7 +17,8 @@ pytestmark = pytest.mark.django_db
 
 PAGINAS = ('/tributario/libros/', '/tributario/revision/', '/tributario/empresas/', '/tributario/ats/', '/tributario/formularios/',
            '/contabilidad/kardex/', '/contabilidad/inventario/')
-JSON = ('/tributario/api/libros/ventas/', '/tributario/api/revision/', '/tributario/api/empresas/', '/tributario/api/ats/',
+JSON = ('/contabilidad/api/diario/', '/contabilidad/api/diario/1/', '/contabilidad/api/integridad/',   # libro diario (bloque 2)
+        '/tributario/api/libros/ventas/', '/tributario/api/revision/', '/tributario/api/empresas/', '/tributario/api/ats/',
         '/tributario/api/formularios/', '/tributario/libros/exportar/', '/tributario/ats/descargar/', '/tributario/formularios/exportar/',
         '/contabilidad/api/inventario/', '/contabilidad/api/kardex/productos/', '/contabilidad/inventario/exportar/',
         '/contabilidad/api/cuentas/', '/contabilidad/api/cuentas/importar/1/', '/contabilidad/api/inicio/')
@@ -58,6 +59,8 @@ class TestCerrado:
                                      content_type='application/json'))
         assert bloqueada(entrar.patch('/contabilidad/api/cuentas/1/', {'empresa': empresa.pk, 'version': 1},
                                       content_type='application/json'))
+        assert bloqueada(entrar.post('/contabilidad/api/cuentas/clasificar/', {'empresa': empresa.pk, 'cuenta_id': 1, 'version': 1,
+                                                                             'clase': 'activo'}, content_type='application/json'))
         # importación del plan: la subida (formulario con el archivo), el mapeo y la confirmación
         assert bloqueada(entrar.post('/contabilidad/api/cuentas/importar/', {'empresa': empresa.pk, 'clave': 'complemento-0003'}))
         for paso in ('mapeo', 'confirmar'):

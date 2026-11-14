@@ -18,6 +18,7 @@ ESPERADOS = {
     '/contabilidad/api/kardex/movimientos/': 404,   # pide ?producto=<id> de un producto inventariado de la empresa
     '/contabilidad/kardex/exportar/': 404,          # ídem: el XLSX es del kardex de un producto
     '/contabilidad/api/cuentas/importar/': 405,     # solo POST (sube el archivo del plan de cuentas; JSON con codigo «metodo»)
+    '/contabilidad/api/cuentas/clasificar/': 405,   # solo POST (clase de una cuenta y de sus descendientes; JSON «metodo»)
     '/configuracion/diseno-factura/muestra.pdf': 404,   # piloto apagado en las pruebas: la vista previa no abre (la pantalla, 302)
 }
 

@@ -38,7 +38,7 @@ MOVIMIENTOS = '/contabilidad/api/kardex/movimientos/'   # envío que ya existía
 CODIGOS = ['libros', 'revision', 'ats', 'formularios', 'kardex', 'inventario', 'plan_cuentas', 'importar_cuentas', 'inicio',
            'evidencias', 'apertura', 'asientos', 'diario_mayor', 'bancos', 'cierre', 'estados_financieros', 'formulario_101']
 # Siguen pendientes al terminar el bloque 1 (las tres del bloque pasan a disponibles al publicar su ruta).
-PENDIENTES = ['evidencias', 'apertura', 'asientos', 'diario_mayor', 'bancos', 'cierre', 'estados_financieros', 'formulario_101']
+PENDIENTES = ['evidencias', 'apertura', 'asientos', 'bancos', 'cierre', 'estados_financieros', 'formulario_101']
 TODO_FALSO = {'ver': False, 'registrar': False, 'anular': False}
 
 

@@ -122,8 +122,9 @@ FUNCIONES = (
             # D7
             decision='La matriz de asientos está por validar con un contador: una regla sin aprobar quedará como '
                      'excepción, sin contabilizar.'),
-    Funcion('diario_mayor', 'Diario, mayor y balance de comprobación', CONTABILIDAD, POR_DEFINIR, construccion=PENDIENTE,
-            que_falta='El diario, el mayor y el balance de comprobación están en construcción: salen de los asientos.'),
+    # Bloque 2 (Parte A): el diario y su comprobación de integridad, solo para ver; el bloque 3 añade `exportar`.
+    Funcion('diario_mayor', 'Diario, mayor y balance de comprobación', CONTABILIDAD, {'ver': 'view_asiento'},
+            ruta='/contabilidad/api/diario/'),
     Funcion('bancos', 'Bancos y conciliación', CONTABILIDAD, POR_DEFINIR, construccion=PENDIENTE,
             que_falta='Bancos y conciliación están en construcción.',
             # D6

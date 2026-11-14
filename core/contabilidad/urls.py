@@ -1,6 +1,6 @@
 from django.urls import path
 
-from core.contabilidad import views, vistas_capacidades, vistas_cuentas, vistas_importar_cuentas, vistas_inicio
+from core.contabilidad import views, vistas_capacidades, vistas_cuentas, vistas_diario, vistas_importar_cuentas, vistas_inicio
 
 urlpatterns = [
     path('kardex/', views.KardexPagina.as_view(), name='contabilidad_kardex'),
@@ -28,6 +28,10 @@ urlpatterns = [
          name='contabilidad_cuentas_importacion_confirmar'),
     # Bloque 2 · Parte A (libro diario, vistas_diario.py): cuentas/clasificar/, diario/, diario/<id>/, integridad/.
     # Sus rutas van aquí debajo, antes del comentario de la Parte B: cada parte escribe solo en su tramo.
+    path('api/cuentas/clasificar/', vistas_cuentas.ClasificarApi.as_view(), name='contabilidad_cuentas_clasificar'),
+    path('api/diario/', vistas_diario.DiarioApi.as_view(), name='contabilidad_diario'),
+    path('api/diario/<int:pk>/', vistas_diario.AsientoApi.as_view(), name='contabilidad_asiento'),
+    path('api/integridad/', vistas_diario.IntegridadApi.as_view(), name='contabilidad_integridad'),
 
     # Bloque 2 · Parte B (inicio y apertura, vistas_apertura.py): apertura/… Sus rutas van aquí debajo.
 
