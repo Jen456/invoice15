@@ -1153,3 +1153,19 @@ def _incorporar_documento(documento, usuario, permisos, confirmaciones, opciones
     revisar(documento, usuario, 'vincular_venta', {'id': exactas[0]['id'],
                                                    'confirmar_sin_verificar': 'si' if confirmaciones['confirmar_sin_verificar'] else ''})
     return {'resultado': 'venta_vinculada', 'venta_id': exactas[0]['id'], 'mensaje': f'Vinculado con la venta {exactas[0]["numero"]}.'}
+
+
+# ---------------------------------------------------------------- convivencia con la versión anterior (importacion 0009)
+
+def completar_consultas_de_la_version_anterior():
+    """Documentos que verificó la versión anterior (importacion 0007) después de la migración 0009, mientras seguía
+    atendiendo durante el cambio de versión o porque se volvió a ella sin restaurar la base: tienen un estado consultado y
+    ningún resultado del último intento. Les aplica las mismas reglas de 0009 (resultado, mensaje, usuario y respuesta
+    concluyente) y devuelve cuántos completó; sin pendientes es una sola consulta. Hay que llamarla viendo todas las
+    empresas (platform_scope); la llama la tarea programada procesar_importaciones."""
+    import importlib
+
+    from django.db import connection
+    migracion = importlib.import_module('core.importacion.migrations.0009_verificacion_sri_ultimo_intento')
+    with transaction.atomic():
+        return migracion.completar(DocumentoImportado.all_companies, EventoImportacion.all_companies, connection)

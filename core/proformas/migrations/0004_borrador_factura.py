@@ -3,7 +3,8 @@
 - Proforma.medio_pago_sugerido («Transferencia bancaria»…; al facturar da la forma de pago del SRI) y
   Proforma.ocultar_vendedor (solo el PDF), los dos con db_default: las filas existentes quedan '' y False, y un INSERT que
   no los nombre sigue valiendo;
-- la tabla BorradorFactura (una por proforma), con la misma seguridad por filas que las demás tablas de proformas.
+- la tabla BorradorFactura (una por proforma), con la misma seguridad por filas que las demás tablas de proformas. Guarda
+  también el plazo (`time_limit`, días) y el vencimiento (`end_credit`) del crédito, opcionales.
 
 Vuelta: `migrate proformas 0003_modulo_proformas` borra los borradores (no son comprobantes: nada salió al SRI) y
 las dos columnas; las proformas, sus facturas y su vínculo no cambian. No depende de la última migración de pos (Client
@@ -63,6 +64,8 @@ class Migration(migrations.Migration):
                 ('payment_type', models.CharField(choices=[('efectivo', 'Contado'), ('credito', 'Crédito')], default='efectivo', max_length=10, verbose_name='Condición de pago')),
                 ('payment_method', models.CharField(blank=True, choices=[('01', 'SIN UTILIZACION DEL SISTEMA FINANCIERO'), ('15', 'COMPENSACIÓN DE DEUDAS'), ('16', 'TARJETA DE DÉBITO'), ('17', 'DINERO ELECTRÓNICO'), ('18', 'TARJETA PREPAGO'), ('19', 'TARJETA DE CRÉDITO'), ('20', 'OTROS CON UTILIZACION DEL SISTEMA FINANCIERO'), ('21', 'ENDOSO DE TÍTULOS')], default='', max_length=2, verbose_name='Forma de pago del SRI')),
                 ('medio_cobro', models.CharField(blank=True, choices=[('efectivo', 'Efectivo'), ('transferencia', 'Transferencia bancaria'), ('deposito', 'Depósito bancario'), ('cheque', 'Cheque'), ('tarjeta_debito', 'Tarjeta de débito'), ('tarjeta_credito', 'Tarjeta de crédito'), ('compensacion', 'Compensación de deudas'), ('otro', 'Otro')], default='', max_length=15, verbose_name='Medio de cobro')),
+                ('time_limit', models.PositiveIntegerField(blank=True, null=True, verbose_name='Plazo (días)')),
+                ('end_credit', models.DateField(blank=True, null=True, verbose_name='Fecha de plazo del crédito')),
                 ('lineas', models.JSONField(default=list, verbose_name='Líneas')),
                 ('info_adicional', models.JSONField(default=list, verbose_name='Información adicional')),
                 ('avisos', models.JSONField(default=list, verbose_name='Avisos de la conversión')),

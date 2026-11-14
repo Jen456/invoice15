@@ -115,6 +115,17 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
             form.fields['receipt'].choices = [(c, n) for c, n in form.fields['receipt'].choices if c != VOUCHER_TYPE[2][0]]
         return form
 
+    def get_initial(self):
+        # Factura en borrador: el plazo y el vencimiento del crédito guardados (form.js los vuelve a poner tal cual).
+        initial = super().get_initial()
+        precarga = getattr(self, 'precarga', None) or {}
+        if precarga.get('borrador'):
+            if precarga.get('time_limit') is not None:
+                initial['time_limit'] = precarga['time_limit']
+            if precarga.get('end_credit'):
+                initial['end_credit'] = precarga['end_credit']
+        return initial
+
     def get(self, request, *args, **kwargs):
         # Facturar una proforma (?proforma=<id>): la pantalla se abre precargada y no guarda nada (core/proformas).
         # Su factura en borrador («Convertir en factura», ?borrador=<id>): se abre con lo guardado, tampoco guarda nada. Si

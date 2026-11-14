@@ -53,6 +53,7 @@ MAX_FILAS = 1000
 MAX_ENTERO = 999999999999   # ids y cantidades recibidos: nunca desbordan una columna de la base
 MAX_INFO_ADICIONAL = 15     # campos de <infoAdicional> (informacion_adicional en core/pos/models.py)
 MAX_TEXTO_ADICIONAL = 300   # caracteres por campo (XSD del SRI)
+MAX_PLAZO_DIAS = 1000       # plazo del crédito en días: el mismo tope que el selector de la venta
 CENTAVO = Decimal('0.01')
 TELEFONO = re.compile(r'[0-9+() -]{7,20}')
 FECHA_ISO = re.compile(r'\d{4}-\d{2}-\d{2}')
@@ -115,6 +116,9 @@ MENSAJES = {
     'borrador_guardado': 'Factura en borrador guardada. No se envió nada al SRI.',
     'borrador_descartado': 'Se descartó la factura en borrador de la proforma {numero}: sigue {estado}.',
     'info_adicional': 'La información adicional admite hasta 15 campos de 300 caracteres como máximo.',
+    'plazo_credito': 'Indica la fecha de plazo del crédito (AAAA-MM-DD).',
+    'vencimiento_pasado': 'La fecha de plazo del crédito ({fecha}) ya pasó: elige una fecha desde hoy.',
+    'plazo_dias': 'El plazo es un número entero de días, de 0 a 1000.',
 }
 
 # Errores por campo (en ErrorProforma.campos).
@@ -162,7 +166,10 @@ AVISOS = {
                  'pulsa «Emitir factura» para emitirla.'),
     'notas_recortadas': ('Las condiciones de la proforma pasan a «Notas» en la información adicional, que admite 300 '
                          'caracteres: revisa el texto recortado.'),
-    'stock_borrador': '«{nombre}»: el borrador tiene {cant} y hay {stock} en stock. Corrige la cantidad antes de emitir.',
+    'stock_borrador': ('«{nombre}»: el borrador tiene {cant} y hay {stock} en stock. La factura no se emite hasta que haya '
+                       'stock suficiente o cambies la cantidad.'),
+    'vencimiento_pasado': ('El vencimiento del crédito guardado ({fecha}) ya pasó. Se conserva tal como estaba: elige una '
+                           'fecha desde hoy antes de emitir.'),
     'tarifa_revisada': '«{nombre}»: esta factura usa IVA {elegida}; el catálogo tiene {catalogo} y no cambia.',
 }
 
@@ -870,9 +877,14 @@ def _fila_del_pos(producto, cant, linea):
     return item
 
 
-def precarga_para_venta(proforma_id, hoy=None):
+def precarga_para_venta(proforma_id, hoy=None, cotizado=False):
     """Datos para abrir la pantalla de venta precargada con la proforma. SOLO LECTURA: no reserva número, cupo ni stock.
-    Lanza ErrorProforma con `url` (lista o ficha) si no se puede facturar."""
+    Lanza ErrorProforma con `url` (lista o ficha) si no se puede facturar.
+
+    `cotizado=True` («Convertir en factura»): cada línea con la cantidad cotizada aunque falte stock. El borrador lo avisa al
+    abrirse (stock_borrador) y la emisión lo rechaza sin gastar número (lineas_venta.descontar_stock): reducir o quitar una
+    línea lo decide quien revisa. Sin él (la venta directa ?proforma=, que la pantalla ya no ofrece), como antes: se carga
+    lo que hay en stock, con su aviso."""
     from core.pos import emision
     hoy = hoy or _hoy()
     p = Proforma.objects.select_related('cliente__user').filter(pk=_id(proforma_id)).first()
@@ -889,10 +901,10 @@ def precarga_para_venta(proforma_id, hoy=None):
             avisos.append(AVISOS['producto_eliminado'].format(descripcion=linea.descripcion))
             continue
         cant = linea.cant
-        if producto.inventoried and producto.stock <= 0:   # como en la venta: no se vende sin stock
+        if producto.inventoried and not cotizado and producto.stock <= 0:   # venta directa: no se vende sin stock
             avisos.append(AVISOS['sin_stock'].format(nombre=producto.name, cant=linea.cant))
             continue
-        if producto.inventoried and producto.stock < cant:
+        if producto.inventoried and not cotizado and producto.stock < cant:
             cant = producto.stock
             avisos.append(AVISOS['stock_parcial'].format(nombre=producto.name, stock=producto.stock, cant=linea.cant))
         tarifa = tarifa_de_producto(producto)
@@ -1055,6 +1067,10 @@ def convertir(proforma_id, usuario, request=None):
     las condiciones como «Notas»; o devuelve la que ya tiene. No reserva número, cupo ni stock, no crea la venta y no firma
     ni envía nada: eso lo hace solo «Emitir factura».
 
+    Copia todas las líneas con la cantidad cotizada aunque falte stock (solo queda fuera, con su aviso, la de un producto
+    que ya no existe): el borrador avisa la falta de stock al abrirse y «Emitir factura» la rechaza sin gastar número ni
+    mover stock. Reducir o quitar una línea es una decisión de quien revisa («Guardar borrador»).
+
     La proforma se bloquea primero (orden fijo proforma → borrador → secuencia): dos conversiones a la vez (doble clic,
     dos pestañas) se ordenan y la segunda recibe el mismo borrador. Donde no hay bloqueo de filas (SQLite) lo garantiza la
     restricción OneToOne: el INSERT perdedor falla y se devuelve el que ganó."""
@@ -1063,7 +1079,7 @@ def convertir(proforma_id, usuario, request=None):
     existente = _borrador_guardado(p.pk)
     if existente is not None:
         return existente, False
-    precarga = precarga_para_venta(p.pk)   # las reglas de siempre: sin productos eliminados, stock, tarifa actual
+    precarga = precarga_para_venta(p.pk, cotizado=True)   # cantidades cotizadas, sin productos eliminados, tarifa actual
     lineas = [{'product': int(l['id']), 'nombre': l['name'], 'cant': int(l['cant']), 'price': _dinero(l['price_current']),
                'dscto': int(round(l['dscto'])), 'codigo_porcentaje': l['tarifa_iva']} for l in precarga['lineas']]
     info, avisos_notas = _info_adicional_inicial(p)
@@ -1135,6 +1151,9 @@ def precarga_de_borrador(borrador_id, hoy=None):
     if require_company().environment_type != emision.PRODUCCION:
         avisos.append(AVISOS['pruebas'])
     avisos += [str(a) for a in (b.avisos or [])]
+    if b.payment_type == PAYMENT_TYPE[1][0] and b.end_credit is not None and b.end_credit < hoy:
+        # Pasó el tiempo: el vencimiento guardado se conserva y se pide corregirlo (la emisión lo rechaza).
+        avisos.append(AVISOS['vencimiento_pasado'].format(fecha=_fecha_texto(b.end_credit)))
     ids = [l['product'] for l in b.lineas]
     productos = {x.pk: x for x in Product.objects.select_related('category').filter(pk__in=ids)}
     filas, vigentes = [], []
@@ -1165,6 +1184,7 @@ def precarga_de_borrador(borrador_id, hoy=None):
                          'valida_hasta': p.valida_hasta.isoformat(), 'url_ver': _url_ver(p.pk)},
             'cliente': cliente.toJSON() if cliente is not None else None, 'prospecto': prospecto, 'lineas': filas,
             'forma_pago': b.payment_method, 'medio_cobro': b.medio_cobro, 'condicion_pago': b.payment_type,
+            'time_limit': b.time_limit, 'end_credit': b.end_credit.isoformat() if b.end_credit else None,
             'info_adicional': list(b.info_adicional or []), 'avisos': avisos,
             'tarifas': [{'codigo': c, 'nombre': NOMBRE_TARIFA_IVA.get(c, n), 'tarifa': float(PORCENTAJE_IVA.get(c, 0))}
                         for c, n in TARIFAS_IVA],
@@ -1209,10 +1229,36 @@ def _info_adicional(crudo):
     return campos
 
 
+def _plazo_del_credito(datos):
+    """Plazo en días de la pantalla de venta (`time_limit`, el <plazo> del XML): None si no vino; si vino, un entero de 0 a
+    MAX_PLAZO_DIAS (el tope del selector) o ErrorProforma."""
+    valor = datos.get('time_limit')
+    texto = '' if valor is None else str(valor).strip()
+    if not texto:
+        return None
+    plazo = _entero(texto)
+    if plazo is None or plazo > MAX_PLAZO_DIAS:
+        raise ErrorProforma(MENSAJES['plazo_dias'])
+    return plazo
+
+
+def _vencimiento_del_credito(datos, condicion):
+    """Fecha de plazo del crédito (`end_credit`) tal como llegó: obligatoria a crédito y desde hoy, lo mismo que exige la
+    emisión; a contado no se guarda (None). Una fecha que no vale se rechaza: nunca se cambia por otra."""
+    if condicion != PAYMENT_TYPE[1][0]:
+        return None
+    vencimiento = _fecha_iso(datos.get('end_credit'))
+    if vencimiento is None:
+        raise ErrorProforma(MENSAJES['plazo_credito'])
+    if vencimiento < _hoy():
+        raise ErrorProforma(MENSAJES['vencimiento_pasado'].format(fecha=_fecha_texto(vencimiento)))
+    return vencimiento
+
+
 @transaction.atomic
 def guardar_borrador(borrador_id, datos, request, usuario):
-    """«Guardar borrador» en la venta: cliente, líneas con su tarifa de IVA, pago e información adicional tal como están en
-    la pantalla, con las validaciones de la venta (lineas_venta: precio y tarifa distintos del catálogo exigen permiso o
+    """«Guardar borrador» en la venta: cliente, líneas con su tarifa de IVA, pago (condición, forma, medio, plazo y, a
+    crédito, el vencimiento) e información adicional tal como están en la pantalla, con las validaciones de la venta (lineas_venta: precio y tarifa distintos del catálogo exigen permiso o
     venir de la proforma o del borrador). No toca número, cupo, stock, el SRI ni el producto del catálogo."""
     from core.pos import lineas_venta
     from core.pos.choices import MEDIOS_DE_PAGO
@@ -1237,7 +1283,9 @@ def guardar_borrador(borrador_id, datos, request, usuario):
         raise ErrorProforma('Elige la forma de pago del SRI.')
     if medio and medio not in dict(MEDIOS_DE_PAGO):
         raise ErrorProforma('Elige el medio de cobro.')
+    plazo, vencimiento = _plazo_del_credito(datos), _vencimiento_del_credito(datos, condicion)
     b.cliente, b.payment_type, b.payment_method, b.medio_cobro = cliente, condicion, forma, medio
+    b.time_limit, b.end_credit = plazo, vencimiento
     b.lineas = [{'product': int(l['producto'].pk), 'nombre': l['producto'].name, 'cant': int(l['cant']),
                  'price': _dinero(l['precio']), 'dscto': int((l['dscto'] * 100).to_integral_value()),
                  'codigo_porcentaje': l['tarifa']} for l in lineas]

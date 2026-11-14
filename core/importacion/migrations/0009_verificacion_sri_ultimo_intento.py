@@ -3,7 +3,10 @@
 
 Estructura (solo columnas nuevas, opcionales o con valor por defecto; la política de seguridad por filas de 0002 cubre la
 fila entera): `ultima_consulta_por`, `ultima_consulta_resultado`, `ultima_consulta_mensaje`, `respuesta_sri_en` y
-`consulta_en_curso` en DocumentoImportado. Cambian los textos de `estado_verificacion` (no sus códigos) y el de
+`consulta_en_curso` en DocumentoImportado. Las dos de texto son NOT NULL con `db_default=''`: el valor por defecto queda en
+la base (no solo en Django), porque la versión anterior (0007) sigue insertando sin nombrarlas mientras atiende durante el
+cambio de versión, o si se vuelve a ella sin restaurar la base (tests/test_convivencia_versiones.py). En PostgreSQL es un
+ADD COLUMN con un DEFAULT constante: no reescribe la tabla. Cambian los textos de `estado_verificacion` (no sus códigos) y el de
 `verificado_en`, que sigue siendo la fecha del último intento con cualquier resultado. 'fuera_rango_sri' (0008, nunca
 publicada) deja de ser un estado: es una consulta fallida ('sri_no_disponible' con el resultado 'fuera_de_rango').
 
@@ -22,6 +25,11 @@ verificación ('verificacion', 'xml_no_recuperado' o 'xml_recibido'), de la que 
 - en_proceso_sri → igual, resultado 'en_proceso'.
 - declarada_en_archivo y sin_autorizacion → iguales, sin intento.
 `respuesta_sri_en` = `verificado_en` en las respuestas concluyentes. No se borra ni se recalcula nada más.
+
+`completar()` toca solo los documentos con un estado consultado y sin resultado: al migrar son todos; después solo puede
+dejarlos la versión anterior, que no conoce estas columnas, si verifica mientras sigue atendiendo. Por eso la tarea
+programada (procesar_importaciones → servicios.completar_consultas_de_la_version_anterior) la vuelve a aplicar con estas
+mismas reglas; lo que ya tiene resultado (lo escribió esta versión) no cambia.
 
 Vuelta: 'sri_no_disponible' con 'fuera_de_rango' vuelve a 'fuera_rango_sri' y con 'clave_invalida' a 'no_encontrada_sri'
 (lo que hacía el código anterior); los demás códigos existen en 0008 y se quedan. Después se quitan las columnas: el
@@ -67,8 +75,7 @@ RESULTADOS = [('autorizado', 'Autorización confirmada'),
 
 
 @contextmanager
-def todas_las_empresas(schema_editor):
-    conexion = schema_editor.connection
+def todas_las_empresas(conexion):
     if conexion.vendor != 'postgresql':
         yield
         return
@@ -108,23 +115,32 @@ def nuevo_estado(documento, evento):
     return estado, '', ''   # declarada_en_archivo, sin_autorizacion: nunca se consultó
 
 
-def adelante(apps, schema_editor):
-    Documento = apps.get_model('importacion', 'DocumentoImportado')
-    Evento = apps.get_model('importacion', 'EventoImportacion')
-    with todas_las_empresas(schema_editor):
-        for documento in Documento.objects.exclude(estado_verificacion__in=('declarada_en_archivo', 'sin_autorizacion')) \
-                .order_by('pk').iterator():
-            evento = Evento.objects.filter(documento_id=documento.pk, tipo__in=TIPOS_DE_CONSULTA).order_by('-pk').first()
+def completar(documentos, eventos, conexion):
+    """Aplica las reglas de arriba a los documentos con un estado consultado y sin resultado del último intento y devuelve
+    cuántos completó. `documentos` y `eventos`: managers que ven todas las empresas. El UPDATE vuelve a exigir el resultado
+    vacío: si esta versión verificó el documento entretanto, gana lo suyo."""
+    completados = 0
+    with todas_las_empresas(conexion):
+        pendientes = documentos.filter(ultima_consulta_resultado='').exclude(
+            estado_verificacion__in=('declarada_en_archivo', 'sin_autorizacion')).order_by('pk')
+        for documento in pendientes.iterator():
+            evento = eventos.filter(documento_id=documento.pk, tipo__in=TIPOS_DE_CONSULTA).order_by('-pk').first()
             estado, resultado, mensaje = nuevo_estado(documento, evento)
-            Documento.objects.filter(pk=documento.pk).update(
+            completados += documentos.filter(pk=documento.pk, ultima_consulta_resultado='').update(
                 estado_verificacion=estado, ultima_consulta_resultado=resultado, ultima_consulta_mensaje=mensaje[:500],
                 ultima_consulta_por_id=evento.usuario_id if evento else None,
                 respuesta_sri_en=documento.verificado_en if resultado in CONCLUYENTES else None)
+    return completados
+
+
+def adelante(apps, schema_editor):
+    completar(apps.get_model('importacion', 'DocumentoImportado').objects,
+              apps.get_model('importacion', 'EventoImportacion').objects, schema_editor.connection)
 
 
 def atras(apps, schema_editor):
     Documento = apps.get_model('importacion', 'DocumentoImportado')
-    with todas_las_empresas(schema_editor):
+    with todas_las_empresas(schema_editor.connection):
         Documento.objects.filter(estado_verificacion='sri_no_disponible', ultima_consulta_resultado='fuera_de_rango') \
             .update(estado_verificacion='fuera_rango_sri')
         Documento.objects.filter(estado_verificacion='sri_no_disponible', ultima_consulta_resultado='clave_invalida') \
@@ -152,7 +168,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='documentoimportado',
             name='ultima_consulta_mensaje',
-            field=models.CharField(blank=True, default='', max_length=500, verbose_name='Detalle de la última consulta al SRI'),
+            field=models.CharField(blank=True, db_default='', default='', max_length=500,
+                                   verbose_name='Detalle de la última consulta al SRI'),
         ),
         migrations.AddField(
             model_name='documentoimportado',
@@ -163,7 +180,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='documentoimportado',
             name='ultima_consulta_resultado',
-            field=models.CharField(blank=True, choices=RESULTADOS, default='', max_length=25,
+            field=models.CharField(blank=True, choices=RESULTADOS, db_default='', default='', max_length=25,
                                    verbose_name='Resultado de la última consulta al SRI'),
         ),
         migrations.AlterField(

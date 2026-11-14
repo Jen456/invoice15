@@ -191,6 +191,9 @@ class BorradorFactura(TenantModel):
                                       verbose_name='Forma de pago del SRI')
     medio_cobro = models.CharField(max_length=15, choices=MEDIOS_PAGO_PROFORMA, blank=True, default='',
                                    verbose_name='Medio de cobro')
+    # Lo que la venta lleva a crédito: el plazo en días (<plazo> del XML) y la fecha de vencimiento, tal como se guardaron.
+    time_limit = models.PositiveIntegerField(null=True, blank=True, verbose_name='Plazo (días)')
+    end_credit = models.DateField(null=True, blank=True, verbose_name='Fecha de plazo del crédito')
     lineas = models.JSONField(default=list, verbose_name='Líneas')
     info_adicional = models.JSONField(default=list, verbose_name='Información adicional')
     avisos = models.JSONField(default=list, verbose_name='Avisos de la conversión')

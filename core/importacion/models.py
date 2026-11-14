@@ -167,9 +167,11 @@ class DocumentoImportado(TenantModel):
     verificado_en = models.DateTimeField(null=True, blank=True, verbose_name='Última consulta al SRI')
     ultima_consulta_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
                                             related_name='+', verbose_name='Última consulta al SRI hecha por')
+    # db_default (también en la base): la versión anterior (importacion 0007), que sigue atendiendo durante el cambio de
+    # versión o si se vuelve a ella sin restaurar la base, inserta sin nombrar estas columnas.
     ultima_consulta_resultado = models.CharField(max_length=25, choices=RESULTADOS_CONSULTA, blank=True, default='',
-                                                 verbose_name='Resultado de la última consulta al SRI')
-    ultima_consulta_mensaje = models.CharField(max_length=500, blank=True, default='',
+                                                 db_default='', verbose_name='Resultado de la última consulta al SRI')
+    ultima_consulta_mensaje = models.CharField(max_length=500, blank=True, default='', db_default='',
                                                verbose_name='Detalle de la última consulta al SRI')
     respuesta_sri_en = models.DateTimeField(null=True, blank=True, verbose_name='Última respuesta concluyente del SRI')
     consulta_en_curso = models.DateTimeField(null=True, blank=True, verbose_name='Consulta al SRI en curso desde')

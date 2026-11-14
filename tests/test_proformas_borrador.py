@@ -4,8 +4,12 @@ Convertir crea (o reabre) la factura en borrador de la proforma con cliente, lí
 forma de pago, sin firmar ni enviar nada y sin gastar número, cupo ni stock. En el borrador se revisa la tarifa de IVA de
 cada línea para esa operación: va a la venta, al XML y a los totales, y el producto del catálogo no cambia. Una proforma
 tiene a lo sumo un borrador y una factura; solo «Emitir factura» firma y envía (SRI simulado). Descartar el borrador deja la
-proforma como estaba. El PDF de la proforma puede ocultar al vendedor sin perder quién la preparó. Datos ficticios."""
+proforma como estaba. El PDF de la proforma puede ocultar al vendedor sin perder quién la preparó. Datos ficticios.
+
+Revisión del PR #1: las cantidades cotizadas llegan íntegras al borrador aunque falte stock (R2) y el borrador guarda y
+restaura el plazo y el vencimiento del crédito (R3)."""
 import json
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -16,7 +20,7 @@ from django.test import Client as ClienteWeb
 from django.utils import timezone
 
 from core.pos import emision, lineas_venta
-from core.pos.models import Category, Product, Receipt, Sale, SaleDetail
+from core.pos.models import Category, CtasCollect, Product, Receipt, Sale, SaleDetail
 from core.proformas import servicios
 from core.proformas.models import BorradorFactura, Proforma
 from core.suscripciones.models import QuotaReservation, SubscriptionPeriod
@@ -490,3 +494,148 @@ class TestPdfYPago:
         assert r.status_code == 200 and r.json()['proforma']['ocultar_vendedor'] is False
         texto = texto_pdf(client.get(f'{LISTA}pdf/{copia["id"]}/').content)
         assert 'Vendedor' in texto and 'PEDESTAL FICTICIA S.A.' in texto and 'SUPROHOSTING FICTICIA S.A.' in texto
+
+
+# ---------------------------------------------------------------- cantidades cotizadas aunque falte stock (PR #1, R2)
+
+SIN_EXISTENCIAS = {'parcial': {'P15': 1}, 'cero': {'P15': 0},
+                   'todas': {'P15': 0, 'P5': 0, 'P0': 0, 'PNO': 0, 'PEX': 0}}
+
+
+class TestCantidadesCotizadas:
+    """Convertir copia todas las líneas con la cantidad cotizada aunque falte stock, sin mover stock ni gastar número. El
+    borrador lo avisa al abrirse y «Emitir factura» lo rechaza sin gastar nada; reducir una cantidad es una decisión
+    explícita de quien revisa («Guardar borrador»)."""
+
+    @pytest.mark.parametrize('caso', sorted(SIN_EXISTENCIAS))
+    def test_convertir_conserva_lineas_y_cantidades_y_la_emision_se_bloquea(self, web, empresa, comprador, aceptada,  # noqa: F811
+                                                                           productos, sri, caso):
+        with company_context(empresa):
+            for codigo, existencias in SIN_EXISTENCIAS[caso].items():
+                Product.objects.filter(code=codigo).update(stock=existencias, inventoried=True)
+        cotizadas = [(productos[t].pk, cant) for t, _, _, cant, _ in EJEMPLO]
+        antes = (stock(empresa), secuencia(empresa), cupo(empresa), ventas(empresa))
+        r = convertir(web, aceptada)
+        assert r.status_code == 200, r.content
+        assert [(l['product'], l['cant']) for l in borrador(empresa, aceptada).lineas] == cotizadas
+        assert (stock(empresa), secuencia(empresa), cupo(empresa), ventas(empresa)) == antes   # ni stock ni número
+        datos = precarga(web, r.json()['url'])
+        assert [(l['id'], l['cant']) for l in datos['lineas']] == cotizadas and all(l['fp_base'] for l in datos['lineas'])
+        cant = {l['code']: l['cant'] for l in datos['lineas']}
+        faltan = [A['stock_borrador'].format(nombre=f'PRODUCTO {codigo}', cant=cant[codigo], stock=existencias)
+                  for codigo, existencias in SIN_EXISTENCIAS[caso].items()]
+        assert [a for a in datos['avisos'] if a.startswith('«')] == faltan   # la falta de stock, línea por línea
+        r = emitir(web, datos, comprador)
+        assert r['error'].startswith('No hay stock suficiente de PRODUCTO '), r
+        assert (stock(empresa), secuencia(empresa), cupo(empresa), ventas(empresa)) == antes and sri.recepciones == []
+        assert [(l['product'], l['cant']) for l in borrador(empresa, aceptada).lineas] == cotizadas
+        assert refrescar(empresa, aceptada).estado == 'aceptada'
+
+    def test_reducir_la_cantidad_es_explicito_y_entonces_se_emite(self, web, empresa, comprador, aceptada, productos,  # noqa: F811
+                                                                  sri):
+        with company_context(empresa):
+            Product.objects.filter(code='P15').update(stock=1, inventoried=True)
+        url = convertir(web, aceptada).json()['url']
+        datos = precarga(web, url)
+        datos['lineas'] = [dict(l, cant=1) if l['code'] == 'P15' else l for l in datos['lineas']]
+        assert guardar(web, datos, comprador)['mensaje'] == M['borrador_guardado']
+        assert {l['product']: l['cant'] for l in borrador(empresa, aceptada).lineas}[productos['4'].pk] == 1
+        datos = precarga(web, url)
+        assert not [a for a in datos['avisos'] if a.startswith('«')]
+        sri.respuestas_autorizacion = ['AUTORIZADO']
+        r = emitir(web, datos, comprador)
+        assert r.get('resp') is True, r
+        assert stock(empresa)['P15'] == 0 and secuencia(empresa) == 271
+        assert refrescar(empresa, aceptada).estado == 'facturada'
+
+
+# ---------------------------------------------------------------- plazo y vencimiento del crédito (PR #1, R3)
+
+def a_credito(dias, vence=None):
+    """Lo que envía la venta a crédito con transferencia: el plazo en días y la fecha de vencimiento (hoy + plazo)."""
+    vence = vence or timezone.localdate() + timedelta(days=dias)
+    return {'payment_type': 'credito', 'medio_cobro': 'transferencia', 'payment_method': '20', 'nota_cobro': '',
+            'time_limit': str(dias), 'end_credit': vence.isoformat()}
+
+
+def texto_fecha(valor):
+    return valor.strftime('%d/%m/%Y')
+
+
+class TestCreditoDelBorrador:
+    """«Guardar borrador» conserva el plazo y el vencimiento del crédito y la venta los vuelve a poner tal cual. Se validan
+    al guardar y al emitir; si con el tiempo la fecha deja de valer, se conserva y se pide corregirla, sin cambiarla en
+    silencio."""
+
+    def test_guardar_y_reabrir_conserva_plazo_y_vencimiento(self, web, empresa, comprador, aceptada):  # noqa: F811
+        url = convertir(web, aceptada).json()['url']
+        vence = timezone.localdate() + timedelta(days=90)
+        assert guardar(web, precarga(web, url), comprador, **a_credito(90))['mensaje'] == M['borrador_guardado']
+        b = borrador(empresa, aceptada)
+        assert (b.payment_type, b.medio_cobro, b.payment_method, b.time_limit, b.end_credit) == (
+            'credito', 'transferencia', '20', 90, vence)
+        r = web.get(url)
+        datos = r.context['proforma_precarga']
+        assert (datos['condicion_pago'], datos['medio_cobro'], datos['time_limit'], datos['end_credit']) == (
+            'credito', 'transferencia', 90, vence.isoformat())
+        formulario_venta = r.context['form']
+        assert (str(formulario_venta['time_limit'].value()), str(formulario_venta['end_credit'].value())) == (
+            '90', vence.isoformat())
+        assert f'value="{vence.isoformat()}"' in r.content.decode()
+        assert not [a for a in datos['avisos'] if 'ya pasó' in a]
+        # A contado el vencimiento no aplica y no se guarda; el plazo sí (es el <plazo> del XML).
+        assert guardar(web, datos, comprador, payment_type='efectivo', medio_cobro='efectivo', time_limit='0',
+                       end_credit=vence.isoformat())['mensaje'] == M['borrador_guardado']
+        b = borrador(empresa, aceptada)
+        assert (b.payment_type, b.time_limit, b.end_credit) == ('efectivo', 0, None)
+        assert precarga(web, url)['end_credit'] is None
+
+    @pytest.mark.parametrize('cambio, clave', [
+        ({'end_credit': ''}, 'plazo_credito'), ({'end_credit': '2026-02-30'}, 'plazo_credito'),
+        ({'end_credit': 'ayer'}, 'vencimiento_pasado'), ({'time_limit': 'x'}, 'plazo_dias'),
+        ({'time_limit': '-1'}, 'plazo_dias'), ({'time_limit': '1001'}, 'plazo_dias')])
+    def test_guardar_valida_el_credito_sin_tocar_lo_guardado(self, web, empresa, comprador, aceptada, cambio, clave):  # noqa: F811
+        url = convertir(web, aceptada).json()['url']
+        datos = precarga(web, url)
+        assert guardar(web, datos, comprador, **a_credito(90))['mensaje'] == M['borrador_guardado']
+        antes = borrador(empresa, aceptada)
+        ayer = timezone.localdate() - timedelta(days=1)
+        envio = {**a_credito(90), **cambio}
+        if envio['end_credit'] == 'ayer':
+            envio['end_credit'] = ayer.isoformat()
+        r = guardar(web, datos, comprador, **envio)
+        assert r.get('error') == M[clave].format(fecha=texto_fecha(ayer)), r
+        despues = borrador(empresa, aceptada)
+        assert (despues.time_limit, despues.end_credit, despues.actualizado_en) == (
+            antes.time_limit, antes.end_credit, antes.actualizado_en)
+
+    def test_un_vencimiento_que_ya_paso_se_conserva_y_hay_que_corregirlo(self, web, empresa, comprador, aceptada,  # noqa: F811
+                                                                        sri):
+        from core.pos.views.sale.views import PLAZO_ANTERIOR
+        url = convertir(web, aceptada).json()['url']
+        assert guardar(web, precarga(web, url), comprador, **a_credito(5))['mensaje'] == M['borrador_guardado']
+        vencida = timezone.localdate() - timedelta(days=1)
+        with company_context(empresa):   # pasaron los días: la fecha guardada ya no vale
+            BorradorFactura.objects.filter(proforma_id=aceptada.pk).update(end_credit=vencida)
+        r = web.get(url)
+        datos = r.context['proforma_precarga']
+        assert datos['end_credit'] == vencida.isoformat() == str(r.context['form']['end_credit'].value())
+        assert A['vencimiento_pasado'].format(fecha=texto_fecha(vencida)) in datos['avisos']
+        antes = (stock(empresa), secuencia(empresa), cupo(empresa), ventas(empresa))
+        tal_cual = a_credito(5, vencida)
+        assert emitir(web, datos, comprador, **tal_cual).get('error') == PLAZO_ANTERIOR
+        assert guardar(web, datos, comprador, **tal_cual).get('error') == M['vencimiento_pasado'].format(
+            fecha=texto_fecha(vencida))
+        assert (stock(empresa), secuencia(empresa), cupo(empresa), ventas(empresa)) == antes and sri.recepciones == []
+        assert borrador(empresa, aceptada).end_credit == vencida   # sigue la guardada: nada la cambió
+        # Corregida explícitamente, se guarda y la factura sale a crédito con esa fecha y ese plazo.
+        nueva = timezone.localdate() + timedelta(days=30)
+        assert guardar(web, datos, comprador, **a_credito(30))['mensaje'] == M['borrador_guardado']
+        datos = precarga(web, url)
+        assert datos['end_credit'] == nueva.isoformat() and not [a for a in datos['avisos'] if 'ya pasó' in a]
+        sri.respuestas_autorizacion = ['AUTORIZADO']
+        r = emitir(web, datos, comprador, **a_credito(30))
+        assert r.get('resp') is True, r
+        venta = venta_de(empresa, 271)
+        assert (venta.payment_type, venta.time_limit, venta.end_credit) == ('credito', 30, nueva)
+        assert leer(empresa, lambda: CtasCollect.objects.get(sale=venta).end_date) == nueva

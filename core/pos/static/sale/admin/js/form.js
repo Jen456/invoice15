@@ -229,6 +229,22 @@ var sale = {
         params.append('additional_info', JSON.stringify(sale.detail.additional_info.filter(value => !$.isEmptyObject(value.name) && !$.isEmptyObject(value.value))));
         return params;
     },
+    restaurarVencimiento: function (texto) {
+        // Factura en borrador: el vencimiento guardado se muestra tal cual. El calendario empieza hoy y cambiaría en silencio
+        // una fecha que ya pasó: se pone sin mínimo, se vuelve a fijar el mínimo (useCurrent: false no la toca) y el campo
+        // queda marcado hasta que se corrija.
+        var fecha = moment(texto, 'YYYY-MM-DD', true);
+        if (!fecha.isValid()) return;
+        var hoy = moment().startOf('day');
+        if (fecha.isBefore(hoy, 'day')) {
+            input_end_credit.datetimepicker('minDate', false);
+            input_end_credit.datetimepicker('date', fecha);
+            input_end_credit.datetimepicker('minDate', hoy);
+        } else {
+            input_end_credit.datetimepicker('date', fecha);
+        }
+        fvSale.revalidateField('end_credit');
+    },
     enviarBorrador: function (accion, exito) {
         var params = accion === 'guardar_borrador' ? sale.datosBorrador() : new FormData();
         params.set('action', accion);
@@ -393,10 +409,12 @@ var sale = {
         if (datos.forma_pago) {
             $('select[name="payment_method"]').val(datos.forma_pago).trigger('change');
         }
-        if (datos.borrador) {   // factura en borrador: tarifas de IVA, condición y medio de cobro guardados
+        if (datos.borrador) {   // factura en borrador: tarifas de IVA, condición, medio de cobro, plazo y vencimiento
             sale.tarifas = datos.tarifas || [];
             if (datos.condicion_pago) select_payment_type.val(datos.condicion_pago).trigger('change');
             if (datos.medio_cobro) select_medio_cobro.val(datos.medio_cobro).trigger('change');
+            if (datos.time_limit !== null && datos.time_limit !== undefined) input_time_limit.val(datos.time_limit);
+            if (datos.end_credit) sale.restaurarVencimiento(datos.end_credit);
         }
         if (datos.cliente) {
             select_client.select2('trigger', 'select', {data: datos.cliente});
@@ -616,12 +634,19 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 },
                 end_credit: {
                     validators: {
-                        // Obligatoria solo a crédito. Un validador con enabled: false no se reactiva en el adaptador local
-                        // (enableValidator no lo revive): la condición va dentro del callback.
+                        // Obligatoria solo a crédito y desde hoy (lo mismo que exige el servidor). Un validador con
+                        // enabled: false no se reactiva en el adaptador local (enableValidator no lo revive): la condición va
+                        // dentro del callback, que da su propio mensaje (sin `message`, que el adaptador antepondría).
                         callback: {
-                            message: 'Indica la fecha de plazo del crédito.',
                             callback: function (input) {
-                                return select_payment_type.val() !== 'credito' || String(input.value || '').trim() !== '';
+                                if (select_payment_type.val() !== 'credito') return true;
+                                var texto = String(input.value || '').trim();
+                                if (texto === '') return {valid: false, message: 'Indica la fecha de plazo del crédito.'};
+                                var fecha = moment(texto, 'YYYY-MM-DD', true);
+                                if (fecha.isValid() && fecha.isBefore(moment().startOf('day'), 'day')) {
+                                    return {valid: false, message: 'La fecha de plazo del crédito ya pasó: elige una fecha desde hoy.'};
+                                }
+                                return true;
                             }
                         },
                         date: {
