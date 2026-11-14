@@ -2797,9 +2797,14 @@ JSON y, salvo la primera, siguen detrás del complemento.
 
 **Decisiones de API.** Valen para esas rutas; el kardex y lo tributario no cambian.
 
-1. Toda negativa es JSON, también en GET. Sin permiso: 403 `{"codigo": "sin_permiso", "causa": "permiso"}`.
+1. Toda negativa de la ruta es JSON, también en GET. Sin permiso: 403 `{"codigo": "sin_permiso", "causa": "permiso"}`.
+   Dos excepciones, las de todo el proyecto, que responden antes de llegar a la ruta: sin sesión, 302 a `/login/`; con
+   sesión y sin empresa activa (`CompanyMiddleware`), un GET recibe 302 a `/empresas/` y un POST o un PATCH, 403
+   `{"error": "Selecciona una empresa para continuar"}`, sin `codigo`. Una respuesta que no es JSON o un 403 sin
+   `codigo` se tratan como «vuelve a cargar la página».
 2. `empresa` va en la consulta o en el cuerpo, también en JSON. Si no es la activa: 409 `empresa_cambiada`. En POST y
-   PATCH es obligatoria: sin ella, 409 `sin_empresa`.
+   PATCH es obligatoria: sin ella, 409 `sin_empresa`. El formulario vale solo en POST (alta y subida del archivo): un
+   PATCH va siempre en JSON.
 3. `clave`, con el formato del kardex. Misma clave y mismo contenido: mismo resultado con `repetido: true`. Misma clave y
    otro contenido: 409 `clave_usada`.
 4. `version` empieza en 1 y sube en cada cambio. Si no coincide: 409 `version` con la cuenta actual.

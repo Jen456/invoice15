@@ -30,8 +30,19 @@ Valen para todo lo que cuelga de `/tributario/` y `/contabilidad/`:
 Las rutas que ya existían (kardex, inventario y todo `/tributario/`) no cambiaron: allí un GET sin permiso sigue
 redirigiendo (302). Las nuevas cumplen además esto:
 
-- **Toda negativa es JSON, también en GET.** La única excepción es la de todo el proyecto: sin sesión, 302 a
-  `/login/?next=…`.
+- **Toda negativa de la ruta es JSON, también en GET.** Hay dos excepciones, las de todo el proyecto, que responden
+  antes de llegar a la ruta:
+
+  1. Sin sesión: 302 a `/login/?next=…`.
+  2. Con sesión y sin empresa activa: responde `CompanyMiddleware`. Un GET recibe 302 a `/empresas/` (el selector de
+     empresas, HTML); un POST o un PATCH, 403 `{"error": "Selecciona una empresa para continuar"}`, sin `codigo` ni
+     `causa`. Le pasa a quien tiene varias empresas y todavía no eligió ninguna, a quien le desactivaron la membresía de
+     la empresa que tenía abierta y al superusuario que no eligió empresa. (Si a quien perdió la membresía le queda
+     exactamente otra empresa, la sesión pasa sola a esa: la pestaña armada para la anterior recibe el 409
+     `empresa_cambiada` de siempre.)
+
+  Para la interfaz: una respuesta redirigida o que no es JSON, y un 403 sin `codigo`, no son de la ruta. Se tratan como
+  «vuelve a cargar la página»: al recargar, el proyecto lleva al inicio de sesión o al selector de empresas.
 - **Orden de las negativas.** Se responde la primera que aplique:
 
   | # | Causa | Respuesta |
@@ -46,11 +57,15 @@ redirigiendo (302). Las nuevas cumplen además esto:
   Una excepción al primer puesto, que ya existía en `PlanMiddleware` para todas las consultas: si la empresa activa no
   tiene plan pagado, a un GET de una pestaña armada para otra empresa le responde el 403 `plan` y no el 409.
 
-- **`empresa`.** Va en la consulta (`?empresa=<id>`) o en el envío: el campo `empresa` de un formulario o `"empresa"` del
-  objeto JSON, como número o como texto. En GET es opcional. En POST y PATCH es obligatoria. Basta que la consulta o el
-  cuerpo nombren otra empresa para el 409.
-- **Cuerpo.** JSON (`Content-Type: application/json`, un objeto) o formulario; la subida de un archivo va en `multipart`.
-  Un JSON que no se puede leer o que no es un objeto: 400 `cuerpo`.
+- **`empresa`.** Va en la consulta (`?empresa=<id>`) o en el envío: `"empresa"` del objeto JSON o, en un POST de
+  formulario, el campo `empresa`; como número o como texto. En GET es opcional. En POST y PATCH es obligatoria. Basta que
+  la consulta o el cuerpo nombren otra empresa para el 409.
+- **Cuerpo.** JSON (`Content-Type: application/json`, un objeto). Un POST admite también un formulario, y la subida de
+  un archivo va en `multipart` por fuerza. **Un PATCH va siempre en JSON:** el servidor no lee un cuerpo de formulario
+  en PATCH (Django solo lo hace en POST), y `activa` (booleano) y `padre_id: null` no se pueden escribir en un
+  formulario. Un PATCH de formulario no cambia nada y llega vacío: recibe 409 `sin_empresa` aunque traiga `empresa` en
+  el cuerpo, o 400 `validacion` por `version` si la empresa va en la consulta. Un JSON que no se puede leer o que no es
+  un objeto: 400 `cuerpo`.
 - **`clave`.** De 8 a 40 caracteres: letras, cifras, guion y guion bajo. La genera el navegador una vez por formulario.
   Misma clave y mismo contenido: el mismo resultado con 200 y `"repetido": true`. Misma clave y otro contenido: 409
   `clave_usada`. Sin clave o mal formada: 400 `clave`.
@@ -207,7 +222,8 @@ Fuera del complemento (ventas, importación, proformas, cobros) el 403 del plan 
   lleva a donde se resuelve, si este usuario puede.
 - Con `licencia.solo_consulta` se puede leer y no se puede guardar: las acciones que guardan ya vienen en `false`.
 - Ante un 403 o un 409 de una ruta nueva, `codigo` y `causa` dicen cuál de las cuatro es; `error` es el texto para la
-  persona.
+  persona. Un 403 sin `codigo`, o una respuesta que no es JSON, no viene de la ruta: es una de las dos excepciones de las
+  reglas comunes (sin sesión o sin empresa activa) y se resuelve recargando la página.
 
 ### Cambios respecto de lo que había
 

@@ -486,6 +486,19 @@ class TestVersion:
         respuesta = entrar.patch(f'{API}{cuenta["id"]}/?empresa={empresa.pk}', '{mal', content_type='application/json')
         assert respuesta.status_code == 400 and respuesta.json()['codigo'] == 'cuerpo'
 
+    def test_un_cambio_va_siempre_en_json(self, entrar, empresa):
+        """Como dice el contrato: el formulario vale en POST (alta y subida del archivo), no en PATCH. Django no lee un
+        cuerpo de formulario en PATCH, así que ese envío llega vacío: ni la empresa ni la versión que traía cuentan, y
+        no cambia nada."""
+        cuenta = nueva(entrar, empresa, '1.1.01', 'Caja')
+        cuerpo, formulario = f'empresa={empresa.pk}&version=1&nombre=Otro', 'application/x-www-form-urlencoded'
+        sin_consulta = entrar.patch(f'{API}{cuenta["id"]}/', cuerpo, content_type=formulario)
+        assert sin_consulta.status_code == 409 and sin_consulta.json()['codigo'] == 'sin_empresa'
+        con_consulta = entrar.patch(f'{API}{cuenta["id"]}/?empresa={empresa.pk}', cuerpo, content_type=formulario)
+        assert errores_de(con_consulta) == {'version': [T['version_falta']]}
+        assert guardada(empresa, cuenta['id']).nombre == 'Caja'
+        assert cambiar(entrar, empresa, cuenta, nombre='Otro').json()['cuenta']['version'] == 2   # el mismo cambio, en JSON
+
 
 # ---------------------------------------------------------------- lista y búsqueda
 

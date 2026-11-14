@@ -276,6 +276,33 @@ class TestRolesYEmpresa:
         respuesta = client.get(URL)
         assert respuesta.status_code == 302 and respuesta['Location'] == f'/login/?next={URL}'
 
+    @pytest.mark.parametrize('caso', ['varias_sin_elegir', 'membresia_desactivada', 'superusuario'])
+    def test_con_sesion_y_sin_empresa_activa_responde_el_proyecto(self, client, empresa, empresa_b, lista, caso):
+        """La segunda excepción a «toda negativa es JSON», como la documenta el contrato: con sesión y sin empresa activa,
+        CompanyMiddleware corta antes de llegar a la ruta, igual que en todo el proyecto. Una consulta va al selector de
+        empresas (302, HTML) y un envío recibe un 403 sin `codigo` ni `causa`. Si esto cambia, cambia el contrato."""
+        lista(empresa, empresa_b)
+        if caso == 'superusuario':
+            helpers.iniciar_sesion(client, helpers.crear_usuario('cap.plataforma', superusuario=True))
+        elif caso == 'varias_sin_elegir':
+            usuario = helpers.crear_usuario('cap.dos.empresas', empresa, ROLE_OWNER)
+            Membership.objects.create(user=usuario, company=empresa_b, group=Group.objects.get(name=ROLE_OWNER))
+            helpers.iniciar_sesion(client, usuario)
+        else:
+            usuario = entrar(client, empresa)
+            assert client.get(URL).status_code == 200
+            Membership.objects.filter(user=usuario, company=empresa).update(is_active=False)   # con la pestaña abierta
+        for ruta in (URL, f'{URL}?empresa={empresa.pk}', '/contabilidad/api/inicio/', '/contabilidad/api/cuentas/',
+                     '/contabilidad/api/cuentas/importar/1/'):
+            respuesta = client.get(ruta)
+            assert respuesta.status_code == 302 and respuesta['Location'] == '/empresas/', ruta
+            assert not respuesta['Content-Type'].startswith('application/json'), ruta
+        for metodo, ruta in (('post', '/contabilidad/api/cuentas/'), ('patch', '/contabilidad/api/cuentas/1/'),
+                             ('post', '/contabilidad/api/cuentas/importar/'), ('post', '/contabilidad/api/cuentas/importar/1/confirmar/')):
+            respuesta = enviar(client, ruta, {'empresa': empresa.pk, 'version': 1}, metodo)
+            assert respuesta.status_code == 403 and respuesta['Content-Type'] == 'application/json', ruta
+            assert respuesta.json() == {'error': 'Selecciona una empresa para continuar'}, ruta
+
     def test_empresa_de_otra_pestana(self, client, empresa, empresa_b, lista):
         lista(empresa)
         usuario = entrar(client, empresa)

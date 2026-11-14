@@ -3,9 +3,11 @@ pestaña, permiso del rol, formato de errores y clave de idempotencia.
 
 Toda negativa de estas rutas es JSON, también en GET, y siempre en el mismo orden:
 
-1. sin sesión → lo de todo el proyecto (302 al inicio de sesión);
+1. sin sesión → lo de todo el proyecto (302 al inicio de sesión). Con sesión y sin empresa activa también responde el
+   proyecto antes de llegar aquí (CompanyMiddleware): a un GET, 302 a /empresas/; a un envío, 403 sin `codigo`. Son las
+   dos únicas respuestas que no tienen la forma de esta lista, y el contrato las documenta como excepciones;
 2. empresa: `empresa` que no es la activa → 409 `empresa_cambiada`; en un envío (POST, PATCH…) es obligatoria y sin ella
-   → 409 `sin_empresa`. Se lee de `?empresa=` o del envío (campo del formulario o `"empresa"` del JSON);
+   → 409 `sin_empresa`. Se lee de `?empresa=` o del envío (`"empresa"` del JSON o, en un POST, campo del formulario);
 3. licencia → 403 de PlanMiddleware (corre antes que la vista; ante un envío para otra empresa responde primero el 409).
    El del plan vencido lo repite aquí la vista en cada envío (`rechazo_de_licencia`): al middleware se le escapa un
    formulario que lleve un campo `action` de consulta;
@@ -100,7 +102,8 @@ def es_json(request):
 
 def cuerpo(request):
     """Datos del envío: el objeto JSON del cuerpo o, en un formulario (también multipart), `request.POST`. Un cuerpo JSON
-    que no se puede leer o que no es un objeto → 400 `cuerpo`."""
+    que no se puede leer o que no es un objeto → 400 `cuerpo`. El formulario solo existe en POST: Django no lee el de un
+    PATCH, que llega vacío, y por eso el contrato pide el PATCH siempre en JSON."""
     if es_json(request):
         datos = cuerpo_json(request)
         if datos is None:
