@@ -1875,3 +1875,5 @@ Petición: completar Contabilidad/Tributario y admitir empresas que parten de es
 **Integración:** base local actualizada por fast-forward desde remoto a `96d39e1`, sin reescribir historial. Esta entrega solo añade documentación/prototipo; la candidata backend `10d75f0` permanece separada. Sin despliegue, SRI, cobros ni correos.
 
 **Pendiente de Claude:** aceptar/ajustar el contrato C6-A e implementar el núcleo genérico, apertura y auxiliares sin duplicaciones, diario/mayor y conexión tributaria. Las decisiones fiscales reales y la activación comercial se resuelven con sus fuentes/autorizaciones; no impiden construir los componentes genéricos. **Pendiente de la propietaria:** revisar el PDF de la propuesta antes de su integración visual, conforme al encargo.
+
+**Commit de la propuesta subido:** `f5b57aa95176b77348ef9e9bb198422d7cff6ab4` en GitHub `frontend/etapa3`, verificado con `git ls-remote`. El registro posterior solo documenta esa subida.
