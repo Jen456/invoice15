@@ -869,6 +869,11 @@ def _exigir_sin_auxiliares(retiradas):
         raise _error('linea_con_auxiliares', 409, linea_id=con_auxiliares['linea'], auxiliares=con_auxiliares['n'])
 
 
+def _ilegible(errores):
+    """Hay errores en el conjunto entero y no en una línea: `lineas`, `columnas` (o una de ellas) o `decisiones`."""
+    return any(clave in ('lineas', 'columnas', 'decisiones') or clave.startswith('columnas.') for clave in errores)
+
+
 def mapear(request, pk, datos):
     """POST /contabilidad/api/apertura/<id>/mapear/: fija las líneas del borrador, con la captura directa del conjunto
     completo (`{version, lineas: [...]}`) o desde un lote (`{version, lote_id, columnas, decisiones}`). Devuelve
@@ -897,6 +902,10 @@ def mapear(request, pk, datos):
             resumen_lote = None
         if ajenas:
             raise _error('no_existe', 404, texto=TEXTOS['cuenta_no_existe'], errores=ajenas)
+        if _ilegible(errores):
+            # Sin un conjunto que se pueda leer (las líneas no son una lista, las columnas del lote no sirven), no hay con
+            # qué conciliar: el 409 de una línea «quitada» hablaría de un envío que no se entendió.
+            raise api.ErrorApi('validacion', api.TEXTOS['validacion'], errores=dict(errores))
         altas, cambiadas, retiradas = _conciliar(apertura, pedidas, cuentas)
         _exigir_sin_auxiliares(retiradas)
         if errores:
