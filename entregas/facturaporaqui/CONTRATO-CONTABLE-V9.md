@@ -419,6 +419,13 @@ descomprimirlo. **No se lee `.xls`** ni un libro con contraseña, y un CSV en ot
 adivinarla: guardaría mal los nombres con tilde. La primera fila con contenido es la de encabezados; las filas en blanco
 se saltan sin cambiar la numeración.
 
+Tampoco se adivina dónde terminaba un texto con las comillas mal puestas. Un CSV con unas comillas que se abren y no se
+cierran, o con texto pegado después de cerrarlas (`"Otros" ingresos`), se rechaza entero con 400 `formato` y la fila:
+«El CSV no se pudo leer a partir de la fila 5: revisa sus comillas (unas que no se cierran o texto pegado después de
+cerrarlas) o guarda el archivo de nuevo desde la hoja de cálculo.» Un salto de línea dentro de unas comillas bien
+cerradas vale, y se guarda como un espacio. Las hojas de cálculo exportan siempre las comillas bien cerradas: esto solo
+alcanza a un CSV escrito a mano.
+
 **Columnas.** Se reconocen por su encabezado, sin distinguir mayúsculas ni tildes:
 
 | Dato | Encabezados |
@@ -536,7 +543,7 @@ Envío JSON: `{"empresa", "clave", "duplicadas": "omitir" | "actualizar_nombre"}
 | 400 | `validacion` | falta `archivo`; `duplicadas` falta o no es válido; en el mapeo, una columna que no está o que se repite |
 | 400 | `archivo_grande` | más de 2 MB, XLSX de más de 20 MB al abrirlo o demasiadas celdas fuera de la tabla |
 | 400 | `demasiadas_filas` | más de 5 000 filas de cuentas |
-| 400 | `formato` | no es CSV ni XLSX, está dañado, vacío o solo trae encabezados, tiene más de 40 columnas, es un `.xls` o un libro con contraseña, o el CSV no está en UTF-8. `error` dice cuál |
+| 400 | `formato` | no es CSV ni XLSX, está dañado, vacío o solo trae encabezados, tiene más de 40 columnas, es un `.xls` o un libro con contraseña, o el CSV no está en UTF-8 o tiene las comillas mal cerradas. `error` dice cuál |
 | 400 | `faltan_columnas` | al confirmar sin columna de código o de nombre; trae `resumen` |
 | 400 | `filas_con_error` | al confirmar con alguna fila en error; trae `resumen` |
 | 404 | `lote` | el lote no existe o es de otra empresa |

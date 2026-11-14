@@ -181,6 +181,25 @@ class TestLectura:
             (2, '1', 'Caja; bancos, y "otros"'), (3, '2', 'Cuentas por cobrar, clientes'), (4, '3', 'Con espacios')]
         assert lote['resumen']['validas'] == 3
 
+    @pytest.mark.parametrize('contenido, fila', [
+        # Una comilla que se abre y no se cierra: el lector se tragaba las filas siguientes dentro de ese nombre, la fila
+        # salía válida y al confirmar se creaba una cuenta «Bancos locales 1.1.03;Inversiones 2;Pasivo 2.1;Proveedores».
+        ('Código;Nombre\r\n1;Activo\r\n1.1;Activo corriente\r\n1.1.01;Caja\r\n1.1.02;"Bancos locales\r\n1.1.03;Inversiones\r\n'
+         '2;Pasivo\r\n2.1;Proveedores\r\n', 5),
+        ('Código,Nombre\n1,"Activo\n2,Pasivo\n3,Patrimonio\n', 2),
+        ('Código;Nombre\r\n1;Activo\r\n\r\n2;"Pasivo', 4),             # la fila en blanco también cuenta, como en la hoja
+        # La cierra, sin querer, la comilla con que empieza otro nombre más abajo: las filas de en medio desaparecían.
+        ('Código;Nombre\r\n1;"Activo\r\n2;Pasivo\r\n3;"Patrimonio"\r\n4;Ingresos\r\n', 2),
+        # Texto pegado después de cerrar las comillas: se leía «Otros ingresos», sin las comillas y sin avisar.
+        ('Código;Nombre\r\n1;Activo\r\n4;"Otros" ingresos\r\n', 3),
+    ], ids=['sin_cerrar', 'sin_cerrar_con_comas', 'sin_cerrar_al_final', 'la_cierra_otra_fila', 'texto_tras_cerrarlas'])
+    def test_csv_con_comillas_mal_cerradas(self, entrar, empresa, contenido, fila):
+        """No se adivina dónde terminaba el texto: se rechaza el archivo diciendo la fila, en vez de importar otra cosa."""
+        respuesta = subir(entrar, empresa, contenido.encode())
+        assert respuesta.status_code == 400, respuesta.content
+        assert respuesta.json() == {'error': T['comillas'].format(fila=fila), 'codigo': 'formato'}
+        assert f'fila {fila}:' in respuesta.json()['error'] and lotes(empresa) == []
+
     def test_el_separador_no_se_decide_contando_comas(self, entrar, empresa):
         """Con `;`, unos nombres llenos de comas no hacen leer el archivo como si fuera de comas (y al revés)."""
         con_punto_y_coma = lote_de(entrar, empresa, ('Código', 'Nombre'), ('1', 'Caja, bancos, y otros, varios'),

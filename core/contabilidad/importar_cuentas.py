@@ -83,6 +83,8 @@ TEXTOS = {
     'demasiadas_columnas': f'El archivo tiene más de {MAX_COLUMNAS} columnas: deja solo las del plan de cuentas.',
     'formato': 'No se pudo leer el archivo: debe ser un CSV (UTF-8, separado por punto y coma o por coma) o un XLSX.',
     'codificacion': 'El CSV no está en UTF-8: en la hoja de cálculo, guárdalo como «CSV UTF-8» o sube el XLSX.',
+    'comillas': 'El CSV no se pudo leer a partir de la fila {fila}: revisa sus comillas (unas que no se cierran o texto pegado '
+                'después de cerrarlas) o guarda el archivo de nuevo desde la hoja de cálculo.',
     'xls': 'Es un XLS antiguo o un libro protegido con contraseña: guárdalo como XLSX sin contraseña o como CSV UTF-8.',
     'vacio': 'El archivo está vacío.',
     'sin_filas': 'El archivo solo tiene la fila de encabezados: no trae ninguna cuenta.',
@@ -155,7 +157,8 @@ def _separador(texto):
 
 def _filas_csv(datos):
     """Filas `(número, celdas)` de un CSV en UTF-8 (con o sin BOM), con comillas. No se adivina otra codificación: un
-    nombre con tildes mal leídas quedaría guardado mal sin que nadie lo note."""
+    nombre con tildes mal leídas quedaría guardado mal sin que nadie lo note. Tampoco dónde terminaba un texto con las
+    comillas mal puestas: el archivo se rechaza diciendo la fila."""
     try:
         texto = datos.decode('utf-8-sig')
     except UnicodeDecodeError:
@@ -163,10 +166,17 @@ def _filas_csv(datos):
         raise _ilegible('formato' if binario else 'codificacion') from None
     if '\x00' in texto or texto.lstrip()[:5] == '%PDF-' or texto.lstrip()[:1] == '<':   # PDF, XML o una página web
         raise _ilegible()
+    # `strict`: sin él, una comilla que se abre y no se cierra se traga las filas siguientes dentro de esa celda (y `_celda`
+    # borra el rastro al cambiar los saltos de línea por espacios): la fila salía válida y las demás desaparecían sin un
+    # solo error. También rechaza el texto pegado tras cerrar unas comillas, que se leía perdiéndolas. Un salto de línea
+    # dentro de unas comillas bien cerradas sigue valiendo.
+    lector, leidas = csv.reader(io.StringIO(texto, newline=''), delimiter=_separador(texto), strict=True), 0
     try:
-        yield from enumerate(csv.reader(io.StringIO(texto, newline=''), delimiter=_separador(texto)), 1)
+        for leidas, celdas in enumerate(lector, 1):
+            yield leidas, celdas
     except csv.Error:
-        raise _ilegible() from None
+        # La fila que no se pudo leer es la siguiente a la última que sí: donde se abrieron las comillas.
+        raise api.ErrorApi('formato', TEXTOS['comillas'].format(fila=leidas + 1)) from None
 
 
 def _filas_xlsx(datos):
