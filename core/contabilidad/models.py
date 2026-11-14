@@ -10,7 +10,10 @@ Plan de cuentas por empresa (C2 del contrato contable v9): `Cuenta`. Sus reglas 
 aplican en core/contabilidad/cuentas.py; aquí solo está lo que la base de datos garantiza por sí sola.
 
 Importación del plan con vista previa (C3): `ImportacionCuentas`, el lote con su archivo privado y lo que se leyó de él.
-Su lectura, la vista previa y la confirmación están en core/contabilidad/importar_cuentas.py."""
+Su lectura, la vista previa y la confirmación están en core/contabilidad/importar_cuentas.py.
+
+Libro diario y apertura contable (bloque 2): sus modelos están en modelos_libro.py y modelos_apertura.py, importados al
+final de este archivo (decisión común 1 de contable/bloque-2-especificacion.md: un archivo de modelos por bloque)."""
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
@@ -29,6 +32,12 @@ CODIGO_CUENTA_MAX, NOMBRE_CUENTA_MAX = 30, 200
 ESTADOS_IMPORTACION = (('vista_previa', 'Vista previa'), ('confirmado', 'Confirmado'))
 # Qué hace la confirmación con las filas cuyo código ya existe en la empresa.
 DUPLICADAS_IMPORTACION = (('omitir', 'Omitirlas'), ('actualizar_nombre', 'Actualizar su nombre'))
+# Bloque 2: lo que declara una persona sobre cada cuenta (nunca se deduce del código). La clase decide dónde va en los
+# estados (balance o resultados); el auxiliar, qué detalle explica su saldo en la apertura. Vacío = sin declarar.
+CLASES_CUENTA = (('', 'Sin clase'), ('activo', 'Activo'), ('pasivo', 'Pasivo'), ('patrimonio', 'Patrimonio'),
+                 ('ingreso', 'Ingreso'), ('costo', 'Costo'), ('gasto', 'Gasto'))
+AUXILIARES_CUENTA = (('', 'Sin auxiliar'), ('cliente', 'Clientes'), ('proveedor', 'Proveedores'), ('inventario', 'Inventario'),
+                     ('banco', 'Bancos'), ('activo', 'Activos'), ('tributario', 'Tributario'))
 
 
 def limpiar_codigo(codigo):
@@ -117,6 +126,12 @@ class Cuenta(TenantModel):
     tipo = models.CharField(max_length=10, choices=TIPOS_CUENTA, verbose_name='Tipo')
     activa = models.BooleanField(default=True, verbose_name='Activa')
     version = models.PositiveIntegerField(default=1, verbose_name='Versión')
+    # Bloque 2. `db_default` además de `default`: la columna nueva no pide valor a quien inserte sin conocerla (el código
+    # anterior atendiendo sobre la base ya migrada, un INSERT por SQL); `default`, que la instancia nazca con '' en Python.
+    clase = models.CharField(max_length=12, blank=True, default='', db_default='', choices=CLASES_CUENTA, verbose_name='Clase')
+    # Solo las cuentas de movimiento llevan auxiliar (CHECK cuenta_auxiliar_solo_movimiento).
+    auxiliar = models.CharField(max_length=12, blank=True, default='', db_default='', choices=AUXILIARES_CUENTA,
+                                verbose_name='Auxiliar')
     # Clave del envío que la creó (idempotencia). Nula en las que crea la importación del plan, que lleva su propia clave.
     clave = models.CharField(max_length=40, null=True, blank=True, verbose_name='Clave del envío')
     # La importación que la creó; nulo en las que se dan de alta a mano. El lote no se borra (PROTECT).
@@ -139,6 +154,8 @@ class Cuenta(TenantModel):
             models.UniqueConstraint(fields=('company', 'codigo_norm'), name='cuenta_codigo_unico'),
             models.UniqueConstraint(fields=('company', 'clave'), condition=Q(clave__isnull=False), name='cuenta_clave_unica'),
             models.CheckConstraint(condition=Q(tipo__in=[tipo for tipo, _ in TIPOS_CUENTA]), name='cuenta_tipo_valido'),
+            models.CheckConstraint(condition=Q(clase__in=[clase for clase, _ in CLASES_CUENTA]), name='cuenta_clase_valida'),
+            models.CheckConstraint(condition=Q(tipo='movimiento') | Q(auxiliar=''), name='cuenta_auxiliar_solo_movimiento'),
         ]
         indexes = [models.Index(fields=('company', 'padre'), name='cuenta_por_padre')]
 
@@ -200,3 +217,8 @@ class ImportacionCuentas(TenantModel):
 
     def __str__(self):
         return f'{self.nombre_original} ({self.get_estado_display()})'
+
+
+# Bloque 2 (una línea por archivo de modelos, decisión común 1).
+from core.contabilidad.modelos_libro import *  # noqa: E402,F401,F403
+from core.contabilidad.modelos_apertura import *  # noqa: E402,F401,F403
