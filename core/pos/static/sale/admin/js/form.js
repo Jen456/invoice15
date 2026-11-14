@@ -230,19 +230,15 @@ var sale = {
         return params;
     },
     restaurarVencimiento: function (texto) {
-        // Factura en borrador: el vencimiento guardado se muestra tal cual. El calendario empieza hoy y cambiaría en silencio
-        // una fecha que ya pasó: se pone sin mínimo, se vuelve a fijar el mínimo (useCurrent: false no la toca) y el campo
-        // queda marcado hasta que se corrija.
+        // Factura en borrador: el vencimiento guardado se muestra tal cual. El calendario nace con el mínimo «ahora» (con
+        // hora): descartaría la fecha de hoy y cualquier fecha pasada y dejaría el campo vacío. Se pone sin mínimo y el
+        // mínimo vuelve al comienzo de hoy (useCurrent: false no toca la fecha puesta; un Date y no un moment, para que el
+        // calendario conserve su idioma). Si la fecha ya pasó, el campo queda marcado hasta que se corrija.
         var fecha = moment(texto, 'YYYY-MM-DD', true);
         if (!fecha.isValid()) return;
-        var hoy = moment().startOf('day');
-        if (fecha.isBefore(hoy, 'day')) {
-            input_end_credit.datetimepicker('minDate', false);
-            input_end_credit.datetimepicker('date', fecha);
-            input_end_credit.datetimepicker('minDate', hoy);
-        } else {
-            input_end_credit.datetimepicker('date', fecha);
-        }
+        input_end_credit.datetimepicker('minDate', false);
+        input_end_credit.datetimepicker('date', fecha);
+        input_end_credit.datetimepicker('minDate', moment().startOf('day').toDate());
         fvSale.revalidateField('end_credit');
     },
     enviarBorrador: function (accion, exito) {
@@ -1112,6 +1108,12 @@ $(function () {
         var hoy = moment().startOf('day');
         var minimo = e.date && e.date.isAfter(hoy, 'day') ? e.date : hoy;
         input_end_credit.datetimepicker('minDate', minimo);
+        if ($('input[name="borrador_id"]').length && String(input_end_credit.val() || '').trim() !== '') {
+            // Factura en borrador: cambiar «Fecha» no sustituye en silencio el vencimiento guardado o ya elegido (fijar el
+            // mínimo no toca la fecha puesta). Se vuelve a validar: si no vale, el campo queda marcado.
+            fvSale.revalidateField('end_credit');
+            return;
+        }
         input_end_credit.datetimepicker('date', minimo);
     });
 
@@ -1126,6 +1128,10 @@ $(function () {
     input_end_credit.datetimepicker('date', input_end_credit.val());
 
     input_end_credit.on('change.datetimepicker', function (e) {
+        fvSale.revalidateField('end_credit');
+    });
+    // Una fecha escrita a mano que el calendario rechaza (anterior al mínimo) se repone sola: se valida lo que queda.
+    input_end_credit.on('error.datetimepicker', function () {
         fvSale.revalidateField('end_credit');
     });
 

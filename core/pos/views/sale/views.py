@@ -233,7 +233,9 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     sale.iva = float(sale.company.iva) / 100
                     sale.create_electronic_invoice = False
                     if sale.receipt.voucher_type == VOUCHER_TYPE[0][0]:
-                        sale.time_limit = int(request.POST['time_limit'])
+                        # Desde su factura en borrador, la misma regla que al guardarla (entero de 0 a 1000, con su mensaje).
+                        sale.time_limit = (proformas.plazo_del_credito(request.POST) if borrador is not None
+                                           else int(request.POST['time_limit']))
                         sale.payment_method = request.POST.get('payment_method', '')
                         if sale.payment_method not in dict(PAYMENT_METHOD):
                             raise ValueError('Elige la forma de pago del SRI.')

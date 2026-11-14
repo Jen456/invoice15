@@ -593,7 +593,7 @@ class TestCreditoDelBorrador:
     @pytest.mark.parametrize('cambio, clave', [
         ({'end_credit': ''}, 'plazo_credito'), ({'end_credit': '2026-02-30'}, 'plazo_credito'),
         ({'end_credit': 'ayer'}, 'vencimiento_pasado'), ({'time_limit': 'x'}, 'plazo_dias'),
-        ({'time_limit': '-1'}, 'plazo_dias'), ({'time_limit': '1001'}, 'plazo_dias')])
+        ({'time_limit': '-1'}, 'plazo_dias'), ({'time_limit': '1001'}, 'plazo_dias'), ({'time_limit': ''}, 'plazo_dias')])
     def test_guardar_valida_el_credito_sin_tocar_lo_guardado(self, web, empresa, comprador, aceptada, cambio, clave):  # noqa: F811
         url = convertir(web, aceptada).json()['url']
         datos = precarga(web, url)
@@ -639,3 +639,36 @@ class TestCreditoDelBorrador:
         venta = venta_de(empresa, 271)
         assert (venta.payment_type, venta.time_limit, venta.end_credit) == ('credito', 30, nueva)
         assert leer(empresa, lambda: CtasCollect.objects.get(sale=venta).end_date) == nueva
+
+    @pytest.mark.parametrize('plazo', ['-1', '1001', 'x', '', None])
+    def test_emitir_desde_el_borrador_valida_el_plazo_como_al_guardar(self, web, empresa, comprador, aceptada, sri,  # noqa: F811
+                                                                      plazo):
+        url = convertir(web, aceptada).json()['url']
+        datos = precarga(web, url)
+        assert guardar(web, datos, comprador, **a_credito(30))['mensaje'] == M['borrador_guardado']
+        antes = (stock(empresa), secuencia(empresa), cupo(empresa), ventas(empresa))
+        post = {'action': 'add', **formulario(datos, comprador, **a_credito(30))}
+        if plazo is None:
+            del post['time_limit']   # un formulario sin el campo
+        else:
+            post['time_limit'] = plazo
+        assert web.post(f'{VENTAS}add/', post).json().get('error') == M['plazo_dias']
+        assert (stock(empresa), secuencia(empresa), cupo(empresa), ventas(empresa)) == antes and sri.recepciones == []
+        b = borrador(empresa, aceptada)
+        assert (b.time_limit, b.end_credit) == (30, timezone.localdate() + timedelta(days=30))   # el borrador, intacto
+
+    def test_guardar_a_credito_no_pierde_el_medio_ni_acepta_un_formulario_sin_plazo(self, web, empresa, comprador,  # noqa: F811
+                                                                                   aceptada):
+        url = convertir(web, aceptada).json()['url']
+        datos = precarga(web, url)
+        assert guardar(web, datos, comprador, payment_type='efectivo', medio_cobro='transferencia',
+                       payment_method='20')['mensaje'] == M['borrador_guardado']
+        # A crédito la pantalla no envía el medio de cobro (selector deshabilitado): el guardado se conserva.
+        post = {'action': 'guardar_borrador', **formulario(datos, comprador, **a_credito(90))}
+        del post['medio_cobro']
+        assert web.post(f'{VENTAS}add/', post).json()['mensaje'] == M['borrador_guardado']
+        b = borrador(empresa, aceptada)
+        assert (b.payment_type, b.medio_cobro, b.time_limit) == ('credito', 'transferencia', 90)
+        assert precarga(web, url)['medio_cobro'] == 'transferencia'
+        del post['time_limit']
+        assert web.post(f'{VENTAS}add/', post).json().get('error') == M['plazo_dias']

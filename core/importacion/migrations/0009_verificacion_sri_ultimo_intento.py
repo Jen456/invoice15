@@ -29,7 +29,9 @@ verificación ('verificacion', 'xml_no_recuperado' o 'xml_recibido'), de la que 
 `completar()` toca solo los documentos con un estado consultado y sin resultado: al migrar son todos; después solo puede
 dejarlos la versión anterior, que no conoce estas columnas, si verifica mientras sigue atendiendo. Por eso la tarea
 programada (procesar_importaciones → servicios.completar_consultas_de_la_version_anterior) la vuelve a aplicar con estas
-mismas reglas; lo que ya tiene resultado (lo escribió esta versión) no cambia.
+mismas reglas; lo que ya tiene resultado no cambia. Límite: si la versión anterior vuelve a verificar un documento que YA
+tenía resultado, cambia su estado y su fecha y deja el resultado, el mensaje y el usuario de antes, que quedan
+desactualizados hasta que esta versión lo verifique de nuevo (primera-entrega/plan-de-despliegue.md).
 
 Vuelta: 'sri_no_disponible' con 'fuera_de_rango' vuelve a 'fuera_rango_sri' y con 'clave_invalida' a 'no_encontrada_sri'
 (lo que hacía el código anterior); los demás códigos existen en 0008 y se quedan. Después se quitan las columnas: el

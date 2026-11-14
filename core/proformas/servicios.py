@@ -1229,14 +1229,12 @@ def _info_adicional(crudo):
     return campos
 
 
-def _plazo_del_credito(datos):
-    """Plazo en días de la pantalla de venta (`time_limit`, el <plazo> del XML): None si no vino; si vino, un entero de 0 a
-    MAX_PLAZO_DIAS (el tope del selector) o ErrorProforma."""
+def plazo_del_credito(datos):
+    """Plazo en días de la pantalla de venta (`time_limit`, el <plazo> del XML): un entero de 0 a MAX_PLAZO_DIAS (el tope
+    del selector) o ErrorProforma. La misma regla al guardar la factura en borrador y al emitirla: un plazo vacío no se
+    guarda como «sin plazo» (al reabrir aparecería el valor por defecto de la venta, que nadie eligió)."""
     valor = datos.get('time_limit')
-    texto = '' if valor is None else str(valor).strip()
-    if not texto:
-        return None
-    plazo = _entero(texto)
+    plazo = _entero('' if valor is None else str(valor).strip())
     if plazo is None or plazo > MAX_PLAZO_DIAS:
         raise ErrorProforma(MENSAJES['plazo_dias'])
     return plazo
@@ -1276,14 +1274,16 @@ def guardar_borrador(borrador_id, datos, request, usuario):
             raise ErrorProforma(CAMPOS['cliente'])
     condicion = str(datos.get('payment_type') or '').strip()
     forma = str(datos.get('payment_method') or '').strip()
-    medio = str(datos.get('medio_cobro') or '').strip()
+    # A crédito la venta no envía el medio de cobro (su selector está deshabilitado: no hay cobro al emitir). Se conserva
+    # el guardado, para que al volver a contado siga siendo el de la proforma y no «efectivo».
+    medio = str(datos.get('medio_cobro') or '').strip() if 'medio_cobro' in datos else b.medio_cobro
     if condicion not in dict(PAYMENT_TYPE):
         raise ErrorProforma('Elige la condición de pago: contado o crédito.')
     if forma and forma not in dict(PAYMENT_METHOD):
         raise ErrorProforma('Elige la forma de pago del SRI.')
     if medio and medio not in dict(MEDIOS_DE_PAGO):
         raise ErrorProforma('Elige el medio de cobro.')
-    plazo, vencimiento = _plazo_del_credito(datos), _vencimiento_del_credito(datos, condicion)
+    plazo, vencimiento = plazo_del_credito(datos), _vencimiento_del_credito(datos, condicion)
     b.cliente, b.payment_type, b.payment_method, b.medio_cobro = cliente, condicion, forma, medio
     b.time_limit, b.end_credit = plazo, vencimiento
     b.lineas = [{'product': int(l['producto'].pk), 'nombre': l['producto'].name, 'cant': int(l['cant']),
