@@ -241,7 +241,8 @@ class TestAlta:
         assert grupo.status_code == 201
         raiz = grupo.json()['cuenta']
         assert grupo.json() == {'cuenta': {'id': raiz['id'], 'codigo': '1', 'nombre': 'Activo', 'padre_id': None, 'tipo': 'grupo',
-                                           'activa': True, 'hijas': 0, 'version': 1}, 'repetido': False}
+                                           'activa': True, 'clase': '', 'auxiliar': '', 'hijas': 0, 'version': 1},
+                                'repetido': False}
         hija = alta(entrar, empresa, '  1.1.01 ', '  Caja   general ', 'movimiento', raiz['id'], clave='alta-con-espacios')
         assert hija.status_code == 201
         assert (hija.json()['cuenta']['codigo'], hija.json()['cuenta']['nombre'], hija.json()['cuenta']['padre_id']) == (
@@ -435,8 +436,10 @@ class TestArbol:
         assert activa.status_code == 200 and activa.json()['cuenta']['version'] == 3
 
     def test_con_movimientos_ni_pasa_a_grupo_ni_se_desactiva(self, entrar, empresa, arbol, monkeypatch):
-        """`tiene_movimientos` es el punto que completarán la apertura y los asientos: cuando diga que sí, estas reglas ya rigen."""
-        assert cuentas.tiene_movimientos(guardada(empresa, arbol['1.1.01']['id'])) is False   # hoy nada los registra
+        """`tiene_movimientos` es el punto que decide (bloque 2: líneas del libro y de la apertura): cuando dice que sí, estas
+        reglas rigen."""
+        caja = guardada(empresa, arbol['1.1.01']['id'])
+        assert en(empresa, lambda: cuentas.tiene_movimientos(caja)) is False   # sin líneas en el libro ni en una apertura
         monkeypatch.setattr(cuentas, 'tiene_movimientos', lambda cuenta: cuenta.codigo == '1.1.01')
         caja, bancos = arbol['1.1.01'], arbol['1.1.02']
         assert errores_de(cambiar(entrar, empresa, caja, tipo='grupo')) == {'tipo': [T['con_movimientos_grupo']]}
@@ -537,7 +540,8 @@ class TestLista:
         datos = lista(entrar)
         assert [c['codigo'] for c in datos['cuentas']] == ['1', '1.1', '1.1.01', '1.1.02', '1.2', '2']
         assert datos['cuentas'][1] == {'id': arbol['1.1']['id'], 'codigo': '1.1', 'nombre': 'Activo corriente',
-                                       'padre_id': arbol['1']['id'], 'tipo': 'grupo', 'activa': True, 'hijas': 2, 'version': 1}
+                                       'padre_id': arbol['1']['id'], 'tipo': 'grupo', 'activa': True, 'clase': '', 'auxiliar': '',
+                                       'hijas': 2, 'version': 1}
         assert [c['hijas'] for c in datos['cuentas']] == [2, 2, 0, 0, 0, 0]
         assert datos['capacidades'] == {'crear': True, 'editar': True, 'importar': True}
         for codigo in ('1.10', '10', '1.9', 'B', 'a', '1.1.1'):

@@ -206,15 +206,20 @@ class TestLectura:
         lote = respuesta.json()['lote']
         assert respuesta.json() == {'repetido': False, 'lote': {
             'id': lote['id'], 'estado': 'vista_previa', 'archivo': 'Plan de cuentas.csv',
-            'columnas': {'codigo': 'Código', 'nombre': 'Nombre', 'padre': None, 'tipo': None},
+            'columnas': {'codigo': 'Código', 'nombre': 'Nombre', 'padre': None, 'tipo': None, 'clase': None},
             'encabezados': ['Código', 'Nombre'],
             'muestra': [['1', 'Activo'], ['1.1', 'Activo corriente'], ['1.1.01', 'Caja'], ['1.1.02', 'Bancos'], ['2', 'Pasivo']],
             'filas': [
-                {'fila': 2, 'codigo': '1', 'nombre': 'Activo', 'padre': None, 'tipo': 'grupo', 'estado': 'valida', 'errores': []},
-                {'fila': 3, 'codigo': '1.1', 'nombre': 'Activo corriente', 'padre': '1', 'tipo': 'grupo', 'estado': 'valida', 'errores': []},
-                {'fila': 4, 'codigo': '1.1.01', 'nombre': 'Caja', 'padre': '1.1', 'tipo': 'movimiento', 'estado': 'valida', 'errores': []},
-                {'fila': 5, 'codigo': '1.1.02', 'nombre': 'Bancos', 'padre': '1.1', 'tipo': 'movimiento', 'estado': 'valida', 'errores': []},
-                {'fila': 6, 'codigo': '2', 'nombre': 'Pasivo', 'padre': None, 'tipo': 'movimiento', 'estado': 'valida', 'errores': []}],
+                {'fila': 2, 'codigo': '1', 'nombre': 'Activo', 'padre': None, 'tipo': 'grupo', 'clase': '', 'estado': 'valida',
+                 'errores': []},
+                {'fila': 3, 'codigo': '1.1', 'nombre': 'Activo corriente', 'padre': '1', 'tipo': 'grupo', 'clase': '',
+                 'estado': 'valida', 'errores': []},
+                {'fila': 4, 'codigo': '1.1.01', 'nombre': 'Caja', 'padre': '1.1', 'tipo': 'movimiento', 'clase': '',
+                 'estado': 'valida', 'errores': []},
+                {'fila': 5, 'codigo': '1.1.02', 'nombre': 'Bancos', 'padre': '1.1', 'tipo': 'movimiento', 'clase': '',
+                 'estado': 'valida', 'errores': []},
+                {'fila': 6, 'codigo': '2', 'nombre': 'Pasivo', 'padre': None, 'tipo': 'movimiento', 'clase': '',
+                 'estado': 'valida', 'errores': []}],
             'resumen': {'validas': 5, 'con_error': 0, 'duplicadas': 0, 'faltan_columnas': [], 'texto': None}}}
         assert cuantas(empresa) == 0   # nada se crea hasta confirmar
 
@@ -265,7 +270,7 @@ class TestLectura:
         respuesta = subir(entrar, empresa, contenido, 'plan.xlsx')
         assert respuesta.status_code == 200
         lote = respuesta.json()['lote']
-        assert lote['columnas'] == {'codigo': 'Código', 'nombre': 'Nombre', 'padre': None, 'tipo': 'Tipo'}
+        assert lote['columnas'] == {'codigo': 'Código', 'nombre': 'Nombre', 'padre': None, 'tipo': 'Tipo', 'clase': None}
         assert [(f['fila'], f['codigo'], f['nombre'], f['tipo']) for f in lote['filas']] == [
             (2, '1101', 'Caja', 'movimiento'), (3, '1102', 'Bancos', 'movimiento'), (4, '1.1', 'Corriente', 'grupo'),
             (5, '1.2', 'No corriente', 'grupo'), (6, '2', 'Pasivo total', 'movimiento'), (7, '3', '2026', 'movimiento')]
@@ -308,7 +313,7 @@ class TestLectura:
     ])
     def test_columnas_por_encabezado_sin_distinguir_mayusculas_ni_tildes(self, entrar, empresa, encabezados, columnas):
         lote = lote_de(entrar, empresa, encabezados, ('1', '1', '', ''))
-        assert lote['columnas'] == dict(zip(('codigo', 'nombre', 'padre', 'tipo'), columnas))
+        assert lote['columnas'] == {**dict(zip(('codigo', 'nombre', 'padre', 'tipo'), columnas)), 'clase': None}
 
     def test_filas_en_blanco_y_numero_de_fila_del_archivo(self, entrar, empresa):
         contenido = '\r\n\r\nCódigo;Nombre\r\n1;Activo\r\n;\r\n\r\n   ;  \r\n2;Pasivo\r\n\r\n'.encode()
@@ -498,7 +503,7 @@ class TestMapeo:
 
     def test_sin_columna_de_codigo_o_de_nombre_se_pide_el_mapeo(self, entrar, empresa):
         lote = lote_de(entrar, empresa, ('Cta', 'Glosa', 'Mayor'), ('1', 'Activo', ''), ('1.1', 'Corriente', '1'))
-        assert lote['columnas'] == {'codigo': None, 'nombre': None, 'padre': None, 'tipo': None}
+        assert lote['columnas'] == {'codigo': None, 'nombre': None, 'padre': None, 'tipo': None, 'clase': None}
         assert lote['encabezados'] == ['Cta', 'Glosa', 'Mayor'] and lote['muestra'] == [['1', 'Activo', ''], ['1.1', 'Corriente', '1']]
         assert lote['filas'] == [] and lote['resumen'] == {
             'validas': 0, 'con_error': 0, 'duplicadas': 0, 'faltan_columnas': ['codigo', 'nombre'],
@@ -509,7 +514,7 @@ class TestMapeo:
         assert solo_codigo['resumen']['faltan_columnas'] == ['nombre'] and solo_codigo['filas'] == []
         completo = mapear(entrar, empresa, lote, codigo='Cta', nombre='Glosa', padre='Mayor')
         assert completo.status_code == 200 and completo.json()['lote']['columnas'] == {
-            'codigo': 'Cta', 'nombre': 'Glosa', 'padre': 'Mayor', 'tipo': None}
+            'codigo': 'Cta', 'nombre': 'Glosa', 'padre': 'Mayor', 'tipo': None, 'clase': None}
         assert [(f['codigo'], f['padre'], f['tipo'], f['estado']) for f in completo.json()['lote']['filas']] == [
             ('1', None, 'grupo', 'valida'), ('1.1', '1', 'movimiento', 'valida')]
         assert cuantas(empresa) == 0
@@ -520,7 +525,7 @@ class TestMapeo:
                        ('1', 'Activo', 'ACT', ''), ('1.1', 'Activo corriente', 'ACT-C', ''), ('1.1.01', 'Caja', 'CAJ', '1'))
         assert por_codigo(lote)['1.1.01']['padre'] == '1' and por_codigo(lote)['1.1']['padre'] is None   # manda la columna padre
         cambiado = mapear(entrar, empresa, lote, codigo='Código', nombre='Nombre corto', padre=None, tipo='').json()['lote']
-        assert cambiado['columnas'] == {'codigo': 'Código', 'nombre': 'Nombre corto', 'padre': None, 'tipo': None}
+        assert cambiado['columnas'] == {'codigo': 'Código', 'nombre': 'Nombre corto', 'padre': None, 'tipo': None, 'clase': None}
         assert [(f['nombre'], f['padre']) for f in cambiado['filas']] == [('ACT', None), ('ACT-C', '1'), ('CAJ', '1.1')]   # por los puntos
         # lo que no viene queda sin columna, y el mapeo se conserva al volver a pedir el lote
         assert mapear(entrar, empresa, lote, codigo='Código', nombre='Nombre').json()['lote']['columnas']['padre'] is None
@@ -915,7 +920,7 @@ class TestArchivo:
             assert guardado.read() == contenido   # tal como llegó
         assert entrar.get('/media/' + lote.archivo.name).status_code == 404   # privado/: nunca por /media/
         assert lote.encabezados == ['Código', 'Nombre'] and lote.filas[0] == {'n': 2, 'c': ['1', 'Activo']}
-        assert lote.mapeo == {'codigo': 'Código', 'nombre': 'Nombre', 'padre': None, 'tipo': None}
+        assert lote.mapeo == {'codigo': 'Código', 'nombre': 'Nombre', 'padre': None, 'tipo': None, 'clase': None}
         hoja = subir(entrar, empresa, xlsx_de(*PLAN), 'plan.XLSX').json()['lote']
         assert lotes(empresa)[1].archivo.name.endswith('.xlsx') and hoja['archivo'] == 'plan.XLSX'
 
@@ -1091,7 +1096,7 @@ class TestLicencia:
                 'plan', 'requerido', 'licencia', 'plan_vencido')
         guardado, = lotes(empresa)   # un solo lote, y sigue como se subió
         assert guardado.estado == 'vista_previa'
-        assert guardado.mapeo == {'codigo': 'Código', 'nombre': 'Nombre', 'padre': None, 'tipo': None}
+        assert guardado.mapeo == {'codigo': 'Código', 'nombre': 'Nombre', 'padre': None, 'tipo': None, 'clase': None}
         assert plan(empresa) == {'1': ('Viejo', 'grupo', None)}   # ni cuentas nuevas ni el nombre cambiado
         assert not AuditLog.objects.filter(action='cuentas_importadas').exists()
 

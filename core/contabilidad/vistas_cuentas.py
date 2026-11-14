@@ -3,6 +3,10 @@
 - GET   /contabilidad/api/cuentas/?q=&empresa=   `view_cuenta`    lista (con `q`: coincidencias y sus antepasadas) y capacidades
 - POST  /contabilidad/api/cuentas/               `add_cuenta`     alta con `clave`: 201; repetida, 200 con `repetido: true`
 - PATCH /contabilidad/api/cuentas/<id>/          `change_cuenta`  cambios con `version`: 200; 409 `version`; 404
+- POST  /contabilidad/api/cuentas/clasificar/     `change_cuenta`  clase de una cuenta y de sus descendientes sin clase
+  (bloque 2): 200 `{"cuenta", "clasificadas"}`; 409 `version`, `ejercicio_cerrado`, `apertura_confirmada`; 404
+
+Cada cuenta lleva su `clase` y su `auxiliar` (bloque 2), que el PATCH también acepta.
 
 Ver: Propietario, Administrador, Contador y Consulta. Crear y editar: Propietario, Administrador y Contador. La sesión, la
 empresa de la pestaña, que el plan deje guardar y el permiso los comprueba api.ApiContable antes de llegar aquí; las reglas
@@ -35,3 +39,12 @@ class CuentaApi(api.ApiContable):
 
     def patch(self, request, pk):
         return JsonResponse({'cuenta': cuentas.dict_cuenta(cuentas.modificar(request, pk, api.cuerpo(request)))})
+
+
+class ClasificarApi(api.ApiContable):
+    """Solo POST (un GET es 405 `metodo`)."""
+    permisos = {'POST': cuentas.EDITAR}
+
+    def post(self, request):
+        cuenta, clasificadas = cuentas.clasificar(request, api.cuerpo(request))
+        return JsonResponse({'cuenta': cuentas.dict_cuenta(cuenta), 'clasificadas': clasificadas})

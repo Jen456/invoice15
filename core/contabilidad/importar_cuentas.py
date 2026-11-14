@@ -4,13 +4,15 @@ Tres pasos, y nada se crea hasta el último:
 
 1. `subir`: lee el archivo (CSV o XLSX), lo guarda en la carpeta privada de la empresa con su huella y deja un lote
    `ImportacionCuentas` con los encabezados, las filas leídas y las columnas elegidas por su encabezado;
-2. `mapear`: el usuario corrige qué columna trae cada dato (código, nombre, padre y tipo);
+2. `mapear`: el usuario corrige qué columna trae cada dato (código, nombre, padre, tipo y clase);
 3. `confirmar`: vuelve a calcular la vista previa contra las cuentas que existan en ese momento y, si ninguna fila tiene
    errores, crea las cuentas por niveles (los padres antes que sus hijas).
 
 La vista previa (`vista_previa`) no se guarda: sale de las filas leídas, del mapeo y de las cuentas de la empresa, y por eso
 dice siempre lo que pasaría si se confirmara ahora. Cada fila queda `valida` (se creará), `duplicada` (su código ya existe
-en la empresa, sin distinguir mayúsculas: se omite o se le actualiza el nombre, nunca el padre ni el tipo) o `error`.
+en la empresa, sin distinguir mayúsculas: se omite o se le actualiza el nombre, nunca el padre, el tipo ni la clase) o
+`error`. La columna «clase» (bloque 2) es opcional: uno de los seis valores (activo, pasivo, patrimonio, ingreso, costo,
+gasto) o vacía; cualquier otro valor es un error de la fila. Nunca se deduce del código.
 
 Las reglas son las del plan de cuentas (cuentas.py) y de ahí salen: la forma del código y del nombre, el código único sin
 distinguir mayúsculas, el padre grupo, «sin ciclos» y la cola por empresa de toda escritura del plan. Las del árbol se
@@ -71,7 +73,7 @@ POR_INSERCION = 500              # cuentas por sentencia al crear o actualizar
 VISTA_PREVIA, CONFIRMADO = 'vista_previa', 'confirmado'
 OMITIR, ACTUALIZAR_NOMBRE = 'omitir', 'actualizar_nombre'
 VALIDA, DUPLICADA, ERROR = 'valida', 'duplicada', 'error'
-CAMPOS = ('codigo', 'nombre', 'padre', 'tipo')
+CAMPOS = ('codigo', 'nombre', 'padre', 'tipo', 'clase')
 OBLIGATORIOS = ('codigo', 'nombre')
 # Encabezados (normalizados: sin tildes ni mayúsculas) que señalan cada dato, por orden de preferencia. Una columna sirve
 # para un solo dato: «Cuenta» es el código salvo que otra columna ya lo sea; entonces es el nombre («Código» y «Cuenta»).
@@ -80,10 +82,13 @@ SINONIMOS = {
     'nombre': ('NOMBRE', 'DESCRIPCION', 'DETALLE', 'NAME', 'CUENTA'),
     'padre': ('PADRE', 'CUENTA_PADRE', 'PARENT'),
     'tipo': ('TIPO', 'TYPE'),
+    'clase': ('CLASE', 'CLASS'),
 }
 TIPOS_LEIDOS = {'G': cuentas.GRUPO, 'GRUPO': cuentas.GRUPO,
                 'M': cuentas.MOVIMIENTO, 'MOVIMIENTO': cuentas.MOVIMIENTO, 'DETALLE': cuentas.MOVIMIENTO}
-NOMBRES_DE_CAMPO = {'codigo': 'el código', 'nombre': 'el nombre', 'padre': 'el padre', 'tipo': 'el tipo'}
+NOMBRES_DE_CAMPO = {'codigo': 'el código', 'nombre': 'el nombre', 'padre': 'el padre', 'tipo': 'el tipo', 'clase': 'la clase'}
+# La clase como se escribe en la hoja (sin tildes ni mayúsculas): solo sus seis valores, en singular.
+CLASES_LEIDAS = {normalizar_encabezado(clase): clase for clase in cuentas.CLASES if clase}
 
 TEXTOS = {
     'archivo': 'Elige el archivo del plan de cuentas (CSV o XLSX).',
@@ -121,6 +126,7 @@ TEXTOS = {
     'padre_movimiento': 'El padre {codigo} ya existe en esta empresa como cuenta de movimiento: pásalo a grupo antes de importar.',
     'movimiento_con_hijas': 'Es de movimiento y el archivo le cuelga cuentas hijas: debe ser grupo.',
     'tipo': 'Tipo no reconocido («{valor}»): escribe grupo o movimiento.',
+    'clase': 'Clase no reconocida («{valor}»): escribe activo, pasivo, patrimonio, ingreso, costo o gasto, o déjala vacía.',
     'alterada': 'La hoja de cálculo cambió {dato} (lo guardó como fecha o como un número que ya no es exacto): '
                 'escríbelo como texto.',
     'sobran': 'La fila tiene más celdas que columnas el encabezado: revisa si un texto con el separador va sin comillas.',
@@ -346,11 +352,11 @@ class _Fila:
     """Una fila del archivo mientras se revisa. `existente`: la cuenta de la empresa con su mismo código (duplicada).
     El padre es, como mucho, una de dos cosas: una cuenta que ya existe (`padre_existente`) u otra fila que se va a
     crear (`padre_nuevo`)."""
-    __slots__ = ('numero', 'codigo', 'norma', 'nombre', 'padre', 'tipo', 'tipo_escrito', 'errores', 'primera', 'existente',
-                 'padre_existente', 'padre_nuevo')
+    __slots__ = ('numero', 'codigo', 'norma', 'nombre', 'padre', 'tipo', 'tipo_escrito', 'clase', 'errores', 'primera',
+                 'existente', 'padre_existente', 'padre_nuevo')
 
     def __init__(self, numero, codigo, nombre):
-        self.numero, self.codigo, self.nombre = numero, codigo, nombre
+        self.numero, self.codigo, self.nombre, self.clase = numero, codigo, nombre, ''
         self.norma = norma_codigo(codigo) if codigo else None
         self.padre = self.tipo = self.tipo_escrito = self.existente = self.padre_existente = self.padre_nuevo = None
         self.errores, self.primera = [], True
@@ -373,7 +379,7 @@ class Previa:
     def __init__(self, revisadas=(), faltan=()):
         self.revisadas = list(revisadas)
         self.filas = [{'fila': f.numero, 'codigo': f.codigo, 'nombre': f.nombre, 'padre': f.padre, 'tipo': f.tipo,
-                       'estado': f.estado, 'errores': f.errores} for f in self.revisadas]
+                       'clase': f.clase, 'estado': f.estado, 'errores': f.errores} for f in self.revisadas]
         estados = [f['estado'] for f in self.filas]
         self.resumen = {
             'validas': estados.count(VALIDA), 'con_error': estados.count(ERROR), 'duplicadas': estados.count(DUPLICADA),
@@ -441,6 +447,11 @@ def vista_previa(lote, existentes=None):
             if fila.tipo_escrito is None:
                 fila.errores.append(TEXTOS['tipo'].format(valor=escrito[:30]))
                 fila.tipo_escrito = ERROR   # escrito y no reconocido: no se deduce otro
+        clase = celdas[columna['clase']] if columna['clase'] is not None else ''
+        if clase:
+            fila.clase = CLASES_LEIDAS.get(normalizar_encabezado(clase), '')
+            if not fila.clase:
+                fila.errores.append(TEXTOS['clase'].format(valor=clase[:30]))
         revisadas.append((fila, celdas, alteradas))
 
     # 2. El padre: el de su columna o, sin ella, el prefijo más largo del código que exista (en la empresa o en el archivo).
@@ -572,7 +583,7 @@ def subir(request, archivo, datos):
 # ---------------------------------------------------------------- 2. mapear
 
 def mapear(request, pk, datos):
-    """Fija qué columna trae cada dato: `{codigo, nombre, padre, tipo}`, cada uno un encabezado del archivo o nulo (el que
+    """Fija qué columna trae cada dato: `{codigo, nombre, padre, tipo, clase}`, cada uno un encabezado del archivo o nulo (el que
     no venga queda sin columna). Devuelve el lote; su vista previa se recalcula al leerlo."""
     api.exigir_permiso(request, cuentas.CREAR)
     with transaction.atomic():
@@ -627,7 +638,7 @@ def _crear(request, lote, nuevas, ahora):
     for tanda in _por_niveles(nuevas):
         creadas = Cuenta.objects.bulk_create([
             Cuenta(company=request.company, lote=lote, codigo=fila.codigo, codigo_norm=fila.norma, nombre=fila.nombre,
-                   tipo=fila.tipo, version=1, clave=None, creada_por=request.user, creada_en=ahora,
+                   tipo=fila.tipo, clase=fila.clase, auxiliar='', version=1, clave=None, creada_por=request.user, creada_en=ahora,
                    actualizada_por=request.user, actualizada_en=ahora,
                    padre_id=fila.padre_existente['id'] if fila.padre_existente is not None
                    else (ids[fila.padre_nuevo.norma] if fila.padre_nuevo is not None else None))
