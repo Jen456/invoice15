@@ -4,7 +4,10 @@ con datos completos y completable a mano»).
 El kardex se calcula desde los documentos (core/contabilidad/kardex.py). Aquí solo se guarda lo que no está en ningún
 documento: los ajustes de stock (antes sobrescribían el número sin dejar rastro) y los movimientos manuales con los que el
 contador completa lo que no se registró en el sistema (saldo inicial, entradas y salidas con su documento de respaldo).
-Los movimientos manuales no cambian el stock del producto: explican su historia."""
+Los movimientos manuales no cambian el stock del producto: explican su historia.
+
+Plan de cuentas por empresa (C2 del contrato contable v9): `Cuenta`. Sus reglas (árbol, unicidad del código, versión) se
+aplican en core/contabilidad/cuentas.py; aquí solo está lo que la base de datos garantiza por sí sola."""
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
@@ -16,6 +19,21 @@ TIPOS_MANUALES = (('saldo_inicial', 'Saldo inicial'), ('entrada', 'Entrada manua
 CON_COSTO = ('saldo_inicial', 'entrada')
 ORIGENES_AJUSTE = (('ajuste', 'Ajuste de stock'), ('importacion', 'Importación de productos desde Excel'))
 DOCUMENTO_MAX, NOTA_MAX, MOTIVO_MAX = 120, 300, 300
+
+TIPOS_CUENTA = (('grupo', 'Grupo'), ('movimiento', 'Movimiento'))
+CODIGO_CUENTA_MAX, NOMBRE_CUENTA_MAX = 30, 200
+
+
+def limpiar_codigo(codigo):
+    """El código de una cuenta como se guarda: sin espacios sobrantes (ni al principio, ni al final, ni repetidos)."""
+    return ' '.join(str(codigo).split())
+
+
+def norma_codigo(codigo):
+    """El código como se compara dentro de la empresa: el que se guarda, sin distinguir mayúsculas. `casefold` y no
+    `lower`: también iguala las letras que tienen más de una minúscula («ß» y «ss»). Es lo que lleva `Cuenta.codigo_norm`;
+    quien inserte cuentas sin pasar por `save()` (bulk_create) tiene que calcularlo con esta función."""
+    return limpiar_codigo(codigo).casefold()
 
 
 class MovimientoManual(TenantModel):
@@ -77,3 +95,50 @@ class AjusteInventario(TenantModel):
 
     def __str__(self):
         return f'Ajuste {self.anterior} → {self.nuevo} de {self.producto_id} ({self.fecha:%d/%m/%Y})'
+
+
+class Cuenta(TenantModel):
+    """Cuenta del plan de cuentas de una empresa. No se borra: se desactiva. `version` empieza en 1 y sube en cada cambio
+    (también al activar o desactivar): quien edita manda la que leyó y así no pisa el cambio de otro."""
+    codigo = models.CharField(max_length=CODIGO_CUENTA_MAX, verbose_name='Código')
+    # Unicidad sin distinguir mayúsculas con una restricción común (igual en SQLite y en PostgreSQL). `casefold` puede
+    # alargar el texto (una «ß» pasa a «ss» y alguna letra a tres): por eso cabe el triple del código.
+    codigo_norm = models.CharField(max_length=CODIGO_CUENTA_MAX * 3, editable=False, verbose_name='Código para comparar')
+    nombre = models.CharField(max_length=NOMBRE_CUENTA_MAX, verbose_name='Nombre')
+    padre = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='hijas',
+                              verbose_name='Cuenta padre')   # nulo: cuenta raíz
+    tipo = models.CharField(max_length=10, choices=TIPOS_CUENTA, verbose_name='Tipo')
+    activa = models.BooleanField(default=True, verbose_name='Activa')
+    version = models.PositiveIntegerField(default=1, verbose_name='Versión')
+    # Clave del envío que la creó (idempotencia). Nula en las que crea la importación del plan, que lleva su propia clave.
+    clave = models.CharField(max_length=40, null=True, blank=True, verbose_name='Clave del envío')
+    creada_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+                                   verbose_name='Creada por')
+    creada_en = models.DateTimeField(default=timezone.now, verbose_name='Creada el')
+    actualizada_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                        related_name='+', verbose_name='Actualizada por')
+    actualizada_en = models.DateTimeField(default=timezone.now, verbose_name='Actualizada el')
+
+    class Meta:
+        verbose_name = 'Cuenta contable'
+        verbose_name_plural = 'Plan de cuentas'
+        ordering = ('codigo_norm', 'id')
+        default_permissions = ('add', 'change')
+        permissions = (('view_cuenta', 'Puede ver el plan de cuentas'),)
+        constraints = [
+            models.UniqueConstraint(fields=('company', 'codigo_norm'), name='cuenta_codigo_unico'),
+            models.UniqueConstraint(fields=('company', 'clave'), condition=Q(clave__isnull=False), name='cuenta_clave_unica'),
+            models.CheckConstraint(condition=Q(tipo__in=[tipo for tipo, _ in TIPOS_CUENTA]), name='cuenta_tipo_valido'),
+        ]
+        indexes = [models.Index(fields=('company', 'padre'), name='cuenta_por_padre')]
+
+    def save(self, *args, **kwargs):
+        self.codigo = limpiar_codigo(self.codigo)
+        self.codigo_norm = norma_codigo(self.codigo)
+        campos = kwargs.get('update_fields')
+        if campos is not None and 'codigo' in campos:
+            kwargs['update_fields'] = {*campos, 'codigo_norm'}
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.codigo} {self.nombre}'

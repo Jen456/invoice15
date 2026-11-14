@@ -87,8 +87,9 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
             # la vuelta empieza por `tributario zero`. Las 3 de contabilidad (kardex) cuelgan de pos 0019: antes,
             # `contabilidad zero`; tenancy 0011 (acciones del kardex) cae con la vuelta a tenancy 0006. Diseño de factura:
             # pos 0035 (copia en la factura, sobre pos 0034) y tenancy 0012 (acción de auditoría, sobre 0011) caen con sus
-            # apps; configuracion 0004-0005 (tabla y módulo) cuelgan de pos 0019, como 0001-0003, y no se deshacen. 41 en total.
-            assert len(pendientes(env)) == 41
+            # apps; configuracion 0004-0005 (tabla y módulo) cuelgan de pos 0019, como 0001-0003, y no se deshacen. 41 con eso.
+            # Plan de cuentas: contabilidad 0004-0005 (tabla y seguridad por filas) caen con `contabilidad zero`. 43 en total.
+            assert len(pendientes(env)) == 43
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)
