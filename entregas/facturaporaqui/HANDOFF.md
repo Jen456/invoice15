@@ -2773,3 +2773,70 @@ Base: `frontend/etapa3` avanzó por fast-forward a `plataforma 96d39e1` tras fet
 **Propiedad:** Codex deja diseño/contrato y adapta interfaz tras aprobación. Claude implementa cuentas, apertura, auxiliares, asientos, permisos y contratos definitivos; conservar límites por empresa y las reglas comerciales autorizadas. No habilitar todo quitando `MENSAJE_COMPLEMENTO`. No se modificaron backend, plantillas productivas, suscripciones ni datos.
 
 **Validación:** cuatro vistas × seis anchos, 24 combinaciones sin desborde; siete comprobaciones de interacción y foco/movimiento reducido; cero errores JS y HTTP. Capturas ficticias 360/768/1360 y PDF A4 de siete páginas. Detalle en RESULTADOS-FRONTEND. Sin despliegue ni operaciones reales.
+
+## 14/11/2026 — Claude: bloque 1 del cierre contable (capacidades, plan de cuentas, importación e inicio), sin publicar
+
+Rama `fase/contable-1-cuentas` sobre `74ebb3d`, sin `push` y sin publicar. Es el punto 7 y el punto 1 (C1, C2 y C3) de
+`ORDEN-CIERRE-CONTABLE-TRIBUTARIO.md`. No se tocó ninguna plantilla, CSS ni JS, no hay páginas ni entradas de menú nuevas
+y no cambió quién entra al complemento: `MENSAJE_COMPLEMENTO`, la lista de revisión, los precios y los planes siguen
+igual.
+
+- Contrato definitivo, con respuestas reales: [CONTRATO-CONTABLE-V9.md](CONTRATO-CONTABLE-V9.md) (reglas comunes,
+  «Capacidades», C1, C2 y C3).
+- Migraciones y su vuelta: [MIGRACIONES-FASE-CONTABLE.md](MIGRACIONES-FASE-CONTABLE.md), nota del 14/11.
+
+**Rutas que Codex puede conectar.** Existen en la rama; estarán en el sitio cuando el bloque se publique. Todas son API
+JSON y, salvo la primera, siguen detrás del complemento.
+
+| Ruta | Para qué | Permiso |
+|---|---|---|
+| `GET /contabilidad/api/capacidades/` | qué puede usar el usuario y, si no puede, por qué | cualquier rol de personal |
+| `GET /contabilidad/api/inicio/` | C1: capacidades, etapas y pendientes | `view_kardex`, `view_revision` o `view_cuenta` |
+| `GET` y `POST /contabilidad/api/cuentas/` · `PATCH /contabilidad/api/cuentas/<id>/` | C2: lista con búsqueda, alta y cambios | `view_cuenta` · `add_cuenta` · `change_cuenta` |
+| `POST /contabilidad/api/cuentas/importar/` · `GET …/<id>/` · `POST …/<id>/mapeo/` · `POST …/<id>/confirmar/` | C3: subir, recargar, elegir columnas y confirmar | `add_cuenta`; `change_cuenta` además para actualizar nombres |
+
+**Decisiones de API.** Valen para esas rutas; el kardex y lo tributario no cambian.
+
+1. Toda negativa es JSON, también en GET. Sin permiso: 403 `{"codigo": "sin_permiso", "causa": "permiso"}`.
+2. `empresa` va en la consulta o en el cuerpo, también en JSON. Si no es la activa: 409 `empresa_cambiada`. En POST y
+   PATCH es obligatoria: sin ella, 409 `sin_empresa`.
+3. `clave`, con el formato del kardex. Misma clave y mismo contenido: mismo resultado con `repetido: true`. Misma clave y
+   otro contenido: 409 `clave_usada`.
+4. `version` empieza en 1 y sube en cada cambio. Si no coincide: 409 `version` con la cuenta actual.
+5. Orden de las negativas: `empresa_cambiada` → licencia (403) → `sin_empresa` → permiso (403) → datos por completar
+   (409) → validación (400).
+6. Permisos sin página nueva: `view_cuenta`, `add_cuenta` y `change_cuenta` viajan con el módulo «Kardex por producto».
+   Ver: Propietario, Administrador, Contador y Consulta. Crear y editar: Propietario, Administrador y Contador.
+7. Plan vencido: solo consulta, como el kardex.
+
+**Archivos compartidos que se tocaron:**
+
+- `core/security/menu.py`: solo la tupla de codenames del módulo «Kardex por producto» en `MODULOS_NUEVOS`, que ahora lleva
+  también `view_cuenta`, `add_cuenta` y `change_cuenta`. El nombre, el orden, el icono y lo que muestra el menú no
+  cambian. Cuando Codex entregue la pantalla del plan de cuentas, Claude crea su módulo y pasa esos permisos a él.
+- `core/tenancy/pestanas.py`: `empresa` se lee también de un cuerpo JSON. Ninguna pantalla actual lo manda así.
+- `core/suscripciones/middleware.py`: los 403 de licencia añaden `causa` y, en `/tributario/` y `/contabilidad/`,
+  `licencia`; el del plan añade `codigo: "plan"`. No se quitó ninguna clave ni cambió ninguna redirección.
+
+**Al conectar, tener en cuenta:**
+
+- La maqueta v9 acepta `.xls`. El servidor solo lee CSV en UTF-8 y XLSX: un `.xls`, un libro con contraseña o un CSV en
+  otra codificación reciben 400 `formato` con un texto que dice cómo guardarlo.
+- La lista de cuentas no se pagina: llega entera, hasta 5 000 cuentas, y la vista previa de una importación también.
+- Los pendientes de la revisión enlazan a `/tributario/revision/?mes=AAAA-MM#fp-rev-<categoría>`, el `id` que hoy tiene el
+  título de cada categoría en `tributario/revision.html`. Si ese `id` cambia, avisar: lo vigila
+  `tests/test_inicio_contable.py`.
+- En el inicio, un origen que no está en `origenes` no se consultó para ese usuario: no hay que mostrarlo como cero.
+- No hay ruta para descargar el archivo original de una importación.
+
+**Sin decidir, y no bloquea conectar:** reglas sobre padres inactivos (hoy se puede colgar una cuenta de un grupo
+desactivado) y cuánto tiempo se conservan los lotes que se quedan en vista previa.
+
+**Pruebas.** Sobre `d8399e5`, el código final del bloque (después solo hay documentación): suite completa en SQLite, 2112
+aprobadas y 78 omitidas (las exclusivas de PostgreSQL), sin fallos; `makemigrations --check --dry-run`, sin cambios. En
+PostgreSQL con seguridad por filas, los archivos del bloque y los que vigilan menú, roles, rutas, migraciones y
+auditoría: 375 aprobadas, sin fallos (once archivos sobre `8b2e57c` y el del inicio sobre `d8399e5`; entre los dos commits
+solo cambió ese archivo de pruebas). **Falta** repetir sobre el código final la suite completa de PostgreSQL, que incluye
+las 18 pruebas de concurrencia de `tests/test_zz_cuentas_concurrencia_pg.py`; el código que ejercitan no cambió desde
+`dbef3ba`, el commit que las completó. Sin ensayo de migraciones sobre una copia de producción y sin navegador: no hay
+pantallas nuevas.

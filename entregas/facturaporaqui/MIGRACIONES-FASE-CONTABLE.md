@@ -244,3 +244,77 @@ la misma huella). Volcado previo del despliegue: `respaldos/pre-20261104-140752-
 `releases/20261028-130922-98cfa208`. Vuelta: `deploy/scripts/restaurar.sh <volcado> <versión anterior> [--ejecutar]`
 (base, código y estáticos; `desplegar.sh --revertir` no sirve con migraciones). Las facturas autorizadas en el SRI
 después del volcado no están en él: con documentos nuevos, corregir hacia adelante o volver a registrarlos.
+
+## Nota (14/11/2026) — bloque 1 del cierre contable: plan de cuentas y su importación, 6 migraciones (sin publicar)
+
+Rama `fase/contable-1-cuentas` sobre `74ebb3d`. Lo publicado es `e0f2902`, con `contabilidad 0003` y `tenancy 0012`
+aplicadas. El bloque añade seis migraciones: dos tablas nuevas con su seguridad por filas, tres permisos repartidos por el
+módulo del kardex y tres acciones de auditoría. Ninguna toca una tabla ni una columna que use la versión publicada.
+
+| # | Migración | Qué hace | Vuelta |
+|---|---|---|---|
+| 1 | `contabilidad/0004_plan_de_cuentas` | tabla `contabilidad_cuenta` (código único por empresa sin distinguir mayúsculas, clave del envío única por empresa cuando no es nula, tipo `grupo` o `movimiento`, índice por empresa y padre) y permisos `view_cuenta`, `add_cuenta` y `change_cuenta` | borra la tabla |
+| 2 | `contabilidad/0005_seguridad_por_filas_cuentas` | RLS `fpa_empresa` forzada en esa tabla (solo PostgreSQL) | quita la política |
+| 3 | `contabilidad/0006_permisos_plan_cuentas` | añade los tres permisos al módulo «Kardex por producto» y ejecuta `sync_roles`: Propietario, Administrador y Contador ven, crean y editan; Consulta solo ve; Vendedor y Cliente, nada. No crea módulos ni cambia el menú | quita esos tres permisos del módulo y de los roles, por ids en las tablas intermedias; las filas de `Permission` se quedan |
+| 4 | `contabilidad/0007_importacion_cuentas` | tabla `contabilidad_importacioncuentas` (lote: archivo privado, huella, filas leídas, columnas elegidas, estado, claves y resultado) y columna nula `lote_id` en `contabilidad_cuenta` | quita la columna y borra la tabla |
+| 5 | `contabilidad/0008_seguridad_por_filas_importacion` | RLS `fpa_empresa` forzada en la tabla de lotes (solo PostgreSQL) | quita la política |
+| 6 | `tenancy/0013_acciones_plan_cuentas` | acciones de auditoría `cuenta_creada`, `cuenta_modificada` y `cuentas_importadas` (solo `choices`) | solo `choices` |
+
+**Orden.** Un solo `migrate --noinput`, como siempre. Las de contabilidad van en fila, de 0004 a 0008. `tenancy 0013` va
+sobre `tenancy 0012`; no depende de las de contabilidad ni ellas de esta.
+
+**Dependencia corregida a mano en 0004 y 0007.** `makemigrations` puso la última de `pos`, `0035_sale_ride_diseno`. Se
+cambió por `pos 0034_cliente_nacimiento_opcional`, la que ya exige `contabilidad 0001`: las tablas solo necesitan la
+empresa. Con 0035, la vuelta documentada del diseño de factura (`migrate pos 0034`) arrastraría el plan de cuentas y
+borraría sus tablas. `makemigrations --check --dry-run` sigue sin cambios. Quien añada la siguiente migración de
+contabilidad debe mirar lo mismo.
+
+**Convivencia durante el despliegue.** `desplegar.sh` migra antes de cambiar el código, así que la versión publicada
+atiende un rato sobre la base ya migrada. No le afecta: no conoce las dos tablas nuevas, la columna `lote_id` está en una
+de ellas, `tenancy 0013` no cambia el esquema y los tres permisos que `0006` añade al módulo del kardex y a los roles no
+los usa. No hay columnas nuevas en tablas que ya existían.
+
+**Vuelta del bloque a lo publicado**, sin datos nuevos, en este orden:
+
+```
+migrate contabilidad 0003_modulo_kardex
+migrate tenancy 0012_accion_diseno_factura
+```
+
+Quedan pendientes las seis de la tabla. El módulo del kardex vuelve a sus tres permisos, ningún rol conserva los del plan
+de cuentas y el resto del menú y de los roles queda igual. Otra ida lo deja todo como estaba. Lo recorre
+`tests/test_migracion_vuelta_fase.py::test_vuelta_del_plan_de_cuentas_a_lo_publicado`, por subproceso, sobre una
+instalación SQLite con menú. Vuelta solo de la importación: `migrate contabilidad 0006_permisos_plan_cuentas`.
+
+**Las otras vueltas documentadas:**
+
+- La de la fase (`contabilidad zero`, `tributario zero`, …, `tenancy 0006`) deshace también estas seis: la prueba espera
+  47 pendientes, las 41 de antes más estas.
+- La del diseño de factura (`configuracion 0003`, `pos 0034`, `tenancy 0011`) deshace además `tenancy 0013`, que va sobre
+  0012. Las tablas del plan de cuentas no se tocan.
+
+**Ida parcial después de una vuelta.** Si se deshace contabilidad por debajo de 0004 y se vuelve a aplicar solo hasta
+0003, el módulo «Kardex por producto» no reaparece hasta aplicar 0006: `organizar_menu` no crea un módulo cuya lista de
+permisos incluye un modelo sin migrar, y las filas de `Permission` sobreviven a la vuelta. Un `migrate` completo termina
+igual que antes.
+
+**Restauración.** La vuelta borra las cuentas y los lotes de importación. Con datos registrados, revertir es restaurar el
+volcado previo y la carpeta `privado/` de `FPA_ARCHIVOS` (los archivos subidos quedan en `plan-cuentas/`, dentro de la
+carpeta de cada empresa) y volver al código anterior, no `migrate` hacia atrás.
+
+**Probado:** ida, vuelta a lo publicado y otra ida, y las vueltas de la fase y del diseño, en
+`tests/test_migracion_vuelta_fase.py` (SQLite, por subproceso); la política forzada de las dos tablas en PostgreSQL
+(`tests/test_rls_modelos_de_empresa.py` y las pruebas de seguridad por filas de `tests/test_cuentas.py` y
+`tests/test_cuentas_importacion.py`); `makemigrations --check --dry-run` sin cambios.
+
+**No probado:**
+
+- El ensayo sobre una copia del respaldo de producción y el ensayo con la aplicación atendiendo. Sus guiones están fuera
+  del repositorio (`verif-firma/ensayo-fase/ensayo_migraciones_candidato.sh` y `ensayo-pe/guiones/`) y no se tocaron: su
+  vuelta sigue apuntando al estado anterior a la fase. Para ensayar la vuelta de este bloque, los destinos son los dos de
+  arriba.
+- La base real.
+
+**Choque conocido al fusionar con `fase/primera-entrega`.** Esa rama trae `tenancy/0013_acciones_borrador_factura`, también
+sobre `tenancy 0012`, y cambia el conteo de `tests/test_migracion_vuelta_fase.py`. Al unirlas, una de las dos `0013` pasa
+a `0014` sobre la otra, con sus `choices` completas, y el conteo y las listas de la prueba se suman.
