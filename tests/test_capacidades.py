@@ -653,3 +653,31 @@ class TestApi:
                 'plan', 'licencia', 'plan_vencido')
             assert enviar(client, ECO, {**datos, 'empresa': empresa_b.pk}, metodo).json()['codigo'] == 'empresa_cambiada'
 
+    @pytest.mark.parametrize('accion', ['search', 'search_x', 'send_invoice_by_email'])
+    def test_plan_vencido_tampoco_pasa_un_formulario_con_action_de_consulta(self, client, empresa, empresa_b, lista, accion):
+        """PlanMiddleware toma por consulta un formulario con ese `action` (así buscan por POST las pantallas de ventas) y
+        lo deja pasar con el plan vencido. Estas rutas no consultan por POST: la vista base responde el mismo 403, cuerpo
+        incluido, que el middleware le da al envío sin `action`."""
+        lista(empresa)
+        entrar(client, empresa)
+        datos = {'empresa': empresa.pk, 'clave': 'eco-0008', 'codigo': '1', 'nombre': 'Caja'}
+        assert client.post(ECO, {**datos, 'action': accion}).status_code == 201   # con el plan vigente ese formulario vale
+        vencer(empresa)
+        del_middleware = client.post(ECO, datos)
+        assert del_middleware.status_code == 403 and del_middleware.json()['codigo'] == 'plan'
+        for respuesta in (client.post(ECO, {**datos, 'action': accion}),
+                          client.post(f'{ECO}?empresa={empresa.pk}', {'clave': 'eco-0008', 'action': accion})):
+            assert respuesta.status_code == 403 and respuesta.json() == del_middleware.json()
+        # la empresa de la pestaña sigue yendo antes que la licencia
+        assert client.post(ECO, {**datos, 'empresa': empresa_b.pk, 'action': accion}).json()['codigo'] == 'empresa_cambiada'
+        assert client.post(ECO, {'clave': 'eco-0008', 'action': accion}).json()['codigo'] == 'sin_empresa'
+        assert client.get(f'{ECO}?empresa={empresa.pk}&action={accion}').json() == {'ok': True}   # y se sigue consultando
+
+    def test_plan_vencido_con_action_de_consulta_la_licencia_va_antes_que_el_permiso(self, client, empresa, lista):
+        lista(empresa)
+        vencer(empresa)
+        entrar(client, empresa, ROLE_READONLY)   # no puede enviar: con el plan vigente recibiría `sin_permiso`
+        respuesta = client.post(ECO, {'empresa': empresa.pk, 'clave': 'eco-0009', 'codigo': '1', 'nombre': 'Caja', 'action': 'search'})
+        assert respuesta.status_code == 403
+        assert (respuesta.json()['codigo'], respuesta.json()['causa'], respuesta.json()['licencia']['estado']) == (
+            'plan', 'licencia', 'plan_vencido')

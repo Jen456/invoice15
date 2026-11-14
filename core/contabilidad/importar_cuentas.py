@@ -20,7 +20,9 @@ Sin duplicados: la subida lleva su `clave` (repetida con el mismo archivo devuel
 suya, que queda en el lote (repetida devuelve el mismo resultado). Con el lote bloqueado, dos confirmaciones a la vez
 crean las cuentas una sola vez.
 
-El plan pagado y el complemento los decide PlanMiddleware antes de llegar aquí (vencido: solo consulta)."""
+El plan pagado y el complemento los decide PlanMiddleware antes de llegar aquí. Con el plan vencido solo se consulta: los
+envíos los corta el middleware y, por si llegan como un formulario que él toma por consulta (la subida lo es por fuerza),
+también api.ApiContable."""
 import csv
 import hashlib
 import io

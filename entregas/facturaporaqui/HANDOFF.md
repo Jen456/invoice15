@@ -2807,7 +2807,9 @@ JSON y, salvo la primera, siguen detrás del complemento.
    (409) → validación (400).
 6. Permisos sin página nueva: `view_cuenta`, `add_cuenta` y `change_cuenta` viajan con el módulo «Kardex por producto».
    Ver: Propietario, Administrador, Contador y Consulta. Crear y editar: Propietario, Administrador y Contador.
-7. Plan vencido: solo consulta, como el kardex.
+7. Plan vencido: solo consulta, como el kardex. Los envíos los corta `PlanMiddleware` y, además, la vista base de estas
+   rutas (`ApiContable`), igual que el kardex lo repite en su servicio: al middleware se le escapa un formulario con un
+   campo `action` de consulta (`search…`).
 
 **Archivos compartidos que se tocaron:**
 

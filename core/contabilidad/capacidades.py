@@ -18,7 +18,8 @@ from core.suscripciones.middleware import mensaje_de_bloqueo, puede_gestionar_pl
 from core.suscripciones.reglas import MENSAJE_COMPLEMENTO, URL_SUSCRIPCION
 from core.suscripciones.servicios import estado_de_peticion
 
-# Estados de la licencia. Con PLAN_VENCIDO se consulta pero no se guarda nada (lo corta el middleware en cada envío).
+# Estados de la licencia. Con PLAN_VENCIDO se consulta pero no se guarda nada: el middleware corta los envíos y, como se
+# le escapa un formulario con un campo `action` de consulta, api.ApiContable lo repite en los suyos (rechazo_de_licencia).
 ACTIVA, PLAN_REQUERIDO, PLAN_VENCIDO, COMPLEMENTO_PENDIENTE = 'activa', 'plan_requerido', 'plan_vencido', 'complemento_pendiente'
 SIN_ACCESO = (PLAN_REQUERIDO, COMPLEMENTO_PENDIENTE)   # ni consulta
 

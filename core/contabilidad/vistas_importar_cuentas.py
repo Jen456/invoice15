@@ -8,8 +8,8 @@ interfaz.
 - POST /contabilidad/api/cuentas/importar/<id>/confirmar/   `{empresa, clave, duplicadas}`: crea las cuentas
 
 Todas piden `add_cuenta` (Propietario, Administrador y Contador); confirmar con `duplicadas: "actualizar_nombre"` pide
-además `change_cuenta`. La sesión, la empresa de la pestaña y el permiso los comprueba api.ApiContable antes de llegar
-aquí; la lectura, las reglas y la confirmación están en importar_cuentas.py."""
+además `change_cuenta`. La sesión, la empresa de la pestaña, que el plan deje guardar y el permiso los comprueba
+api.ApiContable antes de llegar aquí; la lectura, las reglas y la confirmación están en importar_cuentas.py."""
 from django.http import JsonResponse
 
 from core.contabilidad import api, cuentas, importar_cuentas

@@ -21,7 +21,8 @@ y la del padre bajo el que cuelga algo. La cola por empresa es lo que impide el 
 mientras B pasa bajo una hija de A: cada movimiento, mirado solo, es válido); las filas bloqueadas y las restricciones
 únicas siguen valiendo para quien escriba sin pasar por ella.
 
-El plan pagado y el complemento los decide PlanMiddleware antes de llegar aquí (vencido: solo consulta)."""
+El plan pagado y el complemento los decide PlanMiddleware antes de llegar aquí. Con el plan vencido solo se consulta: los
+envíos los corta el middleware y, por si llegan como un formulario que él toma por consulta, también api.ApiContable."""
 import re
 import unicodedata
 from collections import Counter

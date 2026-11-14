@@ -5,7 +5,8 @@
 - PATCH /contabilidad/api/cuentas/<id>/          `change_cuenta`  cambios con `version`: 200; 409 `version`; 404
 
 Ver: Propietario, Administrador, Contador y Consulta. Crear y editar: Propietario, Administrador y Contador. La sesión, la
-empresa de la pestaña y el permiso los comprueba api.ApiContable antes de llegar aquí; las reglas están en cuentas.py."""
+empresa de la pestaña, que el plan deje guardar y el permiso los comprueba api.ApiContable antes de llegar aquí; las reglas
+están en cuentas.py."""
 from django.http import JsonResponse
 
 from core.contabilidad import api, capacidades, cuentas

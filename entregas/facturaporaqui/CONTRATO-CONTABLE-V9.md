@@ -58,7 +58,11 @@ redirigiendo (302). Las nuevas cumplen además esto:
   importación. El envío manda la que leyó. Si ya no es la vigente: 409 `version` con el recurso como está ahora.
 - **Validación (400).** `{"error": "Revisa los datos marcados.", "codigo": "validacion", "errores": {campo: [textos]}}`,
   con todos los errores de campo a la vez.
-- **Plan vencido.** Se consulta (GET) y no se guarda nada: POST y PATCH responden 403 `plan`.
+- **Plan vencido.** Se consulta (GET) y no se guarda nada: POST y PATCH responden 403 `plan`, llegue como llegue el
+  envío. `PlanMiddleware` deja pasar un formulario que lleve un campo `action` de consulta (`search…` o
+  `send_invoice_by_email`), porque así buscan por POST las pantallas de ventas; las rutas nuevas repiten la
+  comprobación en cada envío y responden el mismo 403, con el mismo cuerpo. Solo cambia el orden en un caso que ninguna
+  pantalla produce: ese formulario, si además no trae `empresa`, recibe el 409 `sin_empresa`. Tampoco guarda nada.
 - **Método que la ruta no admite.** 405 `{"codigo": "metodo"}` con la cabecera `Allow`.
 
 Negativas comunes, tal como salen:
@@ -170,7 +174,8 @@ bloque que añada el requisito.
 ### Los 403 de licencia
 
 Los responde `PlanMiddleware` antes de llegar a la vista, en las rutas nuevas y en las que ya existían. Conservan `error`,
-`plan` y `codigo`; el bloque 1 añadió `causa` y `licencia` (el mismo objeto de arriba).
+`plan` y `codigo`; el bloque 1 añadió `causa` y `licencia` (el mismo objeto de arriba). El del plan vencido lo repiten
+además las rutas nuevas en sus envíos, idéntico (ver «Plan vencido» en las reglas comunes).
 
 ```
 403 {"error": "El Complemento Contable (libros, revisión del mes, ATS, borradores del 104 y del 103, kardex e inventario valorizado) todavía no está disponible: su precio y sus condiciones están por anunciar.",

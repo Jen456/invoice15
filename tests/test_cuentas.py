@@ -592,6 +592,22 @@ class TestLicencia:
             assert (cuerpo['codigo'], cuerpo['causa'], cuerpo['licencia']['estado']) == ('plan', 'licencia', 'plan_vencido')
         assert cuantas(empresa) == 1 and guardada(empresa, cuenta.pk).version == 1
 
+    @pytest.mark.parametrize('accion', ['search', 'search_x', 'send_invoice_by_email'])
+    def test_plan_vencido_tampoco_guarda_con_action_de_consulta(self, entrar, empresa, settings, accion):
+        """La gemela de la prueba del kardex (tests/test_kardex.py). PlanMiddleware toma por consulta un formulario con
+        ese `action` y lo deja pasar con el plan vencido: el alta responde el mismo 403 que sin él y no guarda nada."""
+        settings.FPA_COMPLEMENTO_CONTABLE_REVISION = [empresa.ruc]   # en la lista de revisión, no por el «*» de las pruebas
+        formulario = {'empresa': empresa.pk, 'clave': 'alta-con-action-01', 'codigo': '1', 'nombre': 'Activo', 'tipo': 'grupo'}
+        assert entrar.post(API, {**formulario, 'action': accion}).status_code == 201   # con el plan vigente el formulario vale
+        vencer(empresa)
+        formulario.update(clave='alta-con-action-02', codigo='2', nombre='Pasivo')
+        sin_action = entrar.post(API, formulario)
+        assert sin_action.status_code == 403 and sin_action.json()['codigo'] == 'plan'
+        con_action = entrar.post(API, {**formulario, 'action': accion})
+        assert con_action.status_code == 403 and con_action.json() == sin_action.json()
+        assert con_action.json()['licencia']['estado'] == 'plan_vencido'
+        assert codigos(entrar) == ['1'] and AuditLog.objects.filter(action='cuenta_creada').count() == 1
+
     def test_sin_plan_pagado(self, client):
         gratuita = helpers.crear_empresa('GRATIS CUENTAS', plan=None)
         helpers.iniciar_sesion(client, helpers.crear_usuario('dueno.cuentas.gratis', gratuita, ROLE_OWNER), empresa=gratuita)

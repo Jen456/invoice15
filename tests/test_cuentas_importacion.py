@@ -913,6 +913,29 @@ class TestLicencia:
         funcion = entrar.get('/contabilidad/api/capacidades/').json()['funciones']['importar_cuentas']
         assert funcion['estado'] == 'disponible' and funcion['acciones'] == {'ver': True, 'importar': False, 'actualizar_nombre': False}
 
+    @pytest.mark.parametrize('accion', ['search', 'search_x', 'send_invoice_by_email'])
+    def test_plan_vencido_tampoco_guarda_con_action_de_consulta(self, entrar, empresa, settings, accion):
+        """PlanMiddleware toma por consulta un formulario con ese `action` y lo deja pasar con el plan vencido. Ni la
+        subida (que es un formulario por fuerza) ni el mapeo ni la confirmación guardan nada."""
+        settings.FPA_COMPLEMENTO_CONTABLE_REVISION = [empresa.ruc]   # en la lista de revisión, no por el «*» de las pruebas
+        sembrar(empresa, '1', 'Viejo', 'grupo')
+        lote = lote_de(entrar, empresa, *PLAN)
+        vencer(empresa)
+        formulario = {'empresa': empresa.pk, 'action': accion}
+        for respuesta in (subir(entrar, empresa, csv_de(*PLAN), action=accion),
+                          entrar.post(f'{API}{lote["id"]}/mapeo/', {**formulario, 'codigo': 'Nombre', 'nombre': 'Código'}),
+                          entrar.post(f'{API}{lote["id"]}/confirmar/', {**formulario, 'clave': 'confirma-con-action',
+                                                                         'duplicadas': 'actualizar_nombre'})):
+            assert respuesta.status_code == 403, respuesta.content
+            cuerpo = respuesta.json()
+            assert (cuerpo['codigo'], cuerpo['plan'], cuerpo['causa'], cuerpo['licencia']['estado']) == (
+                'plan', 'requerido', 'licencia', 'plan_vencido')
+        guardado, = lotes(empresa)   # un solo lote, y sigue como se subió
+        assert guardado.estado == 'vista_previa'
+        assert guardado.mapeo == {'codigo': 'Código', 'nombre': 'Nombre', 'padre': None, 'tipo': None}
+        assert plan(empresa) == {'1': ('Viejo', 'grupo', None)}   # ni cuentas nuevas ni el nombre cambiado
+        assert not AuditLog.objects.filter(action='cuentas_importadas').exists()
+
     def test_sin_plan_pagado(self, client):
         gratuita = helpers.crear_empresa('GRATIS IMPORTA', plan=None)
         helpers.iniciar_sesion(client, helpers.crear_usuario('dueno.importa.gratis', gratuita, ROLE_OWNER), empresa=gratuita)

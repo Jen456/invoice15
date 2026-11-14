@@ -6,7 +6,9 @@ Toda negativa de estas rutas es JSON, también en GET, y siempre en el mismo ord
 1. sin sesión → lo de todo el proyecto (302 al inicio de sesión);
 2. empresa: `empresa` que no es la activa → 409 `empresa_cambiada`; en un envío (POST, PATCH…) es obligatoria y sin ella
    → 409 `sin_empresa`. Se lee de `?empresa=` o del envío (campo del formulario o `"empresa"` del JSON);
-3. licencia → 403 de PlanMiddleware (corre antes que la vista; ante un envío para otra empresa responde primero el 409);
+3. licencia → 403 de PlanMiddleware (corre antes que la vista; ante un envío para otra empresa responde primero el 409).
+   El del plan vencido lo repite aquí la vista en cada envío (`rechazo_de_licencia`): al middleware se le escapa un
+   formulario que lleve un campo `action` de consulta;
 4. permiso del rol → 403 `sin_permiso`;
 5. datos por completar → 409 `datos_por_completar` (capacidades.rechazo_datos);
 6. validación → 400 `{"error", "codigo", "errores": {campo: [textos]}}`, con todos los errores de campo a la vez.
@@ -123,6 +125,24 @@ def rechazo_de_empresa(request):
     return None
 
 
+def rechazo_de_licencia(request):
+    """403 `plan` si es un envío y el plan solo deja consultar (vencido), o None.
+
+    PlanMiddleware ya lo responde antes de llegar a la vista, salvo a un formulario con un campo `action` que empiece por
+    `search` o sea de consulta (`send_invoice_by_email`): así buscan por POST las pantallas de ventas, y lo deja pasar.
+    Estas rutas no consultan nada por POST, de modo que aquí se repite para todo envío, con la misma función que decide
+    la licencia y el mismo cuerpo que el middleware: que el plan solo deje consultar no depende de cómo llegó el envío
+    (lo mismo que hace el kardex en servicios.registrar). Sin plan pagado o con el complemento cerrado no hay nada que
+    repetir: el middleware no deja pasar ningún envío, lleve lo que lleve."""
+    if request.method in LECTURA:
+        return None
+    licencia = cap.licencia(request)
+    if not licencia['solo_consulta']:
+        return None
+    return JsonResponse({'error': licencia['texto'], 'plan': 'requerido', 'codigo': 'plan', 'causa': 'licencia',
+                         'licencia': licencia}, status=403)
+
+
 def es_personal(request):
     """El usuario tiene en la empresa activa un rol de personal (cualquiera menos Cliente, que es el portal del comprador)."""
     grupo = get_group(request)
@@ -151,9 +171,9 @@ class ApiContable(LoginRequiredMixin, View):
     """Base de las vistas nuevas de /contabilidad/api/.
 
     `permisos`: método HTTP → codename, tupla de codenames (basta uno) o PERSONAL. Un método sin entrada no existe en la
-    ruta (405). Antes de llamar a `get`, `post`… ya se comprobaron, en este orden, la sesión, la empresa de la pestaña y
-    el permiso; un ErrorApi lanzado dentro sale como su respuesta JSON. No toca el módulo activo de la sesión (lo fija la
-    página, no sus consultas en segundo plano)."""
+    ruta (405). Antes de llamar a `get`, `post`… ya se comprobaron, en este orden, la sesión, la empresa de la pestaña,
+    que el plan deje guardar (solo en los envíos) y el permiso; un ErrorApi lanzado dentro sale como su respuesta JSON. No
+    toca el módulo activo de la sesión (lo fija la página, no sus consultas en segundo plano)."""
     permisos = {}
 
     def dispatch(self, request, *args, **kwargs):
@@ -162,6 +182,8 @@ class ApiContable(LoginRequiredMixin, View):
         if request.method not in self.permisos:
             return self.http_method_not_allowed(request, *args, **kwargs)
         rechazo = rechazo_de_empresa(request)
+        if rechazo is None:
+            rechazo = rechazo_de_licencia(request)
         if rechazo is None:
             rechazo = self.rechazo_de_permiso(request)
         if rechazo is not None:
