@@ -131,6 +131,20 @@ Los campos anteriores se conservan.
 - **`importacion.0009_verificacion_sri_ultimo_intento`** (aditiva y reversible):
   - **Estructura:** cinco columnas nuevas, nulas o con valor por defecto, en `importacion_documentoimportado`. La política
     de seguridad por filas de 0002 cubre la fila. También cambian los textos de `estado_verificacion` y `verificado_en`.
+  - **Compatible con la versión que sigue atendiendo (revisión del PR #1, R1):** `ultima_consulta_resultado` y
+    `ultima_consulta_mensaje` son NOT NULL con `db_default=''`, en la migración y en el modelo. El valor por defecto queda
+    en la base: la versión publicada (importacion 0007) inserta sin nombrarlas durante el cambio de versión, o si se
+    vuelve a ella sin restaurar la base. En PostgreSQL es `ADD COLUMN … DEFAULT '' NOT NULL`, que no reescribe la tabla.
+    Ensayo y plan: [plan-de-despliegue.md](plan-de-despliegue.md).
+  - **Lo que la versión anterior verifica después de migrar** queda con un estado consultado y sin resultado del último
+    intento. `completar()` (la misma función del relleno) solo toca esas filas, y la tarea programada
+    `procesar_importaciones` la vuelve a aplicar en cada ejecución
+    (`servicios.completar_consultas_de_la_version_anterior`): mismo estado, resultado, mensaje y usuario que habría puesto
+    la migración. Lo que ya tiene resultado no cambia.
+  - **Límite conocido:** si la versión anterior vuelve a verificar un documento que YA tenía resultado, deja su estado y
+    su fecha y no toca el resultado, que queda desactualizado hasta que esta versión lo verifique de nuevo. En una
+    publicación normal solo ocurre si alguien pulsa «Verificar» en la versión anterior, entre la migración y el
+    reinicio, sobre un documento ya consultado (hoy son 4).
   - **Ida (datos):** el último evento de verificación de cada documento da el usuario y el mensaje. Los estados se
     traducen así:
 
@@ -168,6 +182,11 @@ Los campos anteriores se conservan.
   - **Pantalla:** `TestPantalla`, que comprueba el formulario real del botón, las tres dimensiones, el último intento y el
     enlace del fuera de rango.
   - **Migración 0009:** `TestMigracion0009`, con los modelos históricos (ida y vuelta).
+- **`tests/test_convivencia_versiones.py`** (revisión del PR #1, R1; SQLite y PostgreSQL): cada columna NOT NULL que la
+  entrega agrega a una tabla existente tiene su valor por defecto en la base; los modelos de la versión publicada
+  (importacion 0007, proformas 0003) importan y cotizan sobre la base migrada; lo que esa versión verifica después de
+  0009 se completa con las reglas de la migración y una segunda pasada no cambia nada; modelos y migraciones coinciden.
+  Con `tests/test_revision_primera_entrega_codex.py`, el reproductor de Codex.
 - **`tests/test_zz_importacion_verificacion_concurrencia_pg.py`** (solo PostgreSQL): tres verificaciones a la vez del
   mismo documento hacen una sola consulta al SRI, dejan un intento y un solo documento.
 - **Pruebas actualizadas:** la de Codex en `test_importacion_flujo.py` (el fuera de rango ahora es un fallo con su

@@ -2,6 +2,9 @@
 
 13/11/2026 · Rama `fase/pe-convertir-factura`, sobre `96d39e1` (= producción `e0f2902` más documentación). Sin publicar.
 
+Revisión del PR #1 (14/11/2026): R2 (cantidades cotizadas) y R3 (plazo y vencimiento del crédito) corregidos en
+`fase/primera-entrega`, código `3e30da4`. Ver «Revisión del PR #1».
+
 Criterio de la propietaria: «Convertir en factura» carga cliente, líneas, cantidades, precios, descuentos, notas y forma de
 pago en un borrador; permite revisar el IVA por línea sin cambiar el catálogo; conserva el vínculo con la proforma y evita
 duplicados; la emisión al SRI es una acción explícita; el PDF de la proforma puede ocultar al vendedor sin perder quién la
@@ -15,9 +18,9 @@ preparó (§1, §3, §4 y §13 del documento de aceptación).
    devuelve. Responde `{url, creado, borrador_id, mensaje}` y el navegador abre `url`.
 2. **Qué copia.**
    - El cliente, o los datos del prospecto.
-   - Las líneas, con la cantidad, el precio y el descuento de la proforma y la tarifa de IVA actual del producto. Se
-     aplican las reglas de siempre: no se cargan los productos eliminados ni los que no tienen stock, y si hay menos stock
-     que lo cotizado se carga lo que hay, con aviso.
+   - **Todas** las líneas, con la cantidad, el precio y el descuento cotizados y la tarifa de IVA actual del producto. La
+     falta de stock no quita ni recorta nada: el borrador la avisa al abrirse y la emisión la rechaza. Solo queda fuera,
+     con su aviso, la línea de un producto que ya no existe (una factura necesita el producto).
    - La forma de pago del SRI, el medio («Transferencia bancaria»…) y la condición «Contado».
    - En la información adicional, «Proforma: PRO-…» y las condiciones como «Notas». Este campo admite 300 caracteres y
      ningún salto de línea, como `<campoAdicional>`; si el texto se recorta, la pantalla lo avisa.
@@ -25,7 +28,7 @@ preparó (§1, §3, §4 y §13 del documento de aceptación).
 3. **Revisar.** `/pos/sale/admin/add/?borrador=<id>` abre la venta de siempre con el borrador. Ahí se revisan el
    cliente, las cantidades, los precios, los descuentos, el pago y la información adicional. Cada línea tiene un selector
    «IVA» que vale **solo para esta factura**: al cambiarlo se recalculan los totales. «Guardar borrador» guarda los
-   cambios sin emitir y «Descartar borrador» lo borra. `?proforma=<id>` sigue abriendo la precarga de solo lectura de
+   cambios sin emitir (también el plazo y, a crédito, la fecha de plazo) y «Descartar borrador» lo borra. `?proforma=<id>` sigue abriendo la precarga de solo lectura de
    antes, pero si la proforma ya tiene un borrador lleva a ese borrador.
 4. **Emitir.** «Emitir factura» envía el `POST action=add` de siempre, con `proforma_id` y `borrador_id`. La transacción
    es la de hoy: proforma, luego número, venta, firma (`emision.preparar`) y `marcar_facturada`, que además borra el
@@ -36,6 +39,52 @@ preparó (§1, §3, §4 y §13 del documento de aceptación).
    409 «ya se facturó con la factura N». Si la factura se elimina (solo cuando no salió al SRI),
    `liberar_por_venta_eliminada` devuelve la proforma a «aceptada» o «enviada», como siempre, y se puede convertir de
    nuevo.
+
+## Revisión del PR #1 (R2 y R3)
+
+**R2 · Cantidades cotizadas aunque falte stock**
+
+- `convertir` copia cada línea con la cantidad cotizada (`precarga_para_venta(…, cotizado=True)`). Con stock parcial, con
+  stock cero y con todas las líneas sin existencias el borrador se crea igual, con todas las líneas.
+- Convertir, abrir y guardar no mueven stock ni reservan número ni cupo.
+- Al abrir el borrador, cada línea que pide más de lo que hay muestra el aviso «“Producto”: el borrador tiene N y hay M en
+  stock. La factura no se emite hasta que haya stock suficiente o cambies la cantidad.» La cantidad de la pantalla sigue
+  siendo la guardada (`fp_base`: la venta no la recorta).
+- «Emitir factura» con stock insuficiente responde «No hay stock suficiente de …: quedan M. Revisa la cantidad.» y la
+  transacción se deshace entera: sin número, sin cupo, sin stock y con el borrador intacto.
+- Reducir una cantidad o quitar una línea lo decide quien revisa: lo cambia en la pantalla y pulsa «Guardar borrador».
+- La venta directa `?proforma=<id>` (sin borrador), que la pantalla ya no ofrece, no cambió: carga lo que hay en stock,
+  con su aviso, y no guarda nada.
+
+**R3 · Plazo y vencimiento del crédito**
+
+- `BorradorFactura.time_limit` (plazo en días, el `<plazo>` del XML) y `BorradorFactura.end_credit` (fecha de plazo).
+- «Guardar borrador» los valida y los guarda tal como están en la pantalla:
+
+  | Caso | Respuesta |
+  |---|---|
+  | Crédito sin fecha, o con una fecha que no existe | «Indica la fecha de plazo del crédito (AAAA-MM-DD).» |
+  | Crédito con una fecha anterior a hoy | «La fecha de plazo del crédito (dd/mm/aaaa) ya pasó: elige una fecha desde hoy.» |
+  | Plazo vacío, ausente o que no es un entero de 0 a 1000 | «El plazo es un número entero de días, de 0 a 1000.» |
+  | Contado | el plazo se guarda; el vencimiento no aplica y queda vacío |
+
+- La precarga del borrador lleva `time_limit` (entero, o `null` si aún no se guardó) y `end_credit` (`AAAA-MM-DD` o
+  `null`); el formulario de la venta los trae como valor inicial y `form.js` los vuelve a poner (`restaurarVencimiento`),
+  también cuando la fecha guardada es la de hoy.
+- **Si el tiempo vuelve inválida la fecha guardada**, se conserva: la pantalla la muestra tal cual, con el aviso «El
+  vencimiento del crédito guardado (dd/mm/aaaa) ya pasó. Se conserva tal como estaba: elige una fecha desde hoy antes de
+  emitir.» y el campo marcado («La fecha de plazo del crédito ya pasó: elige una fecha desde hoy.»). Ni el calendario ni
+  el servidor la cambian por otra: «Guardar borrador» y «Emitir factura» la rechazan hasta que se elija una nueva.
+- En el borrador, cambiar «Fecha» de la factura no toca un vencimiento guardado o ya elegido (antes lo ponía en hoy).
+- «Emitir factura» valida lo de siempre: fecha obligatoria a crédito y no anterior a la fecha de la factura («La fecha
+  de plazo del crédito no puede ser anterior a la fecha de la factura.»). Desde un borrador, el plazo sigue la misma
+  regla que al guardarlo. La venta y su cuenta por cobrar llevan la fecha y el plazo del formulario.
+- A crédito la pantalla no envía el medio de cobro (su selector queda deshabilitado): «Guardar borrador» conserva el
+  medio que ya tenía el borrador, de modo que al volver a contado sigue siendo el de la proforma.
+- **Para Codex (`form.js` de la venta):** el validador `end_credit` ya no lleva `message` fijo: su `callback` devuelve
+  `{valid, message}` (obligatoria a crédito; no anterior a hoy), porque el adaptador local antepone `options.message`.
+  `restaurarVencimiento` quita el mínimo del calendario, pone la fecha y vuelve a fijar el mínimo al comienzo de hoy con
+  un `Date` (con un `moment` global el calendario sale en inglés). `error.datetimepicker` vuelve a validar el campo.
 
 ## Decisiones
 
@@ -94,7 +143,8 @@ preparó (§1, §3, §4 y §13 del documento de aceptación).
   - `Proforma.medio_pago_sugerido` y `Proforma.ocultar_vendedor`, con `db_default` (`''` y `False`). Las filas existentes
     no cambian y un INSERT que no las nombre sigue valiendo.
   - La tabla `proformas_borradorfactura`, con la seguridad por filas forzada y la política `fpa_empresa`, como las demás
-    tablas de proformas.
+    tablas de proformas. Desde la revisión del PR #1 incluye `time_limit` y `end_credit`, opcionales (la migración no
+    estaba publicada: se completó en el mismo archivo).
   - Depende solo de `proformas 0003`.
 - `tenancy 0013_acciones_borrador_factura`: las choices `proforma_convertida` y `proforma_borrador_descartado`.
 - **Vuelta:** `migrate proformas 0003_modulo_proformas` (borra los borradores; ninguno salió al SRI) y `migrate tenancy
@@ -148,10 +198,28 @@ concurrencia de proformas:
 - `manage.py makemigrations --check --dry-run` y `manage.py check` (con `config.settings_test`): sin cambios ni avisos.
 - `node --check` de los tres JavaScript tocados: correcto.
 
+## Cómo se verificó la revisión del PR #1 (14/11/2026, `3e30da4`)
+
+- **Reproductores de Codex** (`tests/test_revision_primera_entrega_codex.py`, tal como venían en el PR): en `10d75f0`
+  fallan los 4; en `3e30da4` pasan los 4, en SQLite y en PostgreSQL.
+- **Regresiones nuevas** en `tests/test_proformas_borrador.py`:
+  - `TestCantidadesCotizadas`: stock parcial, cero y todas las líneas sin existencias (convertir conserva líneas y
+    cantidades, no mueve stock ni número, la emisión se rechaza sin gastar nada) y la reducción explícita que sí emite.
+  - `TestCreditoDelBorrador`: guardar y reabrir; validación al guardar sin tocar lo guardado; el vencimiento que ya pasó
+    se conserva y bloquea guardar y emitir hasta corregirlo; el plazo al emitir desde el borrador; el medio de cobro a
+    crédito.
+- **Suites completas** sobre `3e30da4`: SQLite 1943 aprobadas y 58 omitidas (las 58 son las que exigen PostgreSQL); PostgreSQL 2001 aprobadas, sin fallos ni omitidas (pasada repetida completa: la anterior, con 1995 aprobadas, quedó cortada en su último archivo porque la actualización automática del sistema reinició PostgreSQL a las 06:53 UTC).
+- **Navegador** (Chromium con Playwright, servidor local con SQLite, datos ficticios, red cerrada, sin emisiones): 20 de
+  20 casos sobre `39c05a1` (stock parcial, cero y todas sin existencias; emisión rechazada; reducción explícita; crédito
+  guardado y restaurado; vencimiento de hoy; vencimiento pasado conservado, marcado y rechazado; corrección en el
+  calendario; cambio de «Fecha»; plazo vacío; medio de cobro; venta normal; sin errores de consola ni desborde a 390 y
+  1280 px). `3e30da4` añade una línea (el idioma del calendario al cambiar «Fecha»), comprobada aparte en Chromium por
+  la revisión independiente. Guiones y capturas: VM101 `/root/capturas/pr1-r2r3/`.
+- **Revisión independiente** del arreglo (tres revisores con verificador y una segunda pasada sobre el cambio
+  incremental): sus hallazgos de R3 en pantalla están corregidos en `39c05a1` y `3e30da4`.
+
 ## Pendiente
 
-- Probar en un navegador real el selector «IVA» por línea, «Guardar borrador» y «Descartar borrador». El JavaScript solo
-  pasó `node --check`.
 - Decisiones de la propietaria:
   - si el Vendedor también puede revisar el IVA (hoy exige `change_product`);
   - si quiere, además, un predeterminado por empresa para «Ocultar el vendedor en el PDF».

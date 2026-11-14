@@ -70,6 +70,20 @@ Codex (conectar cada pantalla v9 cuando su ruta esté publicada y los tres ajust
   «Convertir en factura», IVA por línea, transferencia y ocultar el vendedor de la proforma. Fuera: diseño de factura (ya
   publicado), cobertura de ventas históricas (§12) y el resto del documento.
 - **Detalle:** [primera-entrega/](primera-entrega/) (`panel-empresa-activa.md`, `verificar-sri.md`, `convertir-en-factura.md`).
+- **Revisión del PR #1 (Codex, R1–R3), corregida el 14/11/2026:** código `3e30da4` (`5961efb`, `39c05a1` y `3e30da4`
+  encima de `10d75f0`).
+  - R1: `importacion 0009` con `db_default` en las dos columnas NOT NULL; lo que la versión publicada verifique después
+    de migrar se completa solo; convivencia probada en SQLite y PostgreSQL.
+  - R2: «Convertir en factura» copia todas las líneas y cantidades cotizadas aunque falte stock.
+  - R3: el borrador guarda y restaura el plazo y el vencimiento del crédito; un vencimiento que ya pasó se conserva y se
+    pide corregirlo.
+  - Pruebas: los 4 reproductores de Codex pasan (fallaban los 4 en `10d75f0`); suites completas sobre `3e30da4`: SQLite
+    1943 aprobadas y 58 omitidas (las 58 son las que exigen PostgreSQL); PostgreSQL 2001 aprobadas, sin fallos ni omitidas (pasada repetida completa: la anterior, con 1995 aprobadas, quedó cortada en su último archivo porque la actualización automática del sistema reinició PostgreSQL a las 06:53 UTC).
+  - Ensayo de la actualización y orden de publicación: [primera-entrega/plan-de-despliegue.md](primera-entrega/plan-de-despliegue.md).
+    Migrar no produce errores con la versión publicada atendiendo (esperas de 1 a 5 s); el reinicio de gunicorn corta
+    menos de 2 s, como en cada publicación.
+  - **Para Codex:** `form.js` de la venta cambió en el validador y la restauración de `end_credit` (detalle en
+    `convertir-en-factura.md`, «Revisión del PR #1»).
 - **Migraciones:** importacion 0008-0009 (estados y último intento; traduce los estados guardados), proformas 0004
   (borrador de factura y ocultar vendedor), tenancy 0013 (acciones de auditoría). Aditivas y reversibles.
 - **Al publicar:** los 4 documentos importados «no autorizada» de producción (empresa 17) quedan bloqueados con la nota

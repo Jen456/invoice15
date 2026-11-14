@@ -538,6 +538,10 @@ El número va en `.fp-numero` del título.
 > edita, rechaza ni anula (acción nueva `descartar_borrador`). Por eso la frase «No existen facturas en borrador» de
 > abajo ya no vale para ese camino. Detalle, mensajes y migraciones: `primera-entrega/convertir-en-factura.md`. El resto
 > de esta pantalla (precarga de solo lectura con `?proforma=` sin borrador) no cambió.
+>
+> **Revisión del PR #1 (14/11/2026):** el borrador conserva todas las líneas y cantidades cotizadas aunque falte stock (lo
+> avisa y la emisión lo rechaza) y guarda y restaura el plazo y el vencimiento del crédito (`time_limit` y `end_credit`
+> en la precarga del borrador). Las reglas de stock de la tabla de abajo valen solo para `?proforma=` sin borrador.
 
 **Distinción clave para la interfaz**
 - «Facturar» en la proforma **solo abre** la pantalla de venta precargada: no crea nada ni gasta número, cupo ni stock.
