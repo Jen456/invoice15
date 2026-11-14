@@ -14,13 +14,14 @@ from urllib.parse import quote
 
 import pytest
 from django.apps import apps as registro
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import DatabaseError, IntegrityError, connection, transaction
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from core.contabilidad import api, capacidades, cuentas
-from core.contabilidad.models import Cuenta
+from core.contabilidad.models import Cuenta, ImportacionCuentas
 from core.security.models import Module
 from core.tenancy import pestanas
 from core.tenancy.context import company_context
@@ -717,6 +718,73 @@ class TestSeguridadPorFilas:
                 cursor.execute(f"UPDATE {self.TABLA} SET nombre = 'Cambiada desde A' WHERE id = %s", [ajena.pk])
                 assert cursor.rowcount == 0   # la fila no existe para la empresa A
         assert guardada(empresa_b, ajena.pk).nombre == 'Activo de B'
+
+
+# ---------------------------------------------------------------- borrar al usuario que creó cuentas (PostgreSQL)
+
+@pytest.mark.skipif(connection.vendor != 'postgresql', reason='La seguridad por filas es de PostgreSQL')
+class TestBorrarAlAutor:
+    """Cuentas y lotes guardan quién los creó, editó, subió y confirmó (`SET_NULL`). Django anula esas referencias con un
+    UPDATE antes de borrar al usuario, pero con la seguridad por filas forzada ese UPDATE solo alcanza a la empresa
+    activa: las cuentas de otra empresa seguían apuntando al usuario y el borrado fallaba al confirmar, con la membresía
+    ya quitada (ensayo del bloque 1). La versión publicada (e0f2902), que no conoce estas tablas, ni lo intenta. La base
+    anula las referencias por su cuenta (contabilidad 0009). Las pruebas corren dentro de una transacción que nunca se
+    confirma: las comprobaciones de las claves foráneas, diferidas, se hacen inmediatas para que fallen donde fallaban."""
+
+    CLAVES = {('contabilidad_cuenta', 'creada_por_id'), ('contabilidad_cuenta', 'actualizada_por_id'),
+              ('contabilidad_importacioncuentas', 'creado_por_id'), ('contabilidad_importacioncuentas', 'confirmado_por_id')}
+
+    def test_las_claves_hacia_el_usuario_anulan_en_la_base_y_siguen_diferidas(self):
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT c.conrelid::regclass::text, a.attname, c.confdeltype, c.condeferrable, c.condeferred
+                FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+                WHERE c.contype = 'f' AND c.confrelid = %s::regclass
+                  AND c.conrelid::regclass::text IN ('contabilidad_cuenta', 'contabilidad_importacioncuentas')""",
+                           [get_user_model()._meta.db_table])
+            filas = cursor.fetchall()
+        assert {(tabla, columna) for tabla, columna, *_ in filas} == self.CLAVES and len(filas) == 4
+        assert {fila[2:] for fila in filas} == {('n', True, True)}   # ON DELETE SET NULL, DEFERRABLE INITIALLY DEFERRED
+
+    def autorias(self, empresa, autor):
+        with company_context(empresa):
+            Cuenta.objects.create(codigo='1', nombre='Activo', tipo='grupo', creada_por=autor, actualizada_por=autor)
+            ImportacionCuentas.objects.create(clave='lote-del-autor-01', nombre_original='plan.csv', tamano=1, sha256='0' * 64,
+                                              creado_por=autor, confirmado_por=autor, estado='confirmado',
+                                              confirmado_en=timezone.now())
+
+    def anuladas(self, empresa):
+        with company_context(empresa):
+            return (list(Cuenta.objects.values_list('creada_por_id', 'actualizada_por_id')),
+                    list(ImportacionCuentas.objects.values_list('creado_por_id', 'confirmado_por_id')))
+
+    def comprobar_ya(self):
+        with connection.cursor() as cursor:
+            cursor.execute('SET CONSTRAINTS ALL IMMEDIATE')
+
+    def test_quitar_de_su_ultima_empresa_a_quien_creo_cuentas_en_otra(self, client, empresa, empresa_b):
+        autor = helpers.crear_usuario('autor.plan', empresa, ROLE_ACCOUNTANT)
+        Membership.objects.create(user=autor, company=empresa_b, group=Group.objects.get(name=ROLE_ACCOUNTANT))
+        self.autorias(empresa, autor)
+        Membership.objects.filter(user=autor, company=empresa).delete()   # ya lo quitaron de la empresa A
+        propietario_b = helpers.crear_usuario('propietario.b', empresa_b, ROLE_OWNER)
+        helpers.iniciar_sesion(client, propietario_b, empresa=empresa_b)
+        self.comprobar_ya()
+        respuesta = client.post(f'/user/delete/{autor.pk}/')
+        assert respuesta.status_code == 200 and respuesta.json() == {}, respuesta.content
+        assert not get_user_model().objects.filter(pk=autor.pk).exists()
+        assert self.anuladas(empresa) == ([(None, None)], [(None, None)])
+
+    def test_borrar_al_usuario_sin_pasar_por_django(self, empresa, empresa_b):
+        """Lo que hace una versión del código que no conoce estas tablas: borrar al usuario sin anular nada antes."""
+        autor = helpers.crear_usuario('autor.plan')   # sin membresías ni otras referencias
+        self.autorias(empresa, autor)
+        with company_context(empresa_b):
+            self.comprobar_ya()
+            with connection.cursor() as cursor:
+                cursor.execute(f'DELETE FROM {get_user_model()._meta.db_table} WHERE id = %s', [autor.pk])
+                assert cursor.rowcount == 1
+        assert self.anuladas(empresa) == ([(None, None)], [(None, None)])
 
 
 # ---------------------------------------------------------------- migración que reparte los permisos
