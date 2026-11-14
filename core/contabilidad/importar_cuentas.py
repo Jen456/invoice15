@@ -57,6 +57,12 @@ MAX_COLUMNAS = 40
 # la última columna de cada fila, o hecha para agotar al lector, se corta aquí y no a los 60 s de gunicorn.
 MAX_CELDAS = 2_000_000
 CELDA_MAX = 300                  # se guarda un carácter más: un nombre o un código que no cabe sigue sin caber
+# Texto que se guarda de las filas de un archivo (la suma de sus celdas, también las de columnas que nadie elija). Los topes
+# de arriba se multiplican entre sí: 5 000 filas de 40 columnas de 300 caracteres son 60 millones de caracteres, y un XLSX
+# los trae en 32 KB porque todas sus celdas citan la misma cadena. El lote los guardaba (hasta 352 MB de JSON, que cada
+# consulta volvía a cargar) y no caduca. Con este tope un lote no guarda más texto que el que cabe en el archivo más grande
+# que se acepta; a un CSV no lo rechaza nunca, porque no puede traer más caracteres que bytes.
+MAX_CARACTERES = MAX_BYTES
 ENCABEZADO_MAX = 80
 MUESTRA = 5                      # filas de muestra para elegir las columnas
 POR_INSERCION = 500              # cuentas por sentencia al crear o actualizar
@@ -86,6 +92,8 @@ TEXTOS = {
                          'nuevo y sube ese.',
     'demasiadas_filas': f'El archivo tiene más de {MAX_FILAS:,} filas de cuentas: divídelo e impórtalo por partes.'.replace(',', ' '),
     'demasiadas_columnas': f'El archivo tiene más de {MAX_COLUMNAS} columnas: deja solo las del plan de cuentas.',
+    'demasiado_texto': 'El archivo trae demasiado texto para un plan de cuentas: deja solo las columnas del plan (código, '
+                       'nombre, padre y tipo) y súbelo de nuevo.',
     'formato': 'No se pudo leer el archivo: debe ser un CSV (UTF-8, separado por punto y coma o por coma) o un XLSX.',
     'codificacion': 'El CSV no está en UTF-8: en la hoja de cálculo, guárdalo como «CSV UTF-8» o sube el XLSX.',
     'comillas': 'El CSV no se pudo leer a partir de la fila {fila}: revisa sus comillas (unas que no se cierran o texto pegado '
@@ -246,7 +254,7 @@ def _tabla(origen):
     blanco se saltan sin perder la cuenta: cada fila guarda su número en el archivo. Forma de cada fila:
     `{"n": número, "c": [texto de cada columna], "f": [columnas alteradas por la hoja], "s": true si sobran celdas}`
     (`f` y `s` solo si aplican)."""
-    encabezados, filas, vistas = None, [], 0
+    encabezados, filas, vistas, guardados = None, [], 0, 0
     for numero, valores in origen:
         vistas += len(valores)
         if vistas > MAX_CELDAS:
@@ -268,6 +276,9 @@ def _tabla(origen):
             raise api.ErrorApi('demasiadas_filas', TEXTOS['demasiadas_filas'])
         ancho = len(encabezados)
         fila = {'n': numero, 'c': [texto for texto, _ in celdas[:ancho]] + [''] * (ancho - len(celdas))}
+        guardados += sum(map(len, fila['c']))
+        if guardados > MAX_CARACTERES:   # se corta aquí, sin terminar de leer ni llegar a guardar nada
+            raise api.ErrorApi('archivo_grande', TEXTOS['demasiado_texto'])
         alteradas = [columna for columna, (_, alterada) in enumerate(celdas[:ancho]) if alterada]
         if alteradas:
             fila['f'] = alteradas
@@ -283,7 +294,8 @@ def _tabla(origen):
 
 def leer(datos):
     """`(extensión, encabezados, filas)` de un CSV o un XLSX, reconocidos por su contenido y no por su nombre. Lanza el
-    400 que corresponda: `formato` (ilegible, vacío, otro tipo de archivo), `demasiadas_filas` o `archivo_grande`."""
+    400 que corresponda: `formato` (ilegible, vacío, otro tipo de archivo), `demasiadas_filas` o `archivo_grande` (por su
+    peso, por lo que ocupa al abrirlo, por sus celdas o por el texto de su tabla)."""
     if len(datos) > MAX_BYTES:
         raise api.ErrorApi('archivo_grande', TEXTOS['archivo_grande'])
     if datos.startswith(b'PK\x03\x04'):

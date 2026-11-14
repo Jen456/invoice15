@@ -417,6 +417,35 @@ class TestLectura:
         monkeypatch.setattr(importar_cuentas, 'MAX_CELDAS', 12)
         assert subir(entrar, empresa, csv_de(*PLAN)).status_code == 200
 
+    def test_demasiado_texto_en_la_tabla(self, entrar, empresa):
+        """Los topes de filas, de columnas y de caracteres por celda se multiplicaban entre sí: 5 000 filas de 40 columnas
+        de 300 caracteres son 60 millones de caracteres guardados en el lote (hasta 352 MB de JSON), y un XLSX los trae en
+        32 KB porque sus celdas citan la misma cadena. El texto que se guarda de un archivo tiene su propio tope."""
+        columnas, celda = importar_cuentas.MAX_COLUMNAS, 'N' * importar_cuentas.CELDA_MAX
+        encabezados = ['Código', 'Nombre', *(f'Columna {n}' for n in range(3, columnas + 1))]
+        caben = importar_cuentas.MAX_CARACTERES // (columnas * len(celda))   # filas llenas que entran en el tope: 174
+        filas = [[celda] * columnas] * (caben + 1)
+        pasado = xlsx_de(encabezados, *filas)
+        assert len(pasado) < importar_cuentas.MAX_BYTES // 10 and len(filas) < importar_cuentas.MAX_FILAS // 10
+        respuesta = subir(entrar, empresa, pasado, 'plan.xlsx')
+        assert respuesta.status_code == 400, respuesta.content[:300]
+        assert respuesta.json() == {'error': T['demasiado_texto'], 'codigo': 'archivo_grande'}
+        assert lotes(empresa) == []
+        justo = subir(entrar, empresa, xlsx_de(encabezados, *filas[:caben]), 'plan.xlsx')
+        assert justo.status_code == 200 and len(justo.json()['lote']['filas']) == caben
+        guardado, = lotes(empresa)
+        assert sum(len(texto) for fila in guardado.filas for texto in fila['c']) == caben * columnas * len(celda)
+
+    def test_el_tope_de_texto_no_alcanza_a_un_csv_que_cabe(self, entrar, empresa):
+        """Un CSV no puede traer más caracteres que bytes: el más denso que pasa el límite de 2 MB pasa también este."""
+        encabezado = 'Código;Nombre;Notas\r\n'
+        fila = '{:04d};' + 'N' * 200 + ';' + 'N' * importar_cuentas.CELDA_MAX + '\r\n'
+        cuantas_filas = (importar_cuentas.MAX_BYTES - len(encabezado.encode())) // len(fila.format(0))
+        contenido = (encabezado + ''.join(fila.format(n) for n in range(cuantas_filas))).encode()
+        assert importar_cuentas.MAX_BYTES - len(fila.format(0)) < len(contenido) <= importar_cuentas.MAX_BYTES
+        lote = subir(entrar, empresa, contenido).json()['lote']
+        assert lote['resumen'] == {'validas': cuantas_filas, 'con_error': 0, 'duplicadas': 0, 'faltan_columnas': [], 'texto': None}
+
     def test_sin_archivo_o_sin_clave(self, entrar, empresa):
         sin_archivo = entrar.post(API, {'empresa': empresa.pk, 'clave': 'subida-sin-archivo'})
         assert sin_archivo.status_code == 400 and sin_archivo.json()['errores'] == {'archivo': [T['archivo']]}

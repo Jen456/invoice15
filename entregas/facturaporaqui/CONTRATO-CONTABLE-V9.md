@@ -414,10 +414,12 @@ rutas piden `add_cuenta` (Propietario, Administrador y Contador); confirmar con 
 `change_cuenta`.
 
 **Archivo.** CSV en UTF-8, con o sin BOM, separado por `;` o por `,` (se detecta) y con comillas; o XLSX, primera hoja.
-Se reconoce por su contenido, no por su nombre. Límites: 2 MB, 5 000 filas de cuentas, 40 columnas y, el XLSX, 20 MB al
-descomprimirlo. **No se lee `.xls`** ni un libro con contraseña, y un CSV en otra codificación se rechaza en vez de
-adivinarla: guardaría mal los nombres con tilde. La primera fila con contenido es la de encabezados; las filas en blanco
-se saltan sin cambiar la numeración.
+Se reconoce por su contenido, no por su nombre. Límites: 2 MB, 5 000 filas de cuentas, 40 columnas, 2 097 152 caracteres
+de texto entre todas las celdas de la tabla y, el XLSX, 20 MB al descomprimirlo. El tope de texto es lo que cabe en un CSV
+de 2 MB: a un CSV no lo alcanza nunca, y corta el XLSX que repite un texto largo en miles de celdas (pesa unos kilobytes
+y dejaba un lote de cientos de megas). **No se lee `.xls`** ni un libro con contraseña, y un CSV en otra codificación se
+rechaza en vez de adivinarla: guardaría mal los nombres con tilde. La primera fila con contenido es la de encabezados;
+las filas en blanco se saltan sin cambiar la numeración.
 
 Tampoco se adivina dónde terminaba un texto con las comillas mal puestas. Un CSV con unas comillas que se abren y no se
 cierran, o con texto pegado después de cerrarlas (`"Otros" ingresos`), se rechaza entero con 400 `formato` y la fila:
@@ -546,7 +548,7 @@ Envío JSON: `{"empresa", "clave", "duplicadas": "omitir" | "actualizar_nombre"}
 |---|---|---|
 | 400 | `clave` | falta la clave o está mal formada |
 | 400 | `validacion` | falta `archivo`; `duplicadas` falta o no es válido; en el mapeo, una columna que no está o que se repite |
-| 400 | `archivo_grande` | más de 2 MB, XLSX de más de 20 MB al abrirlo o demasiadas celdas fuera de la tabla |
+| 400 | `archivo_grande` | más de 2 MB, XLSX de más de 20 MB al abrirlo, demasiadas celdas fuera de la tabla o demasiado texto en la tabla («El archivo trae demasiado texto para un plan de cuentas: deja solo las columnas del plan (código, nombre, padre y tipo) y súbelo de nuevo.») |
 | 400 | `demasiadas_filas` | más de 5 000 filas de cuentas |
 | 400 | `formato` | no es CSV ni XLSX, está dañado, vacío o solo trae encabezados, tiene más de 40 columnas, es un `.xls` o un libro con contraseña, el CSV no está en UTF-8 o tiene las comillas mal cerradas, o el XLSX declara entidades XML (`DOCTYPE`). `error` dice cuál |
 | 400 | `faltan_columnas` | al confirmar sin columna de código o de nombre; trae `resumen` |
