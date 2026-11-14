@@ -300,7 +300,10 @@ migrate tenancy 0012_accion_diseno_factura
 Quedan pendientes las siete de la tabla. El módulo del kardex vuelve a sus tres permisos, ningún rol conserva los del plan
 de cuentas y el resto del menú y de los roles queda igual. Otra ida lo deja todo como estaba. Lo recorre
 `tests/test_migracion_vuelta_fase.py::test_vuelta_del_plan_de_cuentas_a_lo_publicado`, por subproceso, sobre una
-instalación SQLite con menú. Vuelta solo de la importación: `migrate contabilidad 0006_permisos_plan_cuentas`.
+instalación SQLite con menú. Vuelta solo de la importación: `migrate contabilidad 0006_permisos_plan_cuentas`; borra la
+tabla de lotes con sus filas, su mapeo y su resultado, y la columna `lote_id` de las cuentas, y los archivos de los lotes
+se quedan sin dueño en `privado/`: con lotes registrados, solo con la aplicación detenida y con respaldo previo de la base
+y de `privado/` (ver «Restauración»).
 
 **Las otras vueltas documentadas:**
 
@@ -353,15 +356,51 @@ están inflados.
 1. Publicar con poco tráfico: la ida bloquea unos segundos las escrituras en `user_user` y `pos_company` (inicios de
    sesión, ediciones de empresa) y, durante milisegundos, las lecturas de `user_user` (0009).
 2. Deshacer migraciones solo con la aplicación detenida o en mantenimiento, sin escrituras, y con `lock_timeout` corto
-   (2 a 5 s, en `PGOPTIONS`) y reintento: con tráfico, la vuelta puede interbloquearse con una escritura (D3).
+   (2 a 5 s, en `PGOPTIONS`) y reintento: con tráfico, la vuelta puede interbloquearse con una escritura (D3). Toda vuelta
+   del bloque por debajo de 0007 o de 0004 borra lotes o cuentas con sus datos: con datos registrados no se deshace, se
+   restaura (ver «Restauración»).
 3. Volver solo el código (`desplegar.sh … --revertir`) con la base migrada: la versión anterior atiende. Con 0009 puede
    borrar a un usuario que creó cuentas o lotes; sin 0009 (si el despliegue se detuvo antes) no hay que borrar usuarios
    que crearon o editaron cuentas o lotes, y si ocurre, devolverle la membresía o borrarlo con la versión nueva. Borrar
    una empresa con plan de cuentas da 500 y no borra nada (lo impide `PROTECT`, como debe; ya lo impedían su período de
    suscripción y el `PROTECT` de los demás modelos de empresa). Desde `/plataforma/`, igual.
-4. No ejecutar `start_installation` de la versión anterior sobre la base migrada. Si ocurre, repararlo con
-   `organizar_menu` y `sync_roles` de la versión nueva (medido: 3 a 10 s) o con `migrate contabilidad 0005` seguido de
-   `migrate contabilidad`.
+4. No ejecutar `start_installation` de la versión anterior sobre la base migrada: deja el módulo «Kardex por producto»
+   con su tupla vieja (`view_kardex`, `add_movimientomanual`, `change_movimientomanual`) y a los roles sin
+   `view_cuenta`, `add_cuenta` ni `change_cuenta` (D6). Si ocurre, la única reparación es la que hace `start_installation`
+   para el menú y los roles, con el código de la versión nueva: desde su carpeta, con su entorno y
+   `PGOPTIONS="-c app.platform=on"` como en `desplegar.sh`, `manage.py shell` con
+
+   ```python
+   from django.contrib.auth.models import Group, Permission
+   from core.security.menu import organizar_menu
+   from core.security.models import GroupModule, Module, ModuleType
+   from core.tenancy.context import platform_scope
+   from core.tenancy.roles import strip_platform_modules, sync_roles
+   with platform_scope():
+       organizar_menu(ModuleType, Module, Permission)   # primero: devuelve al módulo del kardex su tupla de seis
+       sync_roles(Group, Module, GroupModule)           # después: los roles toman los permisos de sus módulos
+       strip_platform_modules(Group, GroupModule)       # como start_installation
+   ```
+
+   En ese orden: `sync_roles` reparte los permisos que tiene cada módulo, y antes de `organizar_menu` el del kardex
+   todavía tiene la tupla vieja. Medido en el ensayo con la versión nueva y la máquina cargada: 3,3 a 9,6 s
+   `organizar_menu` y 1,1 a 1,9 s `sync_roles`. Para comprobar que quedó bien, a continuación y con los mismos imports:
+
+   ```python
+   with platform_scope():
+       print(sorted(Module.objects.get(url='/contabilidad/kardex/').permissions.values_list('codename', flat=True)))
+       print({g.name: sorted(g.permissions.filter(codename__in=['view_cuenta', 'add_cuenta', 'change_cuenta'])
+                             .values_list('codename', flat=True)) for g in Group.objects.order_by('name')})
+   # ['add_cuenta', 'add_movimientomanual', 'change_cuenta', 'change_movimientomanual', 'view_cuenta', 'view_kardex']
+   # Propietario, Administrador y Contador: add_cuenta, change_cuenta y view_cuenta; Consulta: view_cuenta;
+   # Vendedor y Cliente: ninguno
+   ```
+
+   No sirve `migrate contabilidad 0005` seguido de `migrate contabilidad`: volver a 0005 deshace también 0007, así que
+   borra la tabla `contabilidad_importacioncuentas` (todos los lotes con sus filas, su mapeo y su resultado) y la columna
+   `lote_id` de las cuentas, deja sin dueño los archivos privados de los lotes y toma sobre `user_user` y `pos_company`
+   los bloqueos de la vuelta (D3). Si alguna vez se elige esa vía por otra razón, solo con la aplicación detenida y con
+   respaldo previo de la base y de `privado/`.
 5. El corte del reinicio (D7) se anuncia o se evita con una recarga sin corte de gunicorn: queda fuera del bloque.
 
 **No probado:**
@@ -376,8 +415,9 @@ a `0014` sobre la otra, con sus `choices` completas, y el conteo y las listas de
 se publica antes y este bloque encima (su acción como `tenancy 0014_acciones_plan_cuentas`), la vuelta de primera entrega
 (`migrate tenancy 0012_accion_diseno_factura`, en su `plan-de-despliegue.md`) deshace también la 0014 del bloque y deja
 aplicadas `contabilidad 0004-0009`: un estado mixto. En ese orden, para volver por debajo de primera entrega va primero la
-vuelta del bloque (`migrate contabilidad 0003_modulo_kardex`, `migrate tenancy 0013_acciones_borrador_factura`) y después
-la de primera entrega, o se restaura el volcado. La guarda de convivencia de esa rama
+vuelta del bloque (`migrate contabilidad 0003_modulo_kardex`, `migrate tenancy 0013_acciones_borrador_factura`), que borra
+las cuentas y los lotes (con datos registrados, «Restauración»), y después la de primera entrega, o se restaura el
+volcado. La guarda de convivencia de esa rama
 (`tests/test_convivencia_versiones.py`, `DE_ESTA_ENTREGA`) recorre solo sus migraciones: al unirlas hay que añadirle
 `contabilidad 0004-0009` y la `tenancy` del bloque; `NO_NULAS_AGREGADAS` no cambia, porque la única columna que el bloque
 agrega (`cuenta.lote`) admite nulos y va en una tabla nueva.
