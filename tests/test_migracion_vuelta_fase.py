@@ -92,8 +92,10 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
             # pos 0035 (copia en la factura, sobre pos 0034) y tenancy 0012 (acción de auditoría, sobre 0011) caen con sus
             # apps; configuracion 0004-0005 (tabla y módulo) cuelgan de pos 0019, como 0001-0003, y no se deshacen. 41 con eso.
             # Plan de cuentas: contabilidad 0004-0006 (tabla, seguridad por filas y permisos) caen con `contabilidad zero`
-            # y tenancy 0013 (acciones de auditoría, sobre 0012), con la vuelta a tenancy 0006. 45 en total.
-            assert len(pendientes(env)) == 45
+            # y tenancy 0013 (acciones de auditoría, sobre 0012), con la vuelta a tenancy 0006. 45 con eso.
+            # Importación del plan: contabilidad 0007-0008 (lotes y su seguridad por filas) caen también con
+            # `contabilidad zero`. 47 en total.
+            assert len(pendientes(env)) == 47
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)
@@ -127,8 +129,8 @@ def test_vuelta_del_diseno_y_otra_pasada_por_configuracion_0003(tmp_path):
         for app, destino in (('configuracion', '0003_modulo_puntos'), ('pos', '0034_cliente_nacimiento_opcional'),
                              ('tenancy', '0011_acciones_kardex')):   # la vuelta de DISENO-FACTURA.md
             manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
-        # tenancy 0013 (acciones del plan de cuentas) va sobre 0012 y cae con ella. Las migraciones del plan de cuentas
-        # (contabilidad 0004-0006) no dependen de nada del diseño: su tabla no se toca en esta vuelta.
+        # tenancy 0013 (acciones del plan de cuentas) va sobre 0012 y cae con ella. Las migraciones del plan de cuentas y
+        # de su importación (contabilidad 0004-0008) no dependen de nada del diseño: sus tablas no se tocan en esta vuelta.
         sin_diseno = ['configuracion.0004_diseno_factura', 'configuracion.0005_modulo_diseno_factura',
                       'configuracion.0006_personalizacion_factura', 'pos.0035_sale_ride_diseno',
                       'tenancy.0012_accion_diseno_factura', 'tenancy.0013_acciones_plan_cuentas']
@@ -162,7 +164,8 @@ def test_vuelta_del_plan_de_cuentas_a_lo_publicado(tmp_path):
             manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
         assert sorted(pendientes(env)) == [
             'contabilidad.0004_plan_de_cuentas', 'contabilidad.0005_seguridad_por_filas_cuentas',
-            'contabilidad.0006_permisos_plan_cuentas', 'tenancy.0013_acciones_plan_cuentas']
+            'contabilidad.0006_permisos_plan_cuentas', 'contabilidad.0007_importacion_cuentas',
+            'contabilidad.0008_seguridad_por_filas_importacion', 'tenancy.0013_acciones_plan_cuentas']
         sin_plan = estado(env)
         # El plan de cuentas no tiene módulo propio: sus permisos viajan con el del kardex, que queda con los suyos.
         assert permisos_del_kardex(sin_plan) == ['add_movimientomanual', 'change_movimientomanual', 'view_kardex']

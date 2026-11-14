@@ -7,12 +7,16 @@ contador completa lo que no se registró en el sistema (saldo inicial, entradas 
 Los movimientos manuales no cambian el stock del producto: explican su historia.
 
 Plan de cuentas por empresa (C2 del contrato contable v9): `Cuenta`. Sus reglas (árbol, unicidad del código, versión) se
-aplican en core/contabilidad/cuentas.py; aquí solo está lo que la base de datos garantiza por sí sola."""
+aplican en core/contabilidad/cuentas.py; aquí solo está lo que la base de datos garantiza por sí sola.
+
+Importación del plan con vista previa (C3): `ImportacionCuentas`, el lote con su archivo privado y lo que se leyó de él.
+Su lectura, la vista previa y la confirmación están en core/contabilidad/importar_cuentas.py."""
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+from core.importacion.models import RutaPrivada
 from core.tenancy.models_base import TenantModel
 
 TIPOS_MANUALES = (('saldo_inicial', 'Saldo inicial'), ('entrada', 'Entrada manual'), ('salida', 'Salida manual'))
@@ -22,6 +26,9 @@ DOCUMENTO_MAX, NOTA_MAX, MOTIVO_MAX = 120, 300, 300
 
 TIPOS_CUENTA = (('grupo', 'Grupo'), ('movimiento', 'Movimiento'))
 CODIGO_CUENTA_MAX, NOMBRE_CUENTA_MAX = 30, 200
+ESTADOS_IMPORTACION = (('vista_previa', 'Vista previa'), ('confirmado', 'Confirmado'))
+# Qué hace la confirmación con las filas cuyo código ya existe en la empresa.
+DUPLICADAS_IMPORTACION = (('omitir', 'Omitirlas'), ('actualizar_nombre', 'Actualizar su nombre'))
 
 
 def limpiar_codigo(codigo):
@@ -112,6 +119,9 @@ class Cuenta(TenantModel):
     version = models.PositiveIntegerField(default=1, verbose_name='Versión')
     # Clave del envío que la creó (idempotencia). Nula en las que crea la importación del plan, que lleva su propia clave.
     clave = models.CharField(max_length=40, null=True, blank=True, verbose_name='Clave del envío')
+    # La importación que la creó; nulo en las que se dan de alta a mano. El lote no se borra (PROTECT).
+    lote = models.ForeignKey('ImportacionCuentas', null=True, blank=True, on_delete=models.PROTECT, related_name='cuentas',
+                             verbose_name='Importación que la creó')
     creada_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
                                    verbose_name='Creada por')
     creada_en = models.DateTimeField(default=timezone.now, verbose_name='Creada el')
@@ -142,3 +152,51 @@ class Cuenta(TenantModel):
 
     def __str__(self):
         return f'{self.codigo} {self.nombre}'
+
+
+class ImportacionCuentas(TenantModel):
+    """Lote de importación del plan de cuentas (C3 del contrato contable v9): el archivo que se subió, lo que se leyó de
+    él y cómo se interpretan sus columnas. En vista previa no crea nada y su mapeo se puede cambiar; al confirmarlo crea
+    las cuentas (quedan enlazadas por `Cuenta.lote`), guarda el resultado y ya no cambia. No se borra.
+
+    Dos claves de idempotencia: `clave` es la de la subida (repetirla con el mismo archivo devuelve este lote) y
+    `clave_confirmacion`, la del envío que lo confirmó (repetirla devuelve el mismo resultado)."""
+    # Carpeta privada de la empresa: no sale por /media/. Se conserva tal como llegó, con su huella.
+    archivo = models.FileField(upload_to=RutaPrivada('plan-cuentas'), max_length=255, verbose_name='Archivo')
+    nombre_original = models.CharField(max_length=255, verbose_name='Nombre original')
+    tamano = models.PositiveIntegerField(verbose_name='Tamaño (bytes)')
+    sha256 = models.CharField(max_length=64, verbose_name='SHA-256')
+    # Lo leído del archivo, para recalcular la vista previa sin volver a abrirlo: los encabezados (únicos) y las filas
+    # con contenido como texto (forma en importar_cuentas.leer).
+    encabezados = models.JSONField(default=list, verbose_name='Encabezados')
+    filas = models.JSONField(default=list, verbose_name='Filas leídas')
+    # {"codigo", "nombre", "padre", "tipo"}: el encabezado elegido para cada dato, o nulo.
+    mapeo = models.JSONField(default=dict, verbose_name='Columnas elegidas')
+    estado = models.CharField(max_length=12, choices=ESTADOS_IMPORTACION, default='vista_previa', verbose_name='Estado')
+    clave = models.CharField(max_length=40, verbose_name='Clave de la subida')
+    clave_confirmacion = models.CharField(max_length=40, null=True, blank=True, verbose_name='Clave de la confirmación')
+    duplicadas = models.CharField(max_length=17, choices=DUPLICADAS_IMPORTACION, blank=True, default='',
+                                  verbose_name='Qué se hizo con las que ya existían')
+    resultado = models.JSONField(null=True, blank=True, verbose_name='Resultado de la confirmación')
+    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+                                   verbose_name='Subido por')
+    creado_en = models.DateTimeField(default=timezone.now, verbose_name='Subido el')
+    confirmado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                       related_name='+', verbose_name='Confirmado por')
+    confirmado_en = models.DateTimeField(null=True, blank=True, verbose_name='Confirmado el')
+
+    class Meta:
+        verbose_name = 'Importación del plan de cuentas'
+        verbose_name_plural = 'Importaciones del plan de cuentas'
+        ordering = ('-id',)
+        default_permissions = ()   # la usa quien puede crear cuentas (`add_cuenta`); no tiene permisos propios
+        constraints = [
+            models.UniqueConstraint(fields=('company', 'clave'), name='importacion_cuentas_clave_unica'),
+            # Confirmado y con fecha de confirmación van juntos: un lote no queda a medias.
+            models.CheckConstraint(condition=(Q(estado='vista_previa', confirmado_en__isnull=True)
+                                              | Q(estado='confirmado', confirmado_en__isnull=False)),
+                                   name='importacion_cuentas_estado_coherente'),
+        ]
+
+    def __str__(self):
+        return f'{self.nombre_original} ({self.get_estado_display()})'
