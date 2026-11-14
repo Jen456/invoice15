@@ -8,7 +8,11 @@ va al final (test_zz_*) y crea todos sus datos, porque las pruebas transaccional
 - el asiento sin sellar al confirmar (también con otra empresa activa al confirmar) y el sellado en la misma transacción;
 - el par `reversado_por`/`reversado_en`: los dos juntos, una vez, en uno sellado y hacia su reverso;
 - borrar al usuario autor no toca el libro;
-- las migraciones de los disparadores y de la seguridad por filas se deshacen y se rehacen."""
+- las migraciones de los disparadores y de la seguridad por filas se deshacen y se rehacen.
+
+Y a nivel de servicio (core/contabilidad/diario.py), con transacciones reales: `contabilizar` sella en la misma
+transacción y el disparador diferido lo deja confirmar; `reversar` fija el par del reverso que el disparador admite; un
+fallo a medio escribir no deja nada ni consume número; dos contabilizaciones simultáneas numeran sin hueco ni repetición."""
 import importlib
 from datetime import date
 
@@ -17,7 +21,8 @@ from django.apps import apps
 from django.db import DatabaseError, connection, transaction
 from django.utils import timezone
 
-from core.contabilidad.models import Asiento, EventoApertura, LineaAsiento
+from core.contabilidad import diario
+from core.contabilidad.models import Asiento, EjercicioContable, EventoApertura, LineaAsiento, SaldoCuentaMes
 from core.tenancy.context import company_context, platform_scope
 from core.user.models import User
 from tests import ayudas_contables as ac
@@ -285,3 +290,51 @@ def test_la_migracion_de_la_seguridad_por_filas_se_deshace_y_se_rehace(libro):
         assert set(estado().values()) == {(True, True, 1)}
         transaction.set_rollback(True)
     assert set(estado().values()) == {(True, True, 1)}
+
+
+# ---------------------------------------------------------------- a nivel de servicio
+
+def test_contabilizar_y_reversar_por_el_servicio_pasan_los_disparadores(libro):
+    a, cuentas, b, _ = libro
+    ac.inicio_directo(a)
+    for activa in (a, b):   # al confirmar puede estar activa otra empresa
+        with company_context(activa):
+            asiento = ac.contabilizar(a, lineas(cuentas, 25))   # su propia transacción: confirma al salir
+    reverso, repetido = ac.reversar(a, asiento, clave='reverso-servicio-1')
+    with company_context(a):
+        assert set(Asiento.objects.values_list('sellado', flat=True)) == {True} and Asiento.objects.count() == 3
+        assert Asiento.objects.get(pk=asiento.pk).reversado_por_id == reverso.pk and not repetido
+        assert LineaAsiento.objects.count() == 6
+        assert all(c['ok'] for c in diario.verificar(2026)['comprobaciones'])
+    assert ac.reversar(a, asiento, clave='reverso-servicio-1') == (reverso, True)
+
+
+def test_un_fallo_a_medio_escribir_no_deja_nada_ni_consume_numero(libro, monkeypatch):
+    a, cuentas, *_ = libro
+    ac.inicio_directo(a)
+    primero = ac.contabilizar(a, lineas(cuentas, 1))
+
+    def falla(*args, **kwargs):
+        raise RuntimeError('fallo a propósito después de insertar el asiento, sus líneas y el sello')
+    monkeypatch.setattr(diario, '_acumular', falla)
+    with pytest.raises(RuntimeError):
+        ac.contabilizar(a, lineas(cuentas, 2))
+    monkeypatch.undo()
+    with company_context(a):
+        assert Asiento.objects.count() == 1 and LineaAsiento.objects.count() == 2
+        assert EjercicioContable.objects.get(anio=2026).ultimo_numero == 1
+        assert SaldoCuentaMes.objects.get(cuenta=cuentas['caja']).debe == 1
+    assert ac.contabilizar(a, lineas(cuentas, 3)).numero == primero.numero + 1
+
+
+def test_dos_contabilizaciones_simultaneas_numeran_sin_hueco_ni_repeticion(libro):
+    a, cuentas, *_ = libro
+    ac.inicio_directo(a)
+    ac.contabilizar(a, lineas(cuentas, 1))
+    resultados, errores = ac.en_paralelo([lambda n=n: ac.contabilizar(a, lineas(cuentas, 10 + n)).numero for n in range(2)])
+    assert not errores, errores
+    assert sorted(resultados) == [2, 3]
+    with company_context(a):
+        assert sorted(Asiento.objects.values_list('numero', flat=True)) == [1, 2, 3]
+        assert EjercicioContable.objects.get(anio=2026).ultimo_numero == 3
+        assert SaldoCuentaMes.objects.get(cuenta=cuentas['caja']).debe == 1 + 10 + 11   # ningún acumulado se pisó
