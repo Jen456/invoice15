@@ -26,4 +26,10 @@ urlpatterns = [
          name='contabilidad_cuentas_importacion_mapeo'),
     path('api/cuentas/importar/<int:pk>/confirmar/', vistas_importar_cuentas.ConfirmarApi.as_view(),
          name='contabilidad_cuentas_importacion_confirmar'),
+    # Bloque 2 · Parte A (libro diario, vistas_diario.py): cuentas/clasificar/, diario/, diario/<id>/, integridad/.
+    # Sus rutas van aquí debajo, antes del comentario de la Parte B: cada parte escribe solo en su tramo.
+
+    # Bloque 2 · Parte B (inicio y apertura, vistas_apertura.py): apertura/… Sus rutas van aquí debajo.
+
+    # Bloque 2 · corte 2 (Partes C a F: vistas_apertura.py, vistas_cartera_inicial.py, vistas_historico.py).
 ]
