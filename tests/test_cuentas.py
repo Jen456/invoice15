@@ -333,12 +333,12 @@ class TestAlta:
     def test_la_base_tampoco_admite_el_codigo_repetido_ni_la_clave(self, empresa):
         """La garantía final es de la base: vale también para quien inserte sin pasar por el servicio."""
         sembrar(empresa, 'Caja-1', clave='clave-unica-0001')
-        with pytest.raises(IntegrityError), transaction.atomic():
-            sembrar(empresa, 'CAJA-1')
-        with pytest.raises(IntegrityError), transaction.atomic():
-            sembrar(empresa, 'Caja-2', clave='clave-unica-0001')
-        with pytest.raises(IntegrityError), transaction.atomic():
-            sembrar(empresa, 'Caja-3', tipo='otro')
+        rechazadas = ({'codigo': 'CAJA-1'}, {'codigo': 'Caja-2', 'clave': 'clave-unica-0001'}, {'codigo': 'Caja-3', 'tipo': 'otro'})
+        with company_context(empresa):
+            for datos in rechazadas:
+                # El punto de guardado se deshace antes de salir del contexto de la empresa (en PostgreSQL, salir consulta la base).
+                with pytest.raises(IntegrityError), transaction.atomic():
+                    Cuenta.objects.create(**{'nombre': 'No entra', 'tipo': 'movimiento', **datos})
         sembrar(empresa, 'Caja-4')
         sembrar(empresa, 'Caja-5')   # varias sin clave (las importadas) conviven
         assert cuantas(empresa) == 3
