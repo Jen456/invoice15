@@ -245,11 +245,12 @@ la misma huella). Volcado previo del despliegue: `respaldos/pre-20261104-140752-
 (base, código y estáticos; `desplegar.sh --revertir` no sirve con migraciones). Las facturas autorizadas en el SRI
 después del volcado no están en él: con documentos nuevos, corregir hacia adelante o volver a registrarlos.
 
-## Nota (14/11/2026) — bloque 1 del cierre contable: plan de cuentas y su importación, 6 migraciones (sin publicar)
+## Nota (14/11/2026) — bloque 1 del cierre contable: plan de cuentas y su importación, 7 migraciones (sin publicar)
 
 Rama `fase/contable-1-cuentas` sobre `74ebb3d`. Lo publicado es `e0f2902`, con `contabilidad 0003` y `tenancy 0012`
-aplicadas. El bloque añade seis migraciones: dos tablas nuevas con su seguridad por filas, tres permisos repartidos por el
-módulo del kardex y tres acciones de auditoría. Ninguna toca una tabla ni una columna que use la versión publicada.
+aplicadas. El bloque añade siete migraciones: dos tablas nuevas con su seguridad por filas, tres permisos repartidos por
+el módulo del kardex, la regla de la base que anula a los autores de cuentas y lotes cuando se borra un usuario, y tres
+acciones de auditoría. Ninguna toca una tabla ni una columna que use la versión publicada.
 
 | # | Migración | Qué hace | Vuelta |
 |---|---|---|---|
@@ -258,10 +259,24 @@ módulo del kardex y tres acciones de auditoría. Ninguna toca una tabla ni una 
 | 3 | `contabilidad/0006_permisos_plan_cuentas` | añade los tres permisos al módulo «Kardex por producto» y ejecuta `sync_roles`: Propietario, Administrador y Contador ven, crean y editan; Consulta solo ve; Vendedor y Cliente, nada. No crea módulos ni cambia el menú | quita esos tres permisos del módulo y de los roles, por ids en las tablas intermedias; las filas de `Permission` se quedan |
 | 4 | `contabilidad/0007_importacion_cuentas` | tabla `contabilidad_importacioncuentas` (lote: archivo privado, huella, filas leídas, columnas elegidas, estado, claves y resultado) y columna nula `lote_id` en `contabilidad_cuenta` | quita la columna y borra la tabla |
 | 5 | `contabilidad/0008_seguridad_por_filas_importacion` | RLS `fpa_empresa` forzada en la tabla de lotes (solo PostgreSQL) | quita la política |
-| 6 | `tenancy/0013_acciones_plan_cuentas` | acciones de auditoría `cuenta_creada`, `cuenta_modificada` y `cuentas_importadas` (solo `choices`) | solo `choices` |
+| 6 | `contabilidad/0009_anular_autores_en_la_base` | `ON DELETE SET NULL` en las cuatro claves hacia `user_user` (`creada_por` y `actualizada_por` de la cuenta, `creado_por` y `confirmado_por` del lote), que siguen diferidas y con su nombre (solo PostgreSQL; ver abajo) | nada: la regla se queda hasta que 0007 o 0004 borran su tabla |
+| 7 | `tenancy/0013_acciones_plan_cuentas` | acciones de auditoría `cuenta_creada`, `cuenta_modificada` y `cuentas_importadas` (solo `choices`) | solo `choices` |
 
-**Orden.** Un solo `migrate --noinput`, como siempre. Las de contabilidad van en fila, de 0004 a 0008. `tenancy 0013` va
+**Orden.** Un solo `migrate --noinput`, como siempre. Las de contabilidad van en fila, de 0004 a 0009. `tenancy 0013` va
 sobre `tenancy 0012`; no depende de las de contabilidad ni ellas de esta.
+
+**Por qué 0009.** Django anula `creada_por` y los demás con un UPDATE antes de borrar al usuario, y con la seguridad por
+filas forzada ese UPDATE solo alcanza a la empresa activa. Quitar de su última empresa a quien había creado cuentas en
+otra fallaba al confirmar, con la membresía ya quitada y el usuario sin ninguna (ensayo, D1); la versión publicada, que no
+conoce estas tablas, fallaba siempre que el usuario tuviera cuentas o lotes (D2 y D5). La base no aplica la seguridad por
+filas a sus acciones referenciales, así que con `ON DELETE SET NULL` las anula ella, en todas las empresas y con
+cualquier versión del código. Cambiar la acción es quitar la restricción y volver a crearla: quitarla toma
+`AccessExclusiveLock` sobre `user_user` (medido en PostgreSQL 16; crearla toma `ShareRowExclusiveLock`), y mientras dura
+ninguna petición con sesión lee su usuario. Al publicar dura milisegundos, porque las tablas se acaban de crear y están
+vacías. La migración fija `lock_timeout = 5s` para su transacción: si no consigue el bloqueo, falla sin cambiar nada,
+`desplegar.sh` se detiene antes de activar el código nuevo (0004 a 0008 quedan aplicadas, y la versión publicada sigue
+atendiendo sin problema) y basta repetir el despliegue. Quien cambie más adelante una de esas cuatro claves con
+`AlterField` tiene que volver a ponerle la acción: Django 5.2 no la conoce y recrearía la restricción sin ella.
 
 **Dependencia corregida a mano en 0004 y 0007.** `makemigrations` puso la última de `pos`, `0035_sale_ride_diseno`. Se
 cambió por `pos 0034_cliente_nacimiento_opcional`, la que ya exige `contabilidad 0001`: las tablas solo necesitan la
@@ -271,8 +286,9 @@ contabilidad debe mirar lo mismo.
 
 **Convivencia durante el despliegue.** `desplegar.sh` migra antes de cambiar el código, así que la versión publicada
 atiende un rato sobre la base ya migrada. No le afecta: no conoce las dos tablas nuevas, la columna `lote_id` está en una
-de ellas, `tenancy 0013` no cambia el esquema y los tres permisos que `0006` añade al módulo del kardex y a los roles no
-los usa. No hay columnas nuevas en tablas que ya existían.
+de ellas, `tenancy 0013` no cambia el esquema, los tres permisos que `0006` añade al módulo del kardex y a los roles no
+los usa y `0009` solo cambia la acción de cuatro claves de esas tablas (con ella, borrar desde esa versión a un usuario
+que creó cuentas funciona). No hay columnas nuevas en tablas que ya existían.
 
 **Vuelta del bloque a lo publicado**, sin datos nuevos, en este orden:
 
@@ -281,15 +297,15 @@ migrate contabilidad 0003_modulo_kardex
 migrate tenancy 0012_accion_diseno_factura
 ```
 
-Quedan pendientes las seis de la tabla. El módulo del kardex vuelve a sus tres permisos, ningún rol conserva los del plan
+Quedan pendientes las siete de la tabla. El módulo del kardex vuelve a sus tres permisos, ningún rol conserva los del plan
 de cuentas y el resto del menú y de los roles queda igual. Otra ida lo deja todo como estaba. Lo recorre
 `tests/test_migracion_vuelta_fase.py::test_vuelta_del_plan_de_cuentas_a_lo_publicado`, por subproceso, sobre una
 instalación SQLite con menú. Vuelta solo de la importación: `migrate contabilidad 0006_permisos_plan_cuentas`.
 
 **Las otras vueltas documentadas:**
 
-- La de la fase (`contabilidad zero`, `tributario zero`, …, `tenancy 0006`) deshace también estas seis: la prueba espera
-  47 pendientes, las 41 de antes más estas.
+- La de la fase (`contabilidad zero`, `tributario zero`, …, `tenancy 0006`) deshace también estas siete: la prueba espera
+  48 pendientes, las 41 de antes más estas.
 - La del diseño de factura (`configuracion 0003`, `pos 0034`, `tenancy 0011`) deshace además `tenancy 0013`, que va sobre
   0012. Las tablas del plan de cuentas no se tocan.
 
@@ -305,16 +321,67 @@ carpeta de cada empresa) y volver al código anterior, no `migrate` hacia atrás
 **Probado:** ida, vuelta a lo publicado y otra ida, y las vueltas de la fase y del diseño, en
 `tests/test_migracion_vuelta_fase.py` (SQLite, por subproceso); la política forzada de las dos tablas en PostgreSQL
 (`tests/test_rls_modelos_de_empresa.py` y las pruebas de seguridad por filas de `tests/test_cuentas.py` y
-`tests/test_cuentas_importacion.py`); `makemigrations --check --dry-run` sin cambios.
+`tests/test_cuentas_importacion.py`); en PostgreSQL, la acción y el diferido de las cuatro claves de 0009 y el borrado del
+usuario autor desde otra empresa y sin pasar por Django (`tests/test_cuentas.py::TestBorrarAlAutor`, que fallaba antes de
+0009 con la misma restricción que el ensayo); `makemigrations --check --dry-run` sin cambios.
+
+**Ensayo con la aplicación atendiendo (14/11/2026, sobre `84d07cc`, sin 0009).** Guiones propios fuera del repositorio
+(`ensayo-contable-1/guiones/`); los de la fase (`verif-firma/ensayo-fase/`) y de primera entrega no se tocaron. Tres
+pasadas y una de escala, cada una sobre el último volcado diario restaurado de nuevo (12 empresas, 112 usuarios), con un
+rol de base con los mismos atributos que el de producción (sin `BYPASSRLS`, dueño de las tablas), `e0f2902` atendiendo
+tráfico ficticio (consultas, proformas, compras, cobros, importación de XML e inicios de sesión), el SRI simulado y
+`migrate` como `desplegar.sh` más `lock_timeout=5s`. La máquina estaba cargada (6,4 a 10,9 con 6 núcleos): los tiempos
+están inflados.
+
+- Ida: `migrate` sin errores en las tres; 0 peticiones fallidas; 14,5 a 28,4 s de proceso; ninguna petición esperó por
+  un bloqueo (D4: las escrituras en `user_user` y `pos_company` habrían esperado hasta 3,2 s, por las claves nuevas de
+  0004 y 0007 hasta el final de cada migración; las lecturas no se bloquean).
+- Vuelta del bloque (`migrate contabilidad 0003_modulo_kardex`, `migrate tenancy 0012_accion_diseno_factura`) con
+  tráfico: sin errores de `migrate`, pero el `DROP TABLE` de 0007 y 0004 toma `AccessExclusiveLock` sobre `user_user` y
+  luego sobre `pos_company` (hasta 1,3 s) y en una pasada hubo un interbloqueo con un cobro, que PostgreSQL abortó sin
+  guardar nada (D3).
+- Otra ida después de la vuelta: igual que la primera.
+- Borrar usuarios: el autor de cuentas en otra empresa (D1) y, con el código anterior, cualquier autor (D2, D5): ver
+  «Por qué 0009».
+- `start_installation` de la versión anterior sobre la base migrada deja el módulo del kardex con su tupla vieja y a los
+  roles sin `view_cuenta`, `add_cuenta` ni `change_cuenta` (D6).
+- El reinicio del servicio deja de 3,5 a 13,8 s sin atender con la máquina cargada, de 15 a 27 peticiones fallidas por
+  cambio (conexiones rechazadas o cortadas); no es de este bloque (D7).
+
+**Plan de recuperación del bloque** (además de «Restauración»):
+
+1. Publicar con poco tráfico: la ida bloquea unos segundos las escrituras en `user_user` y `pos_company` (inicios de
+   sesión, ediciones de empresa) y, durante milisegundos, las lecturas de `user_user` (0009).
+2. Deshacer migraciones solo con la aplicación detenida o en mantenimiento, sin escrituras, y con `lock_timeout` corto
+   (2 a 5 s, en `PGOPTIONS`) y reintento: con tráfico, la vuelta puede interbloquearse con una escritura (D3).
+3. Volver solo el código (`desplegar.sh … --revertir`) con la base migrada: la versión anterior atiende. Con 0009 puede
+   borrar a un usuario que creó cuentas o lotes; sin 0009 (si el despliegue se detuvo antes) no hay que borrar usuarios
+   que crearon o editaron cuentas o lotes, y si ocurre, devolverle la membresía o borrarlo con la versión nueva. Borrar
+   una empresa con plan de cuentas da 500 y no borra nada (lo impide `PROTECT`, como debe; ya lo impedían su período de
+   suscripción y el `PROTECT` de los demás modelos de empresa). Desde `/plataforma/`, igual.
+4. No ejecutar `start_installation` de la versión anterior sobre la base migrada. Si ocurre, repararlo con
+   `organizar_menu` y `sync_roles` de la versión nueva (medido: 3 a 10 s) o con `migrate contabilidad 0005` seguido de
+   `migrate contabilidad`.
+5. El corte del reinicio (D7) se anuncia o se evita con una recarga sin corte de gunicorn: queda fuera del bloque.
 
 **No probado:**
 
-- El ensayo sobre una copia del respaldo de producción y el ensayo con la aplicación atendiendo. Sus guiones están fuera
-  del repositorio (`verif-firma/ensayo-fase/ensayo_migraciones_candidato.sh` y `ensayo-pe/guiones/`) y no se tocaron: su
-  vuelta sigue apuntando al estado anterior a la fase. Para ensayar la vuelta de este bloque, los destinos son los dos de
+- 0009 con la aplicación atendiendo: se añadió después del ensayo. Hay que repetirlo antes de publicar, con la vuelta de
   arriba.
 - La base real.
 
 **Choque conocido al fusionar con `fase/primera-entrega`.** Esa rama trae `tenancy/0013_acciones_borrador_factura`, también
 sobre `tenancy 0012`, y cambia el conteo de `tests/test_migracion_vuelta_fase.py`. Al unirlas, una de las dos `0013` pasa
-a `0014` sobre la otra, con sus `choices` completas, y el conteo y las listas de la prueba se suman.
+a `0014` sobre la otra, con sus `choices` completas, y el conteo y las listas de la prueba se suman. Si primera entrega
+se publica antes y este bloque encima (su acción como `tenancy 0014_acciones_plan_cuentas`), la vuelta de primera entrega
+(`migrate tenancy 0012_accion_diseno_factura`, en su `plan-de-despliegue.md`) deshace también la 0014 del bloque y deja
+aplicadas `contabilidad 0004-0009`: un estado mixto. En ese orden, para volver por debajo de primera entrega va primero la
+vuelta del bloque (`migrate contabilidad 0003_modulo_kardex`, `migrate tenancy 0013_acciones_borrador_factura`) y después
+la de primera entrega, o se restaura el volcado. La guarda de convivencia de esa rama
+(`tests/test_convivencia_versiones.py`, `DE_ESTA_ENTREGA`) recorre solo sus migraciones: al unirlas hay que añadirle
+`contabilidad 0004-0009` y la `tenancy` del bloque; `NO_NULAS_AGREGADAS` no cambia, porque la única columna que el bloque
+agrega (`cuenta.lote`) admite nulos y va en una tabla nueva.
+
+**Con `fase/contable-2-apertura`.** Esa rama, sin publicar y en curso, parte de `84d07cc` y numera sus migraciones de
+contabilidad desde `0009` sobre `0008`. Al llevarla sobre este bloque, su primera migración tiene que depender de
+`0009_anular_autores_en_la_base` (si no, `contabilidad` queda con dos hojas y `migrate` se niega).

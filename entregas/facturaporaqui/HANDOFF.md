@@ -2781,6 +2781,10 @@ Rama `fase/contable-1-cuentas` sobre `74ebb3d`, sin `push` y sin publicar. Es el
 y no cambió quién entra al complemento: `MENSAJE_COMPLEMENTO`, la lista de revisión, los precios y los planes siguen
 igual.
 
+**Hash.** El bloque se cierra en el último commit de la rama, el que trae esta nota. Código final de la aplicación y de
+las migraciones: `47b166e`; después solo hay pruebas que fijan lo que dice el contrato y documentación. (`282f17f` fue el
+código final de la primera ronda de correcciones y `84d07cc`, su nota.)
+
 - Contrato definitivo, con respuestas reales: [CONTRATO-CONTABLE-V9.md](CONTRATO-CONTABLE-V9.md) (reglas comunes,
   «Capacidades», C1, C2 y C3).
 - Migraciones y su vuelta: [MIGRACIONES-FASE-CONTABLE.md](MIGRACIONES-FASE-CONTABLE.md), nota del 14/11.
@@ -2798,12 +2802,14 @@ JSON y, salvo la primera, siguen detrás del complemento.
 **Decisiones de API.** Valen para esas rutas; el kardex y lo tributario no cambian.
 
 1. Toda negativa de la ruta es JSON, también en GET. Sin permiso: 403 `{"codigo": "sin_permiso", "causa": "permiso"}`.
-   Dos excepciones, las de todo el proyecto, que responden antes de llegar a la ruta: sin sesión, 302 a `/login/`; con
+   Tres excepciones, las de todo el proyecto, que responden antes de llegar a la ruta: sin sesión, 302 a `/login/`; con
    sesión y sin empresa activa (`CompanyMiddleware`), un GET recibe 302 a `/empresas/` y un POST o un PATCH, 403
-   `{"error": "Selecciona una empresa para continuar"}`, sin `codigo`. Una respuesta que no es JSON o un 403 sin
-   `codigo` se tratan como «vuelve a cargar la página».
+   `{"error": "Selecciona una empresa para continuar"}`, sin `codigo`; y un envío sin token CSRF válido (cabecera
+   `X-CSRFToken` con el valor de la cookie `csrftoken`), el 403 en HTML de Django. Una respuesta que no es JSON o un
+   403 sin `codigo` se tratan como «vuelve a cargar la página».
 2. `empresa` va en la consulta o en el cuerpo, también en JSON. Si no es la activa: 409 `empresa_cambiada`. En POST y
-   PATCH es obligatoria: sin ella, 409 `sin_empresa`. El formulario vale solo en POST (alta y subida del archivo): un
+   PATCH es obligatoria: sin ella, o si va dentro de un JSON que no se puede leer, 409 `sin_empresa`. El formulario
+   vale solo en POST (alta y subida del archivo): un
    PATCH va siempre en JSON.
 3. `clave`, con el formato del kardex. Misma clave y mismo contenido: mismo resultado con `repetido: true`. Misma clave y
    otro contenido: 409 `clave_usada`.
@@ -2824,6 +2830,14 @@ JSON y, salvo la primera, siguen detrás del complemento.
 - `core/tenancy/pestanas.py`: `empresa` se lee también de un cuerpo JSON. Ninguna pantalla actual lo manda así.
 - `core/suscripciones/middleware.py`: los 403 de licencia añaden `causa` y, en `/tributario/` y `/contabilidad/`,
   `licencia`; el del plan añade `codigo: "plan"`. No se quitó ninguna clave ni cambió ninguna redirección.
+- `core/suscripciones/reglas.py`: `RUTAS_DE_CAPACIDADES`, de coincidencia exacta (no por prefijo), con la que
+  `requiere_plan` y `requiere_complemento` dejan pasar solo `/contabilidad/api/capacidades/`. Son las funciones que
+  deciden quién entra: una rama que las toque tiene que conservar esa excepción y nada más.
+- `core/tenancy/roles.py`: `add_cuenta` y `change_cuenta` en `ACCOUNTANT_WRITE` (el Contador crea, edita e importa el
+  plan de cuentas).
+- `core/tenancy/models.py`: tres `AuditLog.ACTIONS` (`cuenta_creada`, `cuenta_modificada` y `cuentas_importadas`) y su
+  migración `tenancy 0013`, que choca con la de `fase/primera-entrega` (ver «Choque conocido» en
+  [MIGRACIONES-FASE-CONTABLE.md](MIGRACIONES-FASE-CONTABLE.md)).
 
 **Al conectar, tener en cuenta:**
 
@@ -2839,8 +2853,9 @@ JSON y, salvo la primera, siguen detrás del complemento.
 **Sin decidir, y no bloquea conectar:** reglas sobre padres inactivos (hoy se puede colgar una cuenta de un grupo
 desactivado) y cuánto tiempo se conservan los lotes que se quedan en vista previa.
 
-**Pruebas.** Sobre `d8399e5`, el código final del bloque (después solo hay documentación): suite completa en SQLite, 2112
-aprobadas y 78 omitidas (las exclusivas de PostgreSQL), sin fallos; `makemigrations --check --dry-run`, sin cambios. En
+**Pruebas.** Sobre `d8399e5`, antes de las dos rondas de correcciones (el código final es `47b166e`: ver «Pruebas de las
+correcciones» y la segunda ronda, más abajo): suite completa en SQLite, 2112 aprobadas y 78 omitidas (las exclusivas
+de PostgreSQL), sin fallos; `makemigrations --check --dry-run`, sin cambios. En
 PostgreSQL con seguridad por filas, los archivos del bloque y los que vigilan menú, roles, rutas, migraciones y
 auditoría: 375 aprobadas, sin fallos (once archivos sobre `8b2e57c` y el del inicio sobre `d8399e5`; entre los dos commits
 solo cambió ese archivo de pruebas). **Falta** repetir sobre el código final la suite completa de PostgreSQL, que incluye
@@ -2904,8 +2919,9 @@ original.
   de `/tributario/` que acepte formularios y no use `ApiContable` tiene que comprobar la licencia por su cuenta, como
   el kardex.
 
-**Pruebas de las correcciones.** Sobre `282f17f`, el código final (después solo hay documentación y una aserción de
-prueba partida en dos líneas). Son 37 casos nuevos en `tests/test_capacidades.py` (7), `tests/test_cuentas.py` (6),
+**Pruebas de las correcciones.** Sobre `282f17f`, el código final de esa ronda (después solo hay documentación y una
+aserción de prueba partida en dos líneas). Son 37 casos nuevos en `tests/test_capacidades.py` (7),
+`tests/test_cuentas.py` (6),
 `tests/test_cuentas_importacion.py` (23) y `tests/test_zz_cuentas_concurrencia_pg.py` (1); los de los defectos fallaban
 antes del cambio y los tres de documentación fijan el comportamiento que el contrato describe ahora.
 
@@ -2922,3 +2938,93 @@ antes del cambio y los tres de documentación fijan el comportamiento que el con
   que declara 975 bytes, leído en 0,01 s. En ninguno sube la memoria.
 
 No se repitieron la suite completa de SQLite ni la completa de PostgreSQL. Sin navegador: no hay pantallas nuevas.
+
+Después de esta nota, la revisión contra la orden corrió sobre su copia de `84d07cc` la suite completa de SQLite: 2148
+aprobadas y 79 omitidas, sin fallos (43 min con la máquina cargada).
+
+### Segunda ronda de correcciones del bloque 1 (14/11/2026)
+
+Vienen de la revisión de las correcciones, de la revisión contra la orden, del ensayo de migración con la versión
+publicada atendiendo (sobre una copia), del recorrido en navegador y de una integración de prueba con
+`fase/primera-entrega`. Todo en la misma rama, sin `push` y sin publicar. No se tocó ninguna plantilla, CSS ni JS, ni
+quién entra al complemento, los precios o los planes. Hay una migración nueva, `contabilidad 0009`.
+
+| Hallazgo | Qué pasaba | Qué se hizo |
+|---|---|---|
+| XLSX con una parte en bzip2 o lzma (P2) | `ZipFile` descomprime de una vez cada trozo leído de esas partes: un XLSX de 5 KB que declaraba 1 KB ocupaba cientos de megas, también en una parte que el lector nunca abre (`xl/media/…`, desde la primera ronda) | 400 `formato` antes de abrir la parte: un XLSX solo usa deflate o nada |
+| Logo SVG dentro del XLSX (P3) | Su `DOCTYPE` estándar rechazaba el libro como «declaraciones» | La copia que recibe el lector lleva solo las partes `.xml` y `.rels`, revisadas; las demás se leen (suma y cifrado) y no se copian, así que el lector tampoco puede tomar por hoja una parte sin revisar |
+| Borrar a quien creó cuentas en otra empresa (ensayo D1, P2) | La seguridad por filas limitaba a la empresa activa el UPDATE con el que Django anula `creada_por` y los demás: el borrado fallaba al confirmar con la membresía ya quitada | `contabilidad 0009`: `ON DELETE SET NULL` en la base para las cuatro claves de cuentas y lotes hacia el usuario |
+| Borrar usuarios con el código anterior (ensayo D2 y D5, P2 y P3) | `e0f2902` no conoce estas tablas: con la base migrada, borrar a un autor fallaba siempre (200 con el error crudo, o 500 en `/plataforma/`) | La misma 0009. Borrar una empresa con plan de cuentas sigue sin poder hacerse (`PROTECT`, querido): queda en el plan de recuperación |
+| Vuelta con tráfico, ida, `start_installation` anterior y corte del reinicio (ensayo D3, D4, D6 y D7) | Ver MIGRACIONES | Plan de recuperación del bloque en MIGRACIONES; sin cambio de código |
+| CSRF (orden y navegador, P3) | Un envío sin `X-CSRFToken` recibe el 403 en HTML de Django, y el contrato decía que había solo dos excepciones | Tercera excepción en el contrato; una prueba la fija |
+| JSON ilegible con la empresa dentro (navegador, P3) | 409 `sin_empresa`, y el contrato decía 400 `cuerpo` sin condición | Contrato; una prueba lo fija |
+| C3: lote de otra empresa (orden, P3) | 404 `lote`; los cambios de C3 no lo decían frente al 409 de la propuesta | Contrato |
+| Nota del bloque (orden, P3) | Sin hash del bloque cerrado, con el código final mal nombrado, sin «dependencia concreta» y sin tres archivos compartidos | Esta nota: «Hash», «Pruebas», «Archivos compartidos» y lo de abajo |
+| Integración con primera entrega (P3) | Cabecera `X-FPA-Empresa`, orden de las vueltas y guarda de convivencia | Receta de abajo; la nota de vueltas, también en MIGRACIONES |
+
+**Dependencia concreta.**
+
+- Para publicar el bloque, en este orden: (1) la suite completa de PostgreSQL sobre el commit final (la lanza el
+  orquestador al terminar este flujo); (2) repetir el ensayo con la aplicación atendiendo sobre una copia del volcado
+  diario, ahora con `contabilidad 0009` (el del 14/11 fue sobre `84d07cc`), con la vuelta del bloque
+  (`migrate contabilidad 0003_modulo_kardex`, `migrate tenancy 0012_accion_diseno_factura`) y la aplicación detenida
+  para la vuelta; (3) la revisión de esta ronda; (4) la autorización de la propietaria. Bloquea la publicación, no el
+  desarrollo: los bloques siguientes pueden seguir sobre esta rama.
+- Para usar C1, C2 y C3, ninguna dependencia funcional. Quién entra sigue la lista de revisión del complemento y el plan
+  pagado, y abrirlo a más empresas depende de D9 (propietaria: impuestos, alcance multiempresa y condiciones de
+  activación); mientras tanto, cerrado salvo la lista. El piloto NEXALLTI necesita su Excel real (lo trae el cliente) y
+  la decisión de incluir su RUC en la lista (propietaria); mientras tanto, no está. D5 (contador) solo hace falta para
+  ofrecer la plantilla Supercias; mientras tanto, cada empresa trae su plan por importación o por alta.
+- Decisiones menores abiertas, que no bloquean conectar, con su valor provisional:
+
+  | Decisión | Quién decide | Mientras tanto |
+  |---|---|---|
+  | Tope descomprimido del XLSX (`MAX_DESCOMPRIMIDO`): un XLSX de 55 KB con 1,2 millones de cadenas diminutas tarda 20 s | Claude, técnica; la propietaria si llega a rechazar archivos reales | 20 MB |
+  | Cuánto se conservan los lotes en vista previa y sus archivos, y si hay un límite por empresa | Propietaria (retención de datos subidos) | No caducan ni se limitan |
+  | Colgar cuentas de un grupo desactivado | Contador | Se permite |
+  | Borrar usuarios con registros en tablas ya publicadas de otra empresa (ver «Pendiente») | Propietaria, con la propuesta de Claude | Como hoy en producción |
+  | Recarga sin corte en `desplegar.sh` (ensayo D7) | Propietaria, con la propuesta de Claude | Se anuncia el corte |
+
+**Receta de integración con `fase/primera-entrega`** (no se fusionó aquí):
+
+- Migraciones: lo de «Choque conocido» en MIGRACIONES (una `tenancy 0013` pasa a `0014`, el orden de las vueltas si primera
+  entrega se publica antes, y `DE_ESTA_ENTREGA` de `tests/test_convivencia_versiones.py` con `contabilidad 0004-0009` y
+  la `tenancy` del bloque; `NO_NULAS_AGREGADAS` no cambia).
+- Contrato: con esa rama, la cabecera `X-FPA-Empresa` (jQuery la manda sola, `static/js/functions.js`) también produce el
+  409 `empresa_cambiada` en las rutas nuevas, en GET incluido, antes que `PlanMiddleware` y que la vista, con el mismo
+  cuerpo que `?empresa=`. Al integrar hay que añadirla en las reglas comunes y en el puesto 1 del orden de las
+  negativas, y aclarar en el puesto 3 que no sustituye a `empresa` del cuerpo: un envío con la cabecera correcta y sin
+  `empresa` sigue recibiendo 409 `sin_empresa`. Aquí no se escribió porque en esta rama la cabecera no existe.
+
+**Pendiente (no se corrigió en esta ronda):**
+
+- Borrar desde una empresa a un usuario que, en otra, dejó registros en tablas ya publicadas con `SET_NULL` hacia él
+  (movimientos manuales del kardex, cobros, adjuntos, proformas, puntos…) sigue fallando como en producción: la
+  membresía se quita y el usuario queda sin ninguna, con el error crudo de PostgreSQL. No se aplicaron las dos salidas
+  de código propuestas: con la baja y el borrado en una transacción común, una empresa no podría retirarle el acceso
+  mientras tenga registros en otra; con `platform_scope`, el borrado alcanzaría en cascada filas de otras empresas
+  (`pos.Client.user` y los puntos autorizados son `CASCADE`). La salida limpia es la misma regla de la base para esas
+  claves, en un bloque propio con su ensayo, porque son tablas con datos.
+- La vuelta en caliente sin interbloqueos (quitar primero las claves hacia `user_user` y `pos_company` en transacciones
+  separadas en las vueltas de 0007 y 0004) y una ida que no bloquee escrituras (crear esas claves en migraciones cortas
+  propias): no se cambiaron migraciones ya ensayadas; el plan de recuperación pide la vuelta con la aplicación detenida.
+- Lo que ya estaba: `PlanMiddleware` sigue tomando por consulta un formulario con `action=search…`.
+
+**Pruebas de esta ronda.** Sobre `47b166e`, el código final, con la máquina compartida y cargada (media de 4 a 6 con 6
+núcleos). Son 11 casos nuevos: 6 en `tests/test_cuentas_importacion.py` (bzip2 y lzma en `xl/media` y en
+`[Content_Types].xml` con un techo de memoria de 16 MB, el logo SVG y la hoja guardada como imagen), 4 en
+`tests/test_cuentas.py` (las tres de `TestBorrarAlAutor`, solo PostgreSQL, y el JSON ilegible con la empresa dentro) y 1
+en `tests/test_capacidades.py` (CSRF). Los de defectos fallaban antes del cambio: los seis del XLSX en SQLite y los tres
+de `TestBorrarAlAutor` en PostgreSQL, con la misma restricción que el ensayo. Los dos de documentación fijan lo que el
+código ya hacía y el contrato dice ahora.
+
+- `makemigrations --check --dry-run`: sin cambios.
+- SQLite, 38 archivos de contabilidad, tributario, complemento, capacidades, planes, menú, roles, rutas, migraciones,
+  auditoría y seguridad por filas: 725 aprobadas y 37 omitidas (las exclusivas de PostgreSQL), sin fallos, en 21 min.
+- PostgreSQL con seguridad por filas: `tests/test_cuentas.py`, `tests/test_cuentas_importacion.py` y
+  `tests/test_rls_modelos_de_empresa.py`, 204 aprobadas, sin fallos ni omitidas.
+- Una sonda que no se entrega, en PostgreSQL: dentro de una transacción, crear una clave hacia `user_user` toma
+  `ShareRowExclusiveLock` sobre `user_user` y quitarla, `AccessExclusiveLock`. Es lo que cuenta MIGRACIONES para 0009.
+
+Quedan para el orquestador la suite completa de PostgreSQL (con las de concurrencia) y, antes de publicar, el ensayo con
+0009.
