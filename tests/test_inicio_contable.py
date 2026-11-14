@@ -497,6 +497,24 @@ class TestLicencia:
         settings.FPA_COMPLEMENTO_CONTABLE_REVISION = [empresa.ruc]
         assert leer(entrar)['acceso']['licencia']['estado'] == 'activa'
 
+    def test_pestana_de_otra_empresa_y_licencia_de_la_activa(self, client, empresa, settings):
+        """Una pestaña armada para otra empresa recibe el 409 antes que el 403 de licencia, para que recargue. La excepción
+        es de PlanMiddleware y ya existía en las demás consultas: si la empresa activa no tiene plan pagado, a un GET le
+        responde primero el 403 del plan."""
+        fuera, vencida = helpers.crear_empresa('FUERA DE LA LISTA'), helpers.crear_empresa('PLAN VENCIDO')
+        gratuita = helpers.crear_empresa('SIN PLAN PAGADO', plan=None)
+        vencer(vencida)
+        settings.FPA_COMPLEMENTO_CONTABLE_REVISION = [empresa.ruc, vencida.ruc, gratuita.ruc]
+        usuario = entrar_como(client, empresa, ROLE_OWNER)
+        visto = {}
+        for activa in (fuera, vencida, gratuita):
+            Membership.objects.create(user=usuario, company=activa, group=Group.objects.get(name=ROLE_OWNER))
+            client.post('/empresas/cambiar/', {'company': activa.pk})
+            respuesta = client.get(f'{URL}?empresa={empresa.pk}')   # la pestaña que quedó con la primera empresa
+            visto[activa.pk] = (respuesta.status_code, respuesta.json()['codigo'])
+            assert 'etapas' not in respuesta.json()
+        assert visto == {fuera.pk: (409, 'empresa_cambiada'), vencida.pk: (409, 'empresa_cambiada'), gratuita.pk: (403, 'plan')}
+
     def test_sin_plan_pagado(self, client):
         gratuita = helpers.crear_empresa('GRATIS INICIO', plan=None)
         entrar_como(client, gratuita, ROLE_OWNER)
