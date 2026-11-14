@@ -259,7 +259,7 @@ acciones de auditoría. Ninguna toca una tabla ni una columna que use la versió
 | 3 | `contabilidad/0006_permisos_plan_cuentas` | añade los tres permisos al módulo «Kardex por producto» y ejecuta `sync_roles`: Propietario, Administrador y Contador ven, crean y editan; Consulta solo ve; Vendedor y Cliente, nada. No crea módulos ni cambia el menú | quita esos tres permisos del módulo y de los roles, por ids en las tablas intermedias; las filas de `Permission` se quedan |
 | 4 | `contabilidad/0007_importacion_cuentas` | tabla `contabilidad_importacioncuentas` (lote: archivo privado, huella, filas leídas, columnas elegidas, estado, claves y resultado) y columna nula `lote_id` en `contabilidad_cuenta` | quita la columna y borra la tabla |
 | 5 | `contabilidad/0008_seguridad_por_filas_importacion` | RLS `fpa_empresa` forzada en la tabla de lotes (solo PostgreSQL) | quita la política |
-| 6 | `contabilidad/0009_anular_autores_en_la_base` | `ON DELETE SET NULL` en las cuatro claves hacia `user_user` (`creada_por` y `actualizada_por` de la cuenta, `creado_por` y `confirmado_por` del lote), que siguen diferidas y con su nombre (solo PostgreSQL; ver abajo) | nada: la regla se queda hasta que 0007 o 0004 borran su tabla |
+| 6 | `contabilidad/0009_anular_autores_en_la_base` | `ON DELETE SET NULL` en las cuatro claves hacia `user_user` (`creada_por` y `actualizada_por` de la cuenta, `creado_por` y `confirmado_por` del lote), que siguen diferidas y con su nombre; pide el bloqueo de `user_user` en intentos cortos (solo PostgreSQL; ver abajo) | nada: la regla se queda hasta que 0007 o 0004 borran su tabla |
 | 7 | `tenancy/0013_acciones_plan_cuentas` | acciones de auditoría `cuenta_creada`, `cuenta_modificada` y `cuentas_importadas` (solo `choices`) | solo `choices` |
 
 **Orden.** Un solo `migrate --noinput`, como siempre. Las de contabilidad van en fila, de 0004 a 0009. `tenancy 0013` va
@@ -271,12 +271,39 @@ otra fallaba al confirmar, con la membresía ya quitada y el usuario sin ninguna
 conoce estas tablas, fallaba siempre que el usuario tuviera cuentas o lotes (D2 y D5). La base no aplica la seguridad por
 filas a sus acciones referenciales, así que con `ON DELETE SET NULL` las anula ella, en todas las empresas y con
 cualquier versión del código. Cambiar la acción es quitar la restricción y volver a crearla: quitarla toma
-`AccessExclusiveLock` sobre `user_user` (medido en PostgreSQL 16; crearla toma `ShareRowExclusiveLock`), y mientras dura
-ninguna petición con sesión lee su usuario. Al publicar dura milisegundos, porque las tablas se acaban de crear y están
-vacías. La migración fija `lock_timeout = 5s` para su transacción: si no consigue el bloqueo, falla sin cambiar nada,
-`desplegar.sh` se detiene antes de activar el código nuevo (0004 a 0008 quedan aplicadas, y la versión publicada sigue
-atendiendo sin problema) y basta repetir el despliegue. Quien cambie más adelante una de esas cuatro claves con
-`AlterField` tiene que volver a ponerle la acción: Django 5.2 no la conoce y recrearía la restricción sin ella.
+`AccessExclusiveLock` sobre `user_user` (medido en PostgreSQL 16; crearla toma `ShareRowExclusiveLock`). Mientras 0009
+espera ese bloqueo, toda lectura nueva de `user_user` (cada petición con sesión) hace cola detrás de ella, y mientras lo
+tiene, también. 0004 y 0007 solo toman `ShareRowExclusiveLock`, que no para lecturas: este parón es propio de 0009.
+
+La primera versión de 0009 lo esperaba una sola vez, con `lock_timeout = 5s`, y no era cosa de milisegundos: con otra
+transacción abierta que solo había leído `user_user`, cada petición con sesión se paraba hasta 5 s y, si la retención
+pasaba de 5 s, `migrate` fallaba (verificación de la segunda ronda: retención de 2 s, lectura parada 1,66 s y 0009 bien a
+los 2,18 s; de 8 s, lectura parada 5,07 s y 0009 cortada por `lock_timeout` a los 5,59 s). Ahora lo pide en intentos
+cortos. Cada intento va en su propio punto de guardado (`transaction.atomic` anidado), toma primero las dos tablas del
+plan y al final `user_user`, con `lock_timeout` de 1 s por bloqueo; si no lo consigue, vuelve al punto de guardado, con lo
+que suelta lo que había tomado y las lecturas en cola pasan, espera 2 s sin retener nada y lo intenta de nuevo, hasta 8
+veces. Con `user_user` ya tomado no queda ningún bloqueo que esperar: los dos `ALTER TABLE` (uno por tabla, con sus dos
+claves; cada clave se quita y se vuelve a crear con su nombre y `DEFERRABLE INITIALLY DEFERRED`) van sobre tablas recién
+creadas y vacías y duran milisegundos, hasta que `migrate` confirma la migración. Tomar `user_user` el último es lo que
+acota el parón: con los `ALTER TABLE` solos, el segundo podía esperar por su tabla con `user_user` ya tomado. Un
+interbloqueo con una petición que ya leyó `user_user` y quiere leer una tabla del plan cuenta como un intento fallido.
+
+**Peor caso de 0009:** las lecturas de `user_user` se paran como mucho un intento (1 s, más los milisegundos del cambio
+en el que lo consigue), como mucho 8 veces, separadas por 2 s sin bloqueo: unos 22 s en total. Las de las tablas del
+plan, que la versión publicada no conoce, se paran durante todo el intento. Si se agotan los intentos, porque otra
+transacción retiene `user_user` todo ese tiempo, `migrate` falla sin haber cambiado nada, con un mensaje que dice qué
+tabla esperaba y qué hacer: `desplegar.sh` se detiene antes de activar el código nuevo (0004 a 0008 quedan aplicadas, y
+la versión publicada sigue atendiendo sin problema) y basta repetir el despliegue, mejor con poco tráfico.
+
+Medido con `tests/test_zz_cuentas_0009_bloqueo_pg.py` (PostgreSQL 16, 14/11/2026 hacia las 23:55 UTC, carga de 4 con 6
+núcleos), que vuelve a 0008, deja las claves como las crea Django y retiene `user_user` desde otra conexión mientras una
+tercera lo lee sin parar: retenido 3,5 s desde el primer intento, 0009 terminó a los 3,53 s, con nombres y diferido
+intactos, y la lectura más lenta esperó 0,98 s (de 50); retenido hasta que se rinde (3 intentos en la prueba), falló a los
+6,99 s con el mensaje, sin anotarse y con las cuatro claves como estaban, y la lectura más lenta esperó 1,00 s (de 90). Con
+la 0009 anterior la misma prueba falla en los dos casos (con la retención larga, `lock_timeout` a los 5 s). Si 0009 se
+volviera a aplicar con cuentas y lotes ya cargados, la comprobación de cada clave recorre su tabla con el bloqueo tomado:
+al publicar están vacías. Quien cambie más adelante una de esas cuatro claves con `AlterField` tiene que volver a ponerle la acción: Django 5.2 no
+la conoce y recrearía la restricción sin ella.
 
 **Dependencia corregida a mano en 0004 y 0007.** `makemigrations` puso la última de `pos`, `0035_sale_ride_diseno`. Se
 cambió por `pos 0034_cliente_nacimiento_opcional`, la que ya exige `contabilidad 0001`: las tablas solo necesitan la
@@ -326,7 +353,8 @@ carpeta de cada empresa) y volver al código anterior, no `migrate` hacia atrás
 (`tests/test_rls_modelos_de_empresa.py` y las pruebas de seguridad por filas de `tests/test_cuentas.py` y
 `tests/test_cuentas_importacion.py`); en PostgreSQL, la acción y el diferido de las cuatro claves de 0009 y el borrado del
 usuario autor desde otra empresa y sin pasar por Django (`tests/test_cuentas.py::TestBorrarAlAutor`, que fallaba antes de
-0009 con la misma restricción que el ensayo); `makemigrations --check --dry-run` sin cambios.
+0009 con la misma restricción que el ensayo); 0009 con `user_user` retenido desde otra conexión
+(`tests/test_zz_cuentas_0009_bloqueo_pg.py`, ver «Por qué 0009»); `makemigrations --check --dry-run` sin cambios.
 
 **Ensayo con la aplicación atendiendo (14/11/2026, sobre `84d07cc`, sin 0009).** Guiones propios fuera del repositorio
 (`ensayo-contable-1/guiones/`); los de la fase (`verif-firma/ensayo-fase/`) y de primera entrega no se tocaron. Tres
@@ -354,7 +382,10 @@ están inflados.
 **Plan de recuperación del bloque** (además de «Restauración»):
 
 1. Publicar con poco tráfico: la ida bloquea unos segundos las escrituras en `user_user` y `pos_company` (inicios de
-   sesión, ediciones de empresa) y, durante milisegundos, las lecturas de `user_user` (0009).
+   sesión, ediciones de empresa) y, en 0009, las lecturas de `user_user` (cada petición con sesión): milisegundos si
+   nada retiene `user_user`; si una transacción lo retiene, hasta 1 s por intento y como mucho 8 intentos en unos 22 s,
+   con 2 s sin bloqueo entre uno y otro. Si no lo consigue, `migrate` falla sin cambiar nada, `desplegar.sh` se detiene
+   con la versión publicada atendiendo y se repite el despliegue (ver «Por qué 0009»).
 2. Deshacer migraciones solo con la aplicación detenida o en mantenimiento, sin escrituras, y con `lock_timeout` corto
    (2 a 5 s, en `PGOPTIONS`) y reintento: con tráfico, la vuelta puede interbloquearse con una escritura (D3). Toda vuelta
    del bloque por debajo de 0007 o de 0004 borra lotes o cuentas con sus datos: con datos registrados no se deshace, se
@@ -406,7 +437,9 @@ están inflados.
 **No probado:**
 
 - 0009 con la aplicación atendiendo: se añadió después del ensayo. Hay que repetirlo antes de publicar, con la vuelta de
-  arriba.
+  arriba, y con una transacción que retenga `user_user` (que lo lea y quede abierta) mientras corre 0009: una vez más
+  que un intento y menos que todos, para medir con tráfico el parón de las peticiones con sesión, y otra más que todos,
+  para ver el fallo limpio y que repetir el despliegue basta. La prueba de PostgreSQL lo mide sin tráfico.
 - La base real.
 
 **Choque conocido al fusionar con `fase/primera-entrega`.** Esa rama trae `tenancy/0013_acciones_borrador_factura`, también
