@@ -51,6 +51,7 @@ MAX_DESCOMPRIMIDO = 20 * MB
 # XML la expande a gigas de memoria. Se busca en las codificaciones que ese lector entiende: las de un byte por carácter
 # (UTF-8, ISO-8859-1…) lo escriben igual que ASCII, y UTF-16 en sus dos órdenes.
 DOCTYPE = tuple('<!DOCTYPE'.encode(codificacion) for codificacion in ('ascii', 'utf-16-le', 'utf-16-be'))
+TROZO = 64 * 1024                # las partes de un XLSX se leen a trozos: ver _xlsx_revisado
 MAX_FILAS_HOJA = 1_048_576       # las que admite una hoja de cálculo: una hoja que declare más está mal formada
 MAX_COLUMNAS = 40
 # Celdas que se llegan a mirar, con contenido o sin él (5 000 filas de 40 columnas son 200 000). Una hoja con formato hasta
@@ -194,27 +195,46 @@ def _filas_csv(datos):
         raise api.ErrorApi('formato', TEXTOS['comillas'].format(fila=leidas + 1)) from None
 
 
-def _filas_xlsx(datos):
-    """Filas `(número, valores)` de la primera hoja de un XLSX (con la fórmula ya calculada, si la hay). El tamaño
-    descomprimido se comprueba antes de abrirlo, con lo que declara el ZIP: al leer, zipfile no entrega más que eso. Y,
-    si cabe, se mira cada parte antes de dársela al lector de XML: ninguna puede declarar entidades (DOCTYPE)."""
-    import openpyxl
+def _xlsx_revisado(datos):
+    """El XLSX que se le da al lector: una copia sin comprimir de sus partes, ya revisadas. Un XLSX es un ZIP y lo que
+    declara no basta para fiarse de él:
+
+    - el tamaño descomprimido se comprueba antes de leer nada, con lo que declara cada parte;
+    - cada parte se lee a trozos y hasta lo que declara. `ZipFile.read`, que es lo que usa el lector, descomprime de una
+      vez todo lo que trae la entrada y solo después lo recorta: una parte que declara 1 KB y trae 300 MB ocupaba 600 MB
+      de memoria. Por eso el lector no recibe el archivo original sino esta copia, cuyas partes ocupan lo que dicen;
+    - ninguna parte puede declarar entidades XML (ver DOCTYPE). Se miran todas, se llamen como se llamen: cuál lee el
+      lector como cadenas compartidas o como hoja lo dice el propio archivo.
+
+    Entre todas las partes no pasan de MAX_DESCOMPRIMIDO, y eso es lo más que ocupa la copia."""
+    revisado = io.BytesIO()
     try:
-        with zipfile.ZipFile(io.BytesIO(datos)) as comprimido:
-            partes = comprimido.infolist()
-            descomprimido = sum(parte.file_size for parte in partes)
-            # Todas las partes, se llamen como se llamen: cuál lee el lector como cadenas compartidas o como hoja lo dice
-            # el propio archivo. De una en una; entre todas no pasan del tope.
-            declara = descomprimido <= MAX_DESCOMPRIMIDO and any(
-                marca in contenido for contenido in map(comprimido.read, partes) for marca in DOCTYPE)
+        with zipfile.ZipFile(io.BytesIO(datos)) as original, zipfile.ZipFile(revisado, 'w', zipfile.ZIP_STORED) as copia:
+            partes = original.infolist()
+            if sum(parte.file_size for parte in partes) > MAX_DESCOMPRIMIDO:
+                raise api.ErrorApi('archivo_grande', TEXTOS['descomprimido'])
+            # Con nombres repetidos vale la última entrada, que es la que el lector encontraría por su nombre.
+            for parte in {parte.filename: parte for parte in partes}.values():
+                with original.open(parte) as abierta:
+                    contenido = b''.join(iter(lambda: abierta.read(TROZO), b''))
+                if any(marca in contenido for marca in DOCTYPE):
+                    raise _ilegible('xlsx_declaraciones')
+                copia.writestr(parte.filename, contenido)
+    except api.ErrorApi:
+        raise
     except Exception:   # noqa: BLE001 - no es un ZIP, o una parte está dañada, cifrada o comprimida de otra forma
         raise _ilegible() from None
-    if descomprimido > MAX_DESCOMPRIMIDO:
-        raise api.ErrorApi('archivo_grande', TEXTOS['descomprimido'])
-    if declara:
-        raise _ilegible('xlsx_declaraciones')
+    revisado.seek(0)
+    return revisado
+
+
+def _filas_xlsx(datos):
+    """Filas `(número, valores)` de la primera hoja de un XLSX (con la fórmula ya calculada, si la hay). El lector no
+    abre el archivo tal como llegó, sino su copia revisada."""
+    import openpyxl
+    revisado = _xlsx_revisado(datos)
     try:
-        libro = openpyxl.load_workbook(io.BytesIO(datos), read_only=True, data_only=True)
+        libro = openpyxl.load_workbook(revisado, read_only=True, data_only=True)
         hoja = libro.worksheets[0]
         hoja.reset_dimensions()   # sin fiarse del tamaño que declara la hoja: algunos programas lo escriben mal
         filas = iter(hoja.iter_rows(values_only=True))

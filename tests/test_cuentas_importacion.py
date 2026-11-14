@@ -12,8 +12,11 @@ import hashlib
 import io
 import json
 import os
+import struct
 import time
+import tracemalloc
 import zipfile
+import zlib
 from datetime import date, timedelta
 from itertools import count
 from types import SimpleNamespace
@@ -398,6 +401,38 @@ class TestLectura:
             comprimido.read('xl/media/relleno.bin')
         assert rechazo(subir(entrar, empresa, bytes(datos), 'plan.xlsx'), 400, 'formato')
         assert lotes(empresa) == []
+
+    def test_xlsx_con_una_parte_que_trae_mas_de_lo_que_declara(self):
+        """El tope descomprimido se comprueba con lo que declara el ZIP, pero `ZipFile.read` descomprime de una vez todo lo
+        que trae la entrada y solo después lo recorta: una parte que declara 1 KB y trae cientos de megas ocupaba esa
+        memoria al abrir el libro (300 KB de archivo, 600 MB). Se lee a trozos y hasta lo declarado, y el lector recibe
+        una copia cuyas partes ocupan lo que dicen. Aquí son 64 MB de relleno detrás de `[Content_Types].xml`, la primera
+        parte que el lector abre; el libro, por lo demás, es el de siempre y se lee igual."""
+        partes = partes_de(xlsx_de(*PLAN))
+        tipos = partes.pop('[Content_Types].xml')
+        salida = io.BytesIO()
+        with zipfile.ZipFile(salida, 'w', zipfile.ZIP_DEFLATED) as comprimido:
+            for nombre, contenido in partes.items():
+                comprimido.writestr(nombre, contenido)
+            with comprimido.open('[Content_Types].xml', 'w') as parte:
+                parte.write(tipos)
+                for _ in range(64):
+                    parte.write(b' ' * importar_cuentas.MB)
+        datos = bytearray(salida.getvalue())
+        entrada = datos.rindex(b'PK\x01\x02')   # la última del directorio del ZIP: ahí se declaran su suma y su tamaño
+        struct.pack_into('<L', datos, entrada + 16, zlib.crc32(tipos))
+        struct.pack_into('<L', datos, entrada + 24, len(tipos))
+        datos = bytes(datos)
+        with zipfile.ZipFile(io.BytesIO(datos)) as comprimido:
+            assert sum(parte.file_size for parte in comprimido.infolist()) < 20_000 and len(datos) < 100_000
+        tracemalloc.start()
+        try:
+            extension, encabezados, filas = importar_cuentas.leer(datos)
+            pico = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+        assert (extension, encabezados, [fila['c'][0] for fila in filas]) == ('xlsx', ['Código', 'Nombre'], ['1', '1.1', '1.1.01', '1.1.02', '2'])
+        assert pico < 16 * importar_cuentas.MB, f'{pico / importar_cuentas.MB:.0f} MB'
 
     def test_hoja_con_una_celda_perdida_muy_lejos(self, entrar, empresa):
         """Una celda con formato en la última fila de la hoja no obliga a recorrer un millón de filas con contenido: las
