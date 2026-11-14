@@ -32,7 +32,8 @@ SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note', 'a
 # Escritura que sí recibe el Contador: adjuntar y quitar comprobantes de pago (respaldo contable) y guardar, completar,
 # vincular o descartar recibos por completar (completar crea el gasto que faltaba); ningún otro documento.
 ACCOUNTANT_WRITE = {'add_adjunto', 'delete_adjunto', 'add_captura', 'change_captura',
-                    'add_movimientomanual', 'change_movimientomanual'}   # movimientos manuales del kardex
+                    'add_movimientomanual', 'change_movimientomanual',   # movimientos manuales del kardex
+                    'add_cuenta', 'change_cuenta'}   # plan de cuentas: crear, editar y desactivar cuentas (e importarlo)
 
 
 def role_modules(role, modules):

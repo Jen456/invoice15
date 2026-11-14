@@ -124,7 +124,11 @@ MODULOS_NUEVOS = (
     # Kardex (core/contabilidad): lo crea contabilidad 0003 en instalaciones existentes.
     ('contabilidad', '/contabilidad/kardex/', 'fas fa-boxes',
      'Kardex por producto con costo promedio ponderado, calculado desde los documentos y completable a mano',
-     ('view_kardex', 'add_movimientomanual', 'change_movimientomanual')),
+     ('view_kardex', 'add_movimientomanual', 'change_movimientomanual',
+      # Plan de cuentas (C2): su API existe, su pantalla todavía no. Un rol solo recibe permisos a través de un módulo
+      # (sync_roles), así que viajan con este hasta que la pantalla tenga el suyo (contabilidad 0006 en instalaciones
+      # existentes). No cambia el nombre, el orden ni lo que muestra el menú.
+      'view_cuenta', 'add_cuenta', 'change_cuenta')),
     ('contabilidad', '/contabilidad/inventario/', 'fas fa-warehouse',
      'Inventario valorizado a una fecha, al costo promedio del kardex', ('view_kardex',)),
     # Diseño de factura (piloto): lo crea configuracion 0005 en instalaciones existentes. Fuera del piloto el menú lo oculta

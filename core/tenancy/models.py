@@ -118,6 +118,10 @@ class AuditLog(models.Model):
         ('kardex_movimiento_anulado', 'Movimiento manual del kardex anulado'),
         # Diseño de factura (core/configuracion/diseno.py)
         ('diseno_factura_guardado', 'Diseño de factura guardado'),
+        # Plan de cuentas por empresa (core/contabilidad/cuentas.py y la importación con vista previa)
+        ('cuenta_creada', 'Plan de cuentas: cuenta creada'),
+        ('cuenta_modificada', 'Plan de cuentas: cuenta modificada'),
+        ('cuentas_importadas', 'Plan de cuentas: importación confirmada'),
     )
     created_at = models.DateTimeField(default=timezone.now, db_index=True, verbose_name='Fecha')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,

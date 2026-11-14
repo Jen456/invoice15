@@ -11,7 +11,10 @@ y `migrate comprobantes` creaba «Proformas»). La primera ida completa aplica l
 la última, lo que dejan pendiente las idas parciales.
 
 Aparte, la vuelta documentada del diseño de factura (DISENO-FACTURA.md) y otra pasada por configuracion 0003: con sus
-filas de Permission aún en la base, 0003 no debe volver a crear «Diseño de factura» sin la tabla de configuracion 0004."""
+filas de Permission aún en la base, 0003 no debe volver a crear «Diseño de factura» sin la tabla de configuracion 0004.
+
+Y la vuelta del plan de cuentas (bloque 1 del cierre contable) hasta lo que estaba publicado antes de él: el módulo del
+kardex conserva sus permisos, nadie conserva los del plan de cuentas y otra ida lo deja como estaba."""
 import json
 import os
 import subprocess
@@ -88,8 +91,9 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
             # `contabilidad zero`; tenancy 0011 (acciones del kardex) cae con la vuelta a tenancy 0006. Diseño de factura:
             # pos 0035 (copia en la factura, sobre pos 0034) y tenancy 0012 (acción de auditoría, sobre 0011) caen con sus
             # apps; configuracion 0004-0005 (tabla y módulo) cuelgan de pos 0019, como 0001-0003, y no se deshacen. 41 con eso.
-            # Plan de cuentas: contabilidad 0004-0005 (tabla y seguridad por filas) caen con `contabilidad zero`. 43 en total.
-            assert len(pendientes(env)) == 43
+            # Plan de cuentas: contabilidad 0004-0006 (tabla, seguridad por filas y permisos) caen con `contabilidad zero`
+            # y tenancy 0013 (acciones de auditoría, sobre 0012), con la vuelta a tenancy 0006. 45 en total.
+            assert len(pendientes(env)) == 45
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)
@@ -123,9 +127,11 @@ def test_vuelta_del_diseno_y_otra_pasada_por_configuracion_0003(tmp_path):
         for app, destino in (('configuracion', '0003_modulo_puntos'), ('pos', '0034_cliente_nacimiento_opcional'),
                              ('tenancy', '0011_acciones_kardex')):   # la vuelta de DISENO-FACTURA.md
             manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
+        # tenancy 0013 (acciones del plan de cuentas) va sobre 0012 y cae con ella. Las migraciones del plan de cuentas
+        # (contabilidad 0004-0006) no dependen de nada del diseño: su tabla no se toca en esta vuelta.
         sin_diseno = ['configuracion.0004_diseno_factura', 'configuracion.0005_modulo_diseno_factura',
                       'configuracion.0006_personalizacion_factura', 'pos.0035_sale_ride_diseno',
-                      'tenancy.0012_accion_diseno_factura']
+                      'tenancy.0012_accion_diseno_factura', 'tenancy.0013_acciones_plan_cuentas']
         assert sorted(pendientes(env)) == sin_diseno
         assert diseno not in {m[0] for m in estado(env)['modulos']}
         # Otra pasada por 0003 (quita y vuelve a crear «Locales y puntos»): sin la tabla de 0004, ningún módulo del diseño
@@ -137,6 +143,32 @@ def test_vuelta_del_diseno_y_otra_pasada_por_configuracion_0003(tmp_path):
         assert '/configuracion/puntos/' in {m[0] for m in tras['modulos']}
         assert diseno not in {m[0] for m in tras['modulos']}
         assert not any(diseno in urls for urls, _ in tras['roles'].values())
+        manage(env, 'migrate', '--noinput', '-v', '0')
+        assert pendientes(env) == []
+        assert estado(env) == instalado
+
+
+def test_vuelta_del_plan_de_cuentas_a_lo_publicado(tmp_path):
+    kardex = '/contabilidad/kardex/'
+    del_plan = {'view_cuenta', 'add_cuenta', 'change_cuenta'}
+    with tempfile.TemporaryDirectory(prefix='fpa-vuelta-cuentas-', dir=memoria()) as base:
+        env = instalar(tmp_path, base)
+        instalado = estado(env)
+
+        def permisos_del_kardex(visto):
+            return next(m[4] for m in visto['modulos'] if m[0] == kardex)
+        assert del_plan < set(permisos_del_kardex(instalado))
+        for app, destino in (('contabilidad', '0003_modulo_kardex'), ('tenancy', '0012_accion_diseno_factura')):
+            manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
+        assert sorted(pendientes(env)) == [
+            'contabilidad.0004_plan_de_cuentas', 'contabilidad.0005_seguridad_por_filas_cuentas',
+            'contabilidad.0006_permisos_plan_cuentas', 'tenancy.0013_acciones_plan_cuentas']
+        sin_plan = estado(env)
+        # El plan de cuentas no tiene módulo propio: sus permisos viajan con el del kardex, que queda con los suyos.
+        assert permisos_del_kardex(sin_plan) == ['add_movimientomanual', 'change_movimientomanual', 'view_kardex']
+        assert not any(del_plan & set(codigos) for _, codigos in sin_plan['roles'].values())
+        assert [m for m in sin_plan['modulos'] if m[0] != kardex] == [m for m in instalado['modulos'] if m[0] != kardex]
+        assert {rol: urls for rol, (urls, _) in sin_plan['roles'].items()} == {rol: urls for rol, (urls, _) in instalado['roles'].items()}
         manage(env, 'migrate', '--noinput', '-v', '0')
         assert pendientes(env) == []
         assert estado(env) == instalado
