@@ -1,6 +1,6 @@
 from django.urls import path
 
-from core.contabilidad import views, vistas_capacidades, vistas_cuentas
+from core.contabilidad import views, vistas_capacidades, vistas_cuentas, vistas_importar_cuentas
 
 urlpatterns = [
     path('kardex/', views.KardexPagina.as_view(), name='contabilidad_kardex'),
@@ -17,4 +17,11 @@ urlpatterns = [
     # Plan de cuentas por empresa (C2 del contrato contable v9)
     path('api/cuentas/', vistas_cuentas.CuentasApi.as_view(), name='contabilidad_cuentas'),
     path('api/cuentas/<int:pk>/', vistas_cuentas.CuentaApi.as_view(), name='contabilidad_cuenta'),
+    # Importación del plan de cuentas con vista previa (C3)
+    path('api/cuentas/importar/', vistas_importar_cuentas.ImportarCuentasApi.as_view(), name='contabilidad_cuentas_importar'),
+    path('api/cuentas/importar/<int:pk>/', vistas_importar_cuentas.ImportacionApi.as_view(), name='contabilidad_cuentas_importacion'),
+    path('api/cuentas/importar/<int:pk>/mapeo/', vistas_importar_cuentas.MapeoApi.as_view(),
+         name='contabilidad_cuentas_importacion_mapeo'),
+    path('api/cuentas/importar/<int:pk>/confirmar/', vistas_importar_cuentas.ConfirmarApi.as_view(),
+         name='contabilidad_cuentas_importacion_confirmar'),
 ]

@@ -20,7 +20,7 @@ PAGINAS = ('/tributario/libros/', '/tributario/revision/', '/tributario/empresas
 JSON = ('/tributario/api/libros/ventas/', '/tributario/api/revision/', '/tributario/api/empresas/', '/tributario/api/ats/',
         '/tributario/api/formularios/', '/tributario/libros/exportar/', '/tributario/ats/descargar/', '/tributario/formularios/exportar/',
         '/contabilidad/api/inventario/', '/contabilidad/api/kardex/productos/', '/contabilidad/inventario/exportar/',
-        '/contabilidad/api/cuentas/')
+        '/contabilidad/api/cuentas/', '/contabilidad/api/cuentas/importar/1/')
 
 
 @pytest.fixture
@@ -58,6 +58,11 @@ class TestCerrado:
                                      content_type='application/json'))
         assert bloqueada(entrar.patch('/contabilidad/api/cuentas/1/', {'empresa': empresa.pk, 'version': 1},
                                       content_type='application/json'))
+        # importación del plan: la subida (formulario con el archivo), el mapeo y la confirmación
+        assert bloqueada(entrar.post('/contabilidad/api/cuentas/importar/', {'empresa': empresa.pk, 'clave': 'complemento-0003'}))
+        for paso in ('mapeo', 'confirmar'):
+            assert bloqueada(entrar.post(f'/contabilidad/api/cuentas/importar/1/{paso}/', {'empresa': empresa.pk, 'clave': 'complemento-0004'},
+                                         content_type='application/json'))
 
     def test_la_captura_rapida_y_lo_demas_siguen_abiertos(self, entrar):
         assert entrar.get('/adjuntos/capturas/').status_code == 200

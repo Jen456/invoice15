@@ -106,8 +106,7 @@ FUNCIONES = (
     Funcion('importar_cuentas', 'Importación del plan de cuentas', CONTABILIDAD,
             # No hay un permiso de «ver» aparte: la vista previa es de quien puede crear cuentas. Actualizar el nombre
             # de las que ya existen pide además editar.
-            {'ver': 'add_cuenta', 'importar': 'add_cuenta', 'actualizar_nombre': 'change_cuenta'}, construccion=PENDIENTE,
-            que_falta='La importación del plan de cuentas con vista previa está en construcción.',
+            {'ver': 'add_cuenta', 'importar': 'add_cuenta', 'actualizar_nombre': 'change_cuenta'},
             ruta='/contabilidad/api/cuentas/importar/'),
     Funcion('inicio', 'Inicio contable', CONTABILIDAD, {'ver': ('view_kardex', 'view_revision', 'view_cuenta')},
             construccion=PENDIENTE, que_falta='El inicio contable está en construcción.', ruta='/contabilidad/api/inicio/'),
