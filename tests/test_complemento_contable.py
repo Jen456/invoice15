@@ -20,7 +20,10 @@ PAGINAS = ('/tributario/libros/', '/tributario/revision/', '/tributario/empresas
 JSON = ('/tributario/api/libros/ventas/', '/tributario/api/revision/', '/tributario/api/empresas/', '/tributario/api/ats/',
         '/tributario/api/formularios/', '/tributario/libros/exportar/', '/tributario/ats/descargar/', '/tributario/formularios/exportar/',
         '/contabilidad/api/inventario/', '/contabilidad/api/kardex/productos/', '/contabilidad/inventario/exportar/',
-        '/contabilidad/api/cuentas/', '/contabilidad/api/cuentas/importar/1/', '/contabilidad/api/inicio/')
+        '/contabilidad/api/cuentas/', '/contabilidad/api/cuentas/importar/1/', '/contabilidad/api/inicio/',
+        # Bloque 2 · Parte B (apertura en preparación)
+        '/contabilidad/api/apertura/', '/contabilidad/api/apertura/1/', '/contabilidad/api/apertura/1/lineas/',
+        '/contabilidad/api/apertura/importar/1/', '/contabilidad/api/apertura/respaldos/1/descargar/')
 
 
 @pytest.fixture
