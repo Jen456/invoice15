@@ -71,6 +71,50 @@ def xlsx_de(*filas, otra_hoja=()):
     return salida.getvalue()
 
 
+def partes_de(xlsx):
+    """Las partes de un XLSX (es un ZIP): {nombre: contenido}."""
+    with zipfile.ZipFile(io.BytesIO(xlsx)) as comprimido:
+        return {parte.filename: comprimido.read(parte) for parte in comprimido.infolist()}
+
+
+def xlsx_con(partes):
+    salida = io.BytesIO()
+    with zipfile.ZipFile(salida, 'w', zipfile.ZIP_DEFLATED) as comprimido:
+        for nombre, contenido in partes.items():
+            comprimido.writestr(nombre, contenido)
+    return salida.getvalue()
+
+
+def xlsx_con_entidad(donde, codificacion=None):
+    """El plan de siempre en un XLSX donde el nombre de la cuenta 1 no está escrito: sale de una entidad XML declarada en
+    la hoja o en las cadenas compartidas (`&a;&a;`, que el lector expande a «ActivoActivo»). Es la forma de que unos
+    kilobytes ocupen gigas al abrirlos: una entidad larga citada millones de veces."""
+    partes = partes_de(xlsx_de(*PLAN))
+    hoja = partes['xl/worksheets/sheet1.xml'].decode()
+    activo = '<c r="B2" t="inlineStr"><is><t>Activo</t></is></c>'
+    assert hoja.count(activo) == 1
+    if donde == 'hoja':
+        hoja = '<!DOCTYPE worksheet [<!ENTITY a "Activo">]>' + hoja.replace(activo, '<c r="B2" t="inlineStr"><is><t>&a;&a;</t></is></c>')
+        retocada = 'xl/worksheets/sheet1.xml'
+    else:
+        hoja = hoja.replace(activo, '<c r="B2" t="s"><v>0</v></c>')
+        partes['xl/sharedStrings.xml'] = (
+            '<!DOCTYPE sst [<!ENTITY a "Activo">]>'
+            '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">'
+            '<si><t>&a;&a;</t></si></sst>')
+        tipos = partes['[Content_Types].xml'].decode()
+        assert tipos.endswith('</Types>')
+        partes['[Content_Types].xml'] = tipos[:-len('</Types>')] + (
+            '<Override PartName="/xl/sharedStrings.xml" '
+            'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>')
+        retocada = 'xl/sharedStrings.xml'
+    partes['xl/worksheets/sheet1.xml'] = hoja
+    if codificacion:   # la misma parte en otra codificación que el lector de XML también entiende
+        declarada = 'UTF-16' if codificacion.startswith('utf-16') else codificacion
+        partes[retocada] = (f'<?xml version="1.0" encoding="{declarada}"?>' + partes[retocada]).encode(codificacion)
+    return xlsx_con(partes)
+
+
 def archivo(contenido, nombre='plan.csv'):
     return SimpleUploadedFile(nombre, contenido, content_type='application/octet-stream')
 
@@ -322,6 +366,37 @@ class TestLectura:
         assert len(bomba.getvalue()) < 100_000
         respuesta = subir(entrar, empresa, bomba.getvalue(), 'plan.xlsx')
         assert respuesta.status_code == 400 and respuesta.json() == {'error': T['descomprimido'], 'codigo': 'archivo_grande'}
+        assert lotes(empresa) == []
+
+    @pytest.mark.parametrize('donde', ['hoja', 'cadenas'])
+    @pytest.mark.parametrize('codificacion', [None, 'iso-8859-1', 'utf-16', 'utf-16-le', 'utf-16-be'])
+    def test_xlsx_con_entidades_xml(self, entrar, empresa, donde, codificacion):
+        """Un XLSX que declara entidades XML (DOCTYPE) no se abre. Con una entidad de 270 caracteres citada millones de
+        veces, un archivo de 25 KB que cumple el tope de 20 MB descomprimidos ocupaba 4 GB de memoria al leerlo. Ninguna
+        hoja de cálculo las escribe, así que se rechaza antes de dárselo al lector, esté en la codificación que esté."""
+        respuesta = subir(entrar, empresa, xlsx_con_entidad(donde, codificacion), 'plan.xlsx')
+        assert respuesta.status_code == 400, respuesta.content
+        assert respuesta.json() == {'error': T['xlsx_declaraciones'], 'codigo': 'formato'}
+        assert lotes(empresa) == []
+
+    @pytest.mark.parametrize('falla', ['crc', 'cifrada'])
+    def test_xlsx_con_una_parte_que_no_se_puede_leer(self, entrar, empresa, falla):
+        """Antes de abrir el libro se lee cada parte del ZIP: una dañada o cifrada es 400 `formato`, no un error del servidor."""
+        relleno = b'RELLENO-QUE-NADIE-LEE' * 4
+        salida = io.BytesIO()
+        with zipfile.ZipFile(salida, 'w', zipfile.ZIP_STORED) as comprimido:
+            for nombre, contenido in partes_de(xlsx_de(*PLAN)).items():
+                comprimido.writestr(nombre, contenido)
+            comprimido.writestr('xl/media/relleno.bin', relleno)
+        datos = bytearray(salida.getvalue())
+        if falla == 'crc':   # el contenido ya no es el que dice su suma de comprobación
+            datos[datos.index(relleno)] ^= 0xFF
+        else:                # la marca de «cifrada» en la entrada del directorio del ZIP
+            entrada = datos.rindex(b'PK\x01\x02', 0, datos.rindex(b'xl/media/relleno.bin'))
+            datos[entrada + 8] |= 1
+        with zipfile.ZipFile(io.BytesIO(bytes(datos))) as comprimido, pytest.raises((zipfile.BadZipFile, RuntimeError)):
+            comprimido.read('xl/media/relleno.bin')
+        assert rechazo(subir(entrar, empresa, bytes(datos), 'plan.xlsx'), 400, 'formato')
         assert lotes(empresa) == []
 
     def test_hoja_con_una_celda_perdida_muy_lejos(self, entrar, empresa):

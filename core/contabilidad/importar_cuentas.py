@@ -46,6 +46,11 @@ MAX_BYTES = 2 * MB
 MAX_FILAS = 5000                 # filas de cuentas (sin la de encabezados ni las que están en blanco)
 # Un XLSX es un ZIP: 2 MB pueden esconder gigas. Un plan de 5 000 cuentas ocupa, abierto, menos de 1 MB.
 MAX_DESCOMPRIMIDO = 20 * MB
+# Un XLSX tampoco declara entidades XML: ninguna hoja de cálculo escribe un DOCTYPE. Con él, el tope de arriba no basta: una
+# entidad de 270 caracteres citada millones de veces cabe en 25 KB comprimidos y en 20 MB descomprimidos, y el lector de
+# XML la expande a gigas de memoria. Se busca en las codificaciones que ese lector entiende: las de un byte por carácter
+# (UTF-8, ISO-8859-1…) lo escriben igual que ASCII, y UTF-16 en sus dos órdenes.
+DOCTYPE = tuple('<!DOCTYPE'.encode(codificacion) for codificacion in ('ascii', 'utf-16-le', 'utf-16-be'))
 MAX_FILAS_HOJA = 1_048_576       # las que admite una hoja de cálculo: una hoja que declare más está mal formada
 MAX_COLUMNAS = 40
 # Celdas que se llegan a mirar, con contenido o sin él (5 000 filas de 40 columnas son 200 000). Una hoja con formato hasta
@@ -86,6 +91,8 @@ TEXTOS = {
     'comillas': 'El CSV no se pudo leer a partir de la fila {fila}: revisa sus comillas (unas que no se cierran o texto pegado '
                 'después de cerrarlas) o guarda el archivo de nuevo desde la hoja de cálculo.',
     'xls': 'Es un XLS antiguo o un libro protegido con contraseña: guárdalo como XLSX sin contraseña o como CSV UTF-8.',
+    'xlsx_declaraciones': 'El XLSX trae declaraciones que una hoja de cálculo no escribe (DOCTYPE): ábrelo y guárdalo de nuevo '
+                          'como XLSX, o súbelo como CSV UTF-8.',
     'vacio': 'El archivo está vacío.',
     'sin_filas': 'El archivo solo tiene la fila de encabezados: no trae ninguna cuenta.',
     'clave_usada': 'Esta clave ya se usó para subir otro archivo: vuelve a cargar la página e inténtalo de nuevo.',
@@ -181,15 +188,23 @@ def _filas_csv(datos):
 
 def _filas_xlsx(datos):
     """Filas `(número, valores)` de la primera hoja de un XLSX (con la fórmula ya calculada, si la hay). El tamaño
-    descomprimido se comprueba antes de abrirlo, con lo que declara el ZIP: al leer, zipfile no entrega más que eso."""
+    descomprimido se comprueba antes de abrirlo, con lo que declara el ZIP: al leer, zipfile no entrega más que eso. Y,
+    si cabe, se mira cada parte antes de dársela al lector de XML: ninguna puede declarar entidades (DOCTYPE)."""
     import openpyxl
     try:
         with zipfile.ZipFile(io.BytesIO(datos)) as comprimido:
-            descomprimido = sum(parte.file_size for parte in comprimido.infolist())
-    except (zipfile.BadZipFile, ValueError, OSError):
+            partes = comprimido.infolist()
+            descomprimido = sum(parte.file_size for parte in partes)
+            # Todas las partes, se llamen como se llamen: cuál lee el lector como cadenas compartidas o como hoja lo dice
+            # el propio archivo. De una en una; entre todas no pasan del tope.
+            declara = descomprimido <= MAX_DESCOMPRIMIDO and any(
+                marca in contenido for contenido in map(comprimido.read, partes) for marca in DOCTYPE)
+    except Exception:   # noqa: BLE001 - no es un ZIP, o una parte está dañada, cifrada o comprimida de otra forma
         raise _ilegible() from None
     if descomprimido > MAX_DESCOMPRIMIDO:
         raise api.ErrorApi('archivo_grande', TEXTOS['descomprimido'])
+    if declara:
+        raise _ilegible('xlsx_declaraciones')
     try:
         libro = openpyxl.load_workbook(io.BytesIO(datos), read_only=True, data_only=True)
         hoja = libro.worksheets[0]
