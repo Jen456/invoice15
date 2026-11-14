@@ -431,7 +431,8 @@ class TestLectura:
             pico = tracemalloc.get_traced_memory()[1]
         finally:
             tracemalloc.stop()
-        assert (extension, encabezados, [fila['c'][0] for fila in filas]) == ('xlsx', ['Código', 'Nombre'], ['1', '1.1', '1.1.01', '1.1.02', '2'])
+        assert (extension, encabezados) == ('xlsx', ['Código', 'Nombre'])
+        assert [fila['c'][0] for fila in filas] == ['1', '1.1', '1.1.01', '1.1.02', '2']
         assert pico < 16 * importar_cuentas.MB, f'{pico / importar_cuentas.MB:.0f} MB'
 
     def test_hoja_con_una_celda_perdida_muy_lejos(self, entrar, empresa):

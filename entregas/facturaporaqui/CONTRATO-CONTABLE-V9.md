@@ -10,6 +10,12 @@ están construidos en la rama `fase/contable-1-cuentas`, sin publicar. Esas cuat
 quedó y sus ejemplos son respuestas reales de las pruebas, con datos ficticios. C4 a C7 siguen como propuesta. Cada
 sección construida termina con lo que cambió respecto de la propuesta del 04/11.
 
+**Corregido el 14/11/2026 tras la revisión independiente del bloque 1.** Lo que cambia para quien conecte las pantallas:
+un PATCH va siempre en JSON; con sesión y sin empresa activa la respuesta no es JSON (la segunda excepción de las reglas
+comunes); con el plan vencido tampoco guarda un formulario que lleve `action`; y la subida del plan rechaza tres archivos
+más, cada uno con su texto: el CSV con las comillas mal cerradas, el XLSX que declara entidades XML y la tabla con
+demasiado texto.
+
 ## Reglas comunes
 
 Valen para todo lo que cuelga de `/tributario/` y `/contabilidad/`:

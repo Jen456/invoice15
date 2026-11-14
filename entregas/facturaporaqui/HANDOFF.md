@@ -2847,3 +2847,78 @@ solo cambió ese archivo de pruebas). **Falta** repetir sobre el código final l
 las 18 pruebas de concurrencia de `tests/test_zz_cuentas_concurrencia_pg.py`; el código que ejercitan no cambió desde
 `dbef3ba`, el commit que las completó. Sin ensayo de migraciones sobre una copia de producción y sin navegador: no hay
 pantallas nuevas.
+
+### Correcciones de la revisión independiente del bloque 1 (14/11/2026)
+
+La revisión independiente (tres lecturas: contrato, seguridad y datos) confirmó diez hallazgos sobre `893f0a5`: cuatro
+P2 y seis P3. Tres pares describen el mismo defecto, así que son siete defectos distintos. Todos están corregidos en la
+misma rama, sin `push` y sin publicar. No se tocó ninguna plantilla, CSS ni JS, ni `PlanMiddleware`, ni
+`CompanyMiddleware`, ni quién entra al complemento, y no hay migraciones nuevas.
+
+| Hallazgo | Qué pasaba | Qué se hizo |
+|---|---|---|
+| Plan vencido (P2) | `PlanMiddleware` toma por consulta un formulario con un campo `action` que empiece por `search` (o `send_invoice_by_email`) y lo deja pasar: con el plan vencido, el alta, la subida, el mapeo y la confirmación guardaban | `ApiContable` repite la comprobación en cada envío y responde el mismo 403 `plan`, como el kardex en su servicio |
+| XLSX con entidades XML (P2) | Un archivo de 25 KB que cumplía el tope de 20 MB descomprimidos ocupaba 4 GB de memoria al leerlo | Un XLSX con `DOCTYPE` en cualquiera de sus partes no se abre: 400 `formato` |
+| Texto que guarda un lote (P2) | Un XLSX de 32 KB dejaba un lote con 59 a 352 MB de JSON, que cada consulta volvía a cargar | Tope de 2 097 152 caracteres al texto de la tabla: 400 `archivo_grande` |
+| CSV con las comillas mal cerradas (P3) | Las filas siguientes desaparecían dentro de un nombre, la fila salía válida y se importaba así | 400 `formato` con la fila |
+| Alta repetida que se cruza con la primera (P3) | Sin la cola por empresa recibía «ya existe» en lugar de su cuenta, y una prueba de PostgreSQL fallaba de vez en cuando | El alta vuelve a mirar la clave antes de rechazar el código |
+| Contrato: PATCH (P3) | Decía «JSON o formulario» también para el PATCH | El PATCH va siempre en JSON; el formulario, solo en POST. Solo documentación |
+| Contrato: sesión sin empresa activa (P3) | Decía que la única negativa que no es JSON es la de «sin sesión» | Segunda excepción documentada: GET → 302 a `/empresas/`; envíos → 403 sin `codigo`. Solo documentación |
+
+Al corregir el del XLSX apareció otro de la misma familia, que ya estaba en `893f0a5` y no figuraba en la revisión: una
+parte del ZIP que declara 1 KB y trae cientos de megas ocupaba esa memoria al abrir el libro (70 KB de archivo, 141 MB;
+con 300 MB de relleno, 600 MB). Las partes se leen ahora a trozos y el lector abre una copia revisada, no el archivo
+original.
+
+**Para Codex, al conectar** (todo está en el contrato):
+
+- El PATCH de una cuenta va siempre en JSON.
+- Una respuesta redirigida o que no es JSON, y un 403 sin `codigo`, se tratan como «vuelve a cargar la página».
+- La subida tiene tres rechazos más, cada uno con su texto en `error`: el CSV con las comillas mal cerradas y el XLSX
+  con entidades XML (400 `formato`), y la tabla con demasiado texto (400 `archivo_grande`). No hay códigos nuevos.
+
+**Dónde se apartó de la especificación del bloque:**
+
+- Decisión 7 («plan vencido: lo decide el middleware; no se añade lógica propia»). La vista base repite la comprobación
+  con la función que ya decide la licencia; no tiene regla propia. Un detalle de orden: un formulario con `action` de
+  consulta y sin `empresa` recibe `sin_empresa` antes que `plan`. No guarda nada en ningún caso.
+- Decisión 1 («sin sesión» como única excepción). `CompanyMiddleware` es de todo el proyecto y no se cambió: se
+  documentó la segunda excepción.
+- Límites de la importación. La especificación pedía 2 MB, 5 000 filas y un tope descomprimido; se añaden el tope de
+  texto y el rechazo del `DOCTYPE`. El tope de texto puede rechazar un XLSX legítimo con muchas columnas de texto que
+  no son del plan (más de 2 097 152 caracteres entre todas sus celdas): el aviso pide dejar solo las columnas del plan.
+- Lectura estricta del CSV. Rechaza también el texto pegado después de cerrar unas comillas (`"Otros" ingresos`), que
+  antes se leía sin ellas. No detecta la comilla suelta que otra comilla suelta cierra más abajo justo antes de un
+  separador o de un fin de línea: eso es una celda de varias líneas bien formada.
+- Un XLSX con una parte dañada o cifrada se rechaza aunque el lector no fuera a abrirla.
+
+**Queda pendiente** (medido y sin corregir: no estaba entre los hallazgos confirmados):
+
+- Un XLSX de 55 KB con 1,2 millones de cadenas compartidas diminutas cumple todos los topes (20 MB descomprimidos, sin
+  `DOCTYPE`) y tardó 20 s en leerse en el servidor de desarrollo, que estaba cargado, con 124 MB más de memoria. Está
+  acotado, pero es mucho para una subida. Bajar `MAX_DESCOMPRIMIDO` lo reduce en proporción (un plan de 5 000 cuentas
+  ocupa menos de 1 MB abierto); falta decidir a cuánto.
+- Los lotes en vista previa siguen sin caducar (ya estaba en «Sin decidir»). Con el tope de texto cada uno guarda como
+  mucho lo que un CSV de 2 MB, pero no hay límite de lotes por empresa.
+- `PlanMiddleware` sigue tomando por consulta un formulario con `action=search…`. Una ruta nueva de `/contabilidad/` o
+  de `/tributario/` que acepte formularios y no use `ApiContable` tiene que comprobar la licencia por su cuenta, como
+  el kardex.
+
+**Pruebas de las correcciones.** Sobre `282f17f`, el código final (después solo hay documentación y una aserción de
+prueba partida en dos líneas). Son 37 casos nuevos en `tests/test_capacidades.py` (7), `tests/test_cuentas.py` (6),
+`tests/test_cuentas_importacion.py` (23) y `tests/test_zz_cuentas_concurrencia_pg.py` (1); los de los defectos fallaban
+antes del cambio y los tres de documentación fijan el comportamiento que el contrato describe ahora.
+
+- `makemigrations --check --dry-run`: sin cambios.
+- SQLite, los cuarenta archivos de contabilidad, tributario, complemento, planes, menú, roles, rutas, migraciones,
+  auditoría y seguridad por filas: 775 aprobadas y 34 omitidas (las exclusivas de PostgreSQL), sin fallos.
+- PostgreSQL con seguridad por filas, los seis archivos de pruebas nuevos del bloque y
+  `tests/test_rls_modelos_de_empresa.py`: 344 aprobadas, sin fallos ni omitidas. Incluye las 19 de concurrencia de
+  `tests/test_zz_cuentas_concurrencia_pg.py`, que era lo que faltaba repetir sobre el código final.
+- Una sonda que no se entrega, en la misma sesión de PostgreSQL: 150 rondas de tres altas simultáneas con la misma clave
+  y sin la cola dieron 150 creadas, 300 repetidas y ningún rechazo (la revisión había contado 23 rechazos).
+- Los archivos de los hallazgos de memoria, leídos aparte con el código final: el XLSX con un millón de citas a una
+  entidad (8 KB), 400 en 0,01 s; el de 5 000 filas por 40 columnas, 400 en 0,8 s; el de 300 MB detrás de una parte
+  que declara 975 bytes, leído en 0,01 s. En ninguno sube la memoria.
+
+No se repitieron la suite completa de SQLite ni la completa de PostgreSQL. Sin navegador: no hay pantallas nuevas.
