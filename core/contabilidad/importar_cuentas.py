@@ -51,8 +51,10 @@ MAX_DESCOMPRIMIDO = 20 * MB
 # descomprimidos, y el lector de XML la expande a gigas de memoria. Se busca en las codificaciones que ese lector entiende:
 # las de un byte por carácter (UTF-8, ISO-8859-1…) lo escriben igual que ASCII, y UTF-16 en sus dos órdenes.
 DOCTYPE = tuple('<!DOCTYPE'.encode(codificacion) for codificacion in ('ascii', 'utf-16-le', 'utf-16-be'))
-# Las partes XML del libro, las únicas que el lector recibe. Las demás son imágenes y objetos incrustados: un logo SVG va
-# tal cual en xl/media y el que exporta un programa de dibujo trae su DOCTYPE.
+# Las partes XML del libro, las únicas que el lector recibe con su contenido. Las demás son imágenes y objetos
+# incrustados: un logo SVG va tal cual en xl/media y el que exporta un programa de dibujo trae su DOCTYPE. Van en la copia,
+# pero vacías: aun en solo lectura, el lector abre las imágenes del dibujo de una hoja de gráfico, y una que falta en el
+# archivo (KeyError) tumba el libro, mientras que una vacía la descarta como imagen que no se puede leer.
 PARTES_XML = ('.xml', '.rels')
 # Cómo comprime sus partes un XLSX (ECMA-376, parte 2, anexo C): tal cual o con deflate. Con bzip2 o lzma, `ZipFile`
 # descomprime de una vez cada trozo que lee, sin tope, y leer a trozos no acota la memoria.
@@ -202,8 +204,8 @@ def _filas_csv(datos):
 
 
 def _xlsx_revisado(datos):
-    """El XLSX que se le da al lector: una copia sin comprimir de sus partes XML, ya revisadas. Un XLSX es un ZIP y lo que
-    declara no basta para fiarse de él:
+    """El XLSX que se le da al lector: una copia sin comprimir de sus partes XML, ya revisadas, en la que las demás van
+    vacías. Un XLSX es un ZIP y lo que declara no basta para fiarse de él:
 
     - el tamaño descomprimido se comprueba antes de leer nada, con lo que declara cada parte;
     - una parte comprimida de otra forma que la de un XLSX (ver COMPRESIONES_XLSX) no se abre;
@@ -211,10 +213,11 @@ def _xlsx_revisado(datos):
       que el lector no va a recibir. `ZipFile.read`, que es lo que usa el lector, descomprime de una vez todo lo que trae
       la entrada y solo después lo recorta: una parte que declara 1 KB y trae 300 MB ocupaba 600 MB de memoria. Por eso
       el lector no recibe el archivo original sino esta copia, cuyas partes ocupan lo que dicen;
-    - la copia lleva solo las partes XML del libro (ver PARTES_XML), y ninguna puede declarar entidades XML (ver
-      DOCTYPE). Se miran todas, se llamen como se llamen: cuál lee el lector como cadenas compartidas o como hoja lo dice
-      el propio archivo. Las imágenes y los objetos incrustados no pasan, y así el lector no puede tomar por hoja una
-      parte que no se revisó, digan lo que digan las relaciones del libro.
+    - la copia lleva con su contenido solo las partes XML del libro (ver PARTES_XML), y ninguna puede declarar entidades
+      XML (ver DOCTYPE). Se miran todas, se llamen como se llamen: cuál lee el lector como cadenas compartidas o como hoja
+      lo dice el propio archivo. Las imágenes y los objetos incrustados van vacíos: el lector los encuentra (los busca
+      en los dibujos de las hojas de gráfico) pero no lee nada de ellos, y una parte que no se revisó no le sirve de hoja,
+      digan lo que digan las relaciones del libro, porque una parte vacía no es una hoja.
 
     Entre todas las partes no pasan de MAX_DESCOMPRIMIDO, y eso es lo más que ocupa la copia."""
     revisado = io.BytesIO()
@@ -230,8 +233,9 @@ def _xlsx_revisado(datos):
                 with original.open(parte) as abierta:
                     trozos = iter(lambda: abierta.read(TROZO), b'')
                     if not parte.filename.lower().endswith(PARTES_XML):
-                        for _ in trozos:   # imagen u objeto incrustado: se lee por su suma y su cifrado, y no se copia
+                        for _ in trozos:   # imagen u objeto incrustado: se lee por su suma y su cifrado...
                             pass
+                        copia.writestr(parte.filename, b'')   # ...y su contenido no se copia nunca
                         continue
                     contenido = b''.join(trozos)
                 if any(marca in contenido for marca in DOCTYPE):

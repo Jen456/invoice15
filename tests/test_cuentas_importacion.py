@@ -149,6 +149,33 @@ SVG = ('<?xml version="1.0" encoding="utf-8"?>\n'
        '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="10" height="10"><rect width="10" height="10"/></svg>\n')
 
 
+def xlsx_con_grafico():
+    """El plan de siempre en la hoja «Plan» y, detrás, la hoja de gráfico «Grafico», cuyo dibujo lleva un gráfico y una
+    imagen PNG (xl/media/image1.png). openpyxl no deja poner imágenes en una hoja de gráfico: se añaden al dibujo que arma
+    al guardarla."""
+    from openpyxl.chart import BarChart
+    from openpyxl.drawing.image import Image
+    from PIL import Image as Imagen
+    libro = openpyxl.Workbook()
+    libro.active.title = 'Plan'
+    for fila in PLAN:
+        libro.active.append(fila)
+    grafico = libro.create_chartsheet('Grafico')
+    grafico.add_chart(BarChart())
+    png = io.BytesIO()
+    Imagen.new('RGB', (4, 4), 'white').save(png, 'PNG')
+    arbol = grafico.to_tree
+
+    def con_imagen():
+        resultado = arbol()
+        grafico._drawing.images = [Image(io.BytesIO(png.getvalue()))]
+        return resultado
+    grafico.to_tree = con_imagen
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
+
+
 def retocar(partes, nombre, viejo, nuevo):
     texto = partes[nombre].decode()
     assert texto.count(viejo) == 1, (nombre, viejo)
@@ -496,8 +523,8 @@ class TestLectura:
 
     def test_xlsx_con_un_logo_svg(self, entrar, empresa):
         """Un logo SVG insertado en el libro queda tal cual en xl/media, y el que sale de un programa de dibujo trae el
-        DOCTYPE del SVG. Esa parte no es XML del libro: se revisa (tamaño, suma, cifrado y compresión) pero no pasa al
-        lector, y su DOCTYPE no rechaza el archivo."""
+        DOCTYPE del SVG. Esa parte no es XML del libro: se revisa (tamaño, suma, cifrado y compresión) pero el lector la
+        recibe vacía, y su DOCTYPE no rechaza el archivo."""
         partes = partes_de(xlsx_de(*PLAN))
         partes['xl/media/image1.svg'] = SVG.encode()
         retocar(partes, '[Content_Types].xml', '<Default Extension="rels"',
@@ -506,11 +533,27 @@ class TestLectura:
         assert respuesta.status_code == 200, respuesta.content
         assert [f['codigo'] for f in respuesta.json()['lote']['filas']] == ['1', '1.1', '1.1.01', '1.1.02', '2']
 
+    def test_xlsx_con_una_hoja_de_grafico_con_imagen(self, entrar, empresa):
+        """Un plan con una hoja de gráfico cuyo dibujo lleva una imagen (xl/media/image1.png). Aun en solo lectura, el
+        lector lee los dibujos de las hojas de gráfico y, con Pillow, abre sus imágenes. Cuando la copia que recibe no
+        traía las partes que no son XML, la imagen faltaba, el lector fallaba al buscarla (KeyError, que no descarta como
+        una imagen que no se puede leer) y el libro era 400 `formato`. Ahora la recibe vacía: la descarta y el plan se lee
+        entero."""
+        datos = xlsx_con_grafico()
+        partes = partes_de(datos)
+        assert partes['xl/media/image1.png'].startswith(b'\x89PNG') and b'r:embed="rId2"' in partes['xl/drawings/drawing1.xml']
+        assert b'chartsheet' in partes['xl/_rels/workbook.xml.rels']
+        respuesta = subir(entrar, empresa, datos, 'plan.xlsx')
+        assert respuesta.status_code == 200, respuesta.content
+        assert [f['codigo'] for f in respuesta.json()['lote']['filas']] == ['1', '1.1', '1.1.01', '1.1.02', '2']
+        with zipfile.ZipFile(importar_cuentas._xlsx_revisado(datos)) as copia:
+            assert copia.read('xl/media/image1.png') == b''   # está, sin su contenido
+
     def test_una_hoja_guardada_como_imagen_no_llega_al_lector(self, entrar, empresa):
-        """Las partes que no terminan en .xml ni en .rels no llegan al lector, digan lo que digan las relaciones del libro.
-        Una hoja con entidades guardada como xl/media/hoja.png, a la que apunta workbook.xml.rels, se leería con la entidad
-        expandida si el lector recibiera el archivo tal cual (lo comprueba la primera parte de la prueba): no la recibe,
-        el libro se queda sin hoja y es 400 `formato`."""
+        """El lector recibe vacías las partes que no terminan en .xml ni en .rels, digan lo que digan las relaciones del
+        libro. Una hoja con entidades guardada como xl/media/hoja.png, a la que apunta workbook.xml.rels, se leería con la
+        entidad expandida si el lector recibiera el archivo tal cual (lo comprueba la primera parte de la prueba): la recibe
+        vacía, una parte vacía no es una hoja y es 400 `formato`."""
         partes = partes_de(xlsx_con_entidad('hoja'))
         partes['xl/media/hoja.png'] = partes.pop('xl/worksheets/sheet1.xml')
         retocar(partes, 'xl/_rels/workbook.xml.rels', 'worksheets/sheet1.xml', 'media/hoja.png')
@@ -521,6 +564,8 @@ class TestLectura:
             assert list(libro.worksheets[0].iter_rows(min_row=2, max_row=2, values_only=True)) == [('1', 'ActivoActivo')]
         finally:
             libro.close()
+        with zipfile.ZipFile(importar_cuentas._xlsx_revisado(datos)) as copia:
+            assert copia.read('xl/media/hoja.png') == b''   # está, sin su contenido
         respuesta = subir(entrar, empresa, datos, 'plan.xlsx')
         assert respuesta.status_code == 400 and respuesta.json() == {'error': T['formato'], 'codigo': 'formato'}
         assert lotes(empresa) == []

@@ -466,9 +466,10 @@ alcanza a un CSV escrito a mano.
 Un XLSX que declara entidades XML (un `DOCTYPE` en cualquiera de sus partes XML, las `.xml` y las `.rels`) no se abre:
 400 `formato`, «El XLSX trae declaraciones que una hoja de cálculo no escribe (DOCTYPE): ábrelo y guárdalo de nuevo como
 XLSX, o súbelo como CSV UTF-8.» Ninguna hoja de cálculo las escribe en esas partes, y con ellas unos kilobytes ocupan gigas
-de memoria al leerlos. Las imágenes y los objetos incrustados no pasan al lector: un logo SVG, que sí puede traer su
-`DOCTYPE`, no impide subir el libro. Tampoco se abre un XLSX con una parte dañada o cifrada, o comprimida de otra forma
-que la de un XLSX (bzip2, lzma…), aunque no sea la hoja: 400 `formato` con el texto general.
+de memoria al leerlos. De las imágenes y los objetos incrustados solo se comprueba que no estén dañados, cifrados ni
+comprimidos de otra forma, y lo que traen no se interpreta: un logo SVG, que sí puede traer su `DOCTYPE`, o una imagen
+en una hoja de gráfico no impiden subir el libro. Tampoco se abre un XLSX con una parte dañada o cifrada, o comprimida de
+otra forma que la de un XLSX (bzip2, lzma…), aunque no sea la hoja: 400 `formato` con el texto general.
 
 **Columnas.** Se reconocen por su encabezado, sin distinguir mayúsculas ni tildes:
 
