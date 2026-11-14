@@ -19,7 +19,8 @@ PAGINAS = ('/tributario/libros/', '/tributario/revision/', '/tributario/empresas
            '/contabilidad/kardex/', '/contabilidad/inventario/')
 JSON = ('/tributario/api/libros/ventas/', '/tributario/api/revision/', '/tributario/api/empresas/', '/tributario/api/ats/',
         '/tributario/api/formularios/', '/tributario/libros/exportar/', '/tributario/ats/descargar/', '/tributario/formularios/exportar/',
-        '/contabilidad/api/inventario/', '/contabilidad/api/kardex/productos/', '/contabilidad/inventario/exportar/')
+        '/contabilidad/api/inventario/', '/contabilidad/api/kardex/productos/', '/contabilidad/inventario/exportar/',
+        '/contabilidad/api/cuentas/')
 
 
 @pytest.fixture
@@ -52,6 +53,11 @@ class TestCerrado:
         assert bloqueada(entrar.post('/contabilidad/api/kardex/movimientos/', {'clave': 'complemento-0001'}))
         assert bloqueada(entrar.post('/contabilidad/kardex/', {'accion': 'registrar'}))
         assert bloqueada(entrar.post('/contabilidad/api/kardex/movimientos/1/anular/', {'motivo': 'x'}))
+        # plan de cuentas: el alta y el cambio de una cuenta (envíos JSON con la empresa de la pestaña)
+        assert bloqueada(entrar.post('/contabilidad/api/cuentas/', {'empresa': empresa.pk, 'clave': 'complemento-0002'},
+                                     content_type='application/json'))
+        assert bloqueada(entrar.patch('/contabilidad/api/cuentas/1/', {'empresa': empresa.pk, 'version': 1},
+                                      content_type='application/json'))
 
     def test_la_captura_rapida_y_lo_demas_siguen_abiertos(self, entrar):
         assert entrar.get('/adjuntos/capturas/').status_code == 200

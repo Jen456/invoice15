@@ -101,8 +101,8 @@ FUNCIONES = (
     Funcion('inventario', 'Inventario valorizado', CONTABILIDAD, {'ver': 'view_kardex'}, ruta='/contabilidad/inventario/'),
     # Bloque 1 (C2, C3 y C1 del contrato v9). Cada una pasa a disponible en el commit que publica su ruta.
     Funcion('plan_cuentas', 'Plan de cuentas', CONTABILIDAD,
-            {'ver': 'view_cuenta', 'crear': 'add_cuenta', 'editar': 'change_cuenta'}, construccion=PENDIENTE,
-            que_falta='El plan de cuentas por empresa está en construcción.', ruta='/contabilidad/api/cuentas/'),
+            # `editar` incluye activar y desactivar: una cuenta no se borra.
+            {'ver': 'view_cuenta', 'crear': 'add_cuenta', 'editar': 'change_cuenta'}, ruta='/contabilidad/api/cuentas/'),
     Funcion('importar_cuentas', 'Importación del plan de cuentas', CONTABILIDAD,
             # No hay un permiso de «ver» aparte: la vista previa es de quien puede crear cuentas. Actualizar el nombre
             # de las que ya existen pide además editar.
