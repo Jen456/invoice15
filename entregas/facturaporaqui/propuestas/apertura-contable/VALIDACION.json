@@ -1,0 +1,181 @@
+{
+  "tipo": "Propuesta estática, sin backend ni persistencia",
+  "fecha_ecuador": "2026-11-13",
+  "vistas": [
+    {
+      "paso": "elegir",
+      "ancho": 360,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "saldos",
+      "ancho": 360,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "historial",
+      "ancho": 360,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "validacion",
+      "ancho": 360,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "elegir",
+      "ancho": 390,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "saldos",
+      "ancho": 390,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "historial",
+      "ancho": 390,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "validacion",
+      "ancho": 390,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "elegir",
+      "ancho": 768,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "saldos",
+      "ancho": 768,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "historial",
+      "ancho": 768,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "validacion",
+      "ancho": 768,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "elegir",
+      "ancho": 1024,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "saldos",
+      "ancho": 1024,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "historial",
+      "ancho": 1024,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "validacion",
+      "ancho": 1024,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "elegir",
+      "ancho": 1360,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "saldos",
+      "ancho": 1360,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "historial",
+      "ancho": 1360,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "validacion",
+      "ancho": 1360,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "elegir",
+      "ancho": 1440,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "saldos",
+      "ancho": 1440,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "historial",
+      "ancho": 1440,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    },
+    {
+      "paso": "validacion",
+      "ancho": 1440,
+      "sin_desborde": true,
+      "campos_etiquetados": true
+    }
+  ],
+  "interacciones": [
+    "Elegir historial",
+    "Elegir saldos",
+    "Foco visible por teclado",
+    "Aviso de diferencia ficticia",
+    "Envío identificado como simulación",
+    "Confirmación deshabilitada",
+    "Preferencia de movimiento reducido"
+  ],
+  "errores_js": [],
+  "respuestas_http_fallidas": [],
+  "capturas_bytes": {
+    "saldos-768.webp": 63596,
+    "validacion-1360.webp": 60776,
+    "opciones-movil-360.webp": 15530,
+    "elegir-768.webp": 60602,
+    "validacion-360.webp": 56442,
+    "elegir-360.webp": 56110,
+    "saldos-360.webp": 57584,
+    "panel-elegir-1360.webp": 38544,
+    "panel-validacion-1360.webp": 39426,
+    "historial-1360.webp": 58808,
+    "panel-historial-1360.webp": 36220,
+    "saldos-1360.webp": 63132,
+    "elegir-1360.webp": 60806,
+    "panel-saldos-1360.webp": 41712,
+    "historial-360.webp": 52516,
+    "validacion-768.webp": 61368,
+    "historial-768.webp": 57650
+  },
+  "limite": "No prueba guardado, cálculos contables, permisos, API ni presentación al SRI."
+}

@@ -2757,3 +2757,19 @@ Revisión de coordinación: el usuario informa que PayPhone ya está integrado. 
 
 ## Notas entre agentes
 Claude: subir o indicar el commit/rama que contiene multiempresa y PayPhone. Registrar las rutas exactas ya implementadas para planes, suscripción, creación de pago, retorno y consulta de estado; nombres de campos, importes, moneda, fechas y cupos que entregan. No inventar endpoints ni compartir tokens. Codex queda limitado a templates, CSS, JavaScript y documentación en frontend/etapa3; modelos, migraciones, vistas de API, SRI y .env quedan fuera de alcance.
+
+## 13/11/2026 — Codex: inicio contable desde estados financieros o historial
+
+**Decisión funcional de la propietaria:** permitir que cada empresa empiece con saldos respaldados por estados financieros a una fecha de corte, sin registrar todos los años anteriores, o reconstruya sus operaciones históricas. Se puede completar el detalle después sin duplicar la apertura. La interfaz y la API de esta entrega son propuestas pendientes de aprobación/conexión, no funciones productivas.
+
+Base: `frontend/etapa3` avanzó por fast-forward a `plataforma 96d39e1` tras fetch. La rama `fase/primera-entrega 10d75f0` sigue separada; no se integra ni se da por corregida aquí.
+
+- [Contrato C6-A](CONTRATO-APERTURA-CONTABLE.md): saldos/historial, corte, auxiliares, cobertura por reporte, API propuesta y diez casos de aceptación. Amplía C1–C6; los endpoints nuevos aún no existen.
+- [Orden de cierre para Claude](ORDEN-CIERRE-CONTABLE-TRIBUTARIO.md): cuentas/importador → apertura → asientos/diario/mayor → conciliación/cierre → completar validación tributaria y anual. Precio o plantilla predeterminada pendientes no bloquean construir el motor genérico.
+- [PDF para aprobación](propuestas/apertura-contable/Inicio-contable-saldos-o-historial.pdf), [maqueta independiente](propuestas/apertura-contable/index.html), [fuentes y validación](propuestas/apertura-contable/README.md).
+
+**Reglas principales:** el detalle de clientes, proveedores, bancos e inventario explica el saldo inicial y no crea otro efecto. Cobrar una factura incluida en la apertura reduce esa cartera; no genera una segunda venta. Importar un histórico ya incluido ofrece consulta/vinculación; reconstruir un rango solapado exige reconciliación y confirmación. Para un corte a mitad de ejercicio, conciliar ingresos/costos/gastos acumulados sin duplicar el resultado en patrimonio. Un balance puede permitir continuar la contabilidad, pero no sustituye los documentos y datos tributarios del ATS/104/103 ni la información anual necesaria para el 101.
+
+**Propiedad:** Codex deja diseño/contrato y adapta interfaz tras aprobación. Claude implementa cuentas, apertura, auxiliares, asientos, permisos y contratos definitivos; conservar límites por empresa y las reglas comerciales autorizadas. No habilitar todo quitando `MENSAJE_COMPLEMENTO`. No se modificaron backend, plantillas productivas, suscripciones ni datos.
+
+**Validación:** cuatro vistas × seis anchos, 24 combinaciones sin desborde; siete comprobaciones de interacción y foco/movimiento reducido; cero errores JS y HTTP. Capturas ficticias 360/768/1360 y PDF A4 de siete páginas. Detalle en RESULTADOS-FRONTEND. Sin despliegue ni operaciones reales.

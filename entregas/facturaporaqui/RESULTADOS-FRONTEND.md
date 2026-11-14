@@ -1857,3 +1857,21 @@ Verificación: cuatro recorridos completos en vistas previas locales con datos f
 (04/11/2026, 19:40 en Ecuador); en el dominio, 14 de 14 de estos ajustes en los estáticos y pantallas servidos.
 Pendiente de Codex: «Nuevo registro» por permiso, error de punto junto a su selector y el mensaje al guardar desde una
 pestaña de otra empresa.
+
+## 13/11/2026 — propuesta de inicio contable: saldos o historial (Codex)
+
+Petición: completar Contabilidad/Tributario y admitir empresas que parten de estados financieros existentes, además de quienes reconstruyen sus operaciones. Se revisaron las rutas y contratos de `plataforma 96d39e1`: existen kardex/inventario y pantallas tributarias, pero no el plan de cuentas operativo, apertura, diario y mayor. No se elimina el bloqueo del complemento para aparentar ese desarrollo.
+
+**Entregables:** `CONTRATO-APERTURA-CONTABLE.md`, `ORDEN-CIERRE-CONTABLE-TRIBUTARIO.md` y `propuestas/apertura-contable/` (HTML/CSS/JS independiente, PDF, capturas y fuentes). Propuesta para aprobación antes de conectarla; sin API, persistencia o datos de clientes. Los saldos y cuentas de muestra no representan el piloto ni una importación realizada.
+
+**Verificación real:**
+
+- Chromium: elegir, saldos, historial y revisión a 360/390/768/1024/1360/1440 px; 24 combinaciones sin desborde de página, campos con etiqueta y sección activa coherente.
+- Siete comprobaciones adicionales: ambos recorridos, foco de teclado, diferencia ilustrativa, envío identificado como demostración, confirmación deshabilitada y movimiento reducido. Cero errores JS y cero respuestas HTTP fallidas.
+- Capturas completas a 360/768/1360, cuatro recortes de panel y opciones de móvil en `propuestas/apertura-contable/capturas/`. WebP sin pérdida, todas menores de 150 KB; tamaños exactos en `VALIDACION.json`. Colibrí local de 14,7 KB.
+- PDF `Inicio-contable-saldos-o-historial.pdf`: siete páginas A4, texto dentro de márgenes; inspección visual del ejemplo, diseño de saldos y diseño móvil. No son pruebas de cálculos ni de guardado real.
+- La primera automatización se detuvo por un selector de dos botones (uno oculto); acotado al visible, el recorrido completo pasó. No se ejecutaron suites Django/SQLite/PostgreSQL porque no cambia código de la aplicación ni sus estáticos productivos.
+
+**Integración:** base local actualizada por fast-forward desde remoto a `96d39e1`, sin reescribir historial. Esta entrega solo añade documentación/prototipo; la candidata backend `10d75f0` permanece separada. Sin despliegue, SRI, cobros ni correos.
+
+**Pendiente de Claude:** aceptar/ajustar el contrato C6-A e implementar el núcleo genérico, apertura y auxiliares sin duplicaciones, diario/mayor y conexión tributaria. Las decisiones fiscales reales y la activación comercial se resuelven con sus fuentes/autorizaciones; no impiden construir los componentes genéricos. **Pendiente de la propietaria:** revisar el PDF de la propuesta antes de su integración visual, conforme al encargo.
