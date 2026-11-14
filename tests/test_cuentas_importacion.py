@@ -1107,7 +1107,8 @@ class TestLicencia:
         assert funcion.construccion == capacidades.DISPONIBLE and funcion.ruta == API and not funcion.que_falta
         anunciada = entrar.get('/contabilidad/api/capacidades/').json()['funciones']['importar_cuentas']
         assert anunciada == {'nombre': 'Importación del plan de cuentas', 'ambito': 'contabilidad', 'estado': 'disponible', 'causa': None,
-                             'texto': None, 'acciones': {'ver': True, 'importar': True, 'actualizar_nombre': True}, 'faltan': []}
+                             'texto': None, 'acciones': {'ver': True, 'importar': True, 'actualizar_nombre': True}, 'faltan': [],
+                             'avisos': []}
 
 
 # ---------------------------------------------------------------- auditoría

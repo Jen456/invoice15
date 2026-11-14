@@ -36,9 +36,12 @@ DATOS = '/contabilidad/api/pruebas/datos/'
 INVENTARIO = '/contabilidad/api/inventario/'       # GET de API que ya existía
 MOVIMIENTOS = '/contabilidad/api/kardex/movimientos/'   # envío que ya existía
 CODIGOS = ['libros', 'revision', 'ats', 'formularios', 'kardex', 'inventario', 'plan_cuentas', 'importar_cuentas', 'inicio',
-           'evidencias', 'apertura', 'asientos', 'diario_mayor', 'bancos', 'cierre', 'estados_financieros', 'formulario_101']
-# Siguen pendientes al terminar el bloque 1 (las tres del bloque pasan a disponibles al publicar su ruta).
-PENDIENTES = ['evidencias', 'apertura', 'asientos', 'diario_mayor', 'bancos', 'cierre', 'estados_financieros', 'formulario_101']
+           'evidencias', 'apertura', 'cartera_inicial', 'historico', 'asientos', 'diario_mayor', 'bancos', 'cierre',
+           'estados_financieros', 'formulario_101']
+# Siguen pendientes al terminar el bloque 1 (las tres del bloque pasan a disponibles al publicar su ruta). Bloque 2 · Parte B:
+# la apertura pasa a disponible y la cartera inicial y los históricos (corte 2) quedan pendientes.
+PENDIENTES = ['evidencias', 'cartera_inicial', 'historico', 'asientos', 'diario_mayor', 'bancos', 'cierre', 'estados_financieros',
+              'formulario_101']
 TODO_FALSO = {'ver': False, 'registrar': False, 'anular': False}
 
 
@@ -189,10 +192,10 @@ class TestLicencia:
         assert list(datos['funciones']) == CODIGOS
         assert datos['funciones']['kardex'] == {
             'nombre': 'Kardex por producto', 'ambito': 'contabilidad', 'estado': 'disponible', 'causa': None, 'texto': None,
-            'acciones': {'ver': True, 'registrar': True, 'anular': True}, 'faltan': []}
+            'acciones': {'ver': True, 'registrar': True, 'anular': True}, 'faltan': [], 'avisos': []}
         assert datos['funciones']['libros'] == {
             'nombre': 'Libros mensuales', 'ambito': 'tributario', 'estado': 'disponible', 'causa': None, 'texto': None,
-            'acciones': {'ver': True}, 'faltan': []}
+            'acciones': {'ver': True}, 'faltan': [], 'avisos': []}
 
     def test_plan_vencido_solo_consulta(self, client, empresa, lista):
         lista(empresa)
@@ -373,7 +376,7 @@ class TestFunciones:
         assert funciones['asientos']['texto'] == ('Los asientos por comprobante están en construcción. La matriz de asientos está '
                                                   'por validar con un contador: una regla sin aprobar quedará como excepción, sin '
                                                   'contabilizar.')
-        assert funciones['apertura']['texto'] == capacidades.funcion_de('apertura').que_falta
+        assert funciones['cartera_inicial']['texto'] == capacidades.funcion_de('cartera_inicial').que_falta
 
     def test_modulo_pendiente_va_antes_que_la_licencia_y_el_permiso(self, client, empresa):
         """Lo que no está construido no se anuncia como «te falta la licencia» ni «te falta el permiso»."""
@@ -416,7 +419,8 @@ class TestFunciones:
         f = client.get(URL).json()['funciones']['de_prueba']
         assert f == {'nombre': 'Función de prueba', 'ambito': 'contabilidad', 'estado': 'datos_por_completar', 'causa': 'datos',
                      'texto': capacidades.TEXTO_DATOS, 'acciones': {'ver': False, 'guardar': False},
-                     'faltan': [{'codigo': 'sin_cuentas', 'texto': 'Crea o importa el plan de cuentas.', 'url': '/contabilidad/cuentas/'}]}
+                     'faltan': [{'codigo': 'sin_cuentas', 'texto': 'Crea o importa el plan de cuentas.', 'url': '/contabilidad/cuentas/'}],
+                     'avisos': []}
         faltan.clear()   # los datos se completaron
         f = client.get(URL).json()['funciones']['de_prueba']
         assert (f['estado'], f['causa'], f['texto'], f['acciones'], f['faltan']) == (

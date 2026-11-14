@@ -1,0 +1,155 @@
+"""Inicio contable y apertura en preparación (Parte B de contable/bloque-2-especificacion.md; C6-A). Solo API: sus pantallas
+las conecta la interfaz.
+
+- GET   /contabilidad/api/apertura/?empresa=                  `view_apertura`  configuración, apertura, vigente, cobertura,
+                                                                               capacidades y acceso (200 también sin
+                                                                               configurar, con todo en null)
+- POST  /contabilidad/api/apertura/                           `add_apertura`   configuración y borrador con `clave`: 201;
+                                                                               repetido, 200 con `repetido: true`
+- GET   /contabilidad/api/apertura/<id>/                      `view_apertura`  la apertura, sus archivos, ajustes e historial
+- PATCH /contabilidad/api/apertura/<id>/                      `add_apertura`   encabezado del borrador con `version` (JSON)
+- POST  /contabilidad/api/apertura/<id>/importar/             `add_apertura`   multipart `archivo`, `clave`, `tipo`: lote en
+                                                                               vista previa
+- GET   /contabilidad/api/apertura/importar/<lote>/           `view_apertura`  el lote con su vista previa de ahora
+- POST  /contabilidad/api/apertura/<id>/mapear/               `add_apertura`   líneas (captura directa o desde un lote)
+- GET   /contabilidad/api/apertura/<id>/lineas/?pagina=       `view_apertura`  las líneas, paginadas
+- POST  /contabilidad/api/apertura/<id>/respaldos/            `add_apertura`   multipart `archivo`, `descripcion`, `clave`
+- GET   /contabilidad/api/apertura/respaldos/<id>/descargar/  `view_apertura`  el archivo, como adjunto
+- POST  /contabilidad/api/apertura/respaldos/<id>/anular/     `add_apertura`   `{motivo}`
+- POST  /contabilidad/api/apertura/<id>/descartar/            `add_apertura`   `{version, motivo}`
+
+Ver: Propietario, Administrador, Contador y Consulta. Preparar: Propietario, Administrador y Contador. La sesión, la
+empresa de la pestaña (`?empresa=` o el envío), que el plan deje guardar y el permiso los comprueba api.ApiContable antes
+de llegar aquí; cada servicio vuelve a exigir su permiso. Las reglas están en apertura.py, apertura_importar.py e
+inicio_contable.py."""
+from django.http import FileResponse, JsonResponse
+
+from core.adjuntos.views import CABECERAS_ARCHIVO
+from core.contabilidad import api, apertura, apertura_importar, inicio_contable
+
+POR_PAGINA, POR_PAGINA_MAX = 100, 500
+TEXTOS = {'pagina': 'La página debe ser un número entero desde 1.',
+          'por_pagina': f'Las filas por página deben ser un número entero de 1 a {POR_PAGINA_MAX}.',
+          'archivo': 'El archivo del respaldo no está disponible.'}
+
+
+def paginacion(request):
+    """`(pagina, por_pagina)` de `?pagina=1&por_pagina=100` (máximo 500), con el 400 de cada uno mal escrito."""
+    errores = api.Errores()
+    valores = {}
+    for campo, por_defecto, maximo in (('pagina', 1, None), ('por_pagina', POR_PAGINA, POR_PAGINA_MAX)):
+        texto = request.GET.get(campo, '')
+        if texto == '':
+            valores[campo] = por_defecto
+            continue
+        valor = int(texto) if texto.isascii() and texto.isdigit() and len(texto) <= 9 else 0
+        if valor < 1 or (maximo is not None and valor > maximo):
+            errores.agregar(campo, TEXTOS[campo])
+        valores[campo] = valor
+    errores.comprobar()
+    return valores['pagina'], valores['por_pagina']
+
+
+class AperturaApi(api.ApiContable):
+    permisos = {'GET': apertura.VER, 'POST': apertura.PREPARAR}
+
+    def get(self, request):
+        return JsonResponse(apertura.datos_de_la_empresa(request))
+
+    def post(self, request):
+        inicio, creada, repetido = apertura.crear(request, api.cuerpo(request))
+        return JsonResponse({'configuracion': inicio_contable.dict_configuracion(inicio),
+                             'apertura': apertura.dict_apertura(creada), 'repetido': repetido},
+                            status=200 if repetido else 201)
+
+
+class AperturaDetalleApi(api.ApiContable):
+    permisos = {'GET': apertura.VER, 'PATCH': apertura.PREPARAR}
+
+    def get(self, request, pk):
+        return JsonResponse(apertura.detalle(request, pk))
+
+    def patch(self, request, pk):
+        cambiada, inicio = apertura.editar(request, pk, api.cuerpo(request))
+        return JsonResponse({'apertura': apertura.dict_apertura(cambiada),
+                             'configuracion': inicio_contable.dict_configuracion(inicio)})
+
+
+class ImportarApi(api.ApiContable):
+    permisos = {'POST': apertura.PREPARAR}
+
+    def post(self, request, pk):
+        lote, repetido = apertura_importar.subir(request, pk, request.FILES.get('archivo'), api.cuerpo(request))
+        return JsonResponse({'lote': apertura_importar.dict_lote(lote), 'repetido': repetido})
+
+
+class LoteApi(api.ApiContable):
+    permisos = {'GET': apertura.VER}
+
+    def get(self, request, pk):
+        return JsonResponse({'lote': apertura_importar.dict_lote(apertura_importar.consultar(request, pk))})
+
+
+class MapearApi(api.ApiContable):
+    permisos = {'POST': apertura.PREPARAR}
+
+    def post(self, request, pk):
+        mapeada, resumen, retiradas = apertura.mapear(request, pk, api.cuerpo(request))
+        return JsonResponse({'apertura': apertura.dict_corto(mapeada, resumen), 'lineas': apertura.lineas(mapeada),
+                             'retiradas': retiradas})
+
+
+class LineasApi(api.ApiContable):
+    permisos = {'GET': apertura.VER}
+
+    def get(self, request, pk):
+        pagina, por_pagina = paginacion(request)
+        consultada = apertura.obtener(pk)
+        resumen = apertura.resumen(consultada)
+        total = consultada.lineas.count()
+        desde = (pagina - 1) * por_pagina
+        return JsonResponse({'apertura': apertura.dict_corto(consultada, resumen),
+                             'lineas': apertura.lineas(consultada, desde, desde + por_pagina),
+                             'paginacion': {'pagina': pagina, 'por_pagina': por_pagina, 'total': total,
+                                            'paginas': (total + por_pagina - 1) // por_pagina}})
+
+
+class RespaldosApi(api.ApiContable):
+    permisos = {'POST': apertura.PREPARAR}
+
+    def post(self, request, pk):
+        respaldo, repetido = apertura.subir_respaldo(request, pk, request.FILES.get('archivo'), api.cuerpo(request))
+        return JsonResponse({'respaldo': apertura.dict_respaldo(respaldo), 'repetido': repetido},
+                            status=200 if repetido else 201)
+
+
+class DescargarRespaldoApi(api.ApiContable):
+    """El archivo privado del respaldo como adjunto, con las cabeceras de aislamiento de los comprobantes
+    (core/adjuntos/views.py). Otra empresa: 404 JSON. Un respaldo anulado se sigue descargando: el archivo se conserva."""
+    permisos = {'GET': apertura.VER}
+
+    def get(self, request, pk):
+        respaldo = apertura.obtener_respaldo(pk)
+        try:
+            contenido = respaldo.archivo.open('rb')
+        except (FileNotFoundError, OSError, ValueError):
+            raise api.ErrorApi('no_existe', TEXTOS['archivo'], 404) from None
+        respuesta = FileResponse(contenido, content_type=respaldo.tipo_mime or 'application/octet-stream', as_attachment=True,
+                                 filename=respaldo.nombre)
+        for clave, valor in CABECERAS_ARCHIVO.items():
+            respuesta[clave] = valor
+        return respuesta
+
+
+class AnularRespaldoApi(api.ApiContable):
+    permisos = {'POST': apertura.PREPARAR}
+
+    def post(self, request, pk):
+        return JsonResponse({'respaldo': apertura.dict_respaldo(apertura.anular_respaldo(request, pk, api.cuerpo(request)))})
+
+
+class DescartarApi(api.ApiContable):
+    permisos = {'POST': apertura.PREPARAR}
+
+    def post(self, request, pk):
+        return JsonResponse({'apertura': apertura.dict_apertura(apertura.descartar(request, pk, api.cuerpo(request)))})

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from core.contabilidad import views, vistas_capacidades, vistas_cuentas, vistas_importar_cuentas, vistas_inicio
+from core.contabilidad import vistas_apertura   # bloque 2 · Parte B
 
 urlpatterns = [
     path('kardex/', views.KardexPagina.as_view(), name='contabilidad_kardex'),
@@ -30,6 +31,18 @@ urlpatterns = [
     # Sus rutas van aquí debajo, antes del comentario de la Parte B: cada parte escribe solo en su tramo.
 
     # Bloque 2 · Parte B (inicio y apertura, vistas_apertura.py): apertura/… Sus rutas van aquí debajo.
+    path('api/apertura/', vistas_apertura.AperturaApi.as_view(), name='contabilidad_apertura'),
+    path('api/apertura/importar/<int:pk>/', vistas_apertura.LoteApi.as_view(), name='contabilidad_apertura_lote'),
+    path('api/apertura/respaldos/<int:pk>/descargar/', vistas_apertura.DescargarRespaldoApi.as_view(),
+         name='contabilidad_apertura_respaldo_descargar'),
+    path('api/apertura/respaldos/<int:pk>/anular/', vistas_apertura.AnularRespaldoApi.as_view(),
+         name='contabilidad_apertura_respaldo_anular'),
+    path('api/apertura/<int:pk>/', vistas_apertura.AperturaDetalleApi.as_view(), name='contabilidad_apertura_detalle'),
+    path('api/apertura/<int:pk>/importar/', vistas_apertura.ImportarApi.as_view(), name='contabilidad_apertura_importar'),
+    path('api/apertura/<int:pk>/mapear/', vistas_apertura.MapearApi.as_view(), name='contabilidad_apertura_mapear'),
+    path('api/apertura/<int:pk>/lineas/', vistas_apertura.LineasApi.as_view(), name='contabilidad_apertura_lineas'),
+    path('api/apertura/<int:pk>/respaldos/', vistas_apertura.RespaldosApi.as_view(), name='contabilidad_apertura_respaldos'),
+    path('api/apertura/<int:pk>/descartar/', vistas_apertura.DescartarApi.as_view(), name='contabilidad_apertura_descartar'),
 
     # Bloque 2 · corte 2 (Partes C a F: vistas_apertura.py, vistas_cartera_inicial.py, vistas_historico.py).
 ]
