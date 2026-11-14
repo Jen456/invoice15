@@ -16,6 +16,13 @@ comunes); con el plan vencido tampoco guarda un formulario que lleve `action`; y
 más, cada uno con su texto: el CSV con las comillas mal cerradas, el XLSX que declara entidades XML y la tabla con
 demasiado texto.
 
+**Corregido otra vez el 14/11/2026** (revisión de las correcciones, ensayo de migración y recorrido en navegador). Para
+quien conecte las pantallas: un envío sin token CSRF válido es la tercera excepción de las reglas comunes (403 en HTML de
+Django); un JSON que no se puede leer y que traía dentro la empresa recibe 409 `sin_empresa`, no 400 `cuerpo`; en C3, un
+logo SVG dentro del XLSX ya no impide subirlo y un XLSX con una parte comprimida en bzip2 o lzma se rechaza (400
+`formato`), y la lista de cambios dice ya que un lote de otra empresa es 404 `lote`. No hay códigos nuevos: salvo lo del
+XLSX, el código ya respondía así y ahora el contrato lo dice.
+
 ## Reglas comunes
 
 Valen para todo lo que cuelga de `/tributario/` y `/contabilidad/`:
@@ -36,7 +43,7 @@ Valen para todo lo que cuelga de `/tributario/` y `/contabilidad/`:
 Las rutas que ya existían (kardex, inventario y todo `/tributario/`) no cambiaron: allí un GET sin permiso sigue
 redirigiendo (302). Las nuevas cumplen además esto:
 
-- **Toda negativa de la ruta es JSON, también en GET.** Hay dos excepciones, las de todo el proyecto, que responden
+- **Toda negativa de la ruta es JSON, también en GET.** Hay tres excepciones, las de todo el proyecto, que responden
   antes de llegar a la ruta:
 
   1. Sin sesión: 302 a `/login/?next=…`.
@@ -46,16 +53,21 @@ redirigiendo (302). Las nuevas cumplen además esto:
      la empresa que tenía abierta y al superusuario que no eligió empresa. (Si a quien perdió la membresía le queda
      exactamente otra empresa, la sesión pasa sola a esa: la pestaña armada para la anterior recibe el 409
      `empresa_cambiada` de siempre.)
+  3. Un envío (POST o PATCH) sin token CSRF válido: Django lo corta con su 403 en HTML («403 Forbidden», sin `codigo`).
+     Los envíos llevan la cabecera `X-CSRFToken` con el valor de la cookie `csrftoken`, como el resto del proyecto
+     (`static/js/functions.js` ya la pone). Conviene leer la cookie al enviar y no al cargar la página: iniciar sesión
+     en otra pestaña la cambia. Las consultas (GET) no la necesitan.
 
   Para la interfaz: una respuesta redirigida o que no es JSON, y un 403 sin `codigo`, no son de la ruta. Se tratan como
-  «vuelve a cargar la página»: al recargar, el proyecto lleva al inicio de sesión o al selector de empresas.
+  «vuelve a cargar la página»: al recargar, el proyecto lleva al inicio de sesión o al selector de empresas, o renueva el
+  token.
 - **Orden de las negativas.** Se responde la primera que aplique:
 
   | # | Causa | Respuesta |
   |---|---|---|
   | 1 | La consulta o el envío se armó para otra empresa | 409 `empresa_cambiada` |
   | 2 | Licencia: complemento cerrado, sin plan pagado o, en un envío, plan vencido | 403 `complemento_pendiente` o `plan`, con `causa: "licencia"` |
-  | 3 | El envío no dice para qué empresa se preparó | 409 `sin_empresa` |
+  | 3 | El envío no dice para qué empresa se preparó (tampoco cuando la trae dentro de un JSON que no se puede leer) | 409 `sin_empresa` |
   | 4 | El rol no tiene el permiso | 403 `sin_permiso`, con `causa: "permiso"` |
   | 5 | Faltan datos por completar | 409 `datos_por_completar`, con `causa: "datos"` |
   | 6 | Validación | 400 `clave`, `cuerpo`, `validacion` o el código propio de la ruta |
@@ -71,7 +83,8 @@ redirigiendo (302). Las nuevas cumplen además esto:
   en PATCH (Django solo lo hace en POST), y `activa` (booleano) y `padre_id: null` no se pueden escribir en un
   formulario. Un PATCH de formulario no cambia nada y llega vacío: recibe 409 `sin_empresa` aunque traiga `empresa` en
   el cuerpo, o 400 `validacion` por `version` si la empresa va en la consulta. Un JSON que no se puede leer o que no es
-  un objeto: 400 `cuerpo`.
+  un objeto: 400 `cuerpo` si la empresa va en la consulta (`?empresa=`); si iba dentro de ese JSON, el servidor no la
+  puede leer y responde antes el 409 `sin_empresa` (puesto 3 del orden).
 - **`clave`.** De 8 a 40 caracteres: letras, cifras, guion y guion bajo. La genera el navegador una vez por formulario.
   Misma clave y mismo contenido: el mismo resultado con 200 y `"repetido": true`. Misma clave y otro contenido: 409
   `clave_usada`. Sin clave o mal formada: 400 `clave`.
@@ -228,8 +241,8 @@ Fuera del complemento (ventas, importación, proformas, cobros) el 403 del plan 
   lleva a donde se resuelve, si este usuario puede.
 - Con `licencia.solo_consulta` se puede leer y no se puede guardar: las acciones que guardan ya vienen en `false`.
 - Ante un 403 o un 409 de una ruta nueva, `codigo` y `causa` dicen cuál de las cuatro es; `error` es el texto para la
-  persona. Un 403 sin `codigo`, o una respuesta que no es JSON, no viene de la ruta: es una de las dos excepciones de las
-  reglas comunes (sin sesión o sin empresa activa) y se resuelve recargando la página.
+  persona. Un 403 sin `codigo`, o una respuesta que no es JSON, no viene de la ruta: es una de las tres excepciones de las
+  reglas comunes (sin sesión, sin empresa activa o un envío sin token CSRF válido) y se resuelve recargando la página.
 
 ### Cambios respecto de lo que había
 
@@ -591,6 +604,8 @@ Cambios respecto de la propuesta del 04/11:
 - La subida y la confirmación responden siempre `repetido`. El lote confirmado añade `id`, `archivo` y `duplicadas`.
 - Códigos que la propuesta no nombraba: `faltan_columnas`, `plan_cambiado`, `archivo_grande`, `demasiadas_filas` y
   `formato`.
+- Un lote que no existe o es de otra empresa responde 404 `lote`, no el 409 de la propuesta; el ya confirmado, 409
+  `lote_confirmado`.
 - La maqueta v9 acepta `.xls`: el servidor no lo lee.
 - Sin decidir: cuánto tiempo se conservan los lotes que se quedan en vista previa y su archivo. Hoy no se borran.
 

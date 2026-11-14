@@ -15,6 +15,7 @@ from types import SimpleNamespace
 import pytest
 from django.contrib.auth.models import Group, Permission
 from django.http import JsonResponse
+from django.test import Client
 from django.urls import Resolver404, URLResolver, get_resolver, path, resolve
 from django.utils import timezone
 
@@ -302,6 +303,26 @@ class TestRolesYEmpresa:
             respuesta = enviar(client, ruta, {'empresa': empresa.pk, 'version': 1}, metodo)
             assert respuesta.status_code == 403 and respuesta['Content-Type'] == 'application/json', ruta
             assert respuesta.json() == {'error': 'Selecciona una empresa para continuar'}, ruta
+
+    def test_sin_token_csrf_responde_django(self, client, empresa, lista):
+        """La tercera excepción, como la documenta el contrato: un envío sin la cabecera `X-CSRFToken`, o con una que no es
+        la de la cookie `csrftoken`, lo corta Django antes de llegar a la ruta, con su 403 en HTML y sin `codigo`. El
+        cliente de pruebas no lo comprueba salvo que se le pida, como aquí. Una consulta no lo necesita."""
+        lista(empresa)
+        entrar(client, empresa)
+        protegido = Client(enforce_csrf_checks=True)
+        protegido.cookies = client.cookies   # la misma sesión, ahora con la comprobación del token
+        protegido.cookies['csrftoken'] = 'a' * 32
+        assert protegido.get(URL).status_code == 200
+        alta = {'empresa': empresa.pk, 'clave': 'csrf-prueba-01', 'codigo': '1', 'nombre': 'Activo', 'tipo': 'grupo'}
+        for cabeceras in ({}, {'HTTP_X_CSRFTOKEN': 'b' * 32}):
+            for metodo, ruta in (('post', '/contabilidad/api/cuentas/'), ('patch', '/contabilidad/api/cuentas/1/'),
+                                 ('post', '/contabilidad/api/cuentas/importar/1/confirmar/')):
+                respuesta = getattr(protegido, metodo)(ruta, json.dumps(alta), content_type='application/json', **cabeceras)
+                assert respuesta.status_code == 403 and respuesta['Content-Type'].startswith('text/html'), (ruta, cabeceras)
+        respuesta = protegido.post('/contabilidad/api/cuentas/', json.dumps(alta), content_type='application/json',
+                                   HTTP_X_CSRFTOKEN='a' * 32)
+        assert respuesta.status_code == 201 and respuesta.json()['cuenta']['codigo'] == '1'
 
     def test_empresa_de_otra_pestana(self, client, empresa, empresa_b, lista):
         lista(empresa)

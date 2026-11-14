@@ -513,6 +513,19 @@ class TestVersion:
         respuesta = entrar.patch(f'{API}{cuenta["id"]}/?empresa={empresa.pk}', '{mal', content_type='application/json')
         assert respuesta.status_code == 400 and respuesta.json()['codigo'] == 'cuerpo'
 
+    def test_cuerpo_ilegible_con_la_empresa_dentro(self, entrar, empresa):
+        """Como dice el contrato: si la empresa iba dentro de un JSON que no se puede leer o que no es un objeto, el envío
+        no dice para qué empresa se preparó y recibe 409 `sin_empresa`, que va antes en el orden de las negativas. El 400
+        `cuerpo` sale cuando la empresa va en la consulta."""
+        cuenta = nueva(entrar, empresa, '1.1.01', 'Caja')
+        for metodo, ruta in (('post', API), ('patch', f'{API}{cuenta["id"]}/')):
+            for cuerpo in ('{no es json', '[1, 2]', f'{{"empresa": {empresa.pk}, "version": 1, "nombre": "Ot'):
+                sin_consulta = getattr(entrar, metodo)(ruta, cuerpo, content_type='application/json')
+                assert sin_consulta.status_code == 409 and sin_consulta.json()['codigo'] == 'sin_empresa', (metodo, cuerpo)
+                con_consulta = getattr(entrar, metodo)(f'{ruta}?empresa={empresa.pk}', cuerpo, content_type='application/json')
+                assert con_consulta.status_code == 400 and con_consulta.json()['codigo'] == 'cuerpo', (metodo, cuerpo)
+        assert guardada(empresa, cuenta['id']).nombre == 'Caja' and cuantas(empresa) == 1
+
     def test_un_cambio_va_siempre_en_json(self, entrar, empresa):
         """Como dice el contrato: el formulario vale en POST (alta y subida del archivo), no en PATCH. Django no lee un
         cuerpo de formulario en PATCH, así que ese envío llega vacío: ni la empresa ni la versión que traía cuentan, y
