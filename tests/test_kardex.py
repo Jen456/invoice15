@@ -306,14 +306,18 @@ def test_modulos_del_menu_y_roles():
     assert (kardex.name, kardex.module_type.name) == ('Kardex por producto', 'Contabilidad')
     # el icono de un grupo es único: uno repetido renombra el del otro grupo con «-x» (icono roto en el menú)
     assert kardex.module_type.icon == 'fas fa-book-open' and not ModuleType.objects.filter(icon__endswith='-x').exists()
-    # Con el módulo viajan los permisos del plan de cuentas, que todavía no tiene pantalla ni módulo propios (tests/test_cuentas.py).
+    # Con el módulo viajan los permisos del plan de cuentas (tests/test_cuentas.py) y los del libro y la apertura del bloque 2
+    # (tests/test_esquema_contable.py), que todavía no tienen pantalla ni módulo propios.
     del_kardex, del_plan = {'view_kardex', 'add_movimientomanual', 'change_movimientomanual'}, {'view_cuenta', 'add_cuenta', 'change_cuenta'}
-    assert set(kardex.permissions.values_list('codename', flat=True)) == del_kardex | del_plan
+    del_libro = {'view_asiento', 'view_apertura', 'add_apertura', 'change_confirmacion_apertura', 'add_aplicacionauxiliar',
+                 'change_aplicacionauxiliar'}
+    assert set(kardex.permissions.values_list('codename', flat=True)) == del_kardex | del_plan | del_libro
 
     def permisos(rol):
         return set(Group.objects.get(name=rol).permissions.filter(content_type__app_label='contabilidad').values_list('codename', flat=True))
-    assert permisos(ROLE_ACCOUNTANT) == permisos(ROLE_OWNER) == permisos(ROLE_ADMIN) == del_kardex | del_plan
-    assert permisos(ROLE_READONLY) == {'view_kardex', 'view_cuenta'} and permisos(ROLE_SELLER) == set() == permisos(ROLE_CLIENT)
+    assert permisos(ROLE_ACCOUNTANT) == permisos(ROLE_OWNER) == permisos(ROLE_ADMIN) == del_kardex | del_plan | del_libro
+    assert permisos(ROLE_READONLY) == {'view_kardex', 'view_cuenta', 'view_asiento', 'view_apertura'}
+    assert permisos(ROLE_SELLER) == set() == permisos(ROLE_CLIENT)
 
 
 class TestPlanYPestanas:

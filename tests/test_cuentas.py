@@ -34,6 +34,9 @@ API = '/contabilidad/api/cuentas/'
 T = cuentas.TEXTOS
 DEL_KARDEX = {'view_kardex', 'add_movimientomanual', 'change_movimientomanual'}
 DEL_PLAN = {'view_cuenta', 'add_cuenta', 'change_cuenta'}
+# Los del kardex y del plan de cuentas: el módulo del kardex lleva además los del libro y la apertura (bloque 2), que estas
+# pruebas no miran (los vigila tests/test_kardex.py).
+DEL_KARDEX_Y_PLAN = {'content_type__model__in': ('movimientomanual', 'cuenta')}
 _claves = count(1)
 
 
@@ -163,7 +166,7 @@ class TestPermisos:
     def test_reparto_exacto_por_rol_sin_modulo_nuevo(self):
         """Los tres permisos viajan con el módulo del kardex: ningún módulo ni entrada de menú nuevos."""
         kardex = Module.objects.get(url='/contabilidad/kardex/')
-        assert set(kardex.permissions.values_list('codename', flat=True)) == DEL_KARDEX | DEL_PLAN
+        assert set(kardex.permissions.filter(**DEL_KARDEX_Y_PLAN).values_list('codename', flat=True)) == DEL_KARDEX | DEL_PLAN
         assert set(Module.objects.filter(url__startswith='/contabilidad/').values_list('url', flat=True)) == {
             '/contabilidad/kardex/', '/contabilidad/inventario/'}
         assert list(Module.objects.filter(permissions__codename__in=DEL_PLAN).distinct()) == [kardex]
@@ -722,10 +725,11 @@ class TestSeguridadPorFilas:
 # ---------------------------------------------------------------- migración que reparte los permisos
 
 def reparto():
-    """Permisos del módulo del kardex y, por rol, los de la app contabilidad."""
-    modulo = set(Module.objects.get(url='/contabilidad/kardex/').permissions.values_list('codename', flat=True))
-    return modulo, {g.name: set(g.permissions.filter(content_type__app_label='contabilidad').values_list('codename', flat=True))
-                    for g in Group.objects.order_by('name')}
+    """Permisos del módulo del kardex y, por rol, los de la app contabilidad (solo los del kardex y del plan de cuentas)."""
+    modulo = set(Module.objects.get(url='/contabilidad/kardex/').permissions.filter(**DEL_KARDEX_Y_PLAN)
+                 .values_list('codename', flat=True))
+    return modulo, {g.name: set(g.permissions.filter(content_type__app_label='contabilidad', **DEL_KARDEX_Y_PLAN)
+                                .values_list('codename', flat=True)) for g in Group.objects.order_by('name')}
 
 
 def test_migracion_de_los_permisos_de_vuelta_y_de_ida():

@@ -33,7 +33,11 @@ SELLER_WRITE = {'add_client', 'change_client', 'add_sale', 'add_credit_note', 'a
 # vincular o descartar recibos por completar (completar crea el gasto que faltaba); ningún otro documento.
 ACCOUNTANT_WRITE = {'add_adjunto', 'delete_adjunto', 'add_captura', 'change_captura',
                     'add_movimientomanual', 'change_movimientomanual',   # movimientos manuales del kardex
-                    'add_cuenta', 'change_cuenta'}   # plan de cuentas: crear, editar y desactivar cuentas (e importarlo)
+                    'add_cuenta', 'change_cuenta',   # plan de cuentas: crear, editar y desactivar cuentas (e importarlo)
+                    # Apertura contable (bloque 2): prepararla, confirmarla (y ajustarla, sustituirla o reversarla) y
+                    # registrar cobros, pagos y descargos sobre sus saldos iniciales. Ningún permiso de compras ni de
+                    # importación: las rutas contables se diseñan con lo que el rol ya tiene.
+                    'add_apertura', 'change_confirmacion_apertura', 'add_aplicacionauxiliar', 'change_aplicacionauxiliar'}
 
 
 def role_modules(role, modules):

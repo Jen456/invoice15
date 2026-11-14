@@ -128,7 +128,12 @@ MODULOS_NUEVOS = (
       # Plan de cuentas (C2): su API existe, su pantalla todavía no. Un rol solo recibe permisos a través de un módulo
       # (sync_roles), así que viajan con este hasta que la pantalla tenga el suyo (contabilidad 0006 en instalaciones
       # existentes). No cambia el nombre, el orden ni lo que muestra el menú.
-      'view_cuenta', 'add_cuenta', 'change_cuenta')),
+      'view_cuenta', 'add_cuenta', 'change_cuenta',
+      # Libro diario y apertura contable (bloque 2): lo mismo, sin pantalla ni módulo propios (contabilidad 0014 en
+      # instalaciones existentes). Solo los que el bloque reparte; los declarados para bloques posteriores (asiento manual,
+      # reverso, período, ejercicio) no cuelgan de ningún módulo hasta entonces.
+      'view_asiento', 'view_apertura', 'add_apertura', 'change_confirmacion_apertura',
+      'add_aplicacionauxiliar', 'change_aplicacionauxiliar')),
     ('contabilidad', '/contabilidad/inventario/', 'fas fa-warehouse',
      'Inventario valorizado a una fecha, al costo promedio del kardex', ('view_kardex',)),
     # Diseño de factura (piloto): lo crea configuracion 0005 en instalaciones existentes. Fuera del piloto el menú lo oculta

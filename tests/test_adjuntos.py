@@ -520,4 +520,6 @@ def test_modulo_del_menu_y_roles():
     escritura = set(contador.permissions.filter(codename__regex=r'^(add|change|delete|adjust)_').values_list('codename', flat=True))
     assert escritura == {'add_adjunto', 'delete_adjunto', 'add_captura', 'change_captura',
                          'add_movimientomanual', 'change_movimientomanual',   # y los movimientos manuales del kardex
-                         'add_cuenta', 'change_cuenta'}                       # y las cuentas del plan de cuentas
+                         'add_cuenta', 'change_cuenta',                       # y las cuentas del plan de cuentas
+                         # y la apertura contable y sus saldos iniciales (bloque 2); ninguno de compras ni de importación
+                         'add_apertura', 'change_confirmacion_apertura', 'add_aplicacionauxiliar', 'change_aplicacionauxiliar'}
