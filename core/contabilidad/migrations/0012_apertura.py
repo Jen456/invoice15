@@ -7,13 +7,18 @@ import django.db.models.manager
 import django.utils.timezone
 from django.db import migrations, models
 
+from core.contabilidad.migrations._claves_aplazadas import AplazarClaves
+
 
 class Migration(migrations.Migration):
 
     # Como contabilidad 0004 y 0007: makemigrations apuntaba a la última de pos (0035, la copia del diseño en la factura).
     # Las once tablas de la apertura solo necesitan la empresa (pos 0034); con 0035 aquí, la vuelta documentada del diseño de factura
     # (`migrate pos 0034_cliente_nacimiento_opcional`) las arrastraría. Ninguna restricción hacia pos_* (salvo la
-    # empresa), importacion_* ni el usuario (decisión común 16).
+    # empresa), importacion_* ni el usuario (decisión común 16). Las claves hacia tablas que ya existían (la empresa,
+    # el plan de cuentas y el kardex) no se crean aquí: `AplazarClaves`, la última operación, las deja para
+    # 0016_claves_hacia_tablas_anteriores, que las crea en una transacción corta (hallazgo C2E-1: aquí retenían
+    # `pos_company` y `contabilidad_movimientomanual` hasta el final de la migración).
     dependencies = [
         ('contabilidad', '0011_libro_diario'),
         ('pos', '0034_cliente_nacimiento_opcional'),
@@ -707,4 +712,12 @@ class Migration(migrations.Migration):
             model_name='vinculohistorico',
             constraint=models.CheckConstraint(condition=models.Q(models.Q(('auxiliar__isnull', False), ('destino', 'auxiliar_apertura')), models.Q(models.Q(('destino', 'auxiliar_apertura'), _negated=True), ('auxiliar__isnull', True)), _connector='OR'), name='vinculo_historico_destino_auxiliar'),
         ),
+        AplazarClaves(claves=[
+            ('apertura', 'company'), ('ajusteapertura', 'company'), ('auxiliarapertura', 'company'),
+            ('auxiliarapertura', 'cuenta'), ('auxiliarapertura', 'movimiento_kardex'), ('aplicacionauxiliar', 'company'),
+            ('aplicacionauxiliar', 'cuenta_contrapartida'), ('coberturaperiodo', 'company'),
+            ('eventoapertura', 'company'), ('importacionapertura', 'company'), ('lineaapertura', 'company'),
+            ('lineaapertura', 'cuenta'), ('partidabancoapertura', 'company'), ('respaldoapertura', 'company'),
+            ('vinculohistorico', 'company'),
+        ]),
     ]

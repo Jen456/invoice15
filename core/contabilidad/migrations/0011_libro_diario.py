@@ -7,13 +7,18 @@ import django.db.models.manager
 import django.utils.timezone
 from django.db import migrations, models
 
+from core.contabilidad.migrations._claves_aplazadas import AplazarClaves
+
 
 class Migration(migrations.Migration):
 
     # Como contabilidad 0004 y 0007: makemigrations apuntaba a la última de pos (0035, la copia del diseño en la factura).
     # Las ocho tablas del libro solo necesitan la empresa (pos 0034); con 0035 aquí, la vuelta documentada del diseño de factura
     # (`migrate pos 0034_cliente_nacimiento_opcional`) las arrastraría. Ninguna restricción hacia pos_* (salvo la
-    # empresa), importacion_* ni el usuario (decisión común 16).
+    # empresa), importacion_* ni el usuario (decisión común 16). Las claves hacia tablas que ya existían (la empresa
+    # y el plan de cuentas) no se crean aquí: `AplazarClaves`, la última operación, las deja para
+    # 0016_claves_hacia_tablas_anteriores, que las crea en una transacción corta (hallazgo C2E-1: aquí retenían
+    # `pos_company` hasta el final de la migración, detrás de decenas de índices y claves).
     dependencies = [
         ('contabilidad', '0010_clases_de_cuenta'),
         ('pos', '0034_cliente_nacimiento_opcional'),
@@ -436,4 +441,10 @@ class Migration(migrations.Migration):
             model_name='saldocuentames',
             constraint=models.CheckConstraint(condition=models.Q(('haber__gte', django.db.models.expressions.CombinedExpression(models.F('apertura_haber'), '+', models.F('cierre_haber')))), name='saldo_cuenta_mes_desglose_haber'),
         ),
+        AplazarClaves(claves=[
+            ('asiento', 'company'), ('ejerciciocontable', 'company'), ('iniciocontable', 'company'),
+            ('lineaasiento', 'company'), ('lineaasiento', 'cuenta'), ('periodocontable', 'company'),
+            ('registroclave', 'company'), ('saldocuentames', 'company'), ('saldocuentames', 'cuenta'),
+            ('contabilizacion', 'company'), ('contabilizacion', 'tesoreria_cuenta'),
+        ]),
     ]
