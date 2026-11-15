@@ -318,3 +318,114 @@ carpeta de cada empresa) y volver al código anterior, no `migrate` hacia atrás
 **Choque conocido al fusionar con `fase/primera-entrega`.** Esa rama trae `tenancy/0013_acciones_borrador_factura`, también
 sobre `tenancy 0012`, y cambia el conteo de `tests/test_migracion_vuelta_fase.py`. Al unirlas, una de las dos `0013` pasa
 a `0014` sobre la otra, con sus `choices` completas, y el conteo y las listas de la prueba se suman.
+
+## Nota (14/11/2026) — bloque 2 del cierre contable, corte 1: libro diario y apertura, 7 migraciones (sin publicar)
+
+Rama `fase/contable-2-apertura` sobre el bloque 1 (`fase/contable-1-cuentas`, `84d07cc`); código final del corte `a5bedf4`.
+Lo publicado sigue siendo `e0f2902` (`contabilidad 0003`, `tenancy 0012`); el bloque 1 tampoco está publicado. Todas las
+migraciones de esquema del bloque se crean en este corte: las tablas de auxiliares, cartera inicial, ajustes, cobertura por
+mes y documentos históricos (Partes C a F) nacen vacías y el corte 2 solo añade código.
+
+| # | Migración | Qué hace | Vuelta |
+|---|---|---|---|
+| 1 | `contabilidad/0009_clases_de_cuenta` | dos columnas en `contabilidad_cuenta` (tabla del bloque 1), `clase` y `auxiliar`, `CharField(12)` con `db_default=''`, y dos CHECK: `cuenta_clase_valida` (los siete valores) y `cuenta_auxiliar_solo_movimiento` (`tipo = 'movimiento' OR auxiliar = ''`) | quita los CHECK y las columnas |
+| 2 | `contabilidad/0010_libro_diario` | ocho tablas: `iniciocontable` (una por empresa; es el candado del libro), `ejerciciocontable`, `periodocontable`, `asiento`, `lineaasiento`, `saldocuentames`, `contabilizacion` y `registroclave`, con sus UNIQUE (también los parciales: un asiento de apertura vigente, un reverso por asiento, un asiento y un expediente vigentes por origen), CHECK e índices; permisos declarados `view_asiento`, `add_asiento`, `change_asiento`, `change_reverso_asiento`, los del período y los del ejercicio | borra las tablas |
+| 3 | `contabilidad/0011_apertura` | once tablas: `apertura`, `lineaapertura`, `importacionapertura`, `respaldoapertura`, `ajusteapertura`, `auxiliarapertura`, `partidabancoapertura`, `aplicacionauxiliar`, `vinculohistorico`, `coberturaperiodo` y `eventoapertura`, con sus UNIQUE parciales (una confirmada y una en preparación por empresa), CHECK e índices; permisos `add_apertura`, `view_apertura`, `change_confirmacion_apertura`, `add_aplicacionauxiliar`, `change_aplicacionauxiliar` | borra las tablas |
+| 4 | `contabilidad/0012_rls_libro_apertura` | RLS `fpa_empresa` ENABLE + FORCE en las 19 tablas (solo PostgreSQL) | quita las políticas |
+| 5 | `contabilidad/0013_libro_inmutable` | seis funciones y sus disparadores (solo PostgreSQL): `fpa_linea_solo_insercion`, `fpa_linea_en_asiento_abierto`, `fpa_asiento_solo_sello_o_reverso`, `fpa_asiento_nace_abierto`, `fpa_asiento_sellado` (diferido, al confirmar la transacción) y `fpa_evento_solo_insercion`. Hacen el libro y la historia de la apertura de solo inserción también por SQL | `DROP TRIGGER` y `DROP FUNCTION` |
+| 6 | `contabilidad/0014_permisos_apertura` | cuelga del módulo «Kardex por producto» los seis permisos que el bloque reparte (`view_asiento`, `view_apertura`, `add_apertura`, `change_confirmacion_apertura`, `add_aplicacionauxiliar`, `change_aplicacionauxiliar`) y ejecuta `sync_roles`: Propietario, Administrador y Contador, los seis; Consulta, los dos de ver; Vendedor y Cliente, nada. Ni módulos nuevos ni cambios del menú. Los permisos de bloques posteriores no cuelgan de ningún módulo: nadie los recibe | quita esos seis del módulo y de los roles, por ids en las tablas intermedias; las filas de `Permission` se quedan |
+| 7 | `tenancy/0014_acciones_apertura` | las 25 acciones de auditoría del bloque (también las del corte 2) en `AuditLog.action` (solo `choices`) | solo `choices` |
+
+**Ninguna restricción hacia la operación.** Leído con `sqlmigrate`: las claves foráneas de las tablas nuevas van solo a
+`pos_company` (la empresa, como en toda tabla por empresa), entre tablas de `contabilidad` y a
+`contabilidad_movimientomanual` (el kardex). Ninguna hacia `pos_*` salvo la empresa, `importacion_*`, `comprobantes_*`,
+`cobros_*`, `adjuntos_*` ni el usuario: los autores son el par `<rol>_por_id` (entero sin FK) y `<rol>_por_nombre`, y las
+referencias a clientes, proveedores, productos, cuentas por cobrar o por pagar y documentos importados son enteros con
+índice, sin FK. Borrar una venta, una compra, una cuenta por cobrar, un producto o un usuario no lee ni escribe nada de
+contabilidad (`tests/test_convivencia_versiones.py`, por SQL directo). El SQL leído está en
+`/root/invoice15/contable/registros/bloque2-c1-sqlmigrate-sqlite.sql` (fuera del repositorio; en SQLite el `AddField` de 0009
+reconstruye `contabilidad_cuenta` y repite sus FK del bloque 1, que no son nuevas).
+
+**Orden.** Un solo `migrate --noinput`. Las de contabilidad van en fila, de 0009 a 0014; `tenancy 0014` va sobre
+`tenancy 0013` (bloque 1) y no depende de ellas. Dependencias corregidas a mano, como en el bloque 1: `0009` depende solo
+de `contabilidad 0008`, y `0010` y `0011` de `pos 0034_cliente_nacimiento_opcional`, no de la `pos 0035` que proponía
+`makemigrations`: así la vuelta documentada del diseño de factura (`migrate pos 0034`) no arrastra el libro ni la apertura.
+`makemigrations --check --dry-run`: sin cambios.
+
+**Convivencia durante el despliegue** (la versión anterior atiende un rato sobre la base ya migrada): no conoce las 19
+tablas; las dos columnas nuevas de `contabilidad_cuenta` llevan `db_default=''`, así que un INSERT que no las nombra (el
+código del bloque 1, o uno por SQL) recibe `''` y cumple los dos CHECK (`tests/test_convivencia_versiones.py` comprueba
+que toda columna añadida a una tabla existente es nula o con `db_default`); los disparadores solo están en tablas nuevas;
+`tenancy 0014` no cambia el esquema. Lo que toca tablas que la versión anterior lee a cada petición es `0014_permisos_apertura`
+(permisos del módulo y de los roles), como `0006` del bloque 1.
+
+**Ida en el ensayo.** Comprobar que el rol de la aplicación crea las seis funciones de `0013` (en las pruebas las crea el
+rol `fpa_dev`, sin superusuario). `fpa_asiento_sellado` no usa `SET` en su definición precisamente por eso: PostgreSQL no
+deja fijar así una variable propia a quien no es superusuario.
+
+**Vuelta del bloque a lo publicado**, sin datos nuevos, en este orden:
+
+```
+migrate contabilidad 0003_modulo_kardex
+migrate tenancy 0012_accion_diseno_factura
+```
+
+Deshace las siete de este corte y las seis del bloque 1. Para volver solo hasta el final del bloque 1:
+
+```
+migrate contabilidad 0008_seguridad_por_filas_importacion
+migrate tenancy 0013_acciones_plan_cuentas
+```
+
+El módulo del kardex se queda con lo suyo y con lo del plan de cuentas, ningún rol conserva los permisos del libro ni de la
+apertura y el resto del menú y de los roles queda igual; otra ida lo deja todo como estaba. Lo recorre
+`tests/test_migracion_vuelta_fase.py::test_vuelta_del_plan_de_cuentas_a_lo_publicado` (primero hasta el bloque 1, después
+hasta lo publicado), por subproceso, sobre una instalación SQLite con menú. La vuelta de `0013` y la de `0012` en PostgreSQL
+(quitar y volver a poner los disparadores y las políticas) las recorre `tests/test_zz_libro_inmutable_pg.py`.
+
+**Las otras vueltas documentadas:**
+
+- La de la fase (`contabilidad zero`, …, `tenancy 0006`) deshace también estas siete: la prueba espera 54 pendientes, las
+  47 de antes más estas.
+- La del diseño de factura (`configuracion 0003`, `pos 0034`, `tenancy 0011`) deshace además `tenancy 0014`, que va sobre
+  0013 y esta sobre 0012. Las tablas del libro y de la apertura no se tocan (`sin_diseno` de la prueba incluye
+  `tenancy.0014_acciones_apertura`).
+
+**Recuperación que conserva lo posterior: vuelta solo de código** (`deploy/scripts/desplegar.sh --revertir`). Es la vuelta
+para después de usar el bloque: la base queda migrada y el código anterior sigue atendiendo sobre ella. Ventas, cobros,
+compras, emisión y kardex no dependen de nada de contabilidad, así que siguen igual y nada de lo registrado después de
+publicar se pierde; el libro, la apertura y sus archivos quedan en la base, inaccesibles hasta volver a publicar el bloque.
+Dos límites mientras dure:
+
+- El código anterior no conoce `clase` ni `auxiliar`: cambiar a grupo una cuenta de movimiento que tiene auxiliar choca con
+  el CHECK `cuenta_auxiliar_solo_movimiento` y la petición falla (no se guarda nada).
+- El código anterior no sabe qué cuentas tienen movimientos en el libro o en la apertura: podría desactivar una o pasarla a
+  grupo. Las líneas ya escritas no cambian (el libro es de solo inserción), pero al volver a publicar el bloque esa cuenta
+  quedaría inactiva o de grupo con líneas. Mientras dure la vuelta, no tocar el plan de cuentas.
+
+El ensayo de la decisión 18 (con la versión publicada atendiendo, y la vuelta de solo código después de confirmar una
+apertura) lo ejecuta el orquestador al cerrar el corte; no está hecho en esta nota.
+
+**Restauración, último recurso.** `deploy/scripts/restaurar.sh <volcado> <versión anterior> [--ejecutar]` vuelve la base, el
+código y los estáticos al volcado previo y **pierde todo lo registrado después** (ventas, cobros, compras, la apertura y sus
+archivos). `migrate` hacia atrás con datos nuevos tampoco sirve: borraría el libro y la apertura (los archivos de lotes y respaldos quedan en
+`privado/empresas/<uuid de la empresa>/apertura/` de `FPA_ARCHIVOS`, que la vuelta no borra; restaurar exige también esa
+carpeta).
+
+**Probado:** ida, vuelta al bloque 1, vuelta a lo publicado y otra ida, y las vueltas de la fase y del diseño, en
+`tests/test_migracion_vuelta_fase.py` (SQLite, por subproceso, en las dos suites); las políticas forzadas de las 19 tablas
+(`tests/test_rls_modelos_de_empresa.py` y `tests/test_rls_libro_apertura.py`, PostgreSQL); los disparadores y su vuelta
+(`tests/test_zz_libro_inmutable_pg.py`); convivencia de columnas y borrados por SQL (`tests/test_convivencia_versiones.py`);
+`makemigrations --check --dry-run` sin cambios.
+
+**No probado:** el ensayo sobre una copia del respaldo de producción con la aplicación atendiendo y la vuelta de solo código
+con el código anterior (decisión 18; los guiones de `ensayo-pe/guiones/` siguen apuntando a la vuelta anterior a la fase y
+no se tocaron), y la base real.
+
+**Choque conocido al integrar con `fase/primera-entrega`** (no se hizo rebase ni fusión): esa rama trae
+`tenancy/0013_acciones_borrador_factura`, también sobre `tenancy 0012`, e `importacion 0008-0009`. Aquí `tenancy 0013` es del
+bloque 1 y `0014` de este corte. Al integrar, las de tenancy se renumeran en fila (las tres sobre la anterior, cada una con
+las `choices` completas de todas), y se suman el conteo y las listas de `tests/test_migracion_vuelta_fase.py` (`54`,
+`sin_diseno`, `BLOQUE_2`) y lo que esa rama traiga en `tests/test_convivencia_versiones.py`. Las de contabilidad no chocan
+con esa rama, pero sí con el cierre del bloque 1, que trae su propia `contabilidad 0009_anular_autores_en_la_base`: una de
+las dos pasa a la siguiente libre y las de este corte se corren en fila detrás.
