@@ -3159,8 +3159,9 @@ dos (`2 failed`); con el arreglo, el archivo entero: 8 aprobadas.
 Rama `fase/contable-2-apertura` sobre el bloque 1 (`fase/contable-1-cuentas`, `84d07cc`), sin `push` y sin publicar.
 Código final `a5bedf4`; después solo hay documentación. El 15/11/2026 se le unió el bloque 1 final (`8a421b3`) sin
 rebase y las migraciones de contabilidad de este corte pasaron de `0009`–`0014` a `0010`–`0015`: ver «Unión con el bloque
-1 final», al final de esta nota, que dice también el código final de la rama unida; desde las correcciones del cierre, el
-código final del corte es **`72a68ee`** («Cierre del corte 1 (15/11/2026)», al final de esta nota). Es el punto 2 de `ORDEN-CIERRE-CONTABLE-TRIBUTARIO.md`, Partes A
+1 final», al final de esta nota, que dice también el código final de la rama unida; las correcciones del cierre quedaron
+en `72a68ee`, y con la que dejó la verificación del cierre el código final del corte es **`7a5c567`** («Cierre del corte
+1 (15/11/2026)», al final de esta nota). Es el punto 2 de `ORDEN-CIERRE-CONTABLE-TRIBUTARIO.md`, Partes A
 y B de `contable/bloque-2-especificacion.md` (aceptaciones 1, 2, 7, 8 y 10 de C6-A). No se tocó ninguna plantilla, CSS ni
 JS, no hay páginas ni entradas de menú nuevas y no cambió quién entra al complemento, ni precios, ni planes.
 
@@ -3208,9 +3209,10 @@ Vendedor y Cliente, nada. Sin página nueva: los permisos cuelgan del módulo «
 - En toda respuesta de reporte o cobertura: `causas_detalle` con códigos estables, además de `provisional` y `causas`. En
   todo recurso sin página: `"url": null` y `"recurso": {"tipo", "id", "api"}` (respaldos, lotes, la apertura).
 - Errores: 404 `{"codigo": "no_existe"}`; 409 `{"codigo": "estado", "estado", "permitidos"}`; errores de listas por
-  posición (`"lineas.0.debe"`). Desde el cierre (`72a68ee`): 409 `reintentar` en cualquier ruta, los bloqueos
-  `cuenta_no_aplica` e `importe_total_excedido` y el texto de campo `caracteres_de_control` («Cierre del corte 1»,
-  abajo).
+  posición (`"lineas.0.debe"`). Desde el cierre (`72a68ee`): 409 `reintentar` en las rutas nuevas (las de
+  `ApiContable`; no en las del kardex ni del inventario), los bloqueos `cuenta_no_aplica` e `importe_total_excedido` y
+  el error de campo «Quita los caracteres de control…»; desde `7a5c567`, también en el código y el rubro de las filas de
+  un lote («Cierre del corte 1», abajo).
 
 **Archivos compartidos que se tocaron** (fuera de `core/contabilidad/`):
 
@@ -3253,17 +3255,18 @@ Vendedor y Cliente, nada. Sin página nueva: los permisos cuelgan del módulo «
 - `GET apertura/` lleva `acceso` (el objeto entero de capacidades), como el inicio.
 - `GET apertura/<id>/lineas/` y la respuesta de mapear traen también las líneas retiradas (`retirada: true`, importes en
   `null`) y `paginacion.total` las cuenta: la pantalla las filtra por `retirada` (C6-A §6.6).
-- Desde el cierre, cualquier ruta puede responder 409 `reintentar` (la base abortó por un cruce con otra transacción): se
-  muestra `error` y se deja repetir el mismo envío con la misma `clave` y la misma `version` (C6-A §6.1).
+- Desde el cierre, cualquier ruta nueva de `/contabilidad/api/` (no las del kardex ni del inventario) puede responder 409
+  `reintentar` (la base abortó por un cruce con otra transacción): se muestra `error` y se deja repetir el mismo envío
+  con la misma `clave` y la misma `version` (C6-A §6.1).
 
 **Dependencia concreta del corte** (qué falta · de quién depende · qué bloquea · cómo queda mientras tanto). Ninguna fila
 bloquea el corte: cada una bloquea, como mucho, su regla o su activación.
 
 | Qué falta | De quién depende | Qué bloquea | Cómo queda mientras tanto |
 |---|---|---|---|
-| Integración con `fase/primera-entrega` (no se hizo rebase ni fusión) | Orquestador, tras la revisión de esa rama | Publicar el bloque | Choca la numeración: esa rama trae `tenancy 0013` (aquí `0013` es del bloque 1 y `0014` de este corte) e `importacion 0008-0009`; se suman el conteo (`55` desde la unión con el bloque 1), `sin_diseno` y `BLOQUE_2` de `tests/test_migracion_vuelta_fase.py` y lo que traiga en `tests/test_convivencia_versiones.py`. Repasar los creadores y estados de `Sale` que añade (borrador de factura, conversión de proforma) antes del motor del bloque 3. Este contrato se verificó contra `a5bedf4`, no contra la rama integrada. **Al cierre (15/11/2026):** ensayada en un worktree desechable sobre `e0d7c38`, sin fallos; la receta, ya con 0016 (19 sin publicar, conteo **60**, `DE_ESTA_ENTREGA` 19, tenancy en fila 0013–0015, la importación por nombre de `tests/test_esquema_contable.py`, 11 pruebas de convivencia), está en MIGRACIONES-FASE-CONTABLE.md, «Receta de integración con `fase/primera-entrega`». **No se hace hasta que la propietaria apruebe el PR #1.** El conteo de esta rama sola es **56**. Qué se verificó del contrato y contra qué código: cabecera de C6-A |
+| Integración con `fase/primera-entrega` (no se hizo rebase ni fusión) | Orquestador, tras la revisión de esa rama | Publicar el bloque | Choca la numeración: esa rama trae `tenancy 0013` (aquí `0013` es del bloque 1 y `0014` de este corte) e `importacion 0008-0009`; se suman el conteo (`56` desde el cierre; `55` desde la unión con el bloque 1), `sin_diseno` y `BLOQUE_2` de `tests/test_migracion_vuelta_fase.py` y lo que traiga en `tests/test_convivencia_versiones.py`. Repasar los creadores y estados de `Sale` que añade (borrador de factura, conversión de proforma) antes del motor del bloque 3. Este contrato se verificó contra `a5bedf4`, no contra la rama integrada. **Al cierre (15/11/2026):** ensayada en un worktree desechable sobre `e0d7c38`, sin fallos; la receta, ya con 0016 (19 sin publicar, conteo **60**, `DE_ESTA_ENTREGA` 19, tenancy en fila 0013–0015, la importación por nombre de `tests/test_esquema_contable.py`, 11 pruebas de convivencia), está en MIGRACIONES-FASE-CONTABLE.md, «Receta de integración con `fase/primera-entrega`». **No se hace hasta que la propietaria apruebe el PR #1.** El conteo de esta rama sola es **56**. Qué se verificó del contrato y contra qué código: cabecera de C6-A |
 | Integración con el cierre del bloque 1 (`wt-contable`) | Orquestador | Publicar el bloque | **Hecha el 15/11/2026** sobre `8a421b3` («Unión con el bloque 1 final», abajo). Se preveía: `contabilidad 0009` (allí `0009_anular_autores_en_la_base`, aquí `0009_clases_de_cuenta`: una pasa a la siguiente libre y las de este corte van detrás; quedan de `0010` a `0015`), `capacidades.py` (campo `avisos`, acción `confirmar` de `apertura`), `cuentas.py`, `importar_cuentas.py`, `tests/test_cuentas*.py` y toda aserción exacta nueva de una función de capacidades (le falta `'avisos': []`) |
-| Ensayo con la versión publicada atendiendo y recorrido de las rutas en navegador (decisiones 18 y 19) | Orquestador, al cerrar el corte | Dar el corte por publicable | No hecho aquí. El código está preparado: toda columna nueva en una tabla existente lleva `db_default`, ninguna restricción va hacia tablas de la operación y las siete migraciones son reversibles; el ensayo debe comprobar que el rol de la aplicación crea las seis funciones de `contabilidad 0014` (`0013` antes de la unión con el bloque 1). **Hechos en el cierre (15/11/2026), sobre `6efad50`:** el ensayo (277 peticiones sin fallos durante `migrate`, 0 esperas de ventas, cobros y compras, la vuelta de solo código sin pérdidas, y el rol de la aplicación creó las seis funciones) y el navegador (36 de 37 casos bien; el que falló, D1, corregido). Encontraron C2E-1 a C2E-4 y D1 a D3 («Cierre del corte 1»). **Falta repetir el ensayo sobre `72a68ee`** (0016 y el `desplegar.sh` nuevo): lo completa el orquestador |
+| Ensayo con la versión publicada atendiendo y recorrido de las rutas en navegador (decisiones 18 y 19) | Orquestador, al cerrar el corte | Dar el corte por publicable | No hecho aquí. El código está preparado: toda columna nueva en una tabla existente lleva `db_default`, ninguna restricción va hacia tablas de la operación y las ocho migraciones (siete hasta el cierre) son reversibles; el ensayo debe comprobar que el rol de la aplicación crea las seis funciones de `contabilidad 0014` (`0013` antes de la unión con el bloque 1). **Hechos en el cierre (15/11/2026), sobre `6efad50`:** el ensayo (277 peticiones sin fallos durante `migrate`, 0 esperas de ventas, cobros y compras, la vuelta de solo código sin pérdidas, y el rol de la aplicación creó las seis funciones) y el navegador (36 de 37 casos bien; el que falló, D1, corregido). Encontraron C2E-1 a C2E-4 y D1 a D3 («Cierre del corte 1»). **Ensayo repetido sobre `72a68ee`** (0016 y el `desplegar.sh` nuevo; `7a5c567` no toca migraciones ni despliegue) el 15/11/2026: 285 peticiones durante `migrate`, ninguna fallida, 0 esperas de ventas, cobros y compras, 0011 y 0012 sin bloqueos sobre tablas existentes, 0016 de 0,10 a 0,49 s con el bloqueo tomado y el reintento de `desplegar.sh` probado con `pos_company` retenida: C2E-1 resuelto, C2E-3 probado con tráfico, C2E-2 sigue (MIGRACIONES, «Ensayo repetido sobre `72a68ee`»). El navegador no se repitió sobre el código corregido |
 | Pantallas de apertura y diario | Codex (y revisión de la propietaria, C6-A §9) | Uso por personas; el recorrido de **pantallas** en navegador, que se repite cuando se conecten | Rutas probadas por API; nada en el menú |
 | Saldos reales de cada empresa y quién los revisa | Contador de la empresa | Confirmar **su** apertura | Importes desconocidos en `null` (`importe_pendiente`); reportes provisionales con `apertura_sin_confirmar` |
 | Clase y auxiliar de cada cuenta | Contador de la empresa | Confirmar una apertura con cuentas sin clase (`cuenta_sin_clase`); que un ámbito tenga cobertura | Avisos `cuentas_sin_clase` y `cuentas_sin_auxiliar`; nunca se deducen del código |
@@ -3281,7 +3284,8 @@ bloquea el corte: cada una bloquea, como mucho, su regla o su activación.
 | `core/adjuntos/archivos._comprobar_imagen`: un PNG dañado da 500 en los comprobantes de pago y las capturas (lo que H1 corrigió en los respaldos de la apertura) — del cierre | Propietaria y orquestador: entrega aparte (código publicado en `e0f2902` y compartido) | Nada del corte | Los respaldos de la apertura responden 400 `errores.archivo`; las rutas publicadas siguen con el 500 |
 | Qué hacer si el auxiliar de una cuenta cambia después de confirmar la apertura — del cierre | Claude, corte 2 (Partes C y E) | Colgar auxiliares de esa línea | La línea confirmada conserva el `detalle` fijado al confirmar; la cuenta declara otro |
 | Rechazos confirmados del SRI de primera entrega en los documentos históricos (I3) — del cierre | Claude, corte 2 (Parte F), con primera entrega integrada | `historico.destinar` sobre esos documentos | Nota en la Parte F de la especificación |
-| Controles C0 en las celdas de un CSV del lote — del cierre | Claude, si se decide uniformar (el cambio va en `lectura_tabular`, compartido con C3) | Nada | Llegan a `rubro_origen` y `filas_origen` sin 500; los textos libres de la apertura sí los rechazan |
+| Controles C0 en las celdas de un CSV del lote — del cierre | Claude | Nada | **Corregido en `7a5c567`** (DOC44-2 de la verificación del cierre): un control en el código o el rubro de una fila deja la fila en `error` y mapear desde ese lote responde 400 con `filas.<n>.codigo` / `filas.<n>.rubro` (C6-A §6.1, «Textos libres», e importar). `lectura_tabular` no cambió: los controles que no son NUL en las demás celdas (columnas no elegidas, encabezados) se guardan en el lote y salen en `encabezados` y `muestra`, pero no llegan a la línea ni al asiento |
+| Publicar sin tráfico, o aceptar por escrito la excepción a la decisión 18a (C2E-2, bloque 1) — del cierre | **Propietaria** | Publicar el bloque con tráfico | En el ensayo repetido, durante 0009 un cobro y un movimiento del kardex esperaron unos 0,4–0,5 s por `user_user`; si 0004 o 0007 esperan un bloqueo, hasta 5 s por intento. Recomendación: publicar sin tráfico (MIGRACIONES, plan del bloque 1, punto 1) |
 | Inmutabilidad del libro frente al DDL del rol dueño de las tablas (C2E-4) — del cierre | **Propietaria** e infraestructura | Que «imposible» valga también frente al dueño de las tablas | Límite escrito en MIGRACIONES; `verificar` detecta un libro alterado |
 | Borrar a un usuario con registros en otra empresa, con las tres claves que suma primera entrega (I5) — del cierre | El bloque propio de ese pendiente, con su ensayo (la propietaria decide cuándo) | Ese borrado | Falla como en producción |
 
@@ -3402,12 +3406,14 @@ documentos (registro de las correcciones: `/root/invoice15/contable/registros/co
 | `fix/c2c1-importar` (`97eda32`) | `96d29c9`, `97eda32` | `e55636b` | C2A-1 y el 409 `reintentar` |
 | `fix/c2c1-migraciones` (`6f27265`) | `9826cd0`, `4c052a0`, `6f27265` | `19c4110` | C2E-1 (0016) |
 | `fix/c2c1-despliegue` (`85a8e10`) | `85a8e10` | `72a68ee` | C2E-3 |
+| directo en `fase/contable-2-apertura` (verificación del cierre) | `7a5c567` | — | DOC44-2 |
 
-**Código final del corte: `72a68ee`**, sin `push` y sin publicar. No se tocó ninguna plantilla, CSS ni JS, no hay páginas
-ni entradas de menú nuevas, y no cambió quién entra al complemento, ni precios, ni planes. Lo que cambia para Codex está
-en la cabecera de [CONTRATO-APERTURA-CONTABLE.md](CONTRATO-APERTURA-CONTABLE.md) («Cierre del corte 1») y en la nota de
-cabecera de [CONTRATO-CONTABLE-V9.md](CONTRATO-CONTABLE-V9.md); lo de las migraciones y el despliegue, en
-[MIGRACIONES-FASE-CONTABLE.md](MIGRACIONES-FASE-CONTABLE.md), «Cierre del corte 1».
+**Código final del corte: `7a5c567`** (las correcciones del cierre, hasta `72a68ee`; `7a5c567` solo toca
+`core/contabilidad/apertura_importar.py` y su prueba), sin `push` y sin publicar. No se tocó ninguna plantilla, CSS ni
+JS, no hay páginas ni entradas de menú nuevas, y no cambió quién entra al complemento, ni precios, ni planes. Lo que
+cambia para Codex está en la cabecera de [CONTRATO-APERTURA-CONTABLE.md](CONTRATO-APERTURA-CONTABLE.md) («Cierre del
+corte 1») y en la nota de cabecera de [CONTRATO-CONTABLE-V9.md](CONTRATO-CONTABLE-V9.md); lo de las migraciones y el
+despliegue, en [MIGRACIONES-FASE-CONTABLE.md](MIGRACIONES-FASE-CONTABLE.md), «Cierre del corte 1».
 
 **Qué se comprobó** (todo sobre `6efad50`, con datos ficticios; la máquina estuvo compartida, con carga de 2,5 a 17 en 6
 núcleos según el momento, así que los tiempos están inflados):
@@ -3428,9 +3434,10 @@ núcleos según el momento, así que los tiempos están inflados):
    añade a V9, la matriz de permisos de los seis roles, la precedencia de las negativas, MIGRACIONES y esta nota. Diez
    hallazgos: H1 a H5, H7 y H9 confirmados; H6, H8 y H10 refutados.
 
-   Los escépticos bajaron la severidad de dos: C2A-1 y H1 pasaron de P2 a P3 (no se pierde ni se corrompe nada; en C2A-1
-   la transacción se deshace entera y el reintento es seguro, y en H1 el archivo se rechaza igual). Los hallazgos del
-   ensayo, del navegador y de la integración no pasaron por un escéptico.
+   Los escépticos bajaron la severidad de tres: C2A-1, B2-AP-2 y H1 pasaron de P2 a P3 (no se pierde ni se corrompe
+   nada: en C2A-1 la transacción se deshace entera y el reintento es seguro; en B2-AP-2 hace falta declarar a propósito
+   algo que contradice las líneas, y validar ya avisa con `sin_resultados_acumulados`; en H1 el archivo se rechaza
+   igual). Los hallazgos del ensayo, del navegador y de la integración no pasaron por un escéptico.
 4. **Ensayo de la decisión 18** (`ensayo-contable-2c1`; pasada principal del 15/11 de 08:38 a 08:54 UTC, carga de 6,3 a
    4,98): base restaurada del volcado diario con un rol con los atributos del publicado (sin superusuario ni `BYPASSRLS`,
    dueño de las 208 tablas) y `e0f2902` atendiendo tráfico ficticio con 9 hilos, también ventas emitidas con el SRI
@@ -3454,7 +3461,8 @@ núcleos según el momento, así que los tiempos están inflados):
    pestaña vieja (26 peticiones con 409), CSRF, descargas con sus cabeceras, doble clic en confirmar (un solo asiento) y
    ninguna página ni entrada de menú nueva; 0 errores de JS, 0 respuestas 5xx y 0 peticiones externas. El que falló fue la
    sonda de importes (D1: `1e3`, `1_000` y `１２３` se leían como importes), **corregido en `238c04d`**; de los casos que
-   pasaron salieron dos defectos de contrato (D2 y D3). No se repitió sobre `72a68ee`. Arnés y evidencias:
+   pasaron salieron dos defectos de contrato (D2 y D3). No se repitió sobre el código corregido (`72a68ee`, `7a5c567`).
+   Arnés y evidencias:
    `/root/invoice15/registros-fase/contable-2-corte-1/`.
 6. **Integración de prueba con `fase/primera-entrega`**, en un worktree desechable (fusión `b550173` sobre `e0d7c38` y
    la prueba `2c4bad7`, ya borrados): 3 conflictos de texto y ninguna prueba fallida (SQLite en tres grupos: 219, 674 y 432
@@ -3462,14 +3470,15 @@ núcleos según el momento, así que los tiempos están inflados):
    («Receta de integración con `fase/primera-entrega`»), y cinco hallazgos, I1 a I5. **La integración de verdad no se hace
    hasta que la propietaria apruebe el PR #1.**
 
-**Los 25 puntos confirmados** (severidad final; «documento» quiere decir que se corrigió el texto y no el código):
+**Los 25 puntos confirmados** (severidad final; «documento» quiere decir que se corrigió el texto y no el código), y al
+final la corrección de código que dejó la verificación del cierre (abajo):
 
 | Id | Sev. | Qué era | Cómo quedó |
 |---|---|---|---|
 | C2A-1 | P3 | La confirmación de la importación del plan (C3) bloqueaba con `FOR UPDATE` todas las cuentas de la empresa, por orden de id; un asiento o la confirmación de la apertura toman `FOR KEY SHARE` de sus cuentas al confirmar, en el orden de sus líneas, y los dos podían esperarse en ciclo: interbloqueo y el libro abortado con un 500. Mover una cuenta bajo otra (`cuentas.modificar`) cerraba el mismo ciclo | `96d29c9`: `FOR NO KEY UPDATE` en `importar_cuentas` y en `cuentas.modificar`; `97eda32`: un interbloqueo o una espera agotada responde 409 `reintentar` (V9 y C6-A §6.1) |
 | B2-AP-1 | P2 | Enviar y confirmar miraban la copia `detalle` de la línea y no el auxiliar actual de la cuenta: un auxiliar declarado en revisión no se exigía al confirmar | `b731362`: en preparación vale el auxiliar actual; confirmar lo fija (`detalle_fijado`); bloqueo nuevo `cuenta_no_aplica` (C6-A §6.5, reglas 4 y 5) |
 | B2-AP-2 | P3 | Con N = P = 0 se aceptaba una declaración del resultado que contradice las líneas | `dd0c5dd`: `resultado_duplicado`, también a 31/12 (C6-A §6.5, regla 6) |
-| B2-AP-3 | P3 | Un NUL en un texto libre de la apertura terminaba en 500 en PostgreSQL | `619ed20`: 400 `validacion` con `caracteres_de_control` (C6-A §6.1) |
+| B2-AP-3 | P3 | Un NUL en un texto libre de la apertura terminaba en 500 en PostgreSQL | `619ed20`: 400 `validacion` con el error en su campo (C6-A §6.1) |
 | B2-AP-4 | P3 | Un total de 10^14 o más pasaba validar y enviar, y confirmar fallaba con el 400 `importe` del diario | `014d690`: bloqueo `importe_total_excedido` (C6-A §6.5, regla 5) |
 | B2-AP-5 | P3 | La misma clave de un respaldo en otra apertura respondía `repetido` con el de la primera | `5d50987`: 409 `clave_usada` (C6-A §6.6, respaldos) |
 | H1 | P3 | Un PNG dañado tumbaba la subida de respaldos con un 500 en HTML | `e4a63dc`: 400 `validacion` con `errores.archivo` (C6-A §6.6, respaldos) |
@@ -3479,9 +3488,9 @@ núcleos según el momento, así que los tiempos están inflados):
 | H5 | P3 | `test_validar_no_escribe` solo contaba eventos, auditoría y versión | `19105ff`: foto completa de la apertura, sus líneas y auxiliares; tres mutantes de `validar` la hacen fallar |
 | H7 | P3 | El 409 `auxiliar_incompleto` trae `sobran` y el contrato no lo nombraba | documento: forma completa (C6-A §6.5, regla 8, y §6.6, confirmar; aquí, «Al conectar») |
 | H9 | P3 | La vuelta de solo código no distinguía si el anterior es el bloque 1 o `e0f2902` | documento: los dos casos, con el punto 3 del plan del bloque 1 (MIGRACIONES) |
-| C2E-1 | P2 | 0011 y 0012 retenían `pos_company` (6,0 y 12,0 s) y `contabilidad_movimientomanual` (8,1 s) hasta confirmar; el kardex esperó hasta 5,47 s | `9826cd0`, `4c052a0`, `6f27265`: `AplazarClaves` y la nueva 0016, con su guarda y su prueba en PostgreSQL (MIGRACIONES) |
-| C2E-2 | P3 | Un cobro esperó 1,80 s por `user_user` durante 0004/0007 (bloque 1) | documento: publicar sin tráfico (MIGRACIONES, plan del bloque 1, punto 1) |
-| C2E-3 | P3 | `desplegar.sh` migraba sin `lock_timeout` ni reintento | `85a8e10`: `lock_timeout=5s` y hasta 3 intentos solo ante `55P03`/`40P01` (MIGRACIONES) |
+| C2E-1 | P2 | 0011 y 0012 retenían `pos_company` (6,0 y 12,0 s) y `contabilidad_movimientomanual` (8,1 s) hasta confirmar; el kardex esperó hasta 5,47 s | `9826cd0`, `4c052a0`, `6f27265`: `AplazarClaves` y la nueva 0016, con su guarda y su prueba en PostgreSQL (MIGRACIONES). Resuelto en el ensayo repetido: 0011 y 0012 sin bloqueos, 0016 de 0,10 a 0,49 s, kardex sin esperas |
+| C2E-2 | P3 | Un cobro esperó 1,80 s por `user_user` durante 0004/0007 (bloque 1) | documento: publicar sin tráfico (MIGRACIONES, plan del bloque 1, punto 1). Sigue en el ensayo repetido: durante 0009, un cobro y un kardex esperaron unos 0,4–0,5 s; publicar sin tráfico o que la propietaria acepte por escrito la excepción a 18a |
+| C2E-3 | P3 | `desplegar.sh` migraba sin `lock_timeout` ni reintento | `85a8e10`: `lock_timeout=5s` y hasta 3 intentos solo ante `55P03`/`40P01` (MIGRACIONES). Probado con tráfico en el ensayo repetido; si 0009 o 0016 se rinden, no se repite y el despliegue se repite a mano |
 | C2E-4 | P3 | El libro es de solo inserción frente al DML del rol de la aplicación, pero no frente a su DDL: es dueño de las tablas | documento: límite escrito (MIGRACIONES); la medida de fondo la decide la propietaria |
 | D1 | P3 | Los importes escritos admitían notación científica, `_` y cifras que no son ASCII | `238c04d` (C6-A §6.1) |
 | D2 | P3 | El contrato decía «400 `tipo`» al importar | documento (con H3) |
@@ -3491,6 +3500,7 @@ núcleos según el momento, así que los tiempos están inflados):
 | I3 | P3 | `historico.destinar` (corte 2) no tiene en cuenta los rechazos confirmados del SRI de primera entrega | nota en la Parte F de la especificación; pendiente del corte 2 |
 | I4 | P3 | Las líneas de `core/importacion` que cita la Parte F se mueven con primera entrega | tabla en la receta, paso 8 (MIGRACIONES), y nota en la Parte F |
 | I5 | P3 | Primera entrega suma tres claves `SET_NULL` hacia el usuario al pendiente de borrar usuarios (inferido, no reproducido) | pendiente (abajo y en «Pendiente» de la segunda ronda del bloque 1) |
+| DOC44-2 (verificación del cierre) | P2 | El rubro (y el código) de una fila del lote no se revisaba: un CSV con «Caja<BEL>chica» se importaba, se mapeaba y se confirmaba, y el control quedaba en el concepto del asiento inicial, que ya no se cambia | `7a5c567`: en `apertura_importar.evaluar`, un control que no es espacio en el código o el rubro deja la fila en `error`; mapear desde ese lote responde 400 `validacion` con `filas.<n>.codigo` / `filas.<n>.rubro` (C6-A §6.1, «Textos libres», e importar). Prueba: `tests/test_apertura_importar.py::TestMapearDesdeElLote::test_controles_en_el_codigo_o_el_rubro`, que falla sin la corrección |
 
 **Refutados** (no son defecto; no se cambió nada):
 
@@ -3504,6 +3514,31 @@ núcleos según el momento, así que los tiempos están inflados):
   C6-A §6.3 y `tests/test_rutas.py` la vigila.
 - **H10** (el ejemplo de capacidades de C6-A §6.9 no trae `empresa` ni `licencia`): es un extracto de las funciones del
   bloque y la forma completa está en V9, que la sección cita.
+
+**Archivos compartidos que tocó el cierre** (fuera de lo propio del corte; `git diff --stat 6efad50 7a5c567`):
+
+- `deploy/scripts/desplegar.sh` (`85a8e10`): `migrar()` con `lock_timeout` y reintento. Es el guion con que se publica
+  todo, y existe en `e0f2902`.
+- Del bloque 1 (existen en `8a421b3`): `core/contabilidad/api.py` (`ApiContable`: el 409 `reintentar` vale también para
+  C2 y C3), `cuentas.py` e `importar_cuentas.py` (`FOR NO KEY UPDATE`) y `capacidades.py` (el aviso
+  `auxiliares_incompletos` lee, en preparación, el auxiliar actual de la cuenta).
+- Pruebas compartidas: `tests/test_desplegar_releases.py` y `tests/test_cuentas_importacion.py` (del bloque 1) y
+  `tests/test_migracion_vuelta_fase.py` (existe en `e0f2902`). `tests/test_convivencia_versiones.py` es de este corte,
+  pero primera entrega trae el suyo: se unen como dice la receta, paso 4 (MIGRACIONES).
+
+Quien publique el bloque 1 por separado tiene que saber que estos archivos cambiaron en este corte.
+
+**Regla de bloqueos del plan de cuentas (C2A-1), para el código que venga.** Todas las claves foráneas hacia
+`contabilidad_cuenta` (`LineaAsiento`, `SaldoCuentaMes`, `LineaApertura`, `AuxiliarApertura`, `AplicacionAuxiliar`,
+`Contabilizacion` y `Cuenta.padre`) son `DEFERRABLE INITIALLY DEFERRED`: PostgreSQL toma el `FOR KEY SHARE` de cada
+cuenta al confirmar, en el orden en que se insertaron las filas. Por eso, una escritura del plan que bloquee más de una
+cuenta las bloquea con `FOR NO KEY UPDATE` y nunca retiene `FOR UPDATE` de una cuenta mientras espera otra.
+`_grupo_bloqueado` (el padre, en crear y en modificar) y la cuenta de `clasificar` siguen con `FOR UPDATE`: es la última
+cuenta que bloquean y solo hacen esperar. La importación del plan no entra en el orden global de bloqueos de la decisión
+común 4 ni toma el candado del libro: con `FOR NO KEY UPDATE` no comparte con el libro ningún bloqueo que choque. La
+decisión sigue sin incluir `Cuenta`, porque el libro nunca bloquea cuentas de forma explícita. Lo vigilan
+`tests/test_zz_diario_concurrencia_pg.py` (tres carreras: importación y asiento, importación y confirmar la apertura,
+mover una cuenta y asiento) y `tests/test_cuentas_importacion.py::TestCruceDeBloqueos`.
 
 **Las pruebas de cada corrección** (en su rama, antes de unir; la máquina, compartida):
 
@@ -3524,21 +3559,57 @@ núcleos según el momento, así que los tiempos están inflados):
 - `fix/c2c1-despliegue` sobre `85a8e10`: `tests/test_desplegar_releases.py`, 13 aprobadas en 16,5 s (10:27 UTC, carga
   7,12); con el guion de `6efad50`, 5 fallan.
 - Las cuatro: `makemigrations --check --dry-run` sin cambios.
+- `7a5c567` (DOC44-2, directo en la rama), en una copia hecha con `git archive`: `tests/test_apertura_importar.py` en
+  SQLite, 41 aprobadas en 87,5 s (15/11, de 15:21 a 15:23 UTC, carga de 7,58 a 8,29). Con la corrección quitada, la
+  prueba nueva `test_controles_en_el_codigo_o_el_rubro` falla (15:20 UTC). No trae migraciones.
 - La documentación de este cierre se comprobó contra `72a68ee` con un sondeo del cliente de pruebas de Django en una copia
   hecha con `git archive` (27 casos en SQLite, el 15/11 de 13:21 a 13:23 UTC, carga de 3,78 a 4,46; respuestas en
   `/root/invoice15/contable/registros/doc-c2c1-sondeo-72a68ee.json`, y el sondeo en `doc-c2c1-sondeo-72a68ee.py`, que no
-  se entrega). No es una suite: solo obtiene las respuestas que citan los contratos.
+  se entrega). No es una suite: solo obtiene las respuestas que citan los contratos. No tiene ningún caso de
+  `importe_total_excedido`: esa forma la comprueba `tests/test_apertura.py::TestBloqueos::test_total_que_no_cabe_en_un_asiento`
+  (en `19105ff`).
+
+**Verificación del cierre (15/11/2026, sobre `72a68ee` y los documentos de `44b8b71`).** Dos revisiones del código
+(apertura; migraciones y concurrencia, sin hallazgos), una de la documentación y el ensayo repetido; el hallazgo de la
+apertura lo revisó un escéptico. Registro en `/root/invoice15/contable/registros/verificacion-c2c1.json`.
+
+- **C2C1V-AP-1, refutado.** Con N = 0 por compensación al centavo (ingresos iguales a gastos) o P = 0 con líneas
+  marcadas que se anulan, declarar `en_cuentas_nominales` o `en_patrimonio` da `resultado_duplicado`. No es defecto: la
+  especificación (Parte B, regla 6) define la regla por las cifras N y P, B2-AP-2 se confirmó y se corrigió con esa
+  lectura y el contrato ya lo decía. El camino que vale (`no_aplica` con nota a mitad de año, o vacío a 31/12) confirma
+  con el mismo asiento inicial; solo cambia lo que queda guardado en `resultado_ejercicio`. Queda una frase en C6-A
+  §6.5, regla 6. Si la propietaria prefiere juzgar por las líneas, es una
+  decisión aparte.
+- **DOC44-1 a DOC44-15, confirmados.** Catorce de texto, corregidos en estos documentos: el 409 `reintentar` solo en las
+  rutas de `ApiContable`, los espacios que se colapsan, `no_aplica` a 31/12, los importes de un lote, los nombres
+  internos de textos, el orden real de las vueltas, la vuelta de 0010, las cifras viejas (55, siete), las sentencias de
+  0011 y 0012, la referencia de `detalle_fijado`, la severidad de B2-AP-2, lo que no cubrió el sondeo, la regla de
+  bloqueos del plan y los archivos compartidos. **DOC44-2 (P2) se corrigió en código, `7a5c567`** (fila al final de la
+  tabla de arriba).
+- El ensayo repetido sobre `72a68ee` (abajo, y MIGRACIONES) encontró además C2R-1 a C2R-3, de documento: corregidos.
 
 **Pruebas finales sobre el hash de cierre: las completa el orquestador.**
 
-- SQLite, suite completa sobre `72a68ee`: _pendiente; lo completa el orquestador_.
-- PostgreSQL sobre `72a68ee`: _pendiente; lo completa el orquestador_.
-- Ensayo de la decisión 18 repetido sobre `72a68ee` (0016 y el `desplegar.sh` nuevo): _pendiente; lo completa el
-  orquestador_.
+- SQLite, suite completa sobre `7a5c567`: _pendiente; lo completa el orquestador_.
+- PostgreSQL sobre `7a5c567`: _pendiente; lo completa el orquestador_.
+- Ensayo de la decisión 18 repetido sobre `72a68ee` (0016 y el `desplegar.sh` nuevo; `7a5c567` no toca migraciones ni
+  despliegue), **hecho el 15/11/2026** de 13:29 a 14:16 UTC, con `e0f2902` atendiendo y la máquina cargada (de 5,2 a
+  10,3 con 6 núcleos): ida con tráfico bien al primer intento, 285 peticiones durante `migrate` y ninguna fallida, 0
+  esperas de ventas, cobros y compras; 0011 y 0012 sin ningún bloqueo sobre tablas existentes (antes, 6,0 y 12,0 s sobre
+  `pos_company`); 0016 de 0,23 a 0,60 s, con `pos_company` y `contabilidad_movimientomanual` tomadas de 0,10 a 0,49 s;
+  kardex sin esperas (antes, hasta 5,47 s); uso del corte 99 de 99 (con los 22 casos de las correcciones); vuelta de
+  solo código sin pérdidas; vuelta de migraciones con la aplicación parada, 0016 la primera, con `AccessExclusiveLock`
+  de 0,51 a 0,64 s. Reintento: con `pos_company` retenida 7 s, 0004 se cortó a los 5 s y el intento 2 fue bien, 0
+  peticiones fallidas; con 0016 rendida (40 s retenida), no se repite, sale con error, `current` sigue en `e0f2902` y 0
+  fallidas. **C2E-1 resuelto; C2E-3 probado con tráfico; C2E-2 sigue** (durante 0009, un cobro y un kardex esperaron
+  unos 0,4–0,5 s). Límites: carga de la máquina (las duraciones no se comparan entre pasadas), una ejecución por
+  escenario y el muestreo fino congelado (corregido en esta pasada con el monitor de 100 ms). Detalle y tabla
+  comparada: MIGRACIONES, «Ensayo repetido sobre `72a68ee`».
 
 **Al conectar, además de lo de arriba** (todo en C6-A; lo que ya era así y el contrato no decía va marcado):
 
-- Un 409 `reintentar` puede llegar en cualquier ruta de `/contabilidad/api/`, con el cuerpo exacto
+- Un 409 `reintentar` puede llegar en cualquier ruta nueva de `/contabilidad/api/` (las de `ApiContable`; las del
+  kardex y del inventario de `e0f2902` no lo responden, y allí un interbloqueo sigue siendo un 500), con el cuerpo exacto
   `{"error": "Otra operación usaba los mismos datos al mismo tiempo: no se guardó nada. Vuelve a intentarlo.", "codigo": "reintentar"}`:
   se muestra `error` y se deja repetir el mismo envío, con la misma `clave` y la misma `version`, sin recargar.
 - El 409 `auxiliar_incompleto` de confirmar trae `lineas` (las que faltan por aceptar, siempre, aunque esté vacía) y
@@ -3548,9 +3619,12 @@ núcleos según el momento, así que los tiempos están inflados):
 - Mientras la apertura se prepara, `detalle` y `auxiliares.estado` dicen el auxiliar que la cuenta declara ahora: si
   alguien cambia el auxiliar de una cuenta, la apertura lo exige al validar y al confirmar sin volver a mapear.
 - Bloqueos nuevos `cuenta_no_aplica` (`lineas`, `ambitos`) e `importe_total_excedido` (`debe`, `haber`, `maximo`); un
-  texto libre con caracteres de control y un importe con notación científica, `_` o cifras que no son ASCII son 400 por
-  campo; un respaldo con una clave ya usada en otra apertura es 409 `clave_usada`, y una imagen ilegible, 400 con
-  `errores.archivo`.
+  texto libre con caracteres de control es 400 por campo. Un importe con notación científica, `_` o cifras que no son
+  ASCII es 400 por campo en mapear y en el PATCH; en un lote, la importación responde 200 y deja la fila en
+  `estado: "error"` con `errores: ["Escribe un importe válido."]`, y mapear desde ese lote da el 400 con
+  `filas.<n>.debe|haber|saldo`. Desde `7a5c567`, lo mismo con un carácter de control en el código o el rubro de una
+  fila: la fila queda en `error` y mapear da el 400 con `filas.<n>.codigo` / `filas.<n>.rubro`. Un respaldo con una
+  clave ya usada en otra apertura es 409 `clave_usada`, y una imagen ilegible, 400 con `errores.archivo`.
 
 **Pendientes reales, con dueño:**
 
@@ -3560,9 +3634,10 @@ núcleos según el momento, así que los tiempos están inflados):
 | I3: `historico.destinar` y los rechazos confirmados del SRI de primera entrega | Claude, corte 2 (Parte F), con primera entrega integrada | Nota en la Parte F de la especificación |
 | I5: las tres claves `SET_NULL` hacia el usuario que trae primera entrega (`DocumentoImportado.ultima_consulta_por`, `BorradorFactura.creado_por` y `actualizado_por`) se suman al pendiente de borrar a un usuario con registros en otra empresa | El bloque propio de ese pendiente, con su ensayo (la propietaria decide cuándo) | Ese borrado sigue fallando como en producción |
 | Qué hacer cuando el auxiliar de una cuenta cambia **después** de confirmar la apertura (la Parte A lo permite sin auxiliares vigentes ni líneas con tercero) | Claude, corte 2 (auxiliares y sustitución) | La línea confirmada conserva el `detalle` fijado y la cuenta declara otro |
-| Las celdas de un CSV del lote pueden traer controles C0 que no son NUL: `lectura_tabular` solo rechaza el NUL y llegan a `rubro_origen` y `filas_origen` (sin 500) | Claude, si se decide uniformar: el cambio va en `lectura_tabular`, compartido con C3 | Los textos libres de la apertura sí los rechazan; un XLSX no puede traer un NUL |
 | C2E-4: un rol dueño de las tablas distinto del que atiende, o un *event trigger* sobre las tablas del libro | **Propietaria** e infraestructura | Límite escrito en MIGRACIONES; `verificar` detecta un libro alterado |
-| El ensayo repetido sobre `72a68ee`, la medida de 0016 con la máquina tranquila y la limpieza de la base y el rol de medida del corrector (`fpa_c2e1`, `test_fpa_c2e1` y `/root/invoice15/c2e1-medicion/`, después de guardar sus registros) | Orquestador | Sin hacer |
+| C2E-2 (bloque 1): publicar sin tráfico, o aceptar por escrito la excepción a la decisión 18a | **Propietaria** | En el ensayo repetido, durante 0009 un cobro y un movimiento del kardex esperaron unos 0,4–0,5 s por `user_user`, y si 0004 o 0007 esperan un bloqueo, hasta 5 s por intento. Recomendación: publicar sin tráfico |
+| Que `desplegar.sh` repita también cuando 0009 o 0016 se rinden con su `RuntimeError` (hoy sale con error, `current` sigue en la versión anterior y el despliegue se repite a mano) | Propietaria, si lo quiere (decisión aparte) | Se repite a mano cuando la otra transacción suelta el bloqueo |
+| La medida de 0016 con la máquina tranquila y la limpieza de la base y el rol de medida del corrector (`fpa_c2e1`, `test_fpa_c2e1` y `/root/invoice15/c2e1-medicion/`, después de guardar sus registros). El ensayo repetido sobre `72a68ee` ya está hecho | Orquestador | Sin hacer |
 
 La tabla de **dependencia concreta del corte** (arriba) está al día con esto: las filas de la integración y del ensayo
 dicen lo que se hizo, y las nuevas, lo que queda.

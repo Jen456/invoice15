@@ -450,8 +450,22 @@ inflados.
    3,41 s. Un cobro, una venta o cualquier envío que escriba en `user_user` o en `pos_company` puede esperar hasta unos
    2 s, o más con la máquina cargada, durante 0004 y 0007: **publicar sin tráfico**. Desde `72a68ee`, además,
    `desplegar.sh` migra con `lock_timeout=5s` y repite `migrate` hasta 3 veces solo si una migración no consiguió un
-   bloqueo o chocó en un interbloqueo (C2E-3); el `RuntimeError` de 0009 al rendirse no se repite (ver la nota del corte 1
-   del bloque 2, «Cierre del corte 1»).
+   bloqueo o chocó en un interbloqueo (C2E-3); el `RuntimeError` de 0009 al rendirse no se repite: `desplegar.sh` sale
+   con error, `current` sigue en la versión anterior y el despliegue se repite a mano cuando la otra transacción suelte
+   el bloqueo (ver la nota del corte 1 del bloque 2, «Cierre del corte 1»). Un matiz de aquel ensayo: en `prueba-2` el
+   muestreo fino no estaba corregido y la ruta que atribuye (el «cobro») puede ser otra petición de la misma conexión
+   persistente (`CONN_MAX_AGE` 60); la espera sí fue real.
+
+   **C2E-2 sigue en el ensayo repetido sobre `72a68ee`** (15/11/2026, una ejecución por escenario, carga de 5,2 a 10,3
+   con 6 núcleos; «Ensayo repetido sobre `72a68ee`», en la nota del corte 1 del bloque 2). Sin nadie que retenga las
+   tablas hubo 0 esperas de ventas, cobros y compras, y en la pasada principal 0004 y 0007 retuvieron `user_user` hasta
+   0,91 s y `pos_company` hasta 1,14 s. Con `pos_company` retenida 7 s (escenario `r1`): 0004 esperó su bloqueo hasta el
+   `lock_timeout` de 5 s y se cortó, y mientras tanto las sondas de escritura en `user_user` y `pos_company` esperaron
+   5,0 y 4,7 s; en el intento 2, durante 0009, **un cobro y un movimiento del kardex esperaron unos 0,4–0,5 s por
+   `user_user`** (407 y 401 ms en el monitor de 100 ms; 500 y 493 ms en el muestreo fino). La decisión 18a pide que el
+   monitor no registre esperas de ventas, cobros ni compras. Lo que se puede esperar: durante 0009, un cobro y un
+   movimiento del kardex unos 0,5 s; si 0004 o 0007 esperan un bloqueo, hasta 5 s por intento. **Recomendación: publicar
+   sin tráfico, o que la propietaria acepte por escrito la excepción a 18a.**
 2. Deshacer migraciones solo con la aplicación detenida o en mantenimiento, sin escrituras, y con `lock_timeout` corto
    (2 a 5 s, en `PGOPTIONS`) y reintento: con tráfico, la vuelta puede interbloquearse con una escritura (D3). Toda vuelta
    del bloque por debajo de 0007 o de 0004 borra lotes o cuentas con sus datos: con datos registrados no se deshace, se
@@ -513,8 +527,10 @@ inflados.
   `lock_timeout` a `migrate`, así que esperarían lo que dure, con las escrituras de esas tablas en cola detrás. En los
   dos ensayos nadie las retuvo. **Desde `72a68ee`** (C2E-3, cierre del corte 1 del bloque 2) `migrate` va con
   `lock_timeout=5s` y se intenta hasta 3 veces, con 10 s de pausa, solo ante `55P03`/`40P01`: 0004 y 0007 esperan como
-  mucho 5 s por intento, la cortada no cambia nada y lo que esperaba detrás pasa. Lo que sigue sin medir es el reintento
-  con tráfico real.
+  mucho 5 s por intento, la cortada no cambia nada y lo que esperaba detrás pasa. Probado en el ensayo repetido sobre
+  `72a68ee` (escenario `r1`, con tráfico ficticio y `pos_company` retenida 7 s): 0004 se cortó a los 5 s, «se repite
+  migrate en 10 s», el intento 2 fue bien y no falló ninguna petición. Lo que sigue sin medir es el reintento con tráfico
+  real.
 - La base real.
 
 **Choque conocido al fusionar con `fase/primera-entrega`.** Esa rama trae `tenancy/0013_acciones_borrador_factura`, también
@@ -605,9 +621,10 @@ migrate contabilidad 0003_modulo_kardex
 migrate tenancy 0012_accion_diseno_factura
 ```
 
-Deshace las de este corte (siete hasta el cierre; desde `72a68ee`, ocho: `contabilidad 0016` a `0010` y `tenancy 0014`,
-con 0016 la primera) y después las siete del bloque 1
-(`contabilidad 0009` a `0004` y `tenancy 0013`). Para volver solo hasta el final del bloque 1:
+Con la primera orden deshace `contabilidad 0016` a `0004`: las siete de contabilidad de este corte (seis hasta el cierre;
+desde `72a68ee`, 0016 la primera) y después las seis del bloque 1. Con la segunda, `tenancy 0014` (de este corte) y
+`tenancy 0013` (del bloque 1). Quedan pendientes quince: las ocho del corte y las siete del bloque 1 (catorce antes del
+cierre). Para volver solo hasta el final del bloque 1:
 
 ```
 migrate contabilidad 0009_anular_autores_en_la_base
@@ -652,8 +669,9 @@ Lo que vale mientras dure depende de cuál sea el código anterior (separado en 
 
 El ensayo de la decisión 18 (con la versión publicada atendiendo, y la vuelta de solo código después de confirmar una
 apertura) lo ejecuta el orquestador al cerrar el corte; no está hecho en esta nota. **Hecho el 15/11/2026 sobre `6efad50`**
-(antes de 0016 y del `desplegar.sh` nuevo): «Cierre del corte 1», «Ensayo del cierre». Repetirlo sobre `72a68ee` queda
-pendiente.
+(antes de 0016 y del `desplegar.sh` nuevo): «Cierre del corte 1», «Ensayo del cierre». **Repetido el 15/11/2026 sobre
+`72a68ee`** (con 0016 y el `desplegar.sh` nuevo; `7a5c567` no toca migraciones ni despliegue): «Ensayo repetido sobre
+`72a68ee`», también en «Cierre del corte 1».
 
 **Restauración, último recurso.** `deploy/scripts/restaurar.sh <volcado> <versión anterior> [--ejecutar]` vuelve la base, el
 código y los estáticos al volcado previo y **pierde todo lo registrado después** (ventas, cobros, compras, la apertura y sus
@@ -677,19 +695,21 @@ rehace también 0016; y `tests/test_desplegar_releases.py` con el reintento de `
 **No probado:** el ensayo sobre una copia del respaldo de producción con la aplicación atendiendo y la vuelta de solo código
 con el código anterior (decisión 18; los guiones de `ensayo-pe/guiones/` siguen apuntando a la vuelta anterior a la fase y
 no se tocaron), y la base real. Al cierre, el ensayo y la vuelta de solo código se hicieron sobre `6efad50` con guiones
-propios (`ensayo-contable-2c1/guiones/`); sobre `72a68ee` (0016 y el `desplegar.sh` nuevo) no se han repetido. Siguen sin
-probar la base real, el reintento de `desplegar.sh` con tráfico real, la medida de 0016 con la máquina tranquila, las dos
-salvedades de la vuelta de solo código con el bloque 1 publicado (no aplican con `e0f2902`) y el saldo inicial del kardex
-desde la apertura (corte 2).
+propios (`ensayo-contable-2c1/guiones/`), y se repitieron sobre `72a68ee` (0016 y el `desplegar.sh` nuevo) con
+`guiones-2/`, sobre una copia del volcado diario y con tráfico ficticio («Ensayo repetido sobre `72a68ee`»). Siguen sin
+probar la base real, el reintento de `desplegar.sh` con tráfico real (en el ensayo se probó con tráfico ficticio), la
+medida de 0016 con la máquina tranquila, las dos salvedades de la vuelta de solo código con el bloque 1 publicado (no
+aplican con `e0f2902`) y el saldo inicial del kardex desde la apertura (corte 2).
 
 **Choque conocido al integrar con `fase/primera-entrega`** (no se hizo rebase ni fusión): esa rama trae
-`tenancy/0013_acciones_borrador_factura`, también sobre `tenancy 0012`, e `importacion 0008-0009`. Aquí `tenancy 0013` es del
-bloque 1 y `0014` de este corte. Al integrar, las de tenancy se renumeran en fila (las tres sobre la anterior, cada una con
-las `choices` completas de todas), y se suman el conteo y las listas de `tests/test_migracion_vuelta_fase.py` (`55`,
-`sin_diseno`, `BLOQUE_2`) y lo que esa rama traiga en `tests/test_convivencia_versiones.py`. Las de contabilidad no chocan
-con esa rama. Con el cierre del bloque 1, que trae su propia `contabilidad 0009_anular_autores_en_la_base`, chocaban: está
-resuelto en la unión de abajo. Al cierre del corte se ensayó la integración en un worktree desechable; la receta, ya con
-0016 (conteo 60, `DE_ESTA_ENTREGA` 19), está en «Cierre del corte 1», «Receta de integración con `fase/primera-entrega`».
+`tenancy/0013_acciones_borrador_factura`, también sobre `tenancy 0012`, e `importacion 0008-0009`. Aquí `tenancy 0013`
+es del bloque 1 y `0014` de este corte. Al integrar, las de tenancy se renumeran en fila (las tres sobre la anterior,
+cada una con las `choices` completas de todas), y se suman el conteo y las listas de
+`tests/test_migracion_vuelta_fase.py` (`56` desde el cierre, `55` antes; `sin_diseno`, `BLOQUE_2`) y lo que esa rama
+traiga en `tests/test_convivencia_versiones.py`. Las de contabilidad no chocan con esa rama. Con el cierre del bloque 1,
+que trae su propia `contabilidad 0009_anular_autores_en_la_base`, chocaban: está resuelto en la unión de abajo. Al
+cierre del corte se ensayó la integración en un worktree desechable; la receta, ya con 0016 (conteo 60,
+`DE_ESTA_ENTREGA` 19), está en «Cierre del corte 1», «Receta de integración con `fase/primera-entrega`».
 
 ### Unión con el bloque 1 final (15/11/2026)
 
@@ -723,10 +743,11 @@ Lo que se comprobó al unir:
 - **SQLite.** 0009 no hace nada allí; el `AddConstraint` de 0010 reconstruye `contabilidad_cuenta` como antes, con las
   mismas FK del bloque 1 (las ida y vuelta de `tests/test_migracion_vuelta_fase.py` pasan por ella).
 - **La vuelta al bloque 1** es ahora `migrate contabilidad 0009_anular_autores_en_la_base`; la de la fase espera 55
-  pendientes.
+  pendientes (56 desde el cierre, con 0016).
 - **`tests/test_zz_cuentas_0009_bloqueo_pg.py`** (bloque 1) vuelve contabilidad a `0008` para medir 0009 con `user_user`
-  retenido: con este corte encima eso deshace también 0010–0015 (las 19 tablas, sus políticas, los seis disparadores y sus
-  funciones y los permisos del módulo) y, al terminar, migra a las hojas del grafo, que las rehace.
+  retenido: con este corte encima eso deshace también 0010–0015 (y, desde el cierre, 0016; las 19 tablas, sus
+  políticas, los seis disparadores y sus funciones y los permisos del módulo) y, al terminar, migra a las hojas del
+  grafo, que las rehace.
 
 ### Cierre del corte 1 (15/11/2026)
 
@@ -734,17 +755,20 @@ Al cerrar el corte se hicieron, sobre `6efad50` (la rama unida con el bloque 1 f
 ensayo de la decisión 18 con la versión publicada atendiendo, el recorrido en navegador y una integración de prueba con
 `fase/primera-entrega`. Lo que toca a las migraciones y al despliegue se corrigió en dos ramas hechas desde `6efad50` y
 unidas sin rebase: `fix/c2c1-migraciones` (`9826cd0`, `4c052a0` y `6f27265`; unión `19c4110`) y `fix/c2c1-despliegue`
-(`85a8e10`; unión `72a68ee`). **Código final del corte: `72a68ee`**, sin `push` y sin publicar. Las otras dos ramas de
-correcciones (`fix/c2c1-apertura` y `fix/c2c1-importar`) no traen migraciones: `makemigrations --check --dry-run` sale
-limpio en las cuatro.
+(`85a8e10`; unión `72a68ee`). Las otras dos ramas de correcciones (`fix/c2c1-apertura` y `fix/c2c1-importar`) no traen
+migraciones: `makemigrations --check --dry-run` sale limpio en las cuatro. La verificación del cierre dejó una corrección
+más, `7a5c567` (los controles en el código o el rubro de una fila del lote de la apertura, DOC44-2), que solo toca
+`core/contabilidad/apertura_importar.py` y su prueba: ni migraciones ni despliegue. **Código final del corte:
+`7a5c567`** (las correcciones de migraciones y despliegue, en `72a68ee`), sin `push` y sin publicar.
 
 #### 0016 y `AplazarClaves`: las claves hacia tablas anteriores, al final y en una transacción corta (C2E-1)
 
 **Por qué.** En PostgreSQL, Django crea las claves foráneas de un `CreateModel` al final de la migración (en
 `deferred_sql`, mezcladas con los índices de esas columnas), y cada una toma `ShareRowExclusiveLock` sobre la tabla a la
 que apunta. Ese bloqueo choca con toda escritura en esa tabla (no con las lecturas) y dura hasta que la migración
-confirma. En `0011_libro_diario` la primera clave hacia `pos_company` es la sentencia 48 de 87, y detrás quedaban 41
-sentencias más el COMMIT; en `0012_apertura`, la 81 de 152, con 73 detrás, y la de `auxiliarapertura.movimiento_kardex`
+confirma. En `0011_libro_diario` la primera clave hacia `pos_company` es la sentencia 48 de 88 (contando `BEGIN` y
+`COMMIT`), y el bloqueo dura 41 sentencias, de ella al `COMMIT`, ambos incluidos; en `0012_apertura` es la 81 de 153, y
+dura 73. La de `auxiliarapertura.movimiento_kardex`
 hacía lo mismo con `contabilidad_movimientomanual` (SQL registrado por el corrector en
 `/root/invoice15/c2e1-medicion/sqlmigrate-base-0011.sql` y `-0012.sql`). Medido:
 
@@ -826,15 +850,22 @@ Ningún nombre de restricción cambia.
   bloqueado, 0,16 s hasta confirmar; ida con 30, 0,10 s; con `pos_company` ocupada 3,5 s, 0016 bien a los 4,06 s y la
   escritura más lenta esperó 1,20 s (de 23); ocupada hasta rendirse (3 intentos en la prueba), falla a los 7,00 s con el
   mensaje, sin cambiar nada, y la escritura más lenta esperó 1,10 s (de 69).
-- **Ensayo de la decisión 18 repetido sobre `72a68ee`** (con `e0f2902` atendiendo, que 0011 y 0012 dejan de aparecer en
-  los bloqueos sobre tablas existentes, cuánto retiene 0016 y que `desplegar.sh` se comporta como dice abajo): **pendiente;
-  sus cifras las completa el orquestador.**
+- **Ensayo de la decisión 18 repetido sobre `72a68ee`** (15/11, de 13:29 a 14:16 UTC, carga de 5,2 a 10,3 con 6
+  núcleos, `e0f2902` atendiendo; detalle en «Ensayo repetido sobre `72a68ee`», abajo). En las cuatro idas (la
+  principal, la otra ida después de la vuelta y los escenarios `r1` y `r3`), 0011 y 0012 no tomaron ningún bloqueo sobre
+  tablas existentes, y tampoco a la vuelta. 0016 duró de 0,23 a 0,60 s, con un intento, y retuvo `pos_company` y
+  `contabilidad_movimientomanual` de 0,10 a 0,49 s (espera del `LOCK` de 81 a 264 ms, los 26 ALTER de 61 a 119 ms, y el
+  resto, el COMMIT). Su vuelta, con la aplicación parada, tomó `AccessExclusiveLock` de 0,51 a 0,64 s. El kardex de
+  `e0f2902` no esperó nada (antes, 55 muestras y 5,47 s) y la escritura más lenta en `pos_company`, 1,14 s, es de 0007,
+  del bloque 1 (C2E-2). Las 26 claves quedaron diferidas y validadas, con la misma huella tras cada ida. **C2E-1 queda
+  resuelto.**
 
 **Qué bloquea ahora, con `e0f2902` atendiendo.** Solo `0016` toma un bloqueo que choca con la versión publicada: mientras
 espera el `LOCK` (como mucho 1 s por intento) y mientras lo tiene (26 ALTER sobre tablas vacías y el COMMIT) hacen cola
 las escrituras en `pos_company` y en `contabilidad_movimientomanual` (ediciones de empresa, movimientos manuales del
-kardex), y en `contabilidad_cuenta`, que `e0f2902` no usa; las lecturas no. Su vuelta toma `AccessExclusiveLock` y para también las lecturas, con los mismos intentos de
-1 s. El `SET LOCAL lock_timeout` de 0016 solo vale dentro de su transacción y no cambia el `lock_timeout=5s` que pone
+kardex), y en `contabilidad_cuenta`, que `e0f2902` no usa; las lecturas no. En el ensayo repetido, de 0,10 a 0,49 s
+con el bloqueo tomado. Su vuelta toma `AccessExclusiveLock` y para también las lecturas, con los mismos intentos de 1 s.
+El `SET LOCAL lock_timeout` de 0016 solo vale dentro de su transacción y no cambia el `lock_timeout=5s` que pone
 `desplegar.sh` (abajo). La recomendación de publicar sin uso del kardex ya no hace falta por 0011 y 0012; para el bloque
 1 (0004 y 0007, C2E-2) sigue igual.
 
@@ -869,12 +900,18 @@ Las órdenes no cambian; cambia lo que deshacen.
   0013_acciones_plan_cuentas`): deshace ocho, no siete, en este orden: `contabilidad 0016` a `0010` y después
   `tenancy 0014`. La primera es 0016, que quita las 26 claves con `AccessExclusiveLock` sobre `pos_company`,
   `contabilidad_cuenta` y `contabilidad_movimientomanual` (también paran las lecturas), en intentos de 1 s y solo para los
-  26 DROP y el COMMIT (el corrector midió entre 0,06 y 0,52 s con el bloqueo tomado). Las vueltas de 0015 a 0010 ya no
-  tocan esas tablas; antes, el `DROP TABLE` de 0012 y de 0011 tomaba `AccessExclusiveLock` sobre `pos_company` hasta
-  confirmar (ventanas de 0,58 y 0,52 s medidas). Quedan pendientes las ocho (`BLOQUE_2` de `tests/test_migracion_vuelta_fase.py`, que
-  ya incluye `contabilidad.0016_claves_hacia_tablas_anteriores`).
-- **A lo publicado** (`migrate contabilidad 0003_modulo_kardex`, `migrate tenancy 0012_accion_diseno_factura`): deshace
-  primero las ocho de este corte (0016 la primera) y después las siete del bloque 1; quedan pendientes quince.
+  26 DROP y el COMMIT (el corrector midió entre 0,06 y 0,52 s con el bloqueo tomado; el ensayo repetido, en la
+  vuelta a lo publicado y en la de solo 0016, con la aplicación parada, de 0,51 a 0,64 s, y la lectura de `pos_company`
+  esperó hasta 0,55 s). Las vueltas de 0015 a 0011 ya no tocan esas tablas. La de 0010, como siempre, toma
+  `AccessExclusiveLock` sobre `contabilidad_cuenta` para quitar `clase`, `auxiliar` y sus dos CHECK. Antes, el
+  `DROP TABLE` de 0012 y de 0011 tomaba `AccessExclusiveLock` sobre `pos_company` hasta confirmar (ventanas de 0,58 y
+  0,52 s medidas). Quedan pendientes las ocho (`BLOQUE_2` de `tests/test_migracion_vuelta_fase.py`, que ya incluye
+  `contabilidad.0016_claves_hacia_tablas_anteriores`).
+- **A lo publicado** (`migrate contabilidad 0003_modulo_kardex`, `migrate tenancy 0012_accion_diseno_factura`): con la
+  primera orden deshace `contabilidad 0016` a `0004` (las siete de contabilidad de este corte, 0016 la primera, y después
+  las seis del bloque 1); con la segunda, `tenancy 0014` (de este corte) y `tenancy 0013` (del bloque 1). Quedan
+  pendientes quince: las ocho del corte y las siete del bloque 1. En el ensayo repetido, 58,5 s la primera y 5,9 s la
+  segunda, un intento cada una.
 - **La de la fase** espera 56 pendientes (55 antes del cierre). **La del diseño de factura** no cambia: 0016 no depende de
   `pos 0035` ni de `tenancy`.
 - Con datos registrados vale lo de siempre (abajo): vuelta solo de código o restaurar.
@@ -909,10 +946,18 @@ procedimiento. Desde `72a68ee` (`85a8e10`), el paso 4 llama a `migrar()`:
   fallo para el despliegue al primer intento, con el código de salida de `migrate`, como antes.
 - **0009 y 0016 se rinden con su propio `RuntimeError`, que no se repite:** ya hicieron sus 8 intentos de 1 s y su
   mensaje dice qué hacer, aunque la causa sea un `55P03`. Así 0009 conserva su peor caso documentado (unos 22 s) y 0016 el
-  suyo. El caso de 0009 lo prueba `tests/test_desplegar_releases.py`; el de 0016 sigue la misma regla (la última
-  excepción es el `RuntimeError`) y no tiene caso propio en esa prueba. El `migrar()` de los guiones del ensayo
-  (`ensayo-contable-2c1/guiones/comun.sh`) es distinto: busca en el texto `lock timeout`, `LockNotAvailable`, `deadlock` o
-  «no se consiguió el bloqueo» y sí repetiría esos dos `RuntimeError`.
+  suyo. Lo que pasa entonces: `desplegar.sh` dice «FALLO de migrate en el intento 1 de 3; no se repite…» y sale con el
+  código de `migrate` (1); `current` sigue en la versión anterior, que sigue atendiendo, y la carpeta de la nueva se
+  borra al salir. **El despliegue se repite a mano** cuando la otra transacción suelte el bloqueo (mirar en
+  `pg_stat_activity` y `pg_locks` quién lo retiene). El texto de 0016 contiene «no se consiguió el bloqueo», pero
+  `desplegar.sh` no mira el texto, sino la clase de la última excepción. El caso de 0009 lo prueba
+  `tests/test_desplegar_releases.py`; el de 0016 no tiene caso propio en esa prueba, pero lo recorrió el ensayo repetido
+  sobre `72a68ee` (escenario `r2`, con `pos_company` retenida 40 s): 8 intentos cortados con `55P03` en 24,0 s, el
+  `RuntimeError`, «no se repite», salida 1, `current` en `e0f2902` y ninguna de las 64 peticiones fallida; después, sin
+  retención, solo 0016 se aplicó en 0,23 s al primer intento (`r3`). Si se quiere que `desplegar.sh` también repita ese
+  caso, es una decisión aparte. El `migrar()` de los primeros guiones del ensayo (`ensayo-contable-2c1/guiones/comun.sh`)
+  era distinto: buscaba en el texto `lock timeout`, `LockNotAvailable`, `deadlock` o «no se consiguió el bloqueo» y sí
+  habría repetido esos dos `RuntimeError`. El de `guiones-2/` ya es el de `desplegar.sh`.
 - Dentro de una migración manda su propio `SET LOCAL`: medido en el PostgreSQL de pruebas, la sesión con 5 s, tras
   `SET LOCAL '1000ms'` 1 s (también dentro y después de un punto de guardado) y tras el COMMIT otra vez 5 s; la 0009 real
   con `user_user` retenido e `INTENTOS=2` se rindió a los 4,29 s.
@@ -937,8 +982,11 @@ procedimiento. Desde `72a68ee` (`85a8e10`), el paso 4 llama a `migrar()`:
   ante `DeadlockDetected`, los 3 intentos agotados, y `statement_timeout` y 0009 sin reintento); su simulador imprime la
   salida real de un `migrate` cortado (Django 5.2.18, psycopg 3.3.6, PostgreSQL 16). Sobre `85a8e10`: 13 aprobadas en
   16,51 s (10:27:41 UTC, carga 7,12); con el guion de `6efad50`, 5 fallan.
-- **No probado:** el reintento con tráfico real ni en un ensayo con la aplicación atendiendo (solo el simulador y la
-  salida real capturada en el PostgreSQL de pruebas).
+- **Probado con tráfico en el ensayo repetido sobre `72a68ee`** (tráfico ficticio, `e0f2902` atendiendo): sin
+  retención, bien al primer intento; con `pos_company` retenida 7 s (`r1`), 0004 se cortó por `lock_timeout` a los 5 s
+  (`LockNotAvailable` → `OperationalError`), «se repite migrate en 10 s», el intento 2 fue bien y ninguna de las 299
+  peticiones durante `migrate` falló; con 0016 rendida (`r2`), lo de arriba. **C2E-3 queda resuelto y probado con
+  tráfico.** Sigue sin probar con tráfico real.
 
 #### Límite: la inmutabilidad del libro no resiste el DDL del rol dueño de las tablas (C2E-4)
 
@@ -993,20 +1041,128 @@ tiempos están inflados. Es anterior a 0016 y al `desplegar.sh` nuevo.
   `e0f2902`, ninguna conexión a la base publicada.
 
 En una pasada de prueba (`prueba-2`) un **cobro** esperó 1,80 s por `user_user` mientras 0004/0007 lo tenían (C2E-2):
-está en el punto 1 del plan del bloque 1.
+está en el punto 1 del plan del bloque 1. La espera fue real, pero la ruta la atribuye el muestreo fino, que en esa pasada
+no estaba corregido (límites del ensayo repetido, abajo): puede ser otra petición de la misma conexión persistente.
+
+#### Ensayo repetido sobre `72a68ee` (15/11/2026)
+
+La decisión 18 sobre el código corregido: 0016 y el `desplegar.sh` nuevo. `7a5c567`, posterior, solo toca la importación
+del lote de la apertura: no cambia nada de lo que mide este ensayo. Resultados en
+`/root/invoice15/ensayo-contable-2c1/resultados-2.json` (con la comparación entera, «comparacion_con_principal_1»);
+guiones en `ensayo-contable-2c1/guiones-2/`; registros en `registros/principal-2/`, `vuelta-2/` y `reintento-2/`. Los de
+la primera pasada no se tocaron.
+
+**Cómo.**
+
+- Las mismas garantías que la primera pasada: base restaurada del mismo volcado diario (`diario-20261114-231604.dump`),
+  rol con los atributos del publicado (sin superusuario ni `BYPASSRLS`, dueño de las tablas), `e0f2902` atendiendo con
+  2 workers, el SRI simulado (0 conexiones externas), correo local y el mismo tráfico ficticio.
+- `migrar()` es ahora la de `deploy/scripts/desplegar.sh` de `72a68ee` (`lock_timeout=5s`, 3 intentos, 10 s de pausa) y
+  `fallo_por_bloqueo()` está copiada sin cambios: ya no hay diferencia de procedimiento en el paso 4. Solo se añadió
+  instrumentación que observa.
+- Sondas nuevas: escritura en `contabilidad_movimientomanual` y lectura de `pos_company`. El uso del corte suma 22 casos
+  de las correcciones (`[C]`).
+- Tres pasadas, de 13:29 a 14:16 UTC. `principal-2`: ida con tráfico, ventana de 30 s o más con `e0f2902` sobre la base
+  migrada, cambio a la nueva, uso del corte y vuelta de solo código. `vuelta-2`: vuelta de migraciones con la aplicación
+  parada, `e0f2902` sobre la base deshecha y otra ida con tráfico. `reintento-2`, sobre otra copia restaurada: `r1`,
+  `pos_company` retenida hasta 7 s después de que `migrate` pidiera el bloqueo; `r2`, vuelta de solo 0016 con la
+  aplicación parada y después `pos_company` retenida 40 s; `r3`, sin retención; `r4`, el uso del corte otra vez y las
+  pruebas de inmutabilidad.
+
+**Comparación con la primera pasada** (las duraciones están infladas por la carga y no se comparan entre pasadas; los
+bloqueos sí):
+
+| Medida | principal-1 (`6efad50`) | principal-2 (`72a68ee`) |
+|---|---|---|
+| Carga al empezar / al terminar (6 núcleos) | 6,3 / 5,0 | 6,9 / 9,7 |
+| `migrate` de la ida: salida, intentos, segundos | 0, 1, 105,3 | 0, 1, 119,8 |
+| 0011: segundos; bloqueo sobre tablas existentes | 28,2 s; `pos_company` 6021 ms | 33,4 s; ninguno |
+| 0012: segundos; bloqueos | 53,5 s; `pos_company` 12023 ms, `movimientomanual` 8140 ms | 63,4 s; ninguno |
+| 0016 | no existía | 0,60 s; `pos_company` y `movimientomanual` 490 ms |
+| 0004 / 0007 (bloque 1) | `user_user` 1682 / 2439 ms, `pos_company` 1466 / 2621 ms | `user_user` 133 / 906 ms, `pos_company` 102 / 1135 ms |
+| Sonda de escritura en `pos_company` (máximo) | 12040,5 ms (4 de más de 1 s) | 1139,7 ms (1 de más de 1 s) |
+| Sonda de escritura en `movimientomanual` | no medida | 501,9 ms |
+| Sonda de escritura en `user_user` | 2440,5 ms | 911,6 ms |
+| Lectura de `user_user` / de `pos_company` | 322,8 ms / no medida | 4,4 / 4,4 ms |
+| Monitor: kardex (muestras, máximo) | 55, 5474 ms | 0, 0 |
+| Monitor: lecturas | 3, 299 ms | 0 |
+| Esperas de ventas, cobros y compras | 0 / 0 / 0 | 0 / 0 / 0 |
+| Peticiones durante `migrate` (total, fallidas, p95, máximo) | 277, 0, 6165 ms, 10305 ms | 285, 0, 6022 ms, 8166 ms |
+| Cambio a la nueva / vuelta de código (D7) | 5,4 s, 27 fallidas / 4,4 s, 21 | 8,4 s, 29 / 8,3 s, 24 |
+| Uso del corte | 77 pasos, 0 fallidos | 99 pasos, 0 fallidos (+22 `[C]`) |
+| Vuelta contabilidad 0003 / tenancy 0012 | 52,4 s / 4,5 s | 58,5 s / 5,9 s |
+| Vuelta de 0012 / 0011 sobre `pos_company` | 59,5 ms (y `movimientomanual` 27,5) / 205 ms | ninguno / ninguno |
+| Vuelta de 0016 | no existía | `AccessExclusiveLock` 512 ms (aplicación parada) |
+| Otra ida: 0011 / 0012 | `pos_company` 6017 ms / `pos_company` 9250 ms y `movimientomanual` 6594 ms | ninguno / ninguno; 0016, 342 / 224 ms |
+| Otra ida: kardex; escritura en `pos_company` | 36 muestras, 3597 ms; 9232 ms | 0; 384 ms |
+| Integridad (datos distintos en todas las comparaciones) | ninguno | ninguno |
+
+**Lo demás de `principal-2` y `vuelta-2`.**
+
+- Ventana de 30 s o más con `e0f2902` sobre la base migrada: seguridad 33/33 y 373 peticiones, 0 fallidas. Con
+  `72a68ee`: 1007 peticiones, 0 fallidas, y los 22 casos `[C]` bien (controles, `1e3`, PNG dañado, auxiliar cambiado en
+  revisión con `detalle_fijado`, la clave usada en otra apertura).
+- Con el rol de la aplicación, los 13 intentos de cambiar el libro o la historia, rechazados con `P0001`, y la seguridad
+  por filas de otra empresa con 0 filas: los mismos intentos que la primera pasada. `DISABLE TRIGGER` sigue siendo
+  posible (C2E-4). El rol de la aplicación creó las seis funciones y sus disparadores.
+- Vuelta de solo código a `e0f2902`: 528 peticiones; la única fallida, el 500 esperado al borrar desde `/plataforma/` una
+  empresa con plan de cuentas. Borrados por pantallas 10/10 y por SQL 9/9. No desapareció nada salvo lo borrado a
+  propósito.
+- Vuelta de migraciones con la aplicación parada: deshace 0016 la primera (arriba), borra las 21 tablas con sus datos y
+  deja 15 pendientes. `e0f2902` sobre la base deshecha: 395 peticiones, 0 fallidas. Otra ida con tráfico: 115,8 s, un
+  intento, 246 peticiones, 0 fallidas; kardex sin esperas; lo único, un inicio de sesión que esperó 229 ms por 0009.
+
+**Escenario de reintento** (`reintento-2`, carga de 5,2 a 7,9):
+
+- `r1`: 0004 se cortó por `lock_timeout` a los 5 s; «se repite migrate en 10 s»; el intento 2 fue bien; 299 peticiones,
+  0 fallidas. Las sondas de escritura en `user_user` y `pos_company` esperaron 5,0 y 4,7 s: es el tope de 5 s. Durante
+  0009 del intento 2, un cobro y un movimiento del kardex esperaron unos 0,4–0,5 s por `user_user` (C2E-2: punto 1 del
+  plan del bloque 1).
+- `r2`: 0016 hizo 8 intentos, todos cortados con `55P03`, en 24,0 s; las escrituras esperaron hasta 1,0 s por intento y
+  el kardex, 12 muestras con un máximo de 933 ms. 0016 se rindió con su `RuntimeError` y `desplegar.sh` no repitió:
+  salida 1, `current` en `e0f2902` y 0 de 64 peticiones fallidas («Despliegue», arriba).
+- `r3`: solo 0016, 0,23 s, bien al primer intento.
+- `r4`: el uso del corte, 99 de 99; el asiento sin sellar se rechaza al confirmar y quedan 0 sin sellar.
+
+**Veredicto.** **C2E-1 queda resuelto:** 0011 y 0012 ya no retienen `pos_company` ni `contabilidad_movimientomanual`, ni
+a la ida ni a la vuelta, y 0016 es corta y se rinde limpia. **C2E-3 queda resuelto y probado con tráfico** (ficticio).
+Siguen C2E-2 (bloque 1: punto 1 de su plan de recuperación) y C2E-4 (el límite de arriba). Lo que el ensayo vio que no
+coincidía con lo que se había dejado para documentar (C2R-1 a C2R-3) está corregido en estos documentos.
+
+**Límites.**
+
+- Máquina compartida (6 núcleos): carga de 6,9 a 10,3 en `principal-2` y `vuelta-2`, y de 5,2 a 7,9 en `reintento-2`,
+  contra 4 a 6,3 en la primera pasada. Las duraciones de 0011 y 0012 y las de las peticiones están infladas.
+- Una ejecución por escenario, sin pasadas de prueba. La retención fue solo sobre `pos_company`, en `ROW EXCLUSIVE`.
+- El muestreo fino corre en un solo bloque `DO`, y PostgreSQL congela `pg_stat_activity` en la primera lectura de la
+  transacción. En esta pasada se corrige con el monitor de 100 ms; en la primera y en `prueba-2` no, y la ruta que
+  atribuye puede ser otra petición de la misma conexión (`CONN_MAX_AGE` 60). La espera sí es real.
+- El guion de despliegue del ensayo sigue sin borrar la carpeta de una versión que no quedó activa: la de `r2` quedó en
+  `releases/` y el `--revertir` de `r4` la eligió (`72a68ee`). La prueba de inmutabilidad tras revertir corrió con
+  `72a68ee` atendiendo; los disparadores son de la base y el resultado no depende del código. En `principal-2` la vuelta
+  de código sí fue a `e0f2902`. El `desplegar.sh` real sí borra esa carpeta.
+- D7, fuera del bloque: cada cambio de proceso dejó de 4,3 a 8,4 s sin servicio y de 20 a 29 peticiones fallidas, con 0
+  respuestas 5xx.
+- `referencias.py` crea por ORM las filas contables que apuntan a la operación, porque el corte 1 no tiene rutas que las
+  creen.
+- No se ejecutaron suites, ni navegador, ni la integración con primera entrega. Falta la medida de 0016 con la máquina
+  tranquila.
+- Producción intacta: `facturaporaqui@pruebas`, leído solo con `systemctl show`, siempre con MainPID 1447381 y sin
+  reinicios; `current` en `e0f2902`; ninguna conexión a la base publicada. La base y el rol del ensayo están borrados.
 
 #### Receta de integración con `fase/primera-entrega`
 
-Ensayada el 15/11/2026 en un worktree desechable (fusión `b550173` de `6efad50` sobre `e0d7c38` y la prueba `2c4bad7`, ya
-borrados), con todo en verde: SQLite en tres grupos (219, 674 y 432 aprobadas) y PostgreSQL con cuatro archivos (212
-aprobadas). Registros y archivos resueltos en la VM101, `/root/invoice15/contable/registros/integracion-c2c1-pe/`.
-**No hacerla de verdad hasta que la propietaria apruebe el PR #1** (`fase/primera-entrega`). Lo ensayado fue sin 0016:
-la receta de abajo ya la incluye (código `72a68ee`), y lo que 0016 cambia (un número más en cada cuenta, la guarda nueva)
-es una cuenta hecha sobre el código, no una medida; los archivos resueltos de esa carpeta son de antes de 0016 y hay que
-ponerlos al día con ella.
+Ensayada el 15/11/2026 en un worktree desechable (fusión `b550173` de `6efad50` sobre `e0d7c38` y la prueba `2c4bad7`,
+ya borrados), con todo en verde: SQLite en tres grupos (219, 674 y 432 aprobadas) y PostgreSQL con cuatro archivos (212
+aprobadas). Registros y archivos resueltos en la VM101, `/root/invoice15/contable/registros/integracion-c2c1-pe/`. **No
+hacerla de verdad hasta que la propietaria apruebe el PR #1** (`fase/primera-entrega`). Lo ensayado fue sin 0016: la
+receta de abajo ya la incluye (código `72a68ee`; `7a5c567` no la cambia: solo toca
+`core/contabilidad/apertura_importar.py` y su prueba, que primera entrega no toca), y lo que 0016 cambia (un número más
+en cada cuenta, la guarda nueva) es una cuenta hecha sobre el código, no una medida; los archivos resueltos de esa
+carpeta son de antes de 0016 y hay que ponerlos al día con ella.
 
 0. Sin rebase. Sobre `fase/primera-entrega` (`e0d7c38`, o la rama que quede al publicarla):
-   `git merge --no-ff fase/contable-2-apertura` (`72a68ee`, que ya trae el bloque 1 `8a421b3`). En el ensayo salieron 3
+   `git merge --no-ff fase/contable-2-apertura` (`7a5c567`, que ya trae el bloque 1 `8a421b3`). En el ensayo salieron 3
    conflictos de texto: `core/tenancy/pestanas.py`, `tests/test_migracion_vuelta_fase.py` y
    `tests/test_convivencia_versiones.py` (add/add). Primera entrega no toca `deploy/`, `core/contabilidad`,
    `core/security/menu.py` ni `core/tenancy/roles.py`.
