@@ -14,7 +14,7 @@ mantienen `SaldoCuentaMes`); las pruebas de los servicios usan los servicios."""
 import hashlib
 import threading
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from itertools import count
 
@@ -313,6 +313,32 @@ def filas_de_apertura(empresa, cuentas, asiento):
             'evento': EventoApertura.objects.create(apertura=apertura, accion='creada', a_estado='borrador',
                                                     usuario_nombre=AUTOR[1]),
         }
+
+
+def apertura_confirmada_directa(empresa, cuentas, *, fecha_corte=date(2025, 12, 31), importe='10000.00'):
+    """Apertura confirmada de 10 000/10 000 (caja al debe, capital social al haber) con su inicio y su asiento de
+    apertura, escrita SIN el servicio: la confirmación (apertura.confirmar) es de la parte siguiente del corte 1. Sirve a
+    las pruebas que solo necesitan que exista una confirmada (crear o mover el corte → `apertura_confirmada`, la etapa del
+    inicio, la cobertura). Cuando exista apertura.confirmar, la parte siguiente la cambia por el servicio."""
+    with company_context(empresa):
+        inicio = InicioContable.objects.first() or inicio_directo(empresa, fecha_corte)
+    apertura = apertura_directa(empresa, fecha_corte=fecha_corte)
+    monto = Decimal(importe)
+    with company_context(empresa):
+        LineaApertura.objects.create(apertura=apertura, orden=1, cuenta=cuentas['caja'], debe=monto, haber=Decimal('0'),
+                                     rubro_origen='Caja')
+        LineaApertura.objects.create(apertura=apertura, orden=2, cuenta=cuentas['capital'], debe=Decimal('0'), haber=monto,
+                                     rubro_origen='Capital social')
+    asiento = asiento_directo(empresa, [(cuentas['caja'], importe, '0'), (cuentas['capital'], '0', importe)],
+                              fecha=fecha_corte, tipo='apertura', concepto='Apertura contable', motivo='',
+                              origen=('apertura', apertura.pk, 'confirmacion'))
+    with company_context(empresa):
+        apertura.estado, apertura.asiento, apertura.total_debe, apertura.total_haber = 'confirmada', asiento, monto, monto
+        apertura.confirmado_en, apertura.confirmado_por_nombre = timezone.now(), AUTOR[1]
+        apertura.version += 1
+        apertura.save(update_fields=['estado', 'asiento', 'total_debe', 'total_haber', 'confirmado_en',
+                                     'confirmado_por_nombre', 'version'])
+    return inicio, apertura
 
 
 # ---------------------------------------------------------------- esquema (las 19 tablas)

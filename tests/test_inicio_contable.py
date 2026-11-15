@@ -2,7 +2,7 @@
 
 GET /contabilidad/api/inicio/: quién lo abre (cada uno de sus tres permisos por separado, ninguno y cada rol); la forma de
 la respuesta; `capacidades` y `acceso`, que salen del contrato de capacidades; las etapas (plan de cuentas sin configurar,
-configurado a mano e importado; apertura y conciliación, todavía no disponibles); los pendientes de cada origen con datos
+configurado a mano e importado; apertura sin configurar; conciliación, todavía no disponible); los pendientes de cada origen con datos
 ficticios (revisión del mes en curso, recibos por completar y documentos importados), solo los que el usuario puede
 consultar y sin devolver en cero lo que no puede; dos empresas; empresa de la pestaña; complemento cerrado, sin plan y plan
 vencido."""
@@ -203,8 +203,7 @@ class TestRespuesta:
         assert datos['capacidades'] == {'revision': True, 'libros': True, 'kardex': True, 'plan_cuentas': {'ver': True, 'editar': True}}
         assert datos['etapas'] == {
             'plan_cuentas': SIN_PLAN_DE_CUENTAS,   # desconocido es null, nunca cero
-            'apertura': {'estado': 'no_disponible', 'fecha': None,
-                         'causa': 'La apertura contable (por saldos de apertura o por historial detallado) está en construcción.'},
+            'apertura': {'estado': 'sin_configurar', 'fecha': None, 'causa': None},   # bloque 2: tests/test_apertura_preparar.py
             'conciliacion': {'estado': 'no_disponible',
                              'causa': 'Bancos y conciliación están en construcción. Los formatos de extracto de cada banco '
                                       'esperan muestras reales; un CSV con columnas a elegir no depende de ellas.'}}
@@ -216,7 +215,7 @@ class TestRespuesta:
         assert datos['acceso']['empresa'] == datos['empresa']
         assert datos['acceso']['funciones']['inicio'] == {
             'nombre': 'Inicio contable', 'ambito': 'contabilidad', 'estado': 'disponible', 'causa': None, 'texto': None,
-            'acciones': {'ver': True}, 'faltan': []}
+            'acciones': {'ver': True}, 'faltan': [], 'avisos': []}
 
     @pytest.mark.parametrize('rol', [ROLE_OWNER, ROLE_ACCOUNTANT, ROLE_READONLY])
     def test_capacidades_dice_lo_mismo_que_acceso(self, client, empresa, rol):
@@ -288,18 +287,18 @@ class TestEtapas:
         assert datos['etapas']['plan_cuentas'] == {'estado': 'no_disponible', 'cuentas': None, 'importado_en': None,
                                                    'causa': capacidades.TEXTO_SIN_PERMISO}
         assert datos['acceso']['funciones']['plan_cuentas']['estado'] == 'sin_permiso'
-        assert datos['etapas']['apertura']['estado'] == 'no_disponible'   # las demás etapas, igual que para todos
+        # la apertura tampoco: este rol a medida no tiene view_apertura
+        assert datos['etapas']['apertura'] == {'estado': 'no_disponible', 'fecha': None, 'causa': capacidades.TEXTO_SIN_PERMISO}
 
-    def test_apertura_y_conciliacion_esperan_a_sus_bloques(self, entrar):
-        """Mientras `apertura` y `bancos` sigan pendientes en el registro de funciones. Quien construya uno de esos
-        bloques cambia su etapa en inicio.etapas: esta prueba deja de pasar en cuanto el registro lo dé por construido."""
+    def test_conciliacion_espera_a_su_bloque(self, entrar):
+        """Mientras `bancos` siga pendiente en el registro de funciones. Quien construya ese bloque cambia su etapa en
+        inicio.etapas: esta prueba deja de pasar en cuanto el registro lo dé por construido. (La apertura ya está construida:
+        su etapa la prueba tests/test_apertura_preparar.py.)"""
         etapas = leer(entrar)['etapas']
-        for etapa, funcion in (('apertura', 'apertura'), ('conciliacion', 'bancos')):
-            registrada = capacidades.funcion_de(funcion)
-            assert registrada.construccion == PENDIENTE, funcion
-            assert etapas[etapa]['estado'] == 'no_disponible' and etapas[etapa]['causa'] == registrada.texto_pendiente
-            assert 'en construcción' in etapas[etapa]['causa']
-        assert etapas['apertura']['fecha'] is None and set(etapas['conciliacion']) == {'estado', 'causa'}
+        registrada = capacidades.funcion_de('bancos')
+        assert registrada.construccion == PENDIENTE
+        assert etapas['conciliacion'] == {'estado': 'no_disponible', 'causa': registrada.texto_pendiente}
+        assert 'en construcción' in etapas['conciliacion']['causa']
         # nunca «completado»
         assert {e['estado'] for e in etapas.values()} <= {'sin_configurar', 'configurado', 'importado', 'no_disponible'}
 

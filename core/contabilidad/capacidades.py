@@ -71,6 +71,8 @@ class Funcion:
     `permisos`: acción → codename, o tupla de codenames si basta uno. Toda función tiene la acción `ver`: sin su permiso
     la función entera es `sin_permiso`. Cualquier otra acción guarda algo, así que con el plan vencido queda en falso.
     `requisitos`: funciones `(request) → [dato(...)]` con lo que falta por completar (lista vacía: nada).
+    `avisos`: funciones `(request) → [aviso(...)]` con lo pendiente que no impide usarla (decisión común 10 del bloque 2;
+    lo que sí lo impide va en `requisitos`). Se consultan, como los requisitos, solo para quien puede usarla.
     `ruta`: la que la sirve; tests/test_capacidades.py vigila que una función disponible la tenga publicada y que una
     pendiente no (quien construya la ruta cambia aquí `construccion`)."""
     codigo: str
@@ -82,6 +84,7 @@ class Funcion:
     decision: str = ''     # pendiente: la decisión que espera, si la hay
     requisitos: tuple = ()
     ruta: str = ''
+    avisos: tuple = ()
 
     @property
     def texto_pendiente(self):
@@ -90,6 +93,91 @@ class Funcion:
 
 # Los permisos de un módulo pendiente se fijan al construirlo: hasta entonces su única acción es `ver`, sin codename.
 POR_DEFINIR = {'ver': None}
+
+
+# ---------------------------------------------------------------- requisito y avisos de la apertura (bloque 2, Parte B)
+# Se evalúan por petición, en la empresa activa, y solo para quien puede usar la función. Importan los modelos al usarse:
+# los módulos de la apertura importan este registro.
+
+def _plan_cuentas_vacio(request):
+    """Sin ninguna cuenta de movimiento activa no hay dónde llevar un saldo: crear la apertura lo pide antes."""
+    from core.contabilidad.models import Cuenta
+    if Cuenta.objects.filter(tipo='movimiento', activa=True).exists():
+        return []
+    return [dato('plan_cuentas_vacio', 'Crea o importa el plan de cuentas: no tiene ninguna cuenta de movimiento activa.')]
+
+
+_PLAN = {'tipo': 'plan_cuentas', 'id': None, 'api': '/contabilidad/api/cuentas/'}
+
+
+def _cuentas_sin_clase(request):
+    """Cuentas de movimiento activas sin clase: la apertura no se confirma con una de ellas (`cuenta_sin_clase`) y los
+    estados no saben dónde ponerlas. La clase la declara una persona; nunca se deduce del código."""
+    from core.contabilidad.models import Cuenta
+    n = Cuenta.objects.filter(tipo='movimiento', activa=True, clase='').count()
+    return [aviso('cuentas_sin_clase', f'{n} cuenta(s) de movimiento no tienen clase (activo, pasivo, patrimonio, ingreso, '
+                  'costo o gasto): decláralas antes de confirmar la apertura.', n, recurso=_PLAN)] if n else []
+
+
+def _apertura_de_trabajo():
+    """`(id, ambitos_no_aplican)` de la apertura en preparación o, si no la hay, de la confirmada (la que muestra GET
+    /contabilidad/api/apertura/), o None."""
+    from core.contabilidad.models import Apertura
+    filas = list(Apertura.objects.filter(estado__in=('borrador', 'en_revision', 'confirmada'))
+                 .values_list('id', 'estado', 'ambitos_no_aplican'))
+    filas.sort(key=lambda f: f[1] == 'confirmada')   # la que está en preparación primero
+    return (filas[0][0], filas[0][2]) if filas else None
+
+
+def _cuentas_sin_auxiliar(request):
+    """Ámbitos de detalle sin ninguna cuenta que lo declare ni declaración de que no aplica: su cobertura queda pendiente
+    (`sin_cuenta_declarada`), porque no marcar una cuenta no prueba que no haya cartera."""
+    from core.contabilidad.cobertura import DETALLE_DE, NOMBRE
+    from core.contabilidad.models import Cuenta
+    declarados = set(Cuenta.objects.filter(tipo='movimiento', activa=True).exclude(auxiliar='')
+                     .values_list('auxiliar', flat=True).distinct())
+    trabajo = _apertura_de_trabajo()
+    no_aplican = {d.get('ambito') for d in (trabajo[1] if trabajo else None) or [] if isinstance(d, dict)}
+    faltan = [a for a, detalle in DETALLE_DE.items() if detalle not in declarados and a not in no_aplican]
+    if not faltan:
+        return []
+    return [aviso('cuentas_sin_auxiliar', 'Ninguna cuenta está declarada como de ' + ', '.join(NOMBRE[a] for a in faltan)
+                  + ': su cobertura queda pendiente hasta declarar la cuenta o que no aplica.', len(faltan), recurso=_PLAN)]
+
+
+def _auxiliares_incompletos(request):
+    """Líneas de la apertura de trabajo con detalle (Cuenta.auxiliar) cuyo saldo no está explicado del todo (o es
+    desconocido). Dos consultas: las líneas con detalle y lo detallado por línea."""
+    from django.db.models import Sum
+    from core.contabilidad.models import AuxiliarApertura, LineaApertura
+    trabajo = _apertura_de_trabajo()
+    if trabajo is None:
+        return []
+    detallado = dict(AuxiliarApertura.objects.filter(apertura_id=trabajo[0], estado='vigente').order_by().values('linea')
+                     .annotate(total=Sum('saldo_inicial')).values_list('linea', 'total'))
+    n = sum(1 for pk, debe, haber in LineaApertura.objects.filter(apertura_id=trabajo[0], retirada=False).exclude(detalle='')
+            .values_list('id', 'debe', 'haber')
+            if debe is None or haber is None or detallado.get(pk, 0) < debe + haber)
+    return [aviso('auxiliares_incompletos', f'{n} cuenta(s) de la apertura tienen su detalle (clientes, proveedores, '
+                  'inventario…) incompleto.', n, recurso={'tipo': 'apertura', 'id': trabajo[0],
+                                                         'api': f'/contabilidad/api/apertura/{trabajo[0]}/lineas/'})] if n else []
+
+
+def _vinculos_rotos(request):
+    """Auxiliares vigentes de la apertura de trabajo enlazados a una cuenta por cobrar o por pagar, o a un documento
+    importado, que ya no existe. Hoy no los crea nada (los vínculos son del corte 2): la consulta ya responde por ellos."""
+    from core.contabilidad.models import AuxiliarApertura
+    from core.importacion.models import DocumentoImportado
+    from core.pos.models import CtasCollect, DebtsPay
+    trabajo = _apertura_de_trabajo()
+    if trabajo is None:
+        return []
+    vigentes = AuxiliarApertura.objects.filter(apertura_id=trabajo[0], estado='vigente')
+    n = sum(vigentes.filter(**{f'{campo}__isnull': False}).exclude(**{f'{campo}__in': modelo.objects.values('pk')}).count()
+            for campo, modelo in (('cxc_id', CtasCollect), ('cxp_id', DebtsPay), ('documento_importado_id', DocumentoImportado)))
+    return [aviso('vinculos_rotos', f'{n} auxiliar(es) de la apertura están vinculados a un documento que ya no existe: '
+                  'desvincúlalos con su motivo.', n, recurso={'tipo': 'apertura', 'id': trabajo[0],
+                                                              'api': f'/contabilidad/api/apertura/{trabajo[0]}/'})] if n else []
 
 FUNCIONES = (
     Funcion('libros', 'Libros mensuales', TRIBUTARIO, {'ver': 'view_libros'}, ruta='/tributario/libros/'),
@@ -115,8 +203,17 @@ FUNCIONES = (
     # Bloques siguientes de la orden de cierre. La decisión citada bloquea su regla o su activación, no la construcción.
     Funcion('evidencias', 'Evidencias de presentación', TRIBUTARIO, POR_DEFINIR, construccion=PENDIENTE,
             que_falta='El registro de evidencias de presentación del 104, del 103 y del ATS está en construcción.'),
-    Funcion('apertura', 'Apertura contable', CONTABILIDAD, POR_DEFINIR, construccion=PENDIENTE,
-            que_falta='La apertura contable (por saldos de apertura o por historial detallado) está en construcción.'),
+    # Bloque 2 · Parte B (vistas_apertura.py). `confirmar` (change_confirmacion_apertura) lo añade la parte siguiente del
+    # corte 1 al publicar su ruta: nada se anuncia sin ella.
+    Funcion('apertura', 'Apertura contable', CONTABILIDAD, {'ver': 'view_apertura', 'preparar': 'add_apertura'},
+            requisitos=(_plan_cuentas_vacio,),
+            avisos=(_cuentas_sin_clase, _cuentas_sin_auxiliar, _auxiliares_incompletos, _vinculos_rotos),
+            ruta='/contabilidad/api/apertura/'),
+    Funcion('cartera_inicial', 'Cobros y pagos sobre saldos iniciales', CONTABILIDAD, POR_DEFINIR, construccion=PENDIENTE,
+            que_falta='Los cobros, pagos y descargos sobre los saldos iniciales de la apertura están en construcción.'),
+    Funcion('historico', 'Documentos anteriores al corte', CONTABILIDAD, POR_DEFINIR, construccion=PENDIENTE,
+            que_falta='El destino de los documentos importados anteriores al corte (consulta, completar un auxiliar o '
+                      'reconstrucción) está en construcción.'),
     Funcion('asientos', 'Asientos por comprobante', CONTABILIDAD, POR_DEFINIR, construccion=PENDIENTE,
             que_falta='Los asientos por comprobante están en construcción.',
             # D7
@@ -161,6 +258,12 @@ def dato(codigo, texto, url=None):
     return {'codigo': codigo, 'texto': texto, 'url': url}
 
 
+def aviso(codigo, texto, cantidad=None, url=None, recurso=None, decision=None):
+    """Un aviso (decisión común 10 del bloque 2): algo pendiente que no impide usar la función. `url` solo si hay una
+    página que ya existe; si no, `recurso` con su ruta de API. `decision` solo si depende de una decisión de plataforma."""
+    return {'codigo': codigo, 'texto': texto, 'cantidad': cantidad, 'url': url, 'recurso': recurso, 'decision': decision}
+
+
 # ---------------------------------------------------------------- resolución
 
 def codigos(request):
@@ -182,7 +285,7 @@ def tiene(request, permiso):
 
 def _resolver(funcion, lic, request):
     acciones = dict.fromkeys(funcion.permisos, False)
-    estado, texto, faltan = DISPONIBLE, None, []
+    estado, texto, faltan, avisos = DISPONIBLE, None, [], []
     if funcion.construccion == PENDIENTE:
         estado, texto = MODULO_PENDIENTE, funcion.texto_pendiente
     elif lic['estado'] in SIN_ACCESO:
@@ -197,12 +300,14 @@ def _resolver(funcion, lic, request):
         else:
             for accion, permiso in funcion.permisos.items():
                 acciones[accion] = tiene(request, permiso) and (accion == 'ver' or not lic['solo_consulta'])
+            avisos = [a for consulta in funcion.avisos for a in consulta(request)]
     return {'nombre': funcion.nombre, 'ambito': funcion.ambito, 'estado': estado, 'causa': CAUSAS[estado], 'texto': texto,
-            'acciones': acciones, 'faltan': faltan}
+            'acciones': acciones, 'faltan': faltan, 'avisos': avisos}
 
 
 def estado_de(request, codigo):
-    """Una función resuelta para esta petición: `{"nombre", "ambito", "estado", "causa", "texto", "acciones", "faltan"}`."""
+    """Una función resuelta para esta petición: `{"nombre", "ambito", "estado", "causa", "texto", "acciones", "faltan",
+    "avisos"}`."""
     return _resolver(funcion_de(codigo), licencia(request), request)
 
 

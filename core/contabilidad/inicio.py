@@ -5,8 +5,9 @@ pantalla a la que lleva:
 
 - `acceso` es el contrato de capacidades entero (capacidades.capacidades) y `capacidades`, esos mismos datos en la forma
   corta del contrato v9 (booleanos);
-- `etapas.plan_cuentas` cuenta las cuentas de la empresa y mira si hay una importación confirmada; `apertura` y
-  `conciliacion` todavía no existen y lo dicen con el texto del registro de funciones;
+- `etapas.plan_cuentas` cuenta las cuentas de la empresa y mira si hay una importación confirmada; `apertura` sale de la
+  configuración y del estado de la apertura (inicio_contable.etapa: `sin_configurar | pendiente | en_revision |
+  confirmada`, con `fecha` = el corte); `conciliacion` todavía no existe y lo dice con el texto del registro de funciones;
 - `pendientes` llama a la revisión del mes (revision.revisar), al contador de recibos por completar
   (capturas.contar_pendientes) y a la bandeja de documentos importados pendientes de revisión (la consulta de su pantalla).
 
@@ -18,6 +19,7 @@ Dos reglas del contrato que aquí importan:
 from django.utils import timezone
 
 from core.contabilidad import capacidades as cap
+from core.contabilidad import inicio_contable
 from core.contabilidad.importar_cuentas import CONFIRMADO
 from core.contabilidad.models import Cuenta, ImportacionCuentas
 from core.suscripciones import reglas
@@ -77,9 +79,10 @@ def _por_construir(codigo):
 def etapas(acceso):
     return {
         'plan_cuentas': etapa_plan_cuentas(acceso),
-        # Hasta que existan sus bloques. Quien los construya cambia estas dos entradas: tests/test_inicio_contable.py
-        # falla en cuanto `apertura` o `bancos` dejan de estar pendientes en el registro.
-        'apertura': {'estado': NO_DISPONIBLE, 'fecha': None, 'causa': _por_construir('apertura')},
+        # Bloque 2 (Parte B): valores nuevos de la etapa, aditivos (sin_configurar | pendiente | en_revision | confirmada).
+        'apertura': inicio_contable.etapa(acceso),
+        # Hasta que exista su bloque. Quien lo construya cambia esta entrada: tests/test_inicio_contable.py falla en cuanto
+        # `bancos` deja de estar pendiente en el registro.
         'conciliacion': {'estado': NO_DISPONIBLE, 'causa': _por_construir('bancos')},
     }
 
