@@ -16,6 +16,13 @@ comunes); con el plan vencido tampoco guarda un formulario que lleve `action`; y
 más, cada uno con su texto: el CSV con las comillas mal cerradas, el XLSX que declara entidades XML y la tabla con
 demasiado texto.
 
+**Actualizado el 14/11/2026 (corte 1 del bloque 2: libro diario mínimo, inicio contable y apertura hasta confirmar).**
+Rama `fase/contable-2-apertura`, código final `a5bedf4`, sin publicar. Las rutas de la apertura y del diario y sus ejemplos
+reales están en `CONTRATO-APERTURA-CONTABLE.md` (C6-A, sección 6). Aquí cambia lo que ya existía: las reglas comunes
+(`empresa` en la consulta, `url` y `recurso`), «Capacidades» (funciones nuevas, el campo `avisos` y el primer requisito
+real), C1 (la etapa de la apertura), C2 (clase y auxiliar de cada cuenta, reclasificar y la ruta para clasificar por lote)
+y C3 (la columna «clase»). Todo es aditivo: ninguna clave que ya existía cambió de forma ni de sentido.
+
 ## Reglas comunes
 
 Valen para todo lo que cuelga de `/tributario/` y `/contabilidad/`:
@@ -86,6 +93,32 @@ redirigiendo (302). Las nuevas cumplen además esto:
   pantalla produce: ese formulario, si además no trae `empresa`, recibe el 409 `sin_empresa`. Tampoco guarda nada.
 - **Método que la ruta no admite.** 405 `{"codigo": "metodo"}` con la cabecera `Allow`.
 
+Reglas que añade el bloque 2 (libro diario y apertura, corte 1) y que valen para toda ruta nueva desde ahí:
+
+- **`empresa` va siempre en la consulta (`?empresa=<id>`), también cuando el envío es JSON.** Es lo único que mira
+  `PlanMiddleware` antes de la vista. El cuerpo puede repetirla; si una de las dos no es la activa, 409
+  `empresa_cambiada`. Las rutas de C2 y C3 la siguen aceptando solo en el cuerpo, como hasta ahora, pero la interfaz la
+  manda en los dos sitios.
+- **Orden ampliado de las negativas** de una ruta que escribe: los seis puestos de arriba y, entre los datos por completar
+  y la validación, `clave` repetida (200 `repetido` o 409 `clave_usada`) → `version` (409) → estado del recurso (409
+  `estado`, con `estado` y `permitidos`) → conflicto con otros datos (409 con su código: `rango_solapado`,
+  `periodo_cerrado`…). La clave va antes que la versión: el reintento de un envío ya aplicado trae la versión vieja y
+  recibe el mismo resultado.
+- **Inexistente o de otra empresa:** 404 `{"codigo": "no_existe"}` en las rutas del bloque 2. Las del bloque 1 conservan
+  sus códigos (`cuenta`, `lote`), también `cuentas/clasificar/`.
+- **Errores en listas:** la clave lleva la posición enviada, base 0: `"lineas.2.debe"`. En archivos, por `fila` (la de
+  encabezados es la 1), como C3.
+- **Enlaces (`url` y `recurso`).** `url` lleva solo una página que ya existe. Un recurso sin página (un respaldo, un lote de
+  importación, una apertura, un expediente) va con `"url": null` y `"recurso": {"tipo", "id", "api"}`, con su ruta de API.
+  El servidor no inventa rutas de página: cuando Codex conecte la pantalla, se añade su `url`.
+- **Reportes y coberturas:** `provisional` (booleano), `causas` (textos, la forma de C6) y `causas_detalle`
+  (`[{"codigo", "texto", "cantidad"?}]`) con códigos estables. Las causas salen de un solo registro
+  (`core/contabilidad/reportes.py`): ver C6.
+- **Instantes** en ISO 8601 con zona (UTC, `+00:00`), como los cobros. **Autores**: el nombre de usuario guardado con la
+  fila al escribirla; si el usuario se borra, se conserva.
+- **Paginación:** `?pagina=1&por_pagina=100` (máximo 500) → `"paginacion": {"pagina", "por_pagina", "total", "paginas"}`.
+- **`capacidades` de un recurso:** booleanos que ya combinan permiso, estado y licencia (con el plan vencido, `false`).
+
 Negativas comunes, tal como salen:
 
 ```
@@ -148,9 +181,10 @@ con el plan vencido, porque está para explicar el bloqueo. No devuelve ningún 
 `error` del 403 correspondiente.
 
 **`funciones`**: un objeto con todas las funciones, siempre en este orden: `libros`, `revision`, `ats`, `formularios`,
-`kardex`, `inventario`, `plan_cuentas`, `importar_cuentas`, `inicio`, `evidencias`, `apertura`, `asientos`, `diario_mayor`,
-`bancos`, `cierre`, `estados_financieros`, `formulario_101`. Cada una trae `nombre`, `ambito` (`tributario` o
-`contabilidad`), `estado`, `causa`, `texto`, `acciones` y `faltan`.
+`kardex`, `inventario`, `plan_cuentas`, `importar_cuentas`, `inicio`, `evidencias`, `apertura`, `cartera_inicial`,
+`historico`, `asientos`, `diario_mayor`, `bancos`, `cierre`, `estados_financieros`, `formulario_101`. Cada una trae
+`nombre`, `ambito` (`tributario` o `contabilidad`), `estado`, `causa`, `texto`, `acciones`, `faltan` y `avisos` (este
+último desde el bloque 2; en el ejemplo de arriba, del bloque 1, todavía no aparece).
 
 | `estado` | `causa` | `texto` | `acciones` |
 |---|---|---|---|
@@ -173,24 +207,49 @@ licencia» ni «te falta el permiso». `acciones` trae siempre todas sus claves.
 | `plan_cuentas` | `ver`: `view_cuenta`; `crear`: `add_cuenta`; `editar`: `change_cuenta` (incluye activar y desactivar) | disponible (C2) |
 | `importar_cuentas` | `ver` e `importar`: `add_cuenta`; `actualizar_nombre`: `change_cuenta` | disponible (C3) |
 | `inicio` | `ver`: `view_kardex`, `view_revision` o `view_cuenta` | disponible (C1) |
-| `evidencias`, `apertura`, `asientos`, `diario_mayor`, `bancos`, `cierre`, `estados_financieros`, `formulario_101` | `ver`, siempre `false` | pendiente |
+| `apertura` | `ver`: `view_apertura`; `preparar`: `add_apertura` (configurar, crear, editar, importar, mapear, respaldos, validar, enviar y descartar); `confirmar`: `change_confirmacion_apertura` (también devolver a borrador) | disponible (C6-A, bloque 2) |
+| `diario_mayor` | `ver`: `view_asiento` (el diario y su integridad; el bloque 3 añade `exportar`) | disponible (bloque 2) |
+| `evidencias`, `cartera_inicial`, `historico`, `asientos`, `bancos`, `cierre`, `estados_financieros`, `formulario_101` | `ver`, siempre `false` | pendiente |
 
-Textos de las pendientes: `evidencias`, `apertura` y `diario_mayor` dicen solo que están en construcción. Las demás
-añaden la decisión que espera su regla o su activación: `asientos`, la matriz por validar con un contador; `bancos`, las
-muestras de extractos; `cierre`, qué impide un mes cerrado y quién lo cierra o lo reabre; `estados_financieros`, la
-correspondencia con el catálogo de la Superintendencia de Compañías; `formulario_101`, la numeración de casilleros y la
-fórmula de la conciliación tributaria.
+Textos de las pendientes: `evidencias`, `cartera_inicial` (cobros, pagos y descargos sobre los saldos iniciales) e
+`historico` (destino de los documentos importados anteriores al corte) dicen solo que están en construcción; las dos
+últimas son del corte 2 del bloque 2. Las demás añaden la decisión que espera su regla o su activación: `asientos`, la
+matriz por validar con un contador; `bancos`, las muestras de extractos; `cierre`, qué impide un mes cerrado y quién lo
+cierra o lo reabre; `estados_financieros`, la correspondencia con el catálogo de la Superintendencia de Compañías;
+`formulario_101`, la numeración de casilleros y la fórmula de la conciliación tributaria.
 
-**Datos por completar.** El mecanismo está construido y probado con una función de prueba. Ninguna función real exige
-datos todavía: `apertura` y `asientos` exigirán tener plan de cuentas cuando existan. Su rechazo en una ruta será:
+**Datos por completar.** El primer requisito real es el de `apertura`: sin ninguna cuenta de movimiento activa no hay
+dónde llevar un saldo. La función queda `datos_por_completar` y crear la apertura responde:
 
 ```
 409 {"error": "Faltan datos por completar antes de usar esta función.", "codigo": "datos_por_completar", "causa": "datos",
-     "faltan": [{"codigo": "sin_cuentas", "texto": "Crea o importa el plan de cuentas.", "url": "/contabilidad/cuentas/"}]}
+     "faltan": [{"codigo": "plan_cuentas_vacio", "texto": "Crea o importa el plan de cuentas: no tiene ninguna cuenta de movimiento activa.",
+                 "url": null}]}
 ```
 
-Ese ejemplo es el de la función de prueba de `tests/test_capacidades.py`; el código y el enlace definitivos los fijará el
-bloque que añada el requisito.
+`url` es `null` porque el plan de cuentas todavía no tiene página.
+
+**Avisos** (desde el bloque 2). Lo pendiente que **no** impide usar la función va en `avisos`, no en `faltan`:
+`[{"codigo", "texto", "cantidad", "url", "recurso", "decision"}]`, con la regla de `url` y `recurso` de las reglas comunes.
+Se calculan solo para quien puede usar la función (con `estado: disponible`); para los demás la lista va vacía. `decision`
+solo aparece en lo que depende de una decisión de plataforma; lo que la empresa no ha configurado todavía (cuentas sin
+clase) es un aviso sin `decision`. Avisos de `apertura`, todos sin `decision`:
+
+| `codigo` | Cuándo | `cantidad` | `recurso` |
+|---|---|---|---|
+| `cuentas_sin_clase` | hay cuentas de movimiento activas sin clase | cuántas | `{"tipo": "plan_cuentas", "id": null, "api": "/contabilidad/api/cuentas/"}` |
+| `cuentas_sin_auxiliar` | algún ámbito de detalle (clientes, proveedores, inventario, bancos, activos, tributario) no tiene ninguna cuenta que lo declare ni declaración de que no aplica | cuántos ámbitos | el del plan de cuentas |
+| `auxiliares_incompletos` | líneas de la apertura de trabajo con detalle cuyo saldo no está explicado del todo | cuántas | `{"tipo": "apertura", "id", "api": "/contabilidad/api/apertura/<id>/lineas/"}` |
+| `vinculos_rotos` | auxiliares vinculados a un documento que ya no existe (hoy no los crea nada: los vínculos son del corte 2) | cuántos | la apertura |
+
+```
+"apertura": {"nombre": "Apertura contable", "ambito": "contabilidad", "estado": "disponible", "causa": null, "texto": null,
+             "acciones": {"ver": true, "preparar": true, "confirmar": true}, "faltan": [],
+             "avisos": [{"codigo": "cuentas_sin_clase",
+                         "texto": "1 cuenta(s) de movimiento no tienen clase (activo, pasivo, patrimonio, ingreso, costo o gasto): decláralas antes de confirmar la apertura.",
+                         "cantidad": 1, "url": null,
+                         "recurso": {"tipo": "plan_cuentas", "id": null, "api": "/contabilidad/api/cuentas/"}, "decision": null}]}
+```
 
 ### Los 403 de licencia
 
@@ -240,6 +299,10 @@ Fuera del complemento (ventas, importación, proformas, cobros) el 403 del plan 
   `empresa` en un cuerpo JSON, así que hoy no cambia nada en las rutas que ya existían.
 - Un envío sin `empresa` con la licencia cerrada recibe el 403 de licencia y no `sin_empresa`: el middleware no sabe qué
   rutas la exigen.
+- Bloque 2 (aditivo): cada función trae `avisos`; hay dos funciones nuevas (`cartera_inicial` e `historico`, pendientes);
+  `apertura` y `diario_mayor` pasan a disponibles y `apertura` tiene el primer requisito real (`plan_cuentas_vacio`).
+  Por la misma razón que arriba, un envío JSON armado para otra empresa que la lleva solo en el cuerpo recibe el 409 también
+  con el complemento cerrado o el plan vencido (la especificación del bloque 2 esperaba ahí el 403 de licencia).
 
 ## Mapa de pantallas
 
@@ -248,14 +311,16 @@ Fuera del complemento (ventas, importación, proformas, cobros) el 403 del plan 
 | Inicio contable | `GET /contabilidad/api/inicio/` | C1, construido | ninguno |
 | Plan de cuentas | `/contabilidad/api/cuentas/` | C2, construido | ninguno (D5 solo para ofrecer una plantilla predefinida) |
 | Importación del plan | `/contabilidad/api/cuentas/importar/` | C3, construido | ninguno para la función; el piloto, ver abajo |
+| Apertura contable (inicio por saldos o por historial) | `/contabilidad/api/apertura/` y sus rutas | C6-A, corte 1 construido (hasta confirmar); auxiliares, cartera inicial, ajustes, sustitución e históricos en el corte 2 | ninguno para la función; los saldos reales y su revisión, del contador de cada empresa |
+| Diario e integridad del libro | `/contabilidad/api/diario/`, `/contabilidad/api/integridad/` | bloque 2, construido (solo lectura) | ninguno; los asientos de la operación diaria esperan el motor (bloque 3), y mientras tanto todo rango posterior al corte sale provisional |
 | Asientos por comprobante | — | C4 | **D7** (matriz de asientos validada) y el plan de cuentas de cada empresa (C2/C3) |
 | Revisión del mes | revisión, libros y ATS existentes | C5 evidencias de presentación | cierre/reapertura: **decisión** de qué bloquea un mes cerrado; saldos anteriores: apertura (C6) |
 | Reportes | libros, borradores 104/103, kardex e inventario | C6 apertura y mayor | estados financieros: **D5**, **D7** y saldos de apertura validados |
 | Puntos de emisión | `/configuracion/puntos/` (establecimientos, puntos, autorizados, selección) | C7 cupo y verificación | ninguno si se confirma la definición de «verificado» propuesta abajo |
 | Piloto NEXALLTI | — | usa C2/C3 | **dato:** su Excel real; **decisión:** incluir su RUC en la lista de revisión del complemento |
 
-Las tres primeras se pueden conectar cuando el bloque 1 esté publicado. Sus rutas siguen detrás del complemento: solo
-responden a las empresas de la lista de revisión con plan pagado.
+Las tres primeras se pueden conectar cuando el bloque 1 esté publicado; la apertura y el diario, cuando se publique el
+bloque 2. Sus rutas siguen detrás del complemento: solo responden a las empresas de la lista de revisión con plan pagado.
 
 ## C1 — Inicio contable (construido)
 
@@ -300,8 +365,20 @@ Administrador, Contador y Consulta. Solo GET. Con el plan vencido se sigue consu
   `cuentas` cuenta todas, también las desactivadas. Un lote en vista previa no cambia la etapa: subir un archivo y mirar
   sus filas no configura nada. `causa` es `null` salvo en `no_disponible`, donde lleva el texto de `acceso` («Tu perfil no
   cuenta con el permiso necesario.»).
-- **`etapas.apertura`** y **`etapas.conciliacion`**: `no_disponible` con su `causa` hasta que existan sus bloques. Los
-  bloques de apertura y de bancos añadirán valores a `estado`.
+- **`etapas.apertura`** (desde el bloque 2): sale de la configuración del inicio y del estado de la apertura.
+
+  | `estado` | Cuándo | `fecha` |
+  |---|---|---|
+  | `sin_configurar` | La empresa no configuró su inicio contable | `null` |
+  | `pendiente` | Configurado, sin apertura en revisión ni confirmada (un borrador o ninguna) | el corte |
+  | `en_revision` | Hay una apertura enviada a revisión | el corte |
+  | `confirmada` | Hay una apertura confirmada | el corte |
+  | `no_disponible` | El usuario no puede ver la apertura (sin licencia o sin `view_apertura`) | `null`, con la `causa` de `acceso` |
+
+  `causa` es `null` salvo en `no_disponible`. Con el plan de cuentas vacío la etapa se informa igual. Ejemplo, con la
+  apertura confirmada: `"apertura": {"estado": "confirmada", "fecha": "2025-12-31", "causa": null}`.
+- **`etapas.conciliacion`**: `no_disponible` con su `causa` hasta que exista el bloque de bancos, que añadirá valores a
+  `estado`.
 - Ninguna etapa llega a «completado»: solo se informa lo que hay guardado.
 - **`pendientes`**: solo entradas con `cantidad` mayor que cero, de tres orígenes. Cada origen se consulta solo si el
   usuario puede abrir su pantalla.
@@ -327,8 +404,9 @@ Cambios respecto de la propuesta del 04/11:
 
 - Se añade `view_cuenta` a los permisos que abren el inicio.
 - Claves nuevas: `acceso` y `origenes`; `causa` en `etapas.plan_cuentas`.
-- `etapas.plan_cuentas.estado` añade `configurado` y `no_disponible`. `etapas.apertura.estado` es `no_disponible` con su
-  causa, no `pendiente`.
+- `etapas.plan_cuentas.estado` añade `configurado` y `no_disponible`. `etapas.apertura.estado` era `no_disponible` con su
+  causa hasta el bloque 2, que añade `sin_configurar`, `pendiente`, `en_revision` y `confirmada` (cambio aditivo de
+  valores: la clave y su forma no cambian).
 - Los pendientes de la revisión van por categoría (`codigo: "respaldos"`), no por código de observación
   (`sin_respaldo`), y su enlace termina en `#fp-rev-<categoría>`, el `id` que tiene hoy cada título de
   `tributario/revision.html`.
@@ -345,12 +423,28 @@ Cuenta por empresa:
 | `padre_id` | un grupo de la misma empresa, o `null` en la raíz |
 | `tipo` | `grupo` o `movimiento` |
 | `activa` | `true` al crearla; una cuenta no se borra, se desactiva |
+| `clase` (bloque 2) | `""` (sin clase), `activo`, `pasivo`, `patrimonio`, `ingreso`, `costo` o `gasto`. Dice dónde va la cuenta en los estados: balance (las tres primeras) o resultados (las tres últimas). La declara una persona; nunca se deduce del código |
+| `auxiliar` (bloque 2) | `""` (sin auxiliar), `cliente`, `proveedor`, `inventario`, `banco`, `activo` o `tributario`. Qué detalle explica el saldo de la cuenta en la apertura. Solo en cuentas de movimiento |
 | `hijas` | cuántas cuentas cuelgan directamente de ella, activas o no |
 | `version` | empieza en 1 y sube en cada cambio |
 
 Reglas del árbol: el padre es un grupo; no hay ciclos; una cuenta con hijas sigue siendo grupo; un grupo no se desactiva
-mientras tenga hijas activas. Un grupo no recibe movimientos, y una cuenta con movimientos no pasará a grupo ni se
-desactivará: hoy ninguna tabla guarda movimientos, así que esos dos rechazos todavía no ocurren.
+mientras tenga hijas activas. Un grupo no recibe movimientos, y una cuenta con movimientos no pasa a grupo ni se
+desactiva. Desde el bloque 2 «con movimientos» es: con líneas en el libro diario, o con una línea no retirada de una
+apertura en borrador, en revisión o confirmada (`cuentas.tiene_movimientos`, el único sitio que lo decide).
+
+**Lo ya validado no cambia por reclasificar** (bloque 2). Con la cuenta en el libro, un cambio de `clase` que la pase entre
+balance y resultados (o que le quite la clase que tenía) responde 409 antes que cualquier error de campo:
+
+- `ejercicio_cerrado` `{"ejercicios": [años]}` si tiene líneas en un ejercicio cerrado (en este bloque ninguno se cierra);
+- `apertura_confirmada` (con `cuenta`) si es cuenta de una línea de la apertura confirmada: su resultado del ejercicio se
+  validó con esa clase. Se comprueba aunque la cuenta no tenga todavía otras líneas en el libro.
+
+Declarar la primera clase no cruza nada y siempre se admite. `auxiliar` no cambia mientras haya auxiliares vigentes de la
+apertura en una línea de esa cuenta o líneas del libro con tercero en ella: 409 `cuenta_con_detalle`
+`{"auxiliares": n, "lineas_con_tercero": n}`. Cambiar `tipo`, `activa`, `clase` o `auxiliar` (o clasificar) toma antes el
+candado del libro de la empresa, si tiene inicio contable, para no cruzarse con un asiento o con la confirmación de la
+apertura; renombrar no lo toma.
 
 Permisos: ver, `view_cuenta` (Propietario, Administrador, Contador y Consulta); crear y editar, `add_cuenta` y
 `change_cuenta` (Propietario, Administrador y Contador). Vendedor y Cliente, nada. No hay página ni entrada de menú nuevas:
@@ -370,6 +464,17 @@ los tres permisos viajan con el módulo «Kardex por producto» hasta que la pan
 - Con `q`: las cuentas que lo contienen en el código o en el nombre, sin distinguir mayúsculas ni tildes, y todas sus
   antepasadas. El ejemplo de arriba es también la respuesta a `?q=caja`.
 - `capacidades.importar` es igual a `crear`. Para Consulta y con el plan vencido las tres son `false`.
+- Desde el bloque 2 cada cuenta trae además `clase` y `auxiliar`, entre `activa` y `hijas`. Respuesta real a `?q=1.1.0`
+  con el plan mínimo de las pruebas:
+
+```
+200 {"cuentas": [{"id": 1, "codigo": "1", "nombre": "ACTIVO", "padre_id": null, "tipo": "grupo", "activa": true, "clase": "activo", "auxiliar": "", "hijas": 6, "version": 1},
+                 {"id": 2, "codigo": "1.1.01", "nombre": "Caja", "padre_id": 1, "tipo": "movimiento", "activa": true, "clase": "activo", "auxiliar": "", "hijas": 0, "version": 1},
+                 {"id": 3, "codigo": "1.1.02", "nombre": "Bancos", "padre_id": 1, "tipo": "movimiento", "activa": true, "clase": "activo", "auxiliar": "banco", "hijas": 0, "version": 1},
+                 {"id": 4, "codigo": "1.1.03", "nombre": "Clientes", "padre_id": 1, "tipo": "movimiento", "activa": true, "clase": "activo", "auxiliar": "cliente", "hijas": 0, "version": 1},
+                 …],
+     "capacidades": {"crear": true, "editar": true, "importar": true}}
+```
 
 ### `POST /contabilidad/api/cuentas/` — `add_cuenta`
 
@@ -392,8 +497,23 @@ El envío repetido se compara con la cuenta como está ahora: si alguien la camb
 
 ### `PATCH /contabilidad/api/cuentas/<id>/` — `change_cuenta`
 
-Envío: `{"empresa", "version", "nombre"?, "padre_id"?, "tipo"?, "activa"?}`. Solo cambia lo que viene. `padre_id: null`
-pasa la cuenta a la raíz. `activa` es un booleano.
+Envío: `{"empresa", "version", "nombre"?, "padre_id"?, "tipo"?, "activa"?, "clase"?, "auxiliar"?}`. Solo cambia lo que
+viene. `padre_id: null` pasa la cuenta a la raíz. `activa` es un booleano. `clase` y `auxiliar` (bloque 2) admiten `""`
+para quitarlos, con las reglas de reclasificar de arriba; un auxiliar en una cuenta de grupo, o pasar a grupo una cuenta
+con auxiliar, es 400. Los cambios se auditan (`cuenta_modificada`) con el valor anterior y el nuevo.
+
+```
+PATCH /contabilidad/api/cuentas/2/?empresa=1   {"empresa": 1, "version": 1, "auxiliar": "banco"}
+200 {"cuenta": {"id": 2, "codigo": "1.1.01", "nombre": "Caja", "padre_id": 1, "tipo": "movimiento", "activa": true, "clase": "activo", "auxiliar": "banco", "hijas": 0, "version": 2}}
+
+PATCH /contabilidad/api/cuentas/1/?empresa=1   {"empresa": 1, "version": 1, "auxiliar": "cliente"}
+400 {"error": "Revisa los datos marcados.", "codigo": "validacion", "errores": {"auxiliar": ["Solo las cuentas de movimiento llevan auxiliar."]}}
+
+PATCH /contabilidad/api/cuentas/11/?empresa=1  {"empresa": 1, "version": 1, "clase": "ingreso"}     (capital social, en la apertura confirmada)
+409 {"error": "La cuenta está en la apertura confirmada, que se validó con su clase: no puede pasar entre balance y resultados. Corrige la apertura con un ajuste o una sustitución.",
+     "codigo": "apertura_confirmada",
+     "cuenta": {"id": 11, "codigo": "3.1.01", "nombre": "Capital social", "padre_id": 10, "tipo": "movimiento", "activa": true, "clase": "patrimonio", "auxiliar": "", "hijas": 0, "version": 1}}
+```
 
 ```
 200 {"cuenta": {"id": 3, "codigo": "1.1.01", "nombre": "Caja general", "padre_id": 2, "tipo": "movimiento", "activa": true, "hijas": 0, "version": 2}}
@@ -417,8 +537,35 @@ pasa la cuenta a la raíz. `activa` es un booleano.
 | `padre_id` | «El padre debe ser un grupo de esta empresa.» · «Crearía un ciclo.» |
 | `activa` | «Indica si la cuenta queda activa: verdadero o falso.» · «Desactiva primero sus cuentas hijas.» · «Tiene movimientos: no se puede desactivar.» |
 | `version` | «Falta la versión de la cuenta que estás editando: vuelve a cargarla e inténtalo de nuevo.» |
+| `clase` | «Elige la clase: activo, pasivo, patrimonio, ingreso, costo o gasto (o vacío, sin clase).» |
+| `auxiliar` | «Elige el auxiliar: clientes, proveedores, inventario, bancos, activos o tributario (o vacío, sin auxiliar).» · «Solo las cuentas de movimiento llevan auxiliar.» |
 
 Auditoría: `cuenta_creada` y `cuenta_modificada`, esta con los campos que cambiaron.
+
+### `POST /contabilidad/api/cuentas/clasificar/` — `change_cuenta` (bloque 2)
+
+Fija una clase en una cuenta y, con `incluir_descendientes: true`, en sus descendientes **sin clase**: es una decisión
+expresa por lote y nunca pisa una clase ya puesta. Envío JSON: `{"empresa", "cuenta_id", "version", "clase",
+"incluir_descendientes"}`; `clase` es obligatoria (vacía no vale) y `version` es la de la cuenta pedida, que sigue las reglas
+de reclasificar. Responde la cuenta como queda y cuántas recibieron la clase (ella incluida si cambió). Auditoría
+`cuentas_clasificadas`, solo si alguna cambió. Solo POST: un GET es 405 (`tests/test_rutas.py`, `ESPERADOS`).
+
+```
+POST /contabilidad/api/cuentas/clasificar/?empresa=1
+{"empresa": 1, "cuenta_id": 19, "version": 1, "clase": "activo", "incluir_descendientes": true}
+200 {"cuenta": {"id": 19, "codigo": "1.3", "nombre": "OTROS ACTIVOS", "padre_id": null, "tipo": "grupo", "activa": true, "clase": "activo", "auxiliar": "", "hijas": 1, "version": 2},
+     "clasificadas": 2}
+
+{"empresa": 1, "cuenta_id": 19, "version": 7, "clase": "activo", "incluir_descendientes": true}
+409 {"error": "Otra persona cambió esta cuenta mientras la editabas: revisa cómo quedó y vuelve a intentarlo.", "codigo": "version",
+     "cuenta": {"id": 19, "codigo": "1.3", "nombre": "OTROS ACTIVOS", "padre_id": null, "tipo": "grupo", "activa": true, "clase": "", "auxiliar": "", "hijas": 1, "version": 1}}
+
+{"empresa": 1, "cuenta_id": 19, "version": 2, "clase": "capital", "incluir_descendientes": false}
+400 {"error": "Revisa los datos marcados.", "codigo": "validacion", "errores": {"clase": ["Elige la clase: activo, pasivo, patrimonio, ingreso, costo o gasto."]}}
+```
+
+Otros: 404 `cuenta` (el código del bloque 1, no `no_existe`); 409 `ejercicio_cerrado` y `apertura_confirmada`; 400
+`cuenta_id` e `incluir_descendientes` (booleano).
 
 Cambios respecto de la propuesta del 04/11:
 
@@ -463,6 +610,14 @@ abre un XLSX con una parte dañada o cifrada, aunque no sea la hoja.
 | `nombre` | Nombre, Descripción, Detalle, Name; y Cuenta, si otra columna ya es el código |
 | `padre` (opcional) | Padre, Cuenta padre, Parent |
 | `tipo` (opcional) | Tipo, Type |
+| `clase` (opcional, bloque 2) | Clase, Class |
+
+**Clase** (bloque 2). Si viene, uno de los seis valores en singular, sin distinguir mayúsculas ni tildes (`activo`,
+`pasivo`, `patrimonio`, `ingreso`, `costo`, `gasto`); vacía, la cuenta queda sin clase. Otro valor es error de fila:
+«Clase no reconocida («X»): escribe activo, pasivo, patrimonio, ingreso, costo o gasto, o déjala vacía.» La clase solo se
+fija en las cuentas que se crean: a una `duplicada` no se le cambia, igual que el padre y el tipo. El lote añade `clase` a
+`columnas` y a cada fila, y el mapeo (`…/mapeo/`) la admite como un dato más. El auxiliar no se importa: se declara en el
+plan de cuentas.
 
 Los encabezados se devuelven con nombre único: una celda vacía pasa a «Columna 3» y uno repetido a «Nombre (2)». El
 mapeo se hace con ese nombre exacto. Sin columna de código o de nombre no hay vista previa: `filas` va vacía y `resumen`
@@ -621,6 +776,16 @@ Hoy: libros con exportación, borradores 104/103, kardex e inventario valorizado
 `provisional: true | false` y `causas: [texto]`. **Bloqueo de mayor y estados financieros:** D5 (plan de cuentas o catálogo
 Supercias), D7 (matriz) y saldos de apertura validados por el contador.
 
+Desde el bloque 2 (construido): el diario (`GET /contabilidad/api/diario/`, `…/diario/<id>/`) y la comprobación de
+integridad del libro (`GET /contabilidad/api/integridad/`), con sus formas y ejemplos en `CONTRATO-APERTURA-CONTABLE.md`,
+sección 6.4. La provisionalidad de todo reporte sale de una sola función con un registro de causas
+(`core/contabilidad/reportes.py: provisionalidad(reporte, desde, hasta)`), y cada respuesta trae además
+`causas_detalle: [{"codigo", "texto", "cantidad"?}]`. Causas registradas: `inicio_sin_configurar`,
+`apertura_sin_confirmar`, `saldo_anterior_sin_confirmar`, `resultados_acumulados_sin_detalle`,
+`aplicaciones_sin_contabilizar` y `motor_pendiente`, obligatoria en todo rango que pase de la fecha de corte mientras la
+operación diaria no se contabilice (bloque 3). Con la apertura confirmada, un rango posterior al corte **sigue
+provisional**. El mayor, el balance de comprobación y los estados son de los bloques siguientes.
+
 ## C7 — Puntos de emisión (sin bloqueo si se acepta la definición)
 
 Hoy: `/configuracion/puntos/estado.json` (establecimientos y puntos, autorizados por usuario y selección). Se añade a esa
@@ -639,6 +804,7 @@ complemento mientras D9 no fije impuestos y alcance.
 
 ## Orden propuesto
 
-C1, C2 y C3 están construidos (inicio, plan de cuentas e importación) → C7 → C5 (evidencias) → C4 y C6 cuando lleguen D7,
-D5 y la apertura. Codex conecta cada pantalla cuando su ruta esté publicada; hasta entonces, la maqueta queda en
+C1, C2 y C3 están construidos (inicio, plan de cuentas e importación) y, en el bloque 2, el diario y la apertura hasta
+confirmar (C6-A, corte 1) → corte 2 del bloque 2 (auxiliares, cartera inicial, ajustes, sustitución e históricos) → C7 →
+C5 (evidencias) → C4 y el resto de C6 cuando lleguen D7 y D5. Codex conecta cada pantalla cuando su ruta esté publicada; hasta entonces, la maqueta queda en
 `entregas/`.
