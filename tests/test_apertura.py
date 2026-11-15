@@ -18,7 +18,8 @@ mitad; aceptaciones 1, 2, 7, 8 y 10 de C6-A §8): core/contabilidad/apertura.py 
   posterior al corte sigue provisional (`motor_pendiente`); confirmar no toca stock, cartera ni kardex; 5 000 líneas sin
   consultas por línea;
 - el detalle de cada línea es el auxiliar que su cuenta declara mientras la apertura se prepara (también si la cuenta
-  cambia en revisión, en los dos sentidos, o contradice un ámbito declarado «no aplica») y confirmar lo fija.
+  cambia en revisión, en los dos sentidos, o contradice un ámbito declarado «no aplica») y confirmar lo fija; un total
+  que no cabe en un asiento bloquea antes de confirmar.
 
 La seguridad por filas y las confirmaciones simultáneas van en tests/test_zz_apertura_concurrencia_pg.py. Datos ficticios."""
 import json
@@ -35,7 +36,8 @@ from django.utils import timezone
 from core.contabilidad import apertura as servicio
 from core.contabilidad import reportes
 from core.contabilidad.models import (Apertura, Asiento, AuxiliarApertura, Cuenta, EventoApertura, InicioContable,
-                                      LineaApertura, LineaAsiento, MovimientoManual, PeriodoContable, SaldoCuentaMes)
+                                      LineaApertura, LineaAsiento, MovimientoManual, PeriodoContable, SaldoCuentaMes,
+                                      norma_codigo)
 from core.pos.models import Client, CtasCollect, DebtsPay, Product, Purchase, Sale
 from core.tenancy.context import company_context
 from core.tenancy.models import (ROLE_ACCOUNTANT, ROLE_ADMIN, ROLE_CLIENT, ROLE_OWNER, ROLE_READONLY, ROLE_SELLER, AuditLog)
@@ -331,6 +333,48 @@ class TestBloqueos:
         assert en(empresa, EventoApertura.objects.count) == historia
         assert AuditLog.objects.filter(company=empresa).count() == auditoria
         assert leer(web, f'{API}{apertura["id"]}/', empresa)['apertura']['version'] == apertura['version']
+
+    def test_total_que_no_cabe_en_un_asiento(self, web, empresa, cuentas):
+        """B2-AP-4: cada línea admite hasta 999 999 999 999,99, pero el asiento (16, 2) no pasa de 99 999 999 999 999,99 por
+        lado (diario.TOTAL_MAX): validar y enviar lo dicen con `importe_total_excedido`, y confirmar lo revalida, en vez de
+        fallar en diario.contabilizar con un 400 que no es un bloqueo."""
+        from core.contabilidad import diario
+        with company_context(empresa):
+            Cuenta.objects.bulk_create(
+                [Cuenta(company=empresa, codigo=f'{lado}.9.{i:03d}', codigo_norm=norma_codigo(f'{lado}.9.{i:03d}'),
+                        nombre=f'Cuenta {lado}.{i}', tipo='movimiento', clase=clase, padre=cuentas[grupo])
+                 for lado, clase, grupo in (('1', 'activo', 'activo'), ('2', 'pasivo', 'pasivo')) for i in range(101)])
+            activos = list(Cuenta.objects.filter(codigo__startswith='1.9.').order_by('codigo'))
+            pasivos = list(Cuenta.objects.filter(codigo__startswith='2.9.').order_by('codigo'))
+        mayor = str(servicio.IMPORTE_MAX - servicio.CENTAVO)   # el mayor importe de una línea
+
+        def filas(ultimo):
+            return ([linea(c, mayor) for c in activos[:100]] + [linea(activos[100], ultimo)]
+                    + [linea(c, None, mayor) for c in pasivos[:100]] + [linea(pasivos[100], None, ultimo)])
+        # 100 × 999 999 999 999,99 + 0,99 = 99 999 999 999 999,99 por lado: cabe
+        apertura = preparada(web, empresa, filas('0.99'))
+        assert validar(web, empresa, apertura)['valida'] is True
+        # un centavo más por lado ya no
+        mapeada(web, empresa, apertura, filas('1.00'))
+        apertura = leer(web, f'{API}{apertura["id"]}/', empresa)['apertura']
+        maximo = '99999999999999.99'
+        assert str(diario.TOTAL_MAX - servicio.CENTAVO) == maximo
+        textos = {'debe': '100000000000000.00', 'haber': '100000000000000.00', 'maximo': maximo}
+        assert validar(web, empresa, apertura)['bloqueos'] == [{
+            'codigo': 'importe_total_excedido', 'texto': TV['importe_total_excedido'].format(**textos), **textos}]
+        cuerpo = rechazo(accion(web, empresa, apertura, 'enviar', version=apertura['version']), 409, 'importe_total_excedido')
+        assert (cuerpo['debe'], cuerpo['maximo']) == ('100000000000000.00', maximo)
+        # Enviada con el total que cabe y crecida después (escrito en la base): confirmar lo revalida con el candado.
+        mapeada(web, empresa, apertura, filas('0.99'))
+        apertura = leer(web, f'{API}{apertura["id"]}/', empresa)['apertura']
+        enviada_ = accion(web, empresa, apertura, 'enviar', version=apertura['version']).json()['apertura']
+        with company_context(empresa):
+            LineaApertura.objects.filter(apertura_id=apertura['id'], cuenta=activos[100]).update(debe=Decimal('1.00'))
+            LineaApertura.objects.filter(apertura_id=apertura['id'], cuenta=pasivos[100]).update(haber=Decimal('1.00'))
+        cuerpo = rechazo(confirmar(web, empresa, enviada_), 409, 'importe_total_excedido')
+        assert codigos(cuerpo['bloqueos']) == ['importe_total_excedido']
+        assert asientos(empresa) == []
+        assert en(empresa, lambda: Apertura.objects.get(pk=apertura['id']).estado) == 'en_revision'
 
     def test_la_forma_de_validar(self, web, empresa, cuentas):
         apertura = preparada(web, empresa, balance(cuentas))

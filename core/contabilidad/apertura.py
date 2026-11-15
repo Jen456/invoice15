@@ -1106,14 +1106,15 @@ NOTA_REVISION_MAX = 500
 # Regla 5: el orden de los bloqueos (el primero da el `codigo` de la respuesta). `sin_saldos_con_lineas` no está en la
 # especificación (una declaración «sin saldos» con líneas se contradice: no se ignora ninguna de las dos). Los dos de la
 # Parte C que todavía no tienen con qué darse en este corte (sin rutas de auxiliares), `auxiliar_duplica_operativo` y
-# `saldo_inicial_posterior`, los añade el corte 2 en su lugar de esta lista. Tampoco está en la especificación
+# `saldo_inicial_posterior`, los añade el corte 2 en su lugar de esta lista. Tampoco están en la especificación
 # `cuenta_no_aplica` (el ámbito que se declaró «no aplica» tiene una cuenta de ese detalle en la apertura: la cuenta cambió
-# de auxiliar después de mapear; va donde mapear lo comprueba, tras la cuenta inactiva).
+# de auxiliar después de mapear; va donde mapear lo comprueba, tras la cuenta inactiva) ni `importe_total_excedido` (el
+# total no cabe en un asiento: confirmar fallaría en diario.contabilizar; va junto al otro bloqueo de los totales).
 ORDEN_BLOQUEOS = ('sin_lineas', 'sin_saldos_con_lineas', 'cuenta_sin_mapear', 'cuenta_de_grupo', 'cuenta_inactiva',
                   'cuenta_no_aplica', 'importe_pendiente', 'cuenta_sin_clase', 'apertura_desbalanceada',
-                  'auxiliar_no_concilia', 'auxiliar_duplica_operativo', 'vinculo_roto', 'auxiliar_incompleto',
-                  'saldo_inicial_posterior', 'resultado_sin_declarar', 'resultado_duplicado', 'rango_solapado',
-                  'periodo_cerrado', 'fecha_corte_futura')
+                  'importe_total_excedido', 'auxiliar_no_concilia', 'auxiliar_duplica_operativo', 'vinculo_roto',
+                  'auxiliar_incompleto', 'saldo_inicial_posterior', 'resultado_sin_declarar', 'resultado_duplicado',
+                  'rango_solapado', 'periodo_cerrado', 'fecha_corte_futura')
 # Los reportes que validar describe (C6-A §6: «cobertura por reporte»), con lo que necesitan de la apertura.
 REPORTES = (
     ('estado_situacion', 'La apertura confirmada y los movimientos posteriores al corte contabilizados.'),
@@ -1138,6 +1139,8 @@ TEXTOS_VALIDACION = {
                         'decláralas en el plan de cuentas.',
     'apertura_desbalanceada': 'El debe ({debe}) y el haber ({haber}) no cuadran: la diferencia es {diferencia}. Corrígela en '
                               'la fuente: no se añade ninguna cuenta para cuadrar.',
+    'importe_total_excedido': 'El total de la apertura (debe {debe}, haber {haber}) no cabe en un asiento: cada lado admite '
+                              'hasta {maximo}. Revisa los importes en la fuente.',
     'auxiliar_no_concilia': 'El detalle de {n} cuenta(s) suma más que su saldo, o no es de la naturaleza de la cuenta.',
     'vinculo_roto': '{n} auxiliar(es) están vinculados a un documento que ya no existe: desvincúlalos con su motivo.',
     'auxiliar_incompleto': 'Acepta una por una las cuentas con el detalle incompleto, o completa su detalle antes de confirmar.',
@@ -1283,6 +1286,10 @@ def evaluar(apertura, inicio, *, al_confirmar=False, aceptadas=(), nota=''):
         if debe != haber:
             textos = {'debe': importe_texto(debe), 'haber': importe_texto(haber), 'diferencia': importe_texto(debe - haber)}
             bloqueo('apertura_desbalanceada', TEXTOS_VALIDACION['apertura_desbalanceada'].format(**textos), **textos)
+        from core.contabilidad.diario import TOTAL_MAX   # el límite del asiento (16, 2), el mismo que aplica contabilizar
+        if debe >= TOTAL_MAX or haber >= TOTAL_MAX:
+            textos = {'debe': importe_texto(debe), 'haber': importe_texto(haber), 'maximo': importe_texto(TOTAL_MAX - CENTAVO)}
+            bloqueo('importe_total_excedido', TEXTOS_VALIDACION['importe_total_excedido'].format(**textos), **textos)
 
     # Auxiliar ≤ cuenta (Parte C, regla 2; sin ajustes en este corte: J = 0).
     no_concilian, incompletas = [], []
