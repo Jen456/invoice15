@@ -15,8 +15,15 @@ Toda negativa de estas rutas es JSON, también en GET, y siempre en el mismo ord
 5. datos por completar → 409 `datos_por_completar` (capacidades.rechazo_datos);
 6. validación → 400 `{"error", "codigo", "errores": {campo: [textos]}}`, con todos los errores de campo a la vez.
 
+Fuera de ese orden, en cualquier ruta: si PostgreSQL aborta la transacción por un interbloqueo (40P01) o por esperar un
+bloqueo más de lo permitido (55P03), 409 `reintentar`. Nada quedó guardado (la transacción se deshizo entera) y repetir el
+mismo envío, con su misma clave, es seguro. Cualquier otro error de la base sigue siendo un 500.
+
 Las rutas que ya existían (kardex, tributario) no usan esto y no cambian."""
+import logging
+
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import OperationalError
 from django.http import JsonResponse
 from django.views import View
 
@@ -26,7 +33,11 @@ from core.security.session import get_group
 from core.tenancy.models import ROLE_CLIENT
 from core.tenancy.pestanas import cuerpo_json, rechazo_empresa_cambiada
 
+logger = logging.getLogger(__name__)
+
 LECTURA = ('GET', 'HEAD')
+# Lo que PostgreSQL aborta por cruzarse con otra transacción: interbloqueo y espera de bloqueo agotada (lock_timeout, NOWAIT).
+CRUCES = ('40P01', '55P03')
 # En `permisos` de una vista: no pide un permiso concreto, basta un rol de personal de la empresa (cualquiera menos Cliente).
 PERSONAL = object()
 
@@ -36,6 +47,7 @@ TEXTOS = {
     'clave': 'Falta la clave del envío: vuelve a cargar la página e inténtalo de nuevo.',
     'validacion': 'Revisa los datos marcados.',
     'metodo': 'Esta ruta no admite ese método.',
+    'reintentar': 'Otra operación usaba los mismos datos al mismo tiempo: no se guardó nada. Vuelve a intentarlo.',
 }
 
 
@@ -92,6 +104,12 @@ class Errores(dict):
     def comprobar(self, texto=None):
         if self:
             raise ErrorApi('validacion', texto, errores=dict(self))
+
+
+def cruce(error):
+    """El SQLSTATE de un OperationalError si es uno de CRUCES (la causa es el error de psycopg), o None."""
+    estado = getattr(error.__cause__, 'sqlstate', None)
+    return estado if estado in CRUCES else None
 
 
 # ---------------------------------------------------------------- cuerpo, empresa, permiso y clave
@@ -176,7 +194,8 @@ class ApiContable(LoginRequiredMixin, View):
     `permisos`: método HTTP → codename, tupla de codenames (basta uno) o PERSONAL. Un método sin entrada no existe en la
     ruta (405). Antes de llamar a `get`, `post`… ya se comprobaron, en este orden, la sesión, la empresa de la pestaña,
     que el plan deje guardar (solo en los envíos) y el permiso; un ErrorApi lanzado dentro sale como su respuesta JSON. No
-    toca el módulo activo de la sesión (lo fija la página, no sus consultas en segundo plano)."""
+    toca el módulo activo de la sesión (lo fija la página, no sus consultas en segundo plano). Un interbloqueo o una espera
+    de bloqueo agotada sale como 409 `reintentar` (y queda en el registro); otro error de la base, como siempre."""
     permisos = {}
 
     def dispatch(self, request, *args, **kwargs):
@@ -195,6 +214,13 @@ class ApiContable(LoginRequiredMixin, View):
             return super().dispatch(request, *args, **kwargs)
         except ErrorApi as e:
             return e.respuesta()
+        except OperationalError as e:
+            estado = cruce(e)
+            if estado is None:
+                raise
+            logger.warning('Cruce de bloqueos (%s) en %s %s: la transacción se deshizo', estado, request.method,
+                           request.path, exc_info=True)
+            return error(TEXTOS['reintentar'], 409, 'reintentar')
 
     def rechazo_de_permiso(self, request):
         permiso = self.permisos[request.method]
