@@ -2,9 +2,51 @@
 
 13/11/2026 · Propuesta de contrato Codex → Claude. Amplía C1–C6 de `CONTRATO-CONTABLE-V9.md`. Decisión funcional de la propietaria: unas empresas parten de estados financieros existentes y otras reconstruyen exhaustivamente sus operaciones. No obligar a la primera a registrar todos los años anteriores.
 
-**14/11/2026 · Claude: corte 1 del bloque 2 construido (libro diario mínimo, inicio contable y apertura hasta confirmar).** Rama `fase/contable-2-apertura`, código final `a5bedf4`, sin `push` y sin publicar. Lo que este corte implementa deja de ser propuesta: la sección 6 es el contrato definitivo de esas rutas, con peticiones y respuestas reales obtenidas ejecutándolas con datos ficticios. Lo de las Partes C a F de la especificación (auxiliares, cartera inicial, ajustes, sustitución, reverso, documentos históricos y la guarda de la importación) está marcado **pendiente del corte 2**: sus rutas todavía no existen. Las secciones 1 a 5 y 7 son la propuesta funcional de Codex del 13/11, sin cambios; la 8 añade en qué estado queda cada prueba de aceptación.
+**14/11/2026 · Claude: corte 1 del bloque 2 construido (libro diario mínimo, inicio contable y apertura hasta confirmar).** Rama `fase/contable-2-apertura`, código final `a5bedf4`; desde la unión con el bloque 1 final `8a421b3` (15/11/2026), `3193edc`, y desde las correcciones del cierre del corte (15/11/2026), **`72a68ee`**. Sin `push` y sin publicar. Lo que este corte implementa deja de ser propuesta: la sección 6 es el contrato definitivo de esas rutas, con peticiones y respuestas reales obtenidas ejecutándolas con datos ficticios. Lo de las Partes C a F de la especificación (auxiliares, cartera inicial, ajustes, sustitución, reverso, documentos históricos y la guarda de la importación) está marcado **pendiente del corte 2**: sus rutas todavía no existen. Las secciones 1 a 5 y 7 son la propuesta funcional de Codex del 13/11, sin cambios; la 8 añade en qué estado queda cada prueba de aceptación.
 
-Verificado contra `a5bedf4` en `fase/contable-2-apertura` (bloque 1 en `84d07cc`). **No** está integrado con `fase/primera-entrega`: al integrar cambia la numeración de las migraciones de `tenancy` (ver `MIGRACIONES-FASE-CONTABLE.md`) y hay que volver a verificar este contrato contra el commit integrado.
+**Qué se verificó y contra qué código.**
+
+- Los ejemplos de la sección 6 son respuestas reales obtenidas en `a5bedf4` (bloque 1 en `84d07cc`) con una prueba
+  temporal que no se entrega; las peticiones y respuestas están en la VM101, en
+  `/root/invoice15/contable/registros/bloque2-c1-ejemplos.json`. No se volvieron a obtener después: sus fechas e instantes
+  son los del 14/11 y, fuera de lo que dice la lista del cierre de abajo, valen tal cual.
+- Tras la unión con el bloque 1 final (`3193edc`) solo se volvió a verificar la importación de los saldos, que desde
+  entonces lee con el lector común `lectura_tabular.py` (`tests/test_apertura_importar.py::TestLectorComun`).
+- En el cierre del corte, sobre `6efad50` (la rama unida: el código de `3193edc` y documentos), la revisión del contrato
+  ejecutó con el cliente de pruebas de Django las 20 rutas del corte y los 53 bloques de ejemplo de §6.4–6.9, y los
+  comparó por claves, orden de claves, tipos, valores, `codigo` y estado HTTP: coinciden, salvo los valores que dependen
+  de la fecha y lo que se corrige abajo (H3 y H7; H10 se refutó). El recorrido en navegador del cierre (37 casos) también
+  fue sobre `6efad50`, y no se repitió sobre el código corregido.
+- Tras las correcciones del 15/11 (código final `72a68ee`), cada corrección pasó sus pruebas (registro
+  `/root/invoice15/contable/registros/correcciones-c2c1.json`), y las formas nuevas o corregidas de la lista de abajo se
+  comprobaron con el cliente de pruebas de Django en una copia de `72a68ee` hecha con `git archive` (SQLite, datos
+  ficticios, el 15/11/2026 de 13:21 a 13:23 UTC, carga de 3,78 a 4,46 con 6 núcleos compartidos; respuestas en
+  `/root/invoice15/contable/registros/doc-c2c1-sondeo-72a68ee.json`). Los ejemplos que llevan la marca «(`72a68ee`)»
+  salen de ahí.
+
+**No** está integrado con `fase/primera-entrega`: al integrar cambia la numeración de las migraciones de `tenancy` (la
+receta está en `MIGRACIONES-FASE-CONTABLE.md`, «Receta de integración con `fase/primera-entrega`») y hay que volver a
+verificar este contrato contra el commit integrado.
+
+**15/11/2026 · Cierre del corte 1: lo que cambia para quien conecte las pantallas** (código `72a68ee`; el detalle, en cada
+sección):
+
+1. Un código nuevo fuera del orden de las negativas, en cualquier ruta de `/contabilidad/api/`: 409 `reintentar` cuando
+   la base aborta la transacción por un interbloqueo o por un bloqueo que no consiguió a tiempo (§6.1 y §6.7).
+2. Mientras la apertura se prepara, el `detalle` de cada línea es el auxiliar que su cuenta declara **ahora**; confirmar
+   lo fija y el evento `confirmada` lo dice en `detalle_fijado` (§6.5, regla 4, y §6.6, confirmar).
+3. Dos bloqueos nuevos: `cuenta_no_aplica`, después de `cuenta_inactiva`, e `importe_total_excedido`, después de
+   `apertura_desbalanceada` (§6.5, regla 5).
+4. Con N = P = 0, declarar el resultado en cuentas de resultados o en patrimonio, o una cifra distinta de cero, es
+   `resultado_duplicado`, también a 31/12 (§6.5, regla 6).
+5. Los textos libres rechazan los caracteres de control (400 `validacion`, texto `caracteres_de_control`), y un importe
+   escrito solo admite signo, cifras ASCII y los separadores (§6.1).
+6. Respaldos: la misma `clave` en otra apertura es 409 `clave_usada`, y una imagen que no se puede leer es 400
+   `validacion` con `errores.archivo`, no un 500 (§6.6, respaldos).
+7. Lo que el contrato decía mal o no decía, sin cambio de código: la forma del 409 `auxiliar_incompleto`, con `sobran`
+   (H7); que `GET apertura/<id>/lineas/` y mapear devuelven también las líneas retiradas (D3); el sitio del 400 de un
+   envío de mapear que no se puede leer (H2); y que «400 `fijo`» y «400 `tipo`» son 400 `validacion` con el error en su
+   campo (H3 y D2).
 
 ## 1. Estado comprobado y prioridad
 
@@ -100,8 +142,43 @@ Son las de `CONTRATO-CONTABLE-V9.md` («Reglas comunes» y «Rutas nuevas de `/c
 
 - **`empresa` en la consulta, también en los envíos JSON** (`?empresa=<id>`). El cuerpo puede repetirla; si una de las dos no es la empresa activa, 409 `empresa_cambiada`. Un envío sin `empresa` en ningún lado, 409 `sin_empresa`.
 - **Orden de las negativas:** `empresa_cambiada` → licencia (403, la responde `PlanMiddleware`) → `sin_empresa` → permiso (403 `sin_permiso`) → datos por completar (409) → `clave` repetida (200 `repetido` o 409 `clave_usada`) → `version` (409) → estado del recurso (409) → conflicto con otros datos (409) → validación (400). La clave va antes que la versión: el reintento de un envío ya aplicado trae la versión vieja y recibe el mismo resultado.
+- **Fuera del orden: 409 `reintentar`** (desde `72a68ee`), en cualquier ruta de `/contabilidad/api/` (las de `ApiContable`:
+  cuentas, importación del plan, diario, inicio, apertura y capacidades). Si PostgreSQL aborta la transacción por un
+  interbloqueo (SQLSTATE `40P01`) o porque un bloqueo no se consiguió a tiempo (`55P03`: `lock_timeout` o `NOWAIT`), la
+  respuesta es exactamente `{"error": "Otra operación usaba los mismos datos al mismo tiempo: no se guardó nada. Vuelve a intentarlo.", "codigo": "reintentar"}`,
+  sin más campos (ejemplo en §6.7). Nada quedó guardado (la transacción se deshizo entera) y repetir el mismo envío, con la
+  misma `clave` y la misma `version`, es seguro: no hace falta recargar. La interfaz muestra `error` y deja repetir el
+  envío tal cual. Queda un aviso (WARNING, con la traza) en el registro `core.contabilidad.api`: «Cruce de bloqueos
+  (<sqlstate>) en <MÉTODO> <ruta>: la transacción se deshizo». Cualquier otro error de la base sigue siendo un 500. Antes,
+  un interbloqueo salía como 500.
 - **Una diferencia con la especificación del bloque, a favor de la pestaña:** con el complemento cerrado o el plan vencido, un envío armado para otra empresa que la lleva **solo** en el cuerpo JSON recibe el 409 `empresa_cambiada`, no el 403 de licencia. El bloque 1 lee `empresa` también del cuerpo JSON (`core/tenancy/pestanas.py`) y eso no se tocó.
 - **Importes** como texto con dos decimales; **desconocido = `null`**, nunca `"0.00"`. Fechas `AAAA-MM-DD`, meses `AAAA-MM`. Instantes ISO 8601 en UTC (`"2026-11-14T14:30:03.654056+00:00"`), como los cobros. Los autores (`creado_por`, `enviado_por`, `confirmado_por`…) son el nombre de usuario guardado con la fila al escribirla: si el usuario se borra, el nombre se conserva.
+- **Importes escritos como texto** (desde `72a68ee`): en mapear (`lineas.<i>.debe|haber`), en las filas del lote
+  (`filas.<n>.debe|haber|saldo`) y en el PATCH (`resultado_acumulado`, con su propio texto). Después de quitar `$`, los
+  espacios y el espacio duro, solo valen el signo, cifras ASCII, `.` y `,`: `1.234,56`, `1,234.56`, `1234,56`,
+  `$ 1 234,56` y `+1234.56` se leen 1234.56. Lo demás es «Escribe un importe válido.»: `1e3`, `1E3`, `1_000`, cifras de
+  otras escrituras (`１２３`), la notación científica que escribe una hoja de cálculo en un CSV (`1,23457E+11`), `NaN` e
+  `Infinity`. La única notación científica que se lee es la que trae una celda numérica del XLSX con el ruido de una
+  fórmula que da cero: `5.551115123125783e-17` se lee `0.00` (y en mapear, como todo cero, da «El saldo debe ser mayor que
+  cero; si no lo conoces, déjalo vacío.»), y `1e-05` da «Usa dos decimales.», como antes. Los números de un envío JSON no
+  cambian. Antes, `1e3`, `1_000` y `１２３` se leían como importes.
+- **Textos libres** (desde `72a68ee`): `fuente_detalle` (al crear y en el PATCH), `ambitos_no_aplican.<i>.nota`,
+  `lineas.<i>.rubro` en mapear, `decisiones.<i>.motivo` al mapear desde un lote, `motivo` de descartar, devolver y anular
+  un respaldo, `nota` de confirmar y `descripcion` de un respaldo. Después de colapsar los espacios (el tabulador, los
+  saltos de línea y U+001C–U+001F pasan a ser un espacio), un texto con un carácter de U+0000 a U+001F, U+007F o una mitad
+  suelta de un par sustituto (U+D800–U+DFFF) es 400 `validacion` con el error en su campo: «Quita los caracteres de
+  control o no válidos de este texto (suelen llegar al copiarlo de otro programa).». Se admiten U+00AD, U+200B, U+FEFF y
+  los emoji compuestos con ZWJ. Si el texto además es demasiado largo, sale solo el error de largo. Antes, en PostgreSQL,
+  un NUL terminaba en 500. (`72a68ee`):
+
+  ```
+  POST /contabilidad/api/apertura/1/mapear/?empresa=1
+  {"empresa": 1, "version": 1, "lineas": [{"cuenta_id": 2, "rubro": "Caja\u0000chica", "debe": "10.00", "haber": null}, …]}
+
+  400 {"error": "Revisa los datos marcados.",
+       "codigo": "validacion",
+       "errores": {"lineas.0.rubro": ["Quita los caracteres de control o no válidos de este texto (suelen llegar al copiarlo de otro programa)."]}}
+  ```
 - **Errores:** 400 `{"error", "codigo", "errores": {campo: [textos]}}` con todos los errores a la vez; en listas la clave lleva la posición enviada, base 0 (`"lineas.0.debe"`, `"decisiones.0.motivo"`, `"ambitos_no_aplican.0.nota"`). Inexistente o de otra empresa: 404 `{"codigo": "no_existe"}` (salvo las rutas de cuentas del bloque 1, que siguen con `"codigo": "cuenta"`). Conflicto de estado: 409 `{"codigo": "estado", "estado": actual, "permitidos": [...]}`. `version` vieja: 409 `version` con el recurso como está ahora.
 - **Paginación:** `?pagina=1&por_pagina=100` (máximo 500) → `"paginacion": {"pagina", "por_pagina", "total", "paginas"}`; `paginas` vale al menos 1.
 - **Reportes y coberturas:** `provisional` (booleano), `causas` (textos) y `causas_detalle` (`[{"codigo", "texto", "cantidad"?}]`, con códigos estables; sección 6.8).
@@ -304,11 +381,22 @@ Lo que el servidor hace cumplir:
 1. **Inicio.** `saldos`: `contabilidad_desde = operaciones_desde = fecha_corte + 1`. `historial`: `historial_desde`–`historial_hasta` (hasta ayer como mucho); `fecha_corte = historial_desde − 1`, `contabilidad_desde = historial_desde` y `operaciones_desde = historial_hasta + 1`; la apertura es el saldo anterior al rango. El corte no puede ser futuro; el del día de hoy se admite en borrador y no se confirma hasta que el día termine (`fecha_corte_futura`). Corte del año 2000 en adelante.
 2. **Sin saldo anterior no se supone cero.** Hasta confirmar, la cobertura de contabilidad es `pendiente` (`apertura_sin_confirmar`; en historial, `saldo_anterior_sin_confirmar`) y todo reporte sale provisional. La única apertura sin líneas es la de fuente `inicio_actividades` con `sin_saldos: true` y `fuente_detalle` obligatorio: se confirma sin asiento y queda con totales `0.00`.
 3. **Solapamiento:** no se fija ni se mueve un corte igual o posterior a la fecha de un asiento ordinario o de una aplicación vigente (409 `rango_solapado` con cuántos y la primera fecha). Con una apertura confirmada la configuración no cambia (409 `apertura_confirmada`): cambiarla será una sustitución (corte 2).
-4. **Líneas:** una cuenta de movimiento activa de la empresa por línea, con un solo lado mayor que cero o los dos `null` (desconocido). Las líneas no se borran: mapear da de alta, cambia o retira por cuenta y conserva el id; una línea retirada tiene los importes en `null` y queda fuera de totales, validación y asiento. `detalle` es la copia de `cuenta.auxiliar` al escribir la línea.
-5. **Bloqueos de enviar y confirmar**, en este orden (el primero da el `codigo` de la respuesta): `sin_lineas` · `sin_saldos_con_lineas` · `cuenta_sin_mapear` · `cuenta_de_grupo` · `cuenta_inactiva` · `importe_pendiente` · `cuenta_sin_clase` · `apertura_desbalanceada` · `auxiliar_no_concilia` · `vinculo_roto` · `auxiliar_incompleto` (solo al confirmar) · `resultado_sin_declarar` · `resultado_duplicado` · `rango_solapado` · `periodo_cerrado` · `fecha_corte_futura`. `auxiliar_duplica_operativo` y `saldo_inicial_posterior` tienen su sitio en el orden y no se evalúan en este corte: ninguna ruta crea auxiliares.
-6. **Resultado del ejercicio.** N = Σ (haber − debe) de las líneas en cuentas de ingreso, costo o gasto; P = lo mismo de las líneas con `es_resultado_ejercicio` (solo en cuentas de patrimonio). N ≠ 0 y P ≠ 0 → `resultado_duplicado`. Con N ≠ 0 vale `resultado_ejercicio` vacío o `en_cuentas_nominales`; con N = 0 y P ≠ 0, vacío o `en_patrimonio`, y los estados de resultados y el 101 de ese ejercicio llevan la causa `resultados_acumulados_sin_detalle`. Una declaración que contradice las líneas, o un `resultado_acumulado` distinto de N o de P, es `resultado_duplicado` con las dos cifras. N = 0, P = 0 y corte que no es 31/12: hay que declararlo (`no_aplica` exige la nota de la revisión al confirmar); vacío, `resultado_sin_declarar`, y advertencia `sin_resultados_acumulados`. Corte 31/12 con N ≠ 0: válida con la advertencia `ejercicio_sin_cerrar`. Al confirmar queda fijado lo que dicen las líneas.
+4. **Líneas:** una cuenta de movimiento activa de la empresa por línea, con un solo lado mayor que cero o los dos `null` (desconocido). Las líneas no se borran: mapear da de alta, cambia o retira por cuenta y conserva el id; una línea retirada tiene los importes en `null` y queda fuera de totales, validación y asiento (pero las rutas que listan líneas la devuelven: §6.6, mapear y `GET apertura/<id>/lineas/`). `detalle` es la copia de `cuenta.auxiliar` que se toma al escribir la línea, pero **mientras la apertura está en `borrador` o `en_revision` vale el auxiliar que la cuenta declara ahora** (desde `72a68ee`; antes valía siempre la copia, y un auxiliar cambiado en revisión no se exigía al confirmar). La Parte A deja cambiar el auxiliar de una cuenta también con la apertura en revisión. Lo usan validar, enviar y confirmar (`auxiliar_incompleto`, `auxiliar_no_concilia`, `sin_cuenta_declarada` y `cuenta_no_aplica`), `detalle` y `auxiliares.estado` de `GET apertura/<id>/lineas/` y de la respuesta de mapear, la cobertura de `GET apertura/` y de validar, el error `ambito_con_cuentas` del PATCH y el aviso `auxiliares_incompletos` de capacidades. Confirmar fija `detalle` con el auxiliar con que se acaba de validar, con el candado del libro tomado (un PATCH del auxiliar de esa cuenta espera a que termine la confirmación), y el evento `confirmada` lo dice en `detalle_fijado`. Desde entonces vale la copia: un cambio posterior del auxiliar, que la Parte A permite, no cambia la apertura confirmada.
+5. **Bloqueos de enviar y confirmar**, en este orden (el primero da el `codigo` de la respuesta): `sin_lineas` · `sin_saldos_con_lineas` · `cuenta_sin_mapear` · `cuenta_de_grupo` · `cuenta_inactiva` · `cuenta_no_aplica` · `importe_pendiente` · `cuenta_sin_clase` · `apertura_desbalanceada` · `importe_total_excedido` · `auxiliar_no_concilia` · (`auxiliar_duplica_operativo`) · `vinculo_roto` · `auxiliar_incompleto` (solo al confirmar) · (`saldo_inicial_posterior`) · `resultado_sin_declarar` · `resultado_duplicado` · `rango_solapado` · `periodo_cerrado` · `fecha_corte_futura`. `auxiliar_duplica_operativo` y `saldo_inicial_posterior` tienen su sitio en el orden y no se evalúan en este corte: ninguna ruta crea auxiliares. Los dos que añadió el cierre del corte (`72a68ee`; no están en la especificación):
+   - **`cuenta_no_aplica`**, justo después de `cuenta_inactiva`: una línea no retirada va a una cuenta cuyo auxiliar (el de ahora, regla 4) es el de un ámbito que la apertura declara en `ambitos_no_aplican`; pasa cuando la cuenta recibe ese auxiliar después de mapear. Mapear y el PATCH de los ámbitos ya lo rechazaban por campo (400); este bloqueo es la misma regla cuando la cuenta cambia después. Forma: `{"codigo": "cuenta_no_aplica", "texto", "lineas": [ids], "ambitos": [ámbitos en orden alfabético]}`, con el texto «{n} línea(s) van a una cuenta con detalle de {ámbitos}, y la apertura declara que ese detalle no aplica: quita la declaración o el auxiliar de la cuenta.» (los ámbitos con su nombre, separados por «, »). (`72a68ee`, la caja pasa a declarar `cliente` con la apertura en revisión y `clientes` declarado «no aplica»):
+
+     ```
+     {"codigo": "cuenta_no_aplica",
+      "texto": "1 línea(s) van a una cuenta con detalle de clientes, y la apertura declara que ese detalle no aplica: quita la declaración o el auxiliar de la cuenta.",
+      "lineas": [1],
+      "ambitos": ["clientes"]}
+     ```
+   - **`importe_total_excedido`**, justo después de `apertura_desbalanceada` (pueden salir los dos): el debe o el haber de la apertura llega a 10^14, que no cabe en un asiento (`diario.TOTAL_MAX`; cada línea admite hasta 999 999 999 999,99). Forma: `{"codigo": "importe_total_excedido", "texto": "El total de la apertura (debe {debe}, haber {haber}) no cabe en un asiento: cada lado admite hasta {maximo}. Revisa los importes en la fuente.", "debe", "haber", "maximo": "99999999999999.99"}`. Antes, validar y enviar la daban por buena y confirmar terminaba en el 400 `importe` del diario; ahora sale en validar y como 409 en enviar y confirmar (que la revalida con el candado).
+
+   En enviar y confirmar, el primer bloqueo es un 409 con su `codigo`, su detalle arriba (`lineas` y `ambitos`; `debe`, `haber` y `maximo`) y la lista completa.
+6. **Resultado del ejercicio.** N = Σ (haber − debe) de las líneas en cuentas de ingreso, costo o gasto; P = lo mismo de las líneas con `es_resultado_ejercicio` (solo en cuentas de patrimonio). N ≠ 0 y P ≠ 0 → `resultado_duplicado`. Con N ≠ 0 vale `resultado_ejercicio` vacío o `en_cuentas_nominales`; con N = 0 y P ≠ 0, vacío o `en_patrimonio`, y los estados de resultados y el 101 de ese ejercicio llevan la causa `resultados_acumulados_sin_detalle`. Una declaración que contradice las líneas, o un `resultado_acumulado` distinto de N o de P, es `resultado_duplicado` con las dos cifras. **Con N = 0 y P = 0** (desde `72a68ee`; antes se aceptaba cualquier declaración): declarar `en_cuentas_nominales` o `en_patrimonio`, o un `resultado_acumulado` que no es nulo ni `0.00`, contradice las líneas y es `resultado_duplicado` con `{"en_cuentas_nominales": "0.00", "en_patrimonio": "0.00", "declarado", "resultado_acumulado"}`, también a 31/12; en ese caso sustituye a `resultado_sin_declarar`, y declarar `en_patrimonio` ya no evita la nota que exige `no_aplica`. Con N = P = 0 valen: vacío (a 31/12), `no_aplica` (a mitad de año, con la nota de la revisión al confirmar) y la cifra nula o `0.00`. No cambian los códigos ni los textos. N = 0, P = 0 y corte que no es 31/12: hay que declararlo (`no_aplica` exige la nota de la revisión al confirmar); vacío, `resultado_sin_declarar`, y advertencia `sin_resultados_acumulados`. Corte 31/12 con N ≠ 0: válida con la advertencia `ejercicio_sin_cerrar`. Al confirmar queda fijado lo que dicen las líneas.
 7. **Un solo asiento inicial:** tipo `apertura`, fecha = corte, origen `('apertura', id, 'confirmacion')`, una línea por línea no retirada, sin tercero ni documento. Lo garantizan el candado del libro, el estado, `clave_confirmacion` y dos UNIQUE parciales.
-8. **Auxiliar ≤ cuenta.** En este corte no hay auxiliares: toda línea cuya cuenta declara `auxiliar` está incompleta y, para confirmar, `incompletos_aceptados` tiene que ser exactamente el conjunto de esas líneas (409 `auxiliar_incompleto` con las que faltan y las que sobran). Quedan `incompleto_aceptado` y la cobertura de contabilidad `parcial`.
+8. **Auxiliar ≤ cuenta.** En este corte no hay auxiliares: toda línea cuya cuenta declara `auxiliar` (ahora, regla 4) está incompleta y, para confirmar, `incompletos_aceptados` tiene que ser exactamente el conjunto de esas líneas. Si no lo es, 409 `auxiliar_incompleto` con `"lineas"`, los ids que faltan (siempre, aunque esté vacía), y `"sobran"`, los ids aceptados de más (**solo si hay alguno**), arriba y dentro de su entrada de `bloqueos`, más `"advertencias"`; la forma está en §6.6, confirmar. Quedan `incompleto_aceptado` y la cobertura de contabilidad `parcial`.
 9. Confirmar no llama al SRI, no envía correo y no crea ningún documento, cuenta por cobrar o por pagar, movimiento de kardex ni cambio de stock.
 
 ### 6.6 Rutas de la apertura, con ejemplos
@@ -890,6 +978,21 @@ GET /contabilidad/api/apertura/2/?empresa=1
                      "cobrar": false}}
 ```
 
+Desde `72a68ee`, el `detalle` del evento `confirmada` trae además **`detalle_fijado`**, entre `incompletos_aceptados` y
+`nota`: `[{"linea_id", "anterior", "nuevo"}]`, las líneas cuya copia de `detalle` cambió al confirmar (§6.5, regla 4), o
+`[]` si no cambió ninguna. El ejemplo de arriba se obtuvo en `a5bedf4` y no la tiene. (`72a68ee`; la caja pasó a declarar
+`cliente` con la apertura en revisión):
+
+```
+"detalle": {"version": 4,
+            "asiento": {"id": 1, "numero": "2025-000001", "debe": "10500.00", "haber": "10500.00"},
+            "sin_saldos": false,
+            "incompletos_aceptados": [1, 2],
+            "detalle_fijado": [{"linea_id": 1, "anterior": "", "nuevo": "cliente"}],
+            "nota": "",
+            "advertencias": ["sin_cuenta_declarada", …, "tributario_sin_saldos"]}
+```
+
 (`apertura` tiene la forma de `GET apertura/`.) Recién creada:
 
 ```
@@ -951,7 +1054,7 @@ GET /contabilidad/api/apertura/999999/?empresa=1
 
 #### `PATCH apertura/<id>/` — encabezado del borrador
 
-Envío JSON: `{empresa, version, fecha_corte?, historial_hasta?, fuente?, fuente_detalle?, resultado_ejercicio?, resultado_acumulado?, inventario_modo?, ambitos_no_aplican?}`. `ambitos_no_aplican`: `[{ambito: clientes | proveedores | inventario | bancos | activos | tributario, nota}]`, con nota obligatoria y rechazado si la apertura tiene líneas con ese detalle; al confirmar se congela con quién y cuándo. `modalidad`, `sin_saldos` e `historial_desde` no se cambian (400 `fijo`: se descarta y se crea otra). Mover el corte toma el candado y comprueba el solapamiento. `inventario_modo` (`solo_conciliar` o `reiniciar_kardex`) se guarda; en este corte no hay auxiliares de inventario, así que confirmar no crea movimientos de kardex en ningún modo.
+Envío JSON: `{empresa, version, fecha_corte?, historial_hasta?, fuente?, fuente_detalle?, resultado_ejercicio?, resultado_acumulado?, inventario_modo?, ambitos_no_aplican?}`. `ambitos_no_aplican`: `[{ambito: clientes | proveedores | inventario | bancos | activos | tributario, nota}]`, con nota obligatoria y rechazado si la apertura tiene líneas con ese detalle (400 `validacion` con `errores["ambitos_no_aplican.<i>.ambito"]`, «Hay cuentas con ese detalle en la apertura: no puede declararse que no aplica.»; desde `72a68ee` se mira el auxiliar que declaran ahora las cuentas de las líneas, regla 4); al confirmar se congela con quién y cuándo. `modalidad`, `sin_saldos` e `historial_desde` no se cambian: se descarta la apertura y se crea otra. Si el envío trae uno de ellos, la respuesta es 400 `validacion` con `errores.modalidad`, `errores.sin_saldos` o `errores.historial_desde` («No se cambia en un borrador: descarta esta apertura y crea otra.»); `fijo` es solo el nombre interno de ese texto, no un `codigo` (antes este párrafo decía «400 `fijo`»). Mover el corte toma el candado y comprueba el solapamiento. `inventario_modo` (`solo_conciliar` o `reiniciar_kardex`) se guarda; en este corte no hay auxiliares de inventario, así que confirmar no crea movimientos de kardex en ningún modo.
 
 ```
 PATCH /contabilidad/api/apertura/2/?empresa=1
@@ -1052,7 +1155,7 @@ Fuera del borrador: 409 `estado` `{"estado", "permitidos": ["borrador"]}`.
 
 #### `POST apertura/<id>/importar/` y `GET apertura/importar/<lote>/`
 
-Multipart: `archivo`, `clave`, `empresa`, `tipo: "saldos"` (`auxiliares` es del corte 2: hoy 400 `tipo`). CSV en UTF-8 (`;` o `,`, con o sin BOM) o XLSX, con el lector endurecido del plan de cuentas (C3), que desde la unión con el cierre del bloque 1 es el lector común `lectura_tabular.py`: 2 MB, 5 000 filas; un XLSX con una parte en bzip2 o lzma o con entidades XML (DOCTYPE) en sus partes XML es 400 `formato`, y un logo SVG o una imagen dentro del libro no impiden subirlo. Columnas por encabezado, sin tildes ni mayúsculas: código (`codigo`, `cuenta`), rubro (`nombre`, `rubro`, `descripcion`, `detalle`; también `cuenta` si otra columna es el código), `debe` (también `saldo_deudor`, `deudor`) y `haber` (`saldo_acreedor`, `acreedor`), o una sola `saldo` (`saldo_final`; positivo = deudor). Importes con `1.234,56`, `1,234.56` o `1234,56`. **Nada se escribe en las líneas hasta mapear**; el lote queda en la carpeta privada de la empresa con su huella. Importar no sube la versión de la apertura. Responde 200, también la primera vez.
+Multipart: `archivo`, `clave`, `empresa`, `tipo: "saldos"` (`auxiliares` es del corte 2: hoy 400 `validacion` con `errores.tipo`, «La importación del detalle (auxiliares) todavía no está disponible: por ahora se importan los saldos.»; otro valor, 400 `validacion` con `errores.tipo`, «Elige qué se importa: los saldos de la apertura.»). CSV en UTF-8 (`;` o `,`, con o sin BOM) o XLSX, con el lector endurecido del plan de cuentas (C3), que desde la unión con el cierre del bloque 1 es el lector común `lectura_tabular.py`: 2 MB, 5 000 filas; un XLSX con una parte en bzip2 o lzma o con entidades XML (DOCTYPE) en sus partes XML es 400 `formato`, y un logo SVG o una imagen dentro del libro no impiden subirlo. Columnas por encabezado, sin tildes ni mayúsculas: código (`codigo`, `cuenta`), rubro (`nombre`, `rubro`, `descripcion`, `detalle`; también `cuenta` si otra columna es el código), `debe` (también `saldo_deudor`, `deudor`) y `haber` (`saldo_acreedor`, `acreedor`), o una sola `saldo` (`saldo_final`; positivo = deudor). Importes con `1.234,56`, `1,234.56` o `1234,56`; un importe con notación científica, `_` o cifras que no son ASCII deja la fila en `error` con «Escribe un importe válido.» (§6.1, «Importes escritos como texto»). **Nada se escribe en las líneas hasta mapear**; el lote queda en la carpeta privada de la empresa con su huella. Importar no sube la versión de la apertura. Responde 200, también la primera vez.
 
 Estados de fila: `valida`, `sin_cuenta` (el código no existe), `de_grupo`, `duplicada` (otra fila ya va a esa cuenta), `omitida` (decidido al mapear) y `error`.
 
@@ -1172,7 +1275,7 @@ empresa=1 · clave=importar-saldos-0002 · tipo=saldos · archivo=<balance.pdf, 
 400 {"error": "No se pudo leer el archivo: debe ser un CSV (UTF-8, separado por punto y coma o por coma) o un XLSX.", "codigo": "formato"}
 ```
 
-Otros: 400 `archivo_grande`, `demasiadas_filas`, `tipo`; 409 `estado` fuera del borrador. `GET apertura/importar/<lote>/` responde `{"lote": {…}}` con la vista previa recalculada contra las cuentas de ahora (404 `no_existe` si es de otra empresa).
+Otros: 400 con `codigo` `archivo_grande` o `demasiadas_filas` (códigos propios del lector, como `formato` arriba); 400 `validacion` con `errores.tipo` si `tipo` no es `saldos` y con `errores.archivo` si falta el archivo (no son códigos: van dentro de `errores`); 409 `estado` fuera del borrador. `GET apertura/importar/<lote>/` responde `{"lote": {…}}` con la vista previa recalculada contra las cuentas de ahora (404 `no_existe` si es de otra empresa).
 
 #### `POST apertura/<id>/mapear/`
 
@@ -1181,7 +1284,7 @@ Dos formas, las dos con `{empresa, version}`:
 - **Desde un lote:** `{lote_id, columnas?: {codigo, rubro, debe, haber, saldo}, decisiones?: [{fila, cuenta_id?, omitir?, motivo?, agrupar?, es_resultado_ejercicio?}]}`. Una fila de grupo o de subtotal se omite solo con `omitir` y su `motivo`; dos filas hacia la misma cuenta se suman solo con `agrupar` (quedan en `filas_origen`); una fila sin cuenta se asigna con `cuenta_id`.
 - **Captura directa del conjunto completo:** `{lineas: [{cuenta_id | null, rubro, debe | null, haber | null, es_resultado_ejercicio?}]}`.
 
-El conjunto enviado se concilia con el que existe por `cuenta_id`: alta de las nuevas, cambio de las que siguen, retiro de las que ya no vienen; los ids de las que siguen no cambian. La diferencia la calcula el servidor; mapear no confirma nada. `auxiliares.estado` de cada línea: `sin_detalle`, `incompleto`, `conciliada`, `no_concilia` o `sin_declarar` (la cuenta no declara auxiliar).
+El conjunto enviado se concilia con el que existe por `cuenta_id`: alta de las nuevas, cambio de las que siguen, retiro de las que ya no vienen; los ids de las que siguen no cambian. La diferencia la calcula el servidor; mapear no confirma nada. `auxiliares.estado` de cada línea: `sin_detalle`, `incompleto`, `conciliada`, `no_concilia` o `sin_declarar` (la cuenta no declara auxiliar); `detalle` y `auxiliares.estado` miran, en preparación, el auxiliar que declara ahora la cuenta (§6.5, regla 4). **La respuesta trae en `lineas` todas las líneas de la apertura, también las retiradas** (`"retirada": true`, `debe` y `haber` en `null`), y `retiradas` cuenta las que retiró este envío: la interfaz filtra por `retirada` para mostrar y sumar (D3 del cierre; el código ya respondía así).
 
 ```
 POST /contabilidad/api/apertura/2/mapear/?empresa=1
@@ -1302,11 +1405,21 @@ Content-Type: application/json
                  "lineas.1.haber": ["La línea lleva saldo en un solo lado: deja el otro en cero o vacío."]}}
 ```
 
-El 400 trae todos los errores de campo a la vez; su `codigo` es `cuenta_de_grupo` si alguna línea va a un grupo y `validacion` si no. Otros: 409 `version` y `estado`; 409 `linea_con_auxiliares` `{"linea_id", "auxiliares"}` (no ocurre en este corte); 404 `no_existe` para un lote o una cuenta de otra empresa. Un envío que no se puede leer (líneas que no son lista, `lineas` y `lote_id` juntos) responde 400 antes de cualquier 409.
+El 400 trae todos los errores de campo a la vez; su `codigo` es `cuenta_de_grupo` si alguna línea va a un grupo y `validacion` si no. Otros: 409 `version` y `estado`; 409 `linea_con_auxiliares` `{"linea_id", "auxiliares"}` (no ocurre en este corte); 404 `no_existe` para un lote o una cuenta de otra empresa. Un envío que no se puede leer (líneas que no son lista, `lineas` y `lote_id` juntos) responde 400 `validacion` (`errores.lineas`) **después de los 409 `version` y `estado`** (como en el orden de §6.1) **y antes del 409 `linea_con_auxiliares`**: sin un conjunto que se pueda leer no hay líneas que conciliar, así que ese 400 va antes que el conflicto (antes este párrafo decía «antes de cualquier 409»; el código siempre respondió así). (`72a68ee`): con `{"version": 99, "lote_id": 1, "lineas": []}` o `{"version": 99, "lineas": "x"}` la respuesta es el 409 `version` con la apertura; con la versión vigente, `{"lineas": ["Envía las líneas o el lote, no los dos."]}` y `{"lineas": ["Envía las líneas como una lista."]}`.
 
 #### `GET apertura/<id>/lineas/`
 
-Dos consultas, paginado (`?pagina=&por_pagina=`, hasta 500).
+Dos consultas, paginado (`?pagina=&por_pagina=`, hasta 500). **Devuelve también las líneas retiradas**, en su orden, con `"retirada": true` y `debe` y `haber` en `null`, y `paginacion.total` las cuenta; `lineas` de la apertura (`GET apertura/<id>/`) cuenta solo las vigentes. La interfaz las filtra por `retirada` para mostrar, paginar lo que muestra y sumar (D3 del cierre; el código ya respondía así). `detalle` y `auxiliares.estado`, como en mapear. En el ejemplo de abajo no hay ninguna retirada. Una retirada (`72a68ee`; mapeadas caja, bancos y capital, y mapeadas otra vez sin bancos):
+
+```
+{"id": 2, "orden": 2, "cuenta": {"id": 3, "codigo": "1.1.02", "nombre": "Bancos", "clase": "activo"}, "rubro": "Bancos",
+ "codigo_origen": "", "debe": null, "haber": null, "detalle": "banco", "es_resultado_ejercicio": false, "retirada": true,
+ "auxiliares": {"estado": "sin_detalle", "detallado": "0.00", "filas": 0}, "filas_origen": []}
+…
+"paginacion": {"pagina": 1, "por_pagina": 100, "total": 3, "paginas": 1}
+```
+
+(dos vigentes y la retirada; `GET apertura/<id>/` dice `"lineas": 2`). `detalle` y `auxiliares.estado` de una retirada no significan nada: no entra en la validación.
 
 ```
 GET /contabilidad/api/apertura/2/lineas/?pagina=1&por_pagina=100&empresa=1
@@ -1469,6 +1582,36 @@ Content-Type: application/json
 ```
 
 Otros: 409 `ya_anulado`; 404 `no_existe`; 400 `archivo_grande`.
+
+**La misma `clave`** (desde `72a68ee`): responde 200 con `"repetido": true` y el respaldo solo si coinciden la apertura de
+la ruta, el archivo (`sha256`) y la descripción. En cualquier otro caso, también si la clave se usó en **otra apertura**
+(por ejemplo, una ya descartada), 409 `clave_usada` con `respaldo` = el que ya existe, que puede ser de otra apertura; es
+la misma regla que `importar/`. Antes, la misma clave con el mismo archivo en otra apertura respondía 200 `repetido` con
+el respaldo de la primera, y la segunda se quedaba sin el suyo. (`72a68ee`, la clave se usó en la apertura 1, descartada,
+y se repite en la 2):
+
+```
+POST /contabilidad/api/apertura/2/respaldos/?empresa=1
+Content-Type: multipart/form-data
+empresa=1 · clave=respaldo-clave-0001 · descripcion=Balance firmado · archivo=<balance.pdf, 77 bytes>
+
+409 {"error": "Esta clave ya se usó para otro envío: vuelve a cargar la página e inténtalo de nuevo.",
+     "codigo": "clave_usada",
+     "respaldo": {"id": 1, "nombre": "balance.pdf", "tipo": "application/pdf", "tamano": 77, …, "estado": "vigente", …}}
+```
+
+**Una imagen que no se puede leer** (desde `72a68ee`): un JPG o PNG que Pillow no abre ni verifica (un PNG con la suma de
+un bloque dañada, uno sin el bloque IDAT…) es 400 `validacion` con `errores.archivo` y el mismo texto que los
+comprobantes de pago; antes era un 500 en HTML. (`72a68ee`, PNG con la suma de IDAT cambiada):
+
+```
+400 {"error": "Revisa los datos marcados.",
+     "codigo": "validacion",
+     "errores": {"archivo": ["La imagen no se puede leer: vuelve a tomarla o expórtala como JPG, PNG o PDF."]}}
+```
+
+`descripcion` y el `motivo` de anular rechazan los caracteres de control (§6.1, «Textos libres»). Una descripción con
+controles y una clave ya usada da 409 `clave_usada`: no es la misma descripción.
 
 #### `POST apertura/<id>/descartar/`
 
@@ -1900,7 +2043,7 @@ Content-Type: application/json
 
 #### `POST apertura/<id>/confirmar/`
 
-`{empresa, version, clave, revisado: true, nota, incompletos_aceptados: [linea_id…]}`. `revisado`, `nota` (hasta 500), `incompletos_aceptados` y `version` se revisan antes de tomar el candado (400). Después: candado del libro → la apertura; la misma `clave_confirmacion` de una apertura ya confirmada devuelve el mismo cuerpo con `repetido: true` (también con la versión vieja); otra clave, 409 `apertura_confirmada`; `version`; estado distinto de `en_revision`, 409 `estado`; y vuelve a evaluar todo con el candado (409 con el primer bloqueo, `bloqueos` y `advertencias`). Escribe el asiento inicial (ninguno con `sin_saldos`), fija totales, `revisado_por/en` (quien confirma), `confirmado_por/en`, `incompleto_aceptado` de cada línea, `ambitos_no_aplican` con `declarado_por` y `declarado_en`, `resultado_ejercicio` según las líneas, sincroniza `InicioContable` con el corte, deja su historia y la auditoría `apertura_confirmada` con el asiento.
+`{empresa, version, clave, revisado: true, nota, incompletos_aceptados: [linea_id…]}`. `revisado`, `nota` (hasta 500), `incompletos_aceptados` y `version` se revisan antes de tomar el candado (400). Después: candado del libro → la apertura; la misma `clave_confirmacion` de una apertura ya confirmada devuelve el mismo cuerpo con `repetido: true` (también con la versión vieja); otra clave, 409 `apertura_confirmada`; `version`; estado distinto de `en_revision`, 409 `estado`; y vuelve a evaluar todo con el candado (409 con el primer bloqueo, `bloqueos` y `advertencias`). Escribe el asiento inicial (ninguno con `sin_saldos`), fija el `detalle` de cada línea con el auxiliar de su cuenta con que se acaba de validar (§6.5, regla 4; desde `72a68ee`), fija totales, `revisado_por/en` (quien confirma), `confirmado_por/en`, `incompleto_aceptado` de cada línea, `ambitos_no_aplican` con `declarado_por` y `declarado_en`, `resultado_ejercicio` según las líneas, sincroniza `InicioContable` con el corte, deja su historia y la auditoría `apertura_confirmada` con el asiento.
 
 ```
 POST /contabilidad/api/apertura/2/confirmar/?empresa=1
@@ -2041,6 +2184,29 @@ Content-Type: application/json
      "advertencias": []}
 ```
 
+Forma del 409 `auxiliar_incompleto` (H7 del cierre; el código ya respondía así): `"lineas"`, los ids de las líneas que
+faltan por aceptar, va siempre (vacía si solo sobran); `"sobran"`, los ids aceptados que no lo necesitan, va **solo si hay
+alguno**; `"bloqueos"`, cada entrada con las mismas dos claves; y `"advertencias"`. Con una línea que falta y otra que
+sobra (`72a68ee`; `advertencias` recortada):
+
+```
+POST /contabilidad/api/apertura/1/confirmar/?empresa=1
+Content-Type: application/json
+{"empresa": 1, "version": 3, "clave": "…", "revisado": true, "nota": "", "incompletos_aceptados": [1]}
+
+409 {"error": "Acepta una por una las cuentas con el detalle incompleto, o completa su detalle antes de confirmar.",
+     "codigo": "auxiliar_incompleto",
+     "lineas": [2],
+     "sobran": [1],
+     "bloqueos": [{"codigo": "auxiliar_incompleto",
+                   "texto": "Acepta una por una las cuentas con el detalle incompleto, o completa su detalle antes de confirmar.",
+                   "lineas": [2],
+                   "sobran": [1]}],
+     "advertencias": [{"codigo": "sin_cuenta_declarada", …}, …]}
+```
+
+Con todas las que faltan aceptadas y una de más, `"lineas": []` y `"sobran": [1]`.
+
 ```
 POST /contabilidad/api/apertura/2/confirmar/?empresa=1
 Content-Type: application/json
@@ -2097,7 +2263,7 @@ Content-Type: application/json
                   "motivo": ""}}
 ```
 
-Otros 409 de confirmar, cada uno con `bloqueos` y `advertencias`: todos los de la regla 5; `resultado_duplicado` trae además `en_cuentas_nominales`, `en_patrimonio`, `declarado` y `resultado_acumulado`; `apertura_desbalanceada`, `debe`, `haber` y `diferencia` (debe − haber, con signo); `rango_solapado`, `asientos`, `aplicaciones` y `primera_fecha`. 409 `clave_usada` si la clave ya la usó otra apertura.
+Otros 409 de confirmar, cada uno con `bloqueos` y `advertencias`: todos los de la regla 5; `resultado_duplicado` trae además `en_cuentas_nominales`, `en_patrimonio`, `declarado` y `resultado_acumulado`; `apertura_desbalanceada`, `debe`, `haber` y `diferencia` (debe − haber, con signo); `rango_solapado`, `asientos`, `aplicaciones` y `primera_fecha`; `cuenta_no_aplica`, `lineas` y `ambitos`; `importe_total_excedido`, `debe`, `haber` y `maximo`. 409 `clave_usada` si la clave ya la usó otra apertura. Y, fuera del orden, 409 `reintentar` (§6.1): la confirmación no se guardó y se repite con la misma `clave`.
 
 ### 6.7 Negativas comunes, tal como salen
 
@@ -2183,6 +2349,20 @@ GET /contabilidad/api/cuentas/clasificar/?empresa=1
 405
 Allow: POST {"error": "Esta ruta no admite ese método.", "codigo": "metodo"}
 ```
+
+Un cruce con otra transacción que la base aborta (interbloqueo `40P01` o bloqueo no conseguido a tiempo `55P03`), en
+cualquier ruta (`72a68ee`, simulado en validar con el error real de psycopg, como hace
+`tests/test_cuentas_importacion.py::TestCruceDeBloqueos` en la confirmación de la importación del plan):
+
+```
+POST /contabilidad/api/apertura/1/validar/?empresa=1
+Content-Type: application/json
+{"empresa": 1, "version": 1}
+
+409 {"error": "Otra operación usaba los mismos datos al mismo tiempo: no se guardó nada. Vuelve a intentarlo.", "codigo": "reintentar"}
+```
+
+Se repite el mismo envío, con la misma `clave` y la misma `version` (§6.1).
 
 ### 6.8 Provisionalidad y causas
 
@@ -2274,7 +2454,7 @@ En `GET /contabilidad/api/inicio/`, `etapas.apertura` es `{"estado": "sin_config
 | 4 | Importar XML de esa factura inicial completa/vincula el auxiliar sin aumentar cartera, ventas, impuestos, asientos ni stock. | pendiente del corte 2 | — |
 | 5 | Inventario inicial se distribuye por almacén, cantidad/costo concilian y repetir no duplica existencias. | pendiente del corte 2 | — |
 | 6 | Historial desde un período intermedio exige saldo anterior confirmado; sin él los reportes lo indican. Reconstrucción solapada queda bloqueada. | en parte: el historial sin saldo anterior confirmado deja la cobertura `pendiente` con `saldo_anterior_sin_confirmar` y el diario provisional; la reconstrucción es del corte 2 | `tests/test_apertura.py::TestConfirmar::test_historial` |
-| 7 | Corte a mitad de año: resultados acumulados más movimientos posteriores cuadran con el ejercicio; no duplicar resultado en patrimonio y cuentas nominales. 101 incompleto se identifica como provisional. | cubierta (regla 6) | `tests/test_apertura.py::TestAceptacion7` |
+| 7 | Corte a mitad de año: resultados acumulados más movimientos posteriores cuadran con el ejercicio; no duplicar resultado en patrimonio y cuentas nominales. 101 incompleto se identifica como provisional. | cubierta (regla 6; desde `72a68ee`, también con N = P = 0) | `tests/test_apertura.py::TestAceptacion7` (con `test_sin_resultado_en_las_lineas_lo_declarado_las_contradice` y `test_sin_resultado_en_las_lineas_lo_que_vale`) |
 | 8 | Dos empresas: cuentas, documentos, archivos y saldos aislados; 409 en pestaña vieja, permisos por acción y control de versiones. | cubierta | `tests/test_apertura.py::TestAceptacion8`, `tests/test_apertura_preparar.py`; seguridad por filas en `tests/test_zz_apertura_concurrencia_pg.py` y `tests/test_rls_libro_apertura.py` |
 | 9 | Reapertura/ajuste con movimientos posteriores mantiene trazabilidad, aplicaciones y períodos; no elimina efectos sin reverso. | pendiente del corte 2 | — |
 | 10 | Confirmar apertura no envía nada al SRI ni crea una factura nueva. La emisión básica sigue funcionando aunque Contabilidad no esté contratada. | cubierta | `tests/test_apertura.py::TestAceptacion10` |

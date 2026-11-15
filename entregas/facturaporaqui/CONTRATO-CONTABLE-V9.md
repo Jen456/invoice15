@@ -32,6 +32,24 @@ reales están en `CONTRATO-APERTURA-CONTABLE.md` (C6-A, sección 6). Aquí cambi
 real), C1 (la etapa de la apertura), C2 (clase y auxiliar de cada cuenta, reclasificar y la ruta para clasificar por lote)
 y C3 (la columna «clase»). Todo es aditivo: ninguna clave que ya existía cambió de forma ni de sentido.
 
+**Cierre del corte 1 del bloque 2 (15/11/2026).** Sobre `6efad50` (la rama unida con el bloque 1 final) se hicieron la
+revisión independiente (libro, apertura, y contrato con documentos), el ensayo de migraciones con la versión publicada
+atendiendo, el recorrido en navegador y una integración de prueba con `fase/primera-entrega`; de los 25 puntos que se
+confirmaron, los de código se corrigieron y los demás se documentaron. Código final de la rama: **`72a68ee`**, sin
+publicar (detalle en HANDOFF.md, «Cierre del corte 1»). Para quien conecte las pantallas, aquí cambian dos cosas:
+
+1. Un código nuevo, 409 `reintentar`, fuera del orden de las negativas y en cualquier ruta nueva de `/contabilidad/api/`
+   (abajo, «Orden de las negativas»).
+2. En C2, cambiar con un PATCH el `auxiliar` de una cuenta que está en una apertura en preparación cambia lo que esa
+   apertura exige al validar y al confirmar: mientras se prepara, vale el auxiliar que la cuenta declara ahora (C6-A
+   §6.5, regla 4). Si el PATCH llega mientras se confirma la apertura, espera a que termine: toma el mismo candado del
+   libro (ya lo hacía; lo vigila una prueba nueva en PostgreSQL).
+
+En C3, la confirmación de una importación ya no se cruza con el libro: bloquea las cuentas con `FOR NO KEY UPDATE`, y
+editar una cuenta (C2) también. Para la interfaz no cambia nada, salvo que, si la base llega a abortar por un cruce, la
+respuesta es el 409 `reintentar` y no un 500. El resto de cambios del cierre es de la apertura: están en C6-A (cabecera
+y sección 6).
+
 ## Reglas comunes
 
 Valen para todo lo que cuelga de `/tributario/` y `/contabilidad/`:
@@ -84,6 +102,24 @@ redirigiendo (302). Las nuevas cumplen además esto:
   Una excepción al primer puesto, que ya existía en `PlanMiddleware` para todas las consultas: si la empresa activa no
   tiene plan pagado, a un GET de una pestaña armada para otra empresa le responde el 403 `plan` y no el 409.
 
+  **Fuera del orden: 409 `reintentar`** (desde el cierre del corte 1 del bloque 2, `72a68ee`). En cualquier ruta nueva
+  de `/contabilidad/api/` (capacidades, inicio, cuentas, importación del plan, diario y apertura: todas las que usan
+  `ApiContable`), si PostgreSQL aborta la transacción por un interbloqueo (SQLSTATE `40P01`) o porque un bloqueo no se
+  consiguió a tiempo (`55P03`: `lock_timeout` o `NOWAIT`), la respuesta es exactamente
+
+  ```
+  409 {"error": "Otra operación usaba los mismos datos al mismo tiempo: no se guardó nada. Vuelve a intentarlo.", "codigo": "reintentar"}
+  ```
+
+  sin más campos. No tiene puesto en la tabla porque lo decide la base, en el momento en que corta. No se guardó nada
+  (la transacción se deshizo entera) y repetir el mismo envío, con la misma `clave` y la misma `version`, es seguro: la
+  interfaz muestra `error` y ofrece repetirlo tal cual, sin recargar. Queda un aviso (WARNING, con la traza) en el
+  registro `core.contabilidad.api`. Cualquier otro error de la base sigue siendo un 500; antes, un interbloqueo también
+  lo era. Es 409 y no 503 porque encaja con los 409 de conflicto, la interfaz ya muestra el `error` de cualquier 409 JSON
+  y no cuenta como 5xx en las verificaciones. Lo prueba `tests/test_cuentas_importacion.py::TestCruceDeBloqueos`, con
+  los errores reales de psycopg; que la importación del plan ya no se cruza con el libro lo prueba, con conexiones
+  reales, `tests/test_zz_diario_concurrencia_pg.py`.
+
 - **`empresa`.** Va en la consulta (`?empresa=<id>`) o en el envío: `"empresa"` del objeto JSON o, en un POST de
   formulario, el campo `empresa`; como número o como texto. En GET es opcional. En POST y PATCH es obligatoria. Basta que
   la consulta o el cuerpo nombren otra empresa para el 409.
@@ -118,7 +154,7 @@ Reglas que añade el bloque 2 (libro diario y apertura, corte 1) y que valen par
   y la validación, `clave` repetida (200 `repetido` o 409 `clave_usada`) → `version` (409) → estado del recurso (409
   `estado`, con `estado` y `permitidos`) → conflicto con otros datos (409 con su código: `rango_solapado`,
   `periodo_cerrado`…). La clave va antes que la versión: el reintento de un envío ya aplicado trae la versión vieja y
-  recibe el mismo resultado.
+  recibe el mismo resultado. Fuera de ese orden, el 409 `reintentar` de arriba.
 - **Inexistente o de otra empresa:** 404 `{"codigo": "no_existe"}` en las rutas del bloque 2. Las del bloque 1 conservan
   sus códigos (`cuenta`, `lote`), también `cuentas/clasificar/`.
 - **Errores en listas:** la clave lleva la posición enviada, base 0: `"lineas.2.debe"`. En archivos, por `fila` (la de
@@ -753,7 +789,8 @@ Envío JSON: `{"empresa", "clave", "duplicadas": "omitir" | "actualizar_nombre"}
 | 409 | `lote_confirmado` | mapear un lote confirmado o confirmarlo con otra clave; trae `lote` |
 | 409 | `plan_cambiado` | alguien creó uno de esos códigos mientras se confirmaba; no se creó nada y basta repetir |
 
-Más los comunes: 409 `empresa_cambiada` y `sin_empresa`, 403 de licencia y `sin_permiso`, 405.
+Más los comunes: 409 `empresa_cambiada` y `sin_empresa`, 403 de licencia y `sin_permiso`, 405 y, fuera del orden,
+409 `reintentar` («Orden de las negativas»; desde el cierre del corte 1 del bloque 2).
 
 Cambios respecto de la propuesta del 04/11:
 
