@@ -35,8 +35,10 @@ y C3 (la columna «clase»). Todo es aditivo: ninguna clave que ya existía camb
 **Cierre del corte 1 del bloque 2 (15/11/2026).** Sobre `6efad50` (la rama unida con el bloque 1 final) se hicieron la
 revisión independiente (libro, apertura, y contrato con documentos), el ensayo de migraciones con la versión publicada
 atendiendo, el recorrido en navegador y una integración de prueba con `fase/primera-entrega`; de los 25 puntos que se
-confirmaron, los de código se corrigieron y los demás se documentaron. Código final de la rama: **`72a68ee`**, sin
-publicar (detalle en HANDOFF.md, «Cierre del corte 1»). Para quien conecte las pantallas, aquí cambian dos cosas:
+confirmaron, los de código se corrigieron y los demás se documentaron. Código de las correcciones: `72a68ee`. La
+verificación del cierre dejó una corrección más, `7a5c567`, que solo toca la importación de los saldos de la apertura
+(C6-A): **código final de la rama, `7a5c567`**, sin publicar (detalle en HANDOFF.md, «Cierre del corte 1»). Para quien
+conecte las pantallas, aquí cambian dos cosas:
 
 1. Un código nuevo, 409 `reintentar`, fuera del orden de las negativas y en cualquier ruta nueva de `/contabilidad/api/`
    (abajo, «Orden de las negativas»).
