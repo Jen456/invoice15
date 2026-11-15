@@ -70,6 +70,28 @@ class TestCerrado:
             assert bloqueada(entrar.post(f'/contabilidad/api/cuentas/importar/1/{paso}/', {'empresa': empresa.pk, 'clave': 'complemento-0004'},
                                          content_type='application/json'))
 
+    def test_rutas_del_bloque_2_responden_403_con_causa_licencia(self, entrar, empresa):
+        """Libro diario y apertura (bloque 2, corte 1): cada consulta y cada envío de sus rutas, con la causa del contrato de
+        capacidades. Los envíos llevan la empresa de la pestaña en la consulta y en el cuerpo, como los manda la interfaz;
+        la importación y los respaldos, como formulario multipart."""
+        def cerrada(respuesta, url):
+            assert bloqueada(respuesta) and respuesta.json()['causa'] == 'licencia', url
+        consultas = [u for u in JSON if u.startswith(('/contabilidad/api/diario/', '/contabilidad/api/integridad/',
+                                                      '/contabilidad/api/apertura/'))]
+        assert len(consultas) == 8
+        for url in consultas:
+            cerrada(entrar.get(f'{url}?empresa={empresa.pk}'), url)
+        envios = [('post', '/contabilidad/api/cuentas/clasificar/'), ('post', '/contabilidad/api/apertura/'),
+                  ('patch', '/contabilidad/api/apertura/1/'), ('post', '/contabilidad/api/apertura/respaldos/1/anular/')] + [
+            ('post', f'/contabilidad/api/apertura/1/{paso}/')
+            for paso in ('mapear', 'descartar', 'validar', 'enviar', 'devolver', 'confirmar')]
+        for metodo, url in envios:
+            cerrada(getattr(entrar, metodo)(f'{url}?empresa={empresa.pk}', {'empresa': empresa.pk, 'version': 1,
+                                                                            'clave': 'complemento-0005', 'revisado': True},
+                                            content_type='application/json'), url)
+        for url in ('/contabilidad/api/apertura/1/importar/', '/contabilidad/api/apertura/1/respaldos/'):
+            cerrada(entrar.post(f'{url}?empresa={empresa.pk}', {'empresa': empresa.pk, 'clave': 'complemento-0006'}), url)
+
     def test_la_captura_rapida_y_lo_demas_siguen_abiertos(self, entrar):
         assert entrar.get('/adjuntos/capturas/').status_code == 200
         assert entrar.get('/adjuntos/api/capturas/').status_code == 200
