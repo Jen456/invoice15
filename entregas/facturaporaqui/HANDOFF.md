@@ -2782,7 +2782,9 @@ y no cambió quién entra al complemento: `MENSAJE_COMPLEMENTO`, la lista de rev
 igual.
 
 **Hash.** El bloque se cierra en el último commit de la rama, el que trae esta nota. Código final de la aplicación y de
-las migraciones: `65cf28e`; después solo hay documentación. (`282f17f` fue el código final de la primera ronda de
+las migraciones: `65cf28e`. Después, el arreglo de `deploy/scripts/desplegar.sh` (`4f9987f` y `d548b18`: ver «Archivos
+compartidos»), la vuelta a las hojas del grafo en `tests/test_zz_cuentas_0009_bloqueo_pg.py` (`41856a2`) y
+documentación: ver «Ensayo con 0009 y sus correcciones», al final. (`282f17f` fue el código final de la primera ronda de
 correcciones y `84d07cc`, su nota; `47b166e` y `2009231`, los de la segunda ronda, antes de los tres P3 de su
 verificación, que van en su registro, más abajo.)
 
@@ -2839,6 +2841,16 @@ JSON y, salvo la primera, siguen detrás del complemento.
 - `core/tenancy/models.py`: tres `AuditLog.ACTIONS` (`cuenta_creada`, `cuenta_modificada` y `cuentas_importadas`) y su
   migración `tenancy 0013`, que choca con la de `fase/primera-entrega` (ver «Choque conocido» en
   [MIGRACIONES-FASE-CONTABLE.md](MIGRACIONES-FASE-CONTABLE.md)).
+- `deploy/scripts/desplegar.sh` (`4f9987f` y `d548b18`): al salir, por bien o por mal, borra la carpeta de la versión de
+  ese despliegue si `current` no quedó en ella (falló antes de activarse, como 0009 al agotar sus intentos, o no pasó la
+  salud y se volvió a la anterior). Compara rutas resueltas y, sin un `current` válido (primera instalación), no borra
+  nada. Antes, `--revertir` (elige por fecha) y la limpieza (se conservan 5) contaban esas carpetas como versiones: en el
+  ensayo con 0009, `--revertir` activó la del despliegue fallido y, repetido, alternaba entre dos carpetas de `6b7ccbf`
+  sin volver a `e0f2902`. Además, en la primera instalación con la salud fallida `current` ya no queda apuntando a sí
+  mismo (`readlink -e`). Vale para cualquier despliegue, no solo para este bloque. `fase/primera-entrega` no toca
+  `deploy/` (`git diff --stat 96d39e1 e0d7c38 -- deploy/` no da nada), así que la integración no choca. Lo vigila
+  `tests/test_desplegar_releases.py`; `README.md` dice lo mismo en «Despliegue, respaldo y reversión» (esa rama tampoco
+  toca `README.md`).
 
 **Al conectar, tener en cuenta:**
 
@@ -2854,15 +2866,16 @@ JSON y, salvo la primera, siguen detrás del complemento.
 **Sin decidir, y no bloquea conectar:** reglas sobre padres inactivos (hoy se puede colgar una cuenta de un grupo
 desactivado) y cuánto tiempo se conservan los lotes que se quedan en vista previa.
 
-**Pruebas.** Sobre `d8399e5`, antes de las dos rondas de correcciones (el código final es `65cf28e`: ver «Pruebas de las
-correcciones», la segunda ronda y su verificación, más abajo): suite completa en SQLite, 2112 aprobadas y 78 omitidas
-(las exclusivas de PostgreSQL), sin fallos; `makemigrations --check --dry-run`, sin cambios. En
-PostgreSQL con seguridad por filas, los archivos del bloque y los que vigilan menú, roles, rutas, migraciones y
-auditoría: 375 aprobadas, sin fallos (once archivos sobre `8b2e57c` y el del inicio sobre `d8399e5`; entre los dos commits
-solo cambió ese archivo de pruebas). **Falta** repetir sobre el código final la suite completa de PostgreSQL, que incluye
-las 18 pruebas de concurrencia de `tests/test_zz_cuentas_concurrencia_pg.py`; el código que ejercitan no cambió desde
-`dbef3ba`, el commit que las completó. Sin ensayo de migraciones sobre una copia de producción y sin navegador: no hay
-pantallas nuevas.
+**Pruebas.** Sobre `6b7ccbf` (el código final `65cf28e` y su documentación): suite completa en SQLite, 2157 aprobadas y
+84 omitidas (las exclusivas de PostgreSQL), sin fallos (registro fuera del repositorio:
+`contable/registros/bloque1-sqlite-6b7ccbf.log`). PostgreSQL completa sobre `6b7ccbf`: (la añade el orquestador). Lo de
+después (`desplegar.sh`, una prueba de PostgreSQL y documentación) tiene sus pruebas en «Ensayo con 0009 y sus
+correcciones», al final. Antes, sobre `d8399e5`, antes de las dos rondas de correcciones: suite completa en SQLite, 2112
+aprobadas y 78 omitidas, sin fallos; `makemigrations --check --dry-run`, sin cambios; en PostgreSQL con seguridad por
+filas, los archivos del bloque y los que vigilan menú, roles, rutas, migraciones y auditoría: 375 aprobadas, sin fallos
+(once archivos sobre `8b2e57c` y el del inicio sobre `d8399e5`; entre los dos commits solo cambió ese archivo de
+pruebas). Ensayos de migración con la aplicación atendiendo, sobre copias del volcado diario: en MIGRACIONES, sobre
+`84d07cc` sin 0009 y sobre `6b7ccbf` con ella. Sin navegador: no hay pantallas nuevas.
 
 ### Correcciones de la revisión independiente del bloque 1 (14/11/2026)
 
@@ -2968,13 +2981,16 @@ quién entra al complemento, los precios o los planes. Hay una migración nueva,
 
 **Dependencia concreta.**
 
-- Para publicar el bloque, en este orden: (1) la suite completa de PostgreSQL sobre el commit final (la lanza el
-  orquestador al terminar este flujo); (2) repetir el ensayo con la aplicación atendiendo sobre una copia del volcado
-  diario, ahora con `contabilidad 0009` (el del 14/11 fue sobre `84d07cc`), con la vuelta del bloque
-  (`migrate contabilidad 0003_modulo_kardex`, `migrate tenancy 0012_accion_diseno_factura`) y la aplicación detenida
-  para la vuelta, y con una transacción que retenga `user_user` mientras corre 0009 (una vez más que un intento y menos
-  que todos, otra más que todos: «No probado» en MIGRACIONES); (3) la revisión de esta ronda; (4) la autorización de la
-  propietaria. Bloquea la publicación, no el desarrollo: los bloques siguientes pueden seguir sobre esta rama.
+- Para publicar el bloque, en este orden: (1) la suite completa de PostgreSQL sobre el commit final (el orquestador la
+  corre sobre `6b7ccbf`; lo posterior solo toca `desplegar.sh`, una prueba de PostgreSQL y documentación, con sus
+  pruebas en «Ensayo con 0009 y sus correcciones»); (2) la revisión de esta ronda; (3) la autorización de la
+  propietaria. El ensayo con 0009 y la aplicación atendiendo ya se hizo, también con `user_user` retenido y con la
+  vuelta del bloque con la aplicación detenida (MIGRACIONES, «Ensayo con 0009»). Sigue sin probar (MIGRACIONES, «No
+  probado»): la versión nueva atendiendo durante 0009, que en un despliegue normal no pasa (0009 corre antes de
+  activarla), y 0004 y 0007 con una escritura larga en `user_user` o `pos_company`, que esperarían lo que dure porque
+  `desplegar.sh` no pone `lock_timeout` a `migrate`: eso sí puede pasar al publicar, y lo acota hacerlo con poco
+  tráfico. Publicar con poco tráfico y con la máquina sin otras suites (punto 1 del plan de recuperación y D7). Bloquea
+  la publicación, no el desarrollo: los bloques siguientes pueden seguir sobre esta rama.
 - Para usar C1, C2 y C3, ninguna dependencia funcional. Quién entra sigue la lista de revisión del complemento y el plan
   pagado, y abrirlo a más empresas depende de D9 (propietaria: impuestos, alcance multiempresa y condiciones de
   activación); mientras tanto, cerrado salvo la lista. El piloto NEXALLTI necesita su Excel real (lo trae el cliente) y
@@ -2988,8 +3004,8 @@ quién entra al complemento, los precios o los planes. Hay una migración nueva,
   | Cuánto se conservan los lotes en vista previa y sus archivos, y si hay un límite por empresa | Propietaria (retención de datos subidos) | No caducan ni se limitan |
   | Colgar cuentas de un grupo desactivado | Contador | Se permite |
   | Borrar usuarios con registros en tablas ya publicadas de otra empresa (ver «Pendiente») | Propietaria, con la propuesta de Claude | Como hoy en producción |
-  | Recarga sin corte en `desplegar.sh` (ensayo D7) | Propietaria, con la propuesta de Claude | Se anuncia el corte |
-  | Intentos de 0009 (`ESPERA_POR_INTENTO`, `PAUSA`, `INTENTOS`) | Claude, técnica; revisar con el ensayo con 0009 | 1 s, 2 s y 8: parón de lecturas de `user_user` de hasta 1 s por intento, unos 22 s en total como mucho |
+  | Recarga sin corte en `desplegar.sh` (ensayo D7) | Propietaria, con la propuesta de Claude | Se anuncia el corte y se publica con la máquina sin otras suites: en el ensayo con 0009, de 3,6 a 7,7 s sin servicio por cambio; un caso aislado de 46,9 s con la máquina saturada (carga 12 y un checkpoint de PostgreSQL), que no es el rango normal |
+  | Intentos de 0009 (`ESPERA_POR_INTENTO`, `PAUSA`, `INTENTOS`) | Claude, técnica; el ensayo con 0009 no pidió cambiarlos | 1 s, 2 s y 8. Sin nadie que retenga `user_user`, lecturas paradas hasta 1,21 s en el ensayo: 0009 espera a las escrituras en curso de la aplicación (cientos de ms, como mucho 1 s por intento) y retiene `user_user` hasta confirmar (de 150 a 510 ms con el disco cargado). Con retención, hasta 1 s por intento, más esa confirmación en el que lo consigue, y unos 22 s en total como mucho |
 
 **Receta de integración con `fase/primera-entrega`** (no se fusionó aquí):
 
@@ -3059,4 +3075,63 @@ con la máquina compartida y cargada (media de 4 a 9 con 6 núcleos):
 
 Quedan para el orquestador la suite completa de PostgreSQL (con las de concurrencia y la nueva de 0009) y, antes de
 publicar, el ensayo con 0009, que ahora tiene que incluir una transacción que retenga `user_user` (ver «Dependencia
-concreta»).
+concreta»). El ensayo se hizo después: ver la sección siguiente.
+
+### Ensayo con 0009 y sus correcciones (15/11/2026)
+
+El ensayo con 0009 y la aplicación atendiendo, sobre copias del volcado diario, ya se hizo: las cifras están en
+MIGRACIONES («Ensayo con 0009»), y lo que demostró, en «Probado». Del ensayo y de su revisión salieron un P2 y dos P3, más
+un defecto que apareció al probar el P2. Todo va en la misma rama, sin `push` y sin publicar. No se tocó el código de la
+aplicación ni sus migraciones (sigue en `65cf28e`), ni ninguna plantilla, CSS ni JS, ni quién entra al complemento, los
+precios o los planes.
+
+| Hallazgo | Qué pasaba | Qué se hizo |
+|---|---|---|
+| Carpeta del despliegue fallido (ensayo 0009-B y revisión, P2; `4f9987f`) | Tras un despliegue que falla en `migrate` (0009 agota sus intentos, por diseño) o en la salud, la carpeta de esa versión se quedaba en releases/. `--revertir`, que elige por fecha la más reciente que no es `current`, la activaba (el mismo `6b7ccbf`) y, repetido, alternaba entre las dos de `6b7ccbf` sin volver a `e0f2902`; y la limpieza (se conservan 5) la contaba. Contradecía los puntos 1 y 3 del plan de recuperación | `desplegar.sh` la borra al salir (`trap` de `EXIT`, puesto en cuanto existe `REL`, así que no se dispara en `--revertir`) si `current` no quedó en ella. Mira el estado final de `current`, no si la versión llegó a activarse; compara rutas resueltas (con la comparación literal propuesta en la revisión, una `BASE` detrás de un enlace borraba la versión recién activada) y sin un `current` válido no borra nada. El código de salida no cambia. No había otro `trap` en el script |
+| `current` apuntando a sí mismo (apareció al probar lo anterior en la primera instalación; `d548b18`) | Sin `current`, `readlink -f` devuelve la ruta de `current`; si la salud fallaba, la vuelta «a la anterior» la activaba y `current` quedaba como un enlace a sí mismo | `readlink -e`: sin `current`, no hay vuelta, como dice el script |
+| La prueba de 0009 y las migraciones posteriores (revisión, P3; `41856a2`) | El fixture de `tests/test_zz_cuentas_0009_bloqueo_pg.py` vuelve a 0008, lo que deshace también lo que dependa de 0009, y al terminar solo reaplicaba hasta 0009: las del bloque 2, cuando se integren, quedarían sin aplicar para el resto de la suite | Al terminar migra a las hojas del grafo, como `tests/test_zzz_vigencias_migraciones.py`, y sigue comprobando que las cuatro claves quedan con `SET NULL` y diferidas |
+| Parón de las lecturas de `user_user` sin retención (ensayo, P3; documentación) | MIGRACIONES («Por qué 0009», «Peor caso de 0009», punto 1 del plan) y esta nota decían «milisegundos» o «1 s más los milisegundos del cambio» | Medido: 0009 espera a las escrituras en curso de la propia aplicación (cientos de ms; como mucho 1 s por intento) y retiene `user_user` hasta confirmar (de 150 a 510 ms con el disco cargado); lecturas paradas hasta 1,21 s. Texto ajustado; `ESPERA_POR_INTENTO` sigue en 1 s |
+| Notas del ensayo (documentación) | El ensayo con 0009 figuraba como pendiente | MIGRACIONES: «Ensayo con 0009», «Probado», «No probado» con lo que de verdad falta, los residuos de `Permission` y `ContentType` en la vuelta y el caso aislado de 46,9 s en D7; aquí, «Hash», «Pruebas», «Dependencia concreta», «Archivos compartidos» y las decisiones menores |
+
+**Visto al leer `desplegar.sh` entero, sin corregir** (no estaba en la orden; la guarda nueva no cambia nada de esto):
+
+- `--revertir` compara la ruta resuelta de `current` con las de `ls`, sin resolver: con `BASE` detrás de un enlace, no
+  excluiría la versión activa. En la máquina, `/opt`, `/opt/facturaporaqui` y `/opt/facturaporaqui/pruebas` son
+  carpetas, no enlaces.
+- Con una sola versión, `--revertir` sale con 1 sin escribir «No hay versión anterior» (`grep` sin coincidencias y
+  `pipefail`). No cambia nada.
+- Si `systemctl restart` devuelve error justo después de activar la versión nueva, `set -e` corta el script antes de
+  la salud y de la vuelta a la anterior: `current` queda en la nueva (y la guarda la conserva, porque es la activa).
+- El texto de la migración 0009 dice que las lecturas se paran «como mucho 1 s por intento», sin la retención hasta
+  confirmar; no se tocó para no cambiar el código final. MIGRACIONES tiene la medida.
+
+**Pruebas de estas correcciones.**
+
+- `tests/test_desplegar_releases.py` (nueva, SQLite). Copia el script real a `tmp_path` y solo cambia sus rutas fijas:
+  `BASE`, `ENVF` y `RESPALDOS`, y además `CRED_DIR` (para que la primera instalación no escriba en la carpeta real de
+  credenciales) y `UV` (para no instalar dependencias). Simula en `PATH` systemctl, journalctl, curl, pg_dump, runuser,
+  uv, chown, install con dueño, sleep y la fecha que nombra cada carpeta; el `manage.py` de cada versión falla en
+  `migrate` cuando se le pide. Se salta sin bash o git (o fuera de Linux). Seis casos: B (`migrate` falla dos veces: la
+  carpeta no se queda, la publicada sigue activa y atendiendo, la repetición sale bien y `--revertir` vuelve a la
+  publicada), C (cinco fallos y uno bueno: la anterior sobrevive a la limpieza y `--revertir` vuelve a ella), F (salud
+  fallida: vuelve a la publicada, sale con 1, borra la nueva y `--revertir` va a la anterior), primera instalación con la
+  salud fallida (conserva su versión y `current` apunta a ella), primera instalación que falla en `migrate` (no borra
+  nada) y despliegue bueno con `BASE` detrás de un enlace. Con el `desplegar.sh` de `6b7ccbf` fallan B, C, F y la de
+  primera instalación con la salud fallida (esta, por el `current` en bucle); con la guarda de comparación literal falla
+  la del enlace; con `4f9987f` pasan todas menos la de primera instalación con la salud fallida, que pasa con `d548b18`.
+  Los códigos de salida se conservan: 1 si falla, 0 si va bien.
+- F1, en dos copias exportadas (`d548b18` y `41856a2`) con una `contabilidad 0010` ficticia sobre 0009 y una
+  comprobación antes y otra después de `tests/test_zz_cuentas_0009_bloqueo_pg.py` de que
+  `migration_plan(leaf_nodes())` queda vacío: con el fixture anterior, después queda pendiente
+  `contabilidad.0010_ficticia_demo` (1 fallida y 3 aprobadas); con el nuevo, vacío antes y después (4 aprobadas). Las
+  copias se borraron al terminar.
+- `makemigrations --check --dry-run` (sobre `41856a2`): sin cambios.
+- SQLite, `tests/test_desplegar_releases.py` y `tests/test_migracion_vuelta_fase.py`: 9 aprobadas, sin fallos, en
+  437,4 s (02:10 a 02:18 UTC, carga de 5,5 a 7,9).
+- PostgreSQL con seguridad por filas, `tests/test_zz_cuentas_0009_bloqueo_pg.py` seguido de
+  `tests/test_zz_cuentas_concurrencia_pg.py`, en una sola orden: 21 aprobadas, sin fallos ni omitidas, en 1764,8 s
+  (04:03 a 04:32 UTC, carga de 5,7). 0009 retenida 3,5 s: bien a los 3,64 s del primer intento, con la lectura más lenta
+  en 0,96 s (de 55); retenida hasta rendirse: falla a los 7,01 s con el mensaje, con la lectura más lenta en 0,98 s (de
+  90).
+- Registros, fuera del repositorio: `contable/registros/bloque1-e1b-*.log`. En la máquina solo se miró, sin tocar nada,
+  que `/opt/facturaporaqui/pruebas` no va por un enlace.
