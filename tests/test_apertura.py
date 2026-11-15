@@ -18,8 +18,8 @@ mitad; aceptaciones 1, 2, 7, 8 y 10 de C6-A §8): core/contabilidad/apertura.py 
   posterior al corte sigue provisional (`motor_pendiente`); confirmar no toca stock, cartera ni kardex; 5 000 líneas sin
   consultas por línea;
 - el detalle de cada línea es el auxiliar que su cuenta declara mientras la apertura se prepara (también si la cuenta
-  cambia en revisión, en los dos sentidos, o contradice un ámbito declarado «no aplica») y confirmar lo fija; un total
-  que no cabe en un asiento bloquea antes de confirmar.
+  cambia en revisión, en los dos sentidos, o contradice un ámbito declarado «no aplica») y confirmar lo fija; lo declarado
+  del resultado no contradice unas líneas sin resultado; un total que no cabe en un asiento bloquea antes de confirmar.
 
 La seguridad por filas y las confirmaciones simultáneas van en tests/test_zz_apertura_concurrencia_pg.py. Datos ficticios."""
 import json
@@ -588,6 +588,45 @@ class TestAceptacion7:
         datos = confirmada(web, empresa, enviada_, nota='La empresa no tuvo actividad antes del corte.')
         assert datos['apertura']['estado'] == 'confirmada'
 
+    @pytest.mark.parametrize('corte, cambios', [
+        (MITAD, {'resultado_ejercicio': 'en_cuentas_nominales', 'resultado_acumulado': '5000.00'}),
+        (MITAD, {'resultado_ejercicio': 'en_patrimonio'}),   # tampoco sirve para no escribir la nota de «no aplica»
+        (MITAD, {'resultado_ejercicio': 'no_aplica', 'resultado_acumulado': '5000.00'}),
+        (CORTE, {'resultado_ejercicio': 'en_patrimonio', 'resultado_acumulado': '7000.00'}),
+        (CORTE, {'resultado_ejercicio': 'en_cuentas_nominales'}),
+        (CORTE, {'resultado_acumulado': '7000.00'}),
+    ], ids=['mitad-nominales-5000', 'mitad-patrimonio', 'mitad-no-aplica-5000', '31-12-patrimonio-7000', '31-12-nominales',
+            '31-12-solo-cifra'])
+    def test_sin_resultado_en_las_lineas_lo_declarado_las_contradice(self, web, empresa, cuentas, corte, cambios):
+        """B2-AP-2 (contrato §6.5, regla 6): con N = 0 y P = 0, declarar el resultado en cuentas de resultados o en
+        patrimonio, o una cifra distinta de cero, contradice las líneas: `resultado_duplicado` con las dos cifras, a mitad
+        de año y a fin de año. Antes se confirmaba guardando la declaración en vez de lo que dicen las líneas."""
+        filas = [linea(cuentas['caja'], '6000.00'), linea(cuentas['capital'], None, '6000.00')]
+        apertura = preparada(web, empresa, filas, fecha_corte=corte.isoformat(), cambios=cambios)
+        datos = validar(web, empresa, apertura)
+        cifras = {'en_cuentas_nominales': '0.00', 'en_patrimonio': '0.00'}
+        assert datos['bloqueos'] == [{'codigo': 'resultado_duplicado', 'texto': TV['resultado_duplicado'].format(**cifras),
+                                      **cifras, 'declarado': cambios.get('resultado_ejercicio', ''),
+                                      'resultado_acumulado': cambios.get('resultado_acumulado')}]
+        assert ('sin_resultados_acumulados' in codigos(datos['advertencias'])) is (corte == MITAD)
+        rechazo(accion(web, empresa, apertura, 'enviar', version=apertura['version']), 409, 'resultado_duplicado')
+        assert en(empresa, lambda: Apertura.objects.get(pk=apertura['id']).estado) == 'borrador'
+
+    @pytest.mark.parametrize('corte, cambios, nota', [
+        (CORTE, {}, ''),
+        (CORTE, {'resultado_acumulado': '0.00'}, ''),
+        (CORTE, {'resultado_ejercicio': 'no_aplica'}, ''),
+        (MITAD, {'resultado_ejercicio': 'no_aplica', 'resultado_acumulado': '0.00'}, 'Sin actividad antes del corte.'),
+    ], ids=['31-12-vacio', '31-12-cero', '31-12-no-aplica', 'mitad-no-aplica-cero'])
+    def test_sin_resultado_en_las_lineas_lo_que_vale(self, web, empresa, cuentas, corte, cambios, nota):
+        """Con N = P = 0 valen el vacío (a fin de año) y «no aplica» (a mitad de año, con la nota de la revisión), y la
+        cifra cero, que es la de las líneas."""
+        filas = [linea(cuentas['caja'], '6000.00'), linea(cuentas['capital'], None, '6000.00')]
+        apertura = enviada(web, empresa, filas, fecha_corte=corte.isoformat(), cambios=cambios)
+        confirmada(web, empresa, apertura, nota=nota)
+        guardada = en(empresa, lambda: Apertura.objects.get(pk=apertura['id']))
+        assert (guardada.estado, guardada.resultado_ejercicio) == ('confirmada', cambios.get('resultado_ejercicio', ''))
+
     def test_31_de_diciembre_con_nominales(self, web, empresa, cuentas):
         apertura = preparada(web, empresa, mitad_de_anio(cuentas))
         datos = validar(web, empresa, apertura)
@@ -710,9 +749,11 @@ class TestConfirmar:
         assert diario['provisional'] is True and codigos(diario['causas_detalle']) == ['motor_pendiente']
 
     def test_historial(self, web, empresa, cuentas):
+        # El corte (30/06) es a mitad de año y las líneas no traen el resultado: se declara que no aplica, con la nota de la
+        # revisión al confirmar («en patrimonio» contradiría las líneas: `resultado_duplicado`).
         apertura = preparada(web, empresa, balance(cuentas), modalidad='historial', fecha_corte=None,
                              historial_desde='2025-07-01', historial_hasta='2025-09-30',
-                             cambios={'resultado_ejercicio': 'en_patrimonio'})
+                             cambios={'resultado_ejercicio': 'no_aplica'})
         datos = leer(web, API, empresa)
         assert datos['configuracion']['fecha_corte'] == '2025-06-30'
         assert codigos(datos['cobertura']['contabilidad']['causas_detalle']) == ['saldo_anterior_sin_confirmar']
@@ -720,7 +761,7 @@ class TestConfirmar:
         assert diario['provisional'] is True and codigos(diario['causas_detalle']) == ['saldo_anterior_sin_confirmar',
                                                                                         'motor_pendiente']
         enviada_ = accion(web, empresa, apertura, 'enviar', version=apertura['version']).json()['apertura']
-        datos = confirmada(web, empresa, enviada_)
+        datos = confirmada(web, empresa, enviada_, nota='Sin ingresos ni gastos en el año antes del rango.')
         assert datos['apertura']['asiento']['fecha'] == '2025-06-30'
         assert datos['cobertura']['contabilidad']['estado'] == 'conciliada'
         inicio = en(empresa, InicioContable.objects.get)

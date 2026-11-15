@@ -1369,9 +1369,13 @@ def _resultado_del_ejercicio(apertura, filas, pendientes, sin_clase, al_confirma
         if declarado not in ('', EN_PATRIMONIO) or (acumulado is not None and acumulado != p):
             duplicado()
         return EN_PATRIMONIO
+    # N = P = 0: las líneas no traen el resultado. Declararlo en cuentas de resultados o en patrimonio, o una cifra distinta
+    # de cero, las contradice (también a fin de año, y aunque falte la nota de la revisión): se contaría lo que no está.
+    if declarado in (EN_CUENTAS_NOMINALES, EN_PATRIMONIO) or (acumulado is not None and acumulado != 0):
+        duplicado()
+    elif not fin_de_anio and (not declarado or (al_confirmar and declarado == NO_APLICA and not nota)):
+        bloqueo('resultado_sin_declarar')
     if not fin_de_anio:
-        if not declarado or (al_confirmar and declarado == NO_APLICA and not nota):
-            bloqueo('resultado_sin_declarar')
         advertencia('sin_resultados_acumulados', TEXTOS_VALIDACION['sin_resultados_acumulados'].format(anio=corte.year))
     return ''
 
