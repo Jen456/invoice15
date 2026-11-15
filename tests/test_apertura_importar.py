@@ -74,6 +74,33 @@ PDF = b'%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>
 MB = lectura_tabular.MB
 
 
+def png_por_trozos(*cambios):
+    """El PNG de 4×4 de `imagen` rehecho trozo a trozo (`[(tipo, datos)]`), cada uno con su suma bien calculada;
+    `cambios` recibe la lista y la devuelve cambiada."""
+    datos = imagen('PNG')
+    trozos, i = [], 8
+    while i < len(datos):
+        largo = struct.unpack('>I', datos[i:i + 4])[0]
+        trozos.append((datos[i + 4:i + 8], datos[i + 8:i + 8 + largo]))
+        i += 12 + largo
+    for cambio in cambios:
+        trozos = cambio(trozos)
+    return datos[:8] + b''.join(struct.pack('>I', len(c)) + t + c + struct.pack('>I', zlib.crc32(t + c)) for t, c in trozos)
+
+
+def png_con_la_suma_del_idat_danada():
+    """Una foto dañada en la transmisión: un byte de la suma (CRC) del bloque IDAT cambiado. Pillow lanza SyntaxError."""
+    datos = bytearray(imagen('PNG'))
+    i = datos.find(b'IDAT')
+    datos[i + 4 + int.from_bytes(datos[i - 4:i], 'big')] ^= 0xFF
+    return bytes(datos)
+
+
+def png_sin_imagen():
+    """Un PNG con su cabecera y su final pero sin el bloque IDAT: Pillow lanza IndexError al verificarlo."""
+    return png_por_trozos(lambda trozos: [t for t in trozos if t[0] != b'IDAT'])
+
+
 def saldos_con_entidad():
     """Los saldos de siempre en un XLSX cuyo rubro de la fila 2 no está escrito: sale de una entidad XML declarada en la hoja
     (`&a;&a;`, que el lector de XML expande a «CajaCaja»). Es la forma de que unos kilobytes ocupen gigas al abrirlos."""
@@ -505,8 +532,12 @@ class TestRespaldos:
         for nombre, contenido, texto in (
                 ('foto.webp', webp, 'WEBP'), ('libro.xlsx', zip_.getvalue(), 'Solo se admiten'),
                 ('foto.png', b'\x89PNG\r\n\x1a\n' + b'\x00' * 20, 'imagen'), ('pagina.csv', b'<html><body>x</body></html>', 'Solo'),
+                # H1: lo que Pillow lanza con una imagen dañada y archivos.validar no traducía (500 en HTML)
+                ('danada.png', png_con_la_suma_del_idat_danada(), 'La imagen no se puede leer'),
+                ('sin_imagen.png', png_sin_imagen(), 'La imagen no se puede leer'),
                 ('binario.csv', b'a;b\x00\x01\x02', 'Solo'), ('vacio.pdf', b'', 'vacío')):
             respuesta = subir_respaldo(web, empresa, apertura['id'], contenido, nombre)
+            assert respuesta['Content-Type'] == 'application/json', nombre
             assert texto in errores(respuesta)['archivo'][0], nombre
         grande = subir_respaldo(web, empresa, apertura['id'], PDF + b'0' * respaldos.MAX_BYTES, 'grande.pdf')
         rechazo(grande, 400, 'archivo_grande')
@@ -592,6 +623,13 @@ class TestValidarRespaldo:
         nombre, tipo, sha256 = respaldos.validar('C:\\docs\\Año 2025\x07.txt', 'Código;Año\n1;añejo\n'.encode('cp1252'))
         assert (nombre, tipo) == ('Año 2025.csv', 'text/csv')
         assert sha256 == hashlib.sha256('Código;Año\n1;añejo\n'.encode('cp1252')).hexdigest()
+
+    @pytest.mark.parametrize('contenido', [png_con_la_suma_del_idat_danada, png_sin_imagen], ids=['suma-del-idat', 'sin-idat'])
+    def test_imagen_danada(self, contenido):
+        """H1: cualquier error de Pillow con una imagen dañada (SyntaxError, IndexError…) es «La imagen no se puede leer»."""
+        with pytest.raises(respaldos.ArchivoInvalido) as error:
+            respaldos.validar('foto.png', contenido())
+        assert str(error.value) == respaldos.IMAGEN_ILEGIBLE
 
     def test_solo_los_admitidos(self):
         with pytest.raises(respaldos.ArchivoInvalido) as error:
