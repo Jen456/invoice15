@@ -254,7 +254,7 @@ class TestConsulta:
         assert leer(web, API, empresa)['cobertura']['contabilidad']['causas_detalle'][0]['codigo'] == 'saldo_anterior_sin_confirmar'
 
     def test_con_una_confirmada(self, web, empresa, cuentas):
-        _, confirmada = ayudas.apertura_confirmada_directa(empresa, cuentas)
+        _, confirmada = ayudas.apertura_confirmada(empresa, cuentas)
         datos = leer(web, API, empresa)
         assert datos['apertura']['id'] == datos['vigente']['id'] == confirmada.pk
         assert datos['apertura']['estado'] == 'confirmada'
@@ -305,7 +305,7 @@ class TestCrear:
         assert datos['apertura']['id'] == primera['id'] and len(aperturas(empresa)) == 1
 
     def test_con_una_confirmada_la_configuracion_solo_cambia_sustituyendo(self, web, empresa, cuentas):
-        ayudas.apertura_confirmada_directa(empresa, cuentas)
+        ayudas.apertura_confirmada(empresa, cuentas)
         rechazo(crear(web, empresa, fecha_corte='2025-11-30'), 409, 'apertura_confirmada')
         assert en(empresa, InicioContable.objects.get).fecha_corte == date(2025, 12, 31)
         # también con un envío mal escrito: lo que impide crearla va antes que la validación
@@ -830,7 +830,7 @@ class TestEtapaDelInicio:
         assert self.etapa(web)['estado'] == 'en_revision'
         en(empresa, lambda: Apertura.objects.filter(pk=apertura['id']).update(estado='descartada', motivo='x'))
         assert self.etapa(web)['estado'] == 'pendiente'   # configurada, sin apertura en curso ni confirmada
-        ayudas.apertura_confirmada_directa(empresa, cuentas)
+        ayudas.apertura_confirmada(empresa, cuentas)
         assert self.etapa(web) == {'estado': 'confirmada', 'fecha': '2025-12-31', 'causa': None}
 
 

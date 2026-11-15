@@ -315,30 +315,64 @@ def filas_de_apertura(empresa, cuentas, asiento):
         }
 
 
-def apertura_confirmada_directa(empresa, cuentas, *, fecha_corte=date(2025, 12, 31), importe='10000.00'):
-    """Apertura confirmada de 10 000/10 000 (caja al debe, capital social al haber) con su inicio y su asiento de
-    apertura, escrita SIN el servicio: la confirmación (apertura.confirmar) es de la parte siguiente del corte 1. Sirve a
-    las pruebas que solo necesitan que exista una confirmada (crear o mover el corte → `apertura_confirmada`, la etapa del
-    inicio, la cobertura). Cuando exista apertura.confirmar, la parte siguiente la cambia por el servicio."""
+def confirmador(empresa):
+    """El usuario Propietario con que las ayudas confirman (uno por empresa; se crea la primera vez)."""
+    from core.tenancy.models import ROLE_OWNER
+    from core.user.models import User
+    from tests import helpers
+    nombre = f'confirma.apertura.{empresa.pk}'
+    return User.objects.filter(username=nombre).first() or helpers.crear_usuario(nombre, empresa, ROLE_OWNER)
+
+
+DATOS_DE_APERTURA = {'modalidad': 'saldos', 'fuente': 'balance_comprobacion', 'fuente_detalle': 'Balance de comprobación de prueba'}
+
+
+def apertura_en_revision(empresa, filas, *, usuario=None, fecha_corte=date(2025, 12, 31), **campos):
+    """Apertura creada, mapeada con `filas` = `[(cuenta, debe | None, haber | None[, {es_resultado_ejercicio…}])]` y
+    enviada a revisión, con los servicios (apertura.crear, mapear y enviar). `campos`: los del encabezado (PATCH antes de
+    enviar: `resultado_ejercicio`, `ambitos_no_aplican`…) y, si viene, `sin_saldos`/`fuente`/`fuente_detalle` de la
+    creación. Devuelve la apertura."""
+    from core.contabilidad import apertura as servicio
+    usuario = usuario or confirmador(empresa)
+    creacion = {k: campos.pop(k) for k in ('sin_saldos', 'fuente', 'fuente_detalle', 'modalidad', 'historial_desde',
+                                           'historial_hasta') if k in campos}
+    datos = {'clave': clave('apertura'), **DATOS_DE_APERTURA, 'fecha_corte': fecha_corte.isoformat(), **creacion}
     with company_context(empresa):
-        inicio = InicioContable.objects.first() or inicio_directo(empresa, fecha_corte)
-    apertura = apertura_directa(empresa, fecha_corte=fecha_corte)
-    monto = Decimal(importe)
+        _, apertura, _ = servicio.crear(peticion(usuario, empresa), datos)
+        if filas:
+            lineas = [{'cuenta_id': cuenta.pk, 'debe': debe, 'haber': haber, **(extra[0] if extra else {})}
+                      for cuenta, debe, haber, *extra in filas]
+            apertura, _, _ = servicio.mapear(peticion(usuario, empresa), apertura.pk,
+                                             {'version': apertura.version, 'lineas': lineas})
+        if campos:
+            apertura, _ = servicio.editar(peticion(usuario, empresa), apertura.pk, {'version': apertura.version, **campos})
+        return servicio.enviar(peticion(usuario, empresa), apertura.pk, {'version': apertura.version})
+
+
+def confirmar(empresa, apertura, *, usuario=None, aceptadas=None, nota='', clave_confirmacion=None):
+    """apertura.confirmar con el servicio. Sin `aceptadas`, acepta como incompletas todas las líneas con detalle (en este
+    corte ninguna tiene auxiliares). Devuelve `(apertura, repetido)`."""
+    from core.contabilidad import apertura as servicio
+    usuario = usuario or confirmador(empresa)
     with company_context(empresa):
-        LineaApertura.objects.create(apertura=apertura, orden=1, cuenta=cuentas['caja'], debe=monto, haber=Decimal('0'),
-                                     rubro_origen='Caja')
-        LineaApertura.objects.create(apertura=apertura, orden=2, cuenta=cuentas['capital'], debe=Decimal('0'), haber=monto,
-                                     rubro_origen='Capital social')
-    asiento = asiento_directo(empresa, [(cuentas['caja'], importe, '0'), (cuentas['capital'], '0', importe)],
-                              fecha=fecha_corte, tipo='apertura', concepto='Apertura contable', motivo='',
-                              origen=('apertura', apertura.pk, 'confirmacion'))
+        if aceptadas is None:
+            aceptadas = list(LineaApertura.objects.filter(apertura=apertura, retirada=False).exclude(detalle='')
+                             .values_list('id', flat=True))
+        apertura = Apertura.objects.get(pk=apertura.pk)
+        return servicio.confirmar(peticion(usuario, empresa), apertura.pk, {
+            'version': apertura.version, 'clave': clave_confirmacion or clave('confirmar'), 'revisado': True, 'nota': nota,
+            'incompletos_aceptados': aceptadas})
+
+
+def apertura_confirmada(empresa, cuentas, *, usuario=None, fecha_corte=date(2025, 12, 31), importe='10000.00', filas=None,
+                        **campos):
+    """La apertura didáctica de C6-A confirmada con los servicios (crear → mapear → enviar → confirmar): caja al debe y
+    capital social al haber por `importe` (10 000/10 000), o las `filas` que se pasen. Devuelve `(inicio, apertura)`."""
+    filas = filas or [(cuentas['caja'], importe, None), (cuentas['capital'], None, importe)]
+    apertura = apertura_en_revision(empresa, filas, usuario=usuario, fecha_corte=fecha_corte, **campos)
+    apertura, _ = confirmar(empresa, apertura, usuario=usuario)
     with company_context(empresa):
-        apertura.estado, apertura.asiento, apertura.total_debe, apertura.total_haber = 'confirmada', asiento, monto, monto
-        apertura.confirmado_en, apertura.confirmado_por_nombre = timezone.now(), AUTOR[1]
-        apertura.version += 1
-        apertura.save(update_fields=['estado', 'asiento', 'total_debe', 'total_haber', 'confirmado_en',
-                                     'confirmado_por_nombre', 'version'])
-    return inicio, apertura
+        return InicioContable.objects.get(), apertura
 
 
 # ---------------------------------------------------------------- esquema (las 19 tablas)
