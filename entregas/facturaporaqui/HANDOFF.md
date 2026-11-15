@@ -2782,8 +2782,9 @@ y no cambió quién entra al complemento: `MENSAJE_COMPLEMENTO`, la lista de rev
 igual.
 
 **Hash.** El bloque se cierra en el último commit de la rama, el que trae esta nota. Código final de la aplicación y de
-las migraciones: `47b166e`; después solo hay pruebas que fijan lo que dice el contrato y documentación. (`282f17f` fue el
-código final de la primera ronda de correcciones y `84d07cc`, su nota.)
+las migraciones: `65cf28e`; después solo hay documentación. (`282f17f` fue el código final de la primera ronda de
+correcciones y `84d07cc`, su nota; `47b166e` y `2009231`, los de la segunda ronda, antes de los tres P3 de su
+verificación, que van en su registro, más abajo.)
 
 - Contrato definitivo, con respuestas reales: [CONTRATO-CONTABLE-V9.md](CONTRATO-CONTABLE-V9.md) (reglas comunes,
   «Capacidades», C1, C2 y C3).
@@ -2853,9 +2854,9 @@ JSON y, salvo la primera, siguen detrás del complemento.
 **Sin decidir, y no bloquea conectar:** reglas sobre padres inactivos (hoy se puede colgar una cuenta de un grupo
 desactivado) y cuánto tiempo se conservan los lotes que se quedan en vista previa.
 
-**Pruebas.** Sobre `d8399e5`, antes de las dos rondas de correcciones (el código final es `47b166e`: ver «Pruebas de las
-correcciones» y la segunda ronda, más abajo): suite completa en SQLite, 2112 aprobadas y 78 omitidas (las exclusivas
-de PostgreSQL), sin fallos; `makemigrations --check --dry-run`, sin cambios. En
+**Pruebas.** Sobre `d8399e5`, antes de las dos rondas de correcciones (el código final es `65cf28e`: ver «Pruebas de las
+correcciones», la segunda ronda y su verificación, más abajo): suite completa en SQLite, 2112 aprobadas y 78 omitidas
+(las exclusivas de PostgreSQL), sin fallos; `makemigrations --check --dry-run`, sin cambios. En
 PostgreSQL con seguridad por filas, los archivos del bloque y los que vigilan menú, roles, rutas, migraciones y
 auditoría: 375 aprobadas, sin fallos (once archivos sobre `8b2e57c` y el del inicio sobre `d8399e5`; entre los dos commits
 solo cambió ese archivo de pruebas). **Falta** repetir sobre el código final la suite completa de PostgreSQL, que incluye
@@ -2952,7 +2953,7 @@ quién entra al complemento, los precios o los planes. Hay una migración nueva,
 | Hallazgo | Qué pasaba | Qué se hizo |
 |---|---|---|
 | XLSX con una parte en bzip2 o lzma (P2) | `ZipFile` descomprime de una vez cada trozo leído de esas partes: un XLSX de 5 KB que declaraba 1 KB ocupaba cientos de megas, también en una parte que el lector nunca abre (`xl/media/…`, desde la primera ronda) | 400 `formato` antes de abrir la parte: un XLSX solo usa deflate o nada |
-| Logo SVG dentro del XLSX (P3) | Su `DOCTYPE` estándar rechazaba el libro como «declaraciones» | La copia que recibe el lector lleva solo las partes `.xml` y `.rels`, revisadas; las demás se leen (suma y cifrado) y no se copian, así que el lector tampoco puede tomar por hoja una parte sin revisar |
+| Logo SVG dentro del XLSX (P3) | Su `DOCTYPE` estándar rechazaba el libro como «declaraciones» | La copia que recibe el lector lleva con su contenido solo las partes `.xml` y `.rels`, revisadas; las demás se leen (suma y cifrado) y su contenido no se copia (van vacías desde la verificación, abajo), así que el lector tampoco puede tomar por hoja una parte sin revisar |
 | Borrar a quien creó cuentas en otra empresa (ensayo D1, P2) | La seguridad por filas limitaba a la empresa activa el UPDATE con el que Django anula `creada_por` y los demás: el borrado fallaba al confirmar con la membresía ya quitada | `contabilidad 0009`: `ON DELETE SET NULL` en la base para las cuatro claves de cuentas y lotes hacia el usuario |
 | Borrar usuarios con el código anterior (ensayo D2 y D5, P2 y P3) | `e0f2902` no conoce estas tablas: con la base migrada, borrar a un autor fallaba siempre (200 con el error crudo, o 500 en `/plataforma/`) | La misma 0009. Borrar una empresa con plan de cuentas sigue sin poder hacerse (`PROTECT`, querido): queda en el plan de recuperación |
 | Vuelta con tráfico, ida, `start_installation` anterior y corte del reinicio (ensayo D3, D4, D6 y D7) | Ver MIGRACIONES | Plan de recuperación del bloque en MIGRACIONES; sin cambio de código |
@@ -2961,6 +2962,9 @@ quién entra al complemento, los precios o los planes. Hay una migración nueva,
 | C3: lote de otra empresa (orden, P3) | 404 `lote`; los cambios de C3 no lo decían frente al 409 de la propuesta | Contrato |
 | Nota del bloque (orden, P3) | Sin hash del bloque cerrado, con el código final mal nombrado, sin «dependencia concreta» y sin tres archivos compartidos | Esta nota: «Hash», «Pruebas», «Archivos compartidos» y lo de abajo |
 | Integración con primera entrega (P3) | Cabecera `X-FPA-Empresa`, orden de las vueltas y guarda de convivencia | Receta de abajo; la nota de vueltas, también en MIGRACIONES |
+| Parón de las lecturas de `user_user` durante 0009 (verificación de la ronda, P3; `65cf28e`) | Mientras 0009 esperaba su `AccessExclusiveLock` sobre `user_user` (una sola espera de hasta 5 s), toda lectura nueva de `user_user` hacía cola: con otra transacción que solo lo había leído, cada petición con sesión se paraba hasta 5 s y, con una retención de más de 5 s, `migrate` fallaba. MIGRACIONES decía «milisegundos». 0004 y 0007 no paran lecturas | Intentos cortos: cada uno en su punto de guardado, con las tablas del plan primero y `user_user` el último, `lock_timeout` de 1 s y 2 s sin bloqueo entre intentos, hasta 8 (unos 22 s); agotados, falla sin cambiar nada con un mensaje que nombra la tabla y dice qué hacer. Peor caso en la migración, en MIGRACIONES («Por qué 0009» y punto 1 del plan) y aquí; el ensayo pendiente debe retener `user_user` |
+| Hoja de gráfico con imagen en el XLSX (verificación, P3; regresión de `191a5c9`; `cd23065`) | Aun en solo lectura, el lector abre las imágenes del dibujo de una hoja de gráfico: la que faltaba en la copia daba `KeyError`, que no descarta como imagen ilegible, y era 400 `formato` para un plan que `84d07cc` aceptaba | Las partes que no son XML se siguen leyendo enteras y van vacías en la copia (su contenido no se copia nunca): la imagen se descarta y el plan se lee. Una hoja guardada como `xl/media/hoja.png` sigue siendo 400 `formato`: una parte vacía no es una hoja |
+| Reparación de D6 con `migrate contabilidad 0005` (verificación, P3; `a934190`) | El plan de recuperación la daba por equivalente a `organizar_menu` + `sync_roles`, sin aviso: volver a 0005 deshace también 0007, borra todos los lotes y `cuenta.lote_id`, deja sin dueño sus archivos privados y toma los bloqueos de D3 | Punto 4 del plan: la única reparación es `organizar_menu`, `sync_roles` y `strip_platform_modules` del código nuevo, en ese orden, con cómo comprobarla; la vía de `migrate`, descartada (y, si alguna vez se usa, con la aplicación detenida y respaldo). El punto 2, la vuelta solo de la importación y el orden de vueltas con primera entrega dicen ahora qué borran |
 
 **Dependencia concreta.**
 
@@ -2968,8 +2972,9 @@ quién entra al complemento, los precios o los planes. Hay una migración nueva,
   orquestador al terminar este flujo); (2) repetir el ensayo con la aplicación atendiendo sobre una copia del volcado
   diario, ahora con `contabilidad 0009` (el del 14/11 fue sobre `84d07cc`), con la vuelta del bloque
   (`migrate contabilidad 0003_modulo_kardex`, `migrate tenancy 0012_accion_diseno_factura`) y la aplicación detenida
-  para la vuelta; (3) la revisión de esta ronda; (4) la autorización de la propietaria. Bloquea la publicación, no el
-  desarrollo: los bloques siguientes pueden seguir sobre esta rama.
+  para la vuelta, y con una transacción que retenga `user_user` mientras corre 0009 (una vez más que un intento y menos
+  que todos, otra más que todos: «No probado» en MIGRACIONES); (3) la revisión de esta ronda; (4) la autorización de la
+  propietaria. Bloquea la publicación, no el desarrollo: los bloques siguientes pueden seguir sobre esta rama.
 - Para usar C1, C2 y C3, ninguna dependencia funcional. Quién entra sigue la lista de revisión del complemento y el plan
   pagado, y abrirlo a más empresas depende de D9 (propietaria: impuestos, alcance multiempresa y condiciones de
   activación); mientras tanto, cerrado salvo la lista. El piloto NEXALLTI necesita su Excel real (lo trae el cliente) y
@@ -2984,6 +2989,7 @@ quién entra al complemento, los precios o los planes. Hay una migración nueva,
   | Colgar cuentas de un grupo desactivado | Contador | Se permite |
   | Borrar usuarios con registros en tablas ya publicadas de otra empresa (ver «Pendiente») | Propietaria, con la propuesta de Claude | Como hoy en producción |
   | Recarga sin corte en `desplegar.sh` (ensayo D7) | Propietaria, con la propuesta de Claude | Se anuncia el corte |
+  | Intentos de 0009 (`ESPERA_POR_INTENTO`, `PAUSA`, `INTENTOS`) | Claude, técnica; revisar con el ensayo con 0009 | 1 s, 2 s y 8: parón de lecturas de `user_user` de hasta 1 s por intento, unos 22 s en total como mucho |
 
 **Receta de integración con `fase/primera-entrega`** (no se fusionó aquí):
 
@@ -3026,5 +3032,31 @@ código ya hacía y el contrato dice ahora.
 - Una sonda que no se entrega, en PostgreSQL: dentro de una transacción, crear una clave hacia `user_user` toma
   `ShareRowExclusiveLock` sobre `user_user` y quitarla, `AccessExclusiveLock`. Es lo que cuenta MIGRACIONES para 0009.
 
-Quedan para el orquestador la suite completa de PostgreSQL (con las de concurrencia) y, antes de publicar, el ensayo con
-0009.
+**Pruebas de la verificación** (los tres P3 del final de la tabla, en `cd23065`, `a934190` y `65cf28e`, el código final),
+con la máquina compartida y cargada (media de 4 a 9 con 6 núcleos):
+
+- XLSX: `tests/test_cuentas_importacion.py::TestLectura::test_xlsx_con_una_hoja_de_grafico_con_imagen` (SQLite) daba 400
+  `formato` sin el cambio y da 200 con las cinco filas con él; la de `hoja.png` comprueba además que esa parte llega vacía
+  al lector y sigue dando 400 `formato`. `TestLectura`, 62 aprobadas (los 61 de antes y el nuevo).
+- 0009: `tests/test_zz_cuentas_0009_bloqueo_pg.py` (PostgreSQL, transaccional y al final de la suite, marca `tiempos`
+  registrada en `pytest.ini`) vuelve a 0008, deja las cuatro claves como las crea Django y retiene `user_user` desde otra
+  conexión mientras una tercera lo lee sin parar. Con la 0009 anterior, en un árbol exportado aparte, fallan las dos:
+  con la retención de 3,5 s, 0009 termina pero la lectura más lenta espera 3,59 s, toda la retención; con la larga,
+  0009 se corta por `lock_timeout` a los 5 s con `OperationalError` en lugar del fallo limpio. Con la nueva (23:55 UTC,
+  carga de 4): retenido 3,5 s desde el primer intento, 0009 termina a los 3,53 s con nombres y diferido intactos y la
+  lectura más lenta espera 0,98 s (de 50); retenido hasta que se rinde (3 intentos en la prueba), falla a los 6,99 s con
+  el mensaje («contabilidad 0009: en 3 intentos de 1 s no se consiguió el bloqueo de user_user, que retiene otra
+  transacción. No se cambió nada: repite `migrate` (o el despliegue), mejor con poco tráfico.»), sin anotarse y con las
+  claves como estaban, y la lectura más lenta espera 1,00 s (de 90).
+- D6: solo documentación.
+- `makemigrations --check --dry-run`: sin cambios.
+- SQLite, `tests/test_cuentas_importacion.py`, `tests/test_cuentas.py`, `tests/test_migracion_vuelta_fase.py`,
+  `tests/test_capacidades.py` y `tests/test_inicio_contable.py`: 302 aprobadas y 8 omitidas (las de PostgreSQL), sin
+  fallos, en 632,6 s (23:10 a 23:21 UTC, carga de 8 a 9).
+- PostgreSQL con seguridad por filas: `tests/test_cuentas.py`, `tests/test_rls_modelos_de_empresa.py` y
+  `tests/test_zz_cuentas_0009_bloqueo_pg.py`, por ese orden: 87 aprobadas, sin fallos ni omitidas, en 327,3 s (23:53 a
+  23:59 UTC, carga de 4).
+
+Quedan para el orquestador la suite completa de PostgreSQL (con las de concurrencia y la nueva de 0009) y, antes de
+publicar, el ensayo con 0009, que ahora tiene que incluir una transacción que retenga `user_user` (ver «Dependencia
+concreta»).

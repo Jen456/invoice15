@@ -298,11 +298,13 @@ la versión publicada sigue atendiendo sin problema) y basta repetir el desplieg
 Medido con `tests/test_zz_cuentas_0009_bloqueo_pg.py` (PostgreSQL 16, 14/11/2026 hacia las 23:55 UTC, carga de 4 con 6
 núcleos), que vuelve a 0008, deja las claves como las crea Django y retiene `user_user` desde otra conexión mientras una
 tercera lo lee sin parar: retenido 3,5 s desde el primer intento, 0009 terminó a los 3,53 s, con nombres y diferido
-intactos, y la lectura más lenta esperó 0,98 s (de 50); retenido hasta que se rinde (3 intentos en la prueba), falló a los
-6,99 s con el mensaje, sin anotarse y con las cuatro claves como estaban, y la lectura más lenta esperó 1,00 s (de 90). Con
-la 0009 anterior la misma prueba falla en los dos casos (con la retención larga, `lock_timeout` a los 5 s). Si 0009 se
-volviera a aplicar con cuentas y lotes ya cargados, la comprobación de cada clave recorre su tabla con el bloqueo tomado:
-al publicar están vacías. Quien cambie más adelante una de esas cuatro claves con `AlterField` tiene que volver a ponerle la acción: Django 5.2 no
+intactos, y la lectura más lenta esperó 0,98 s (de 50); retenido hasta que se rinde (3 intentos en la prueba), falló a
+los 6,99 s con el mensaje, sin anotarse y con las cuatro claves como estaban, y la lectura más lenta esperó 1,00 s (de
+90). Con la 0009 anterior la misma prueba falla en los dos casos: con la retención de 3,5 s, la lectura más lenta esperó
+3,59 s; con la larga, `lock_timeout` a los 5 s. Si 0009 se volviera a aplicar con cuentas y lotes ya cargados, la
+comprobación de cada clave recorre su tabla con el bloqueo tomado: al publicar están vacías.
+
+Quien cambie más adelante una de esas cuatro claves con `AlterField` tiene que volver a ponerle la acción: Django 5.2 no
 la conoce y recrearía la restricción sin ella.
 
 **Dependencia corregida a mano en 0004 y 0007.** `makemigrations` puso la última de `pos`, `0035_sale_ride_diseno`. Se
