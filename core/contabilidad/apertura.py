@@ -65,6 +65,13 @@ MOTIVO_DESCARTE_AUXILIAR = 'apertura descartada'
 # No se usa isprintable(): rechazaría caracteres de formato habituales en un texto pegado de Word o de un PDF (U+00AD,
 # U+200B, U+FEFF) y los emoji compuestos con ZWJ.
 CONTROL = re.compile('[\x00-\x1f\x7f\ud800-\udfff]')
+# Un importe escrito: signo, cifras ASCII y los separadores de los formatos admitidos («1.234,56», «1,234.56», «1234,56»).
+# Decimal() admite además la notación científica («1e3», el «1,23457E+11» que escribe una hoja de cálculo en un CSV), el
+# guion bajo («1_000»), cifras de otras escrituras («１２３») y «NaN»: no son un importe.
+IMPORTE_ESCRITO = re.compile(r'[+-]?[0-9.,]*[0-9][0-9.,]*')
+# La única notación científica que se lee: la de repr() para un número de coma flotante muy cercano a cero, que es como
+# lectura_tabular pasa a texto una celda numérica del XLSX con el ruido de una fórmula que da cero (5.551115123125783e-17).
+RUIDO_ESCRITO = re.compile(r'-?[0-9](?:\.[0-9]+)?e-[0-9]{2,3}')
 
 TEXTOS = {
     'no_existe': 'La apertura no existe o es de otra empresa.',
@@ -210,7 +217,9 @@ def _motivo(datos, errores, campo='motivo'):
 def leer_importe(valor):
     """Un importe escrito (texto o número) → Decimal con dos decimales, o None si viene vacío. ValueError con el texto
     si no es un importe: «1.234,56», «1,234.56» y «1234,56» valen; más de dos decimales no, salvo el ruido de una celda
-    numérica de la hoja de cálculo (1234.5600000000002), que se redondea. El signo se devuelve: quien llama decide."""
+    numérica de la hoja de cálculo (1234.5600000000002), que se redondea. El signo se devuelve: quien llama decide. Un
+    texto solo lleva signo, cifras ASCII y esos separadores (IMPORTE_ESCRITO); de la notación científica, solo la del ruido
+    cercano a cero de una celda numérica (RUIDO_ESCRITO)."""
     if valor is None or valor == '':
         return None
     if isinstance(valor, bool):
@@ -223,6 +232,8 @@ def leer_importe(valor):
         texto = valor.strip().replace('$', '').replace(' ', '').replace(' ', '')
         if not texto:
             return None
+        if not (IMPORTE_ESCRITO.fullmatch(texto) or RUIDO_ESCRITO.fullmatch(texto)):
+            raise ValueError(TEXTOS['importe'])
         if ',' in texto and '.' in texto:
             texto = texto.replace('.', '').replace(',', '.') if texto.rfind(',') > texto.rfind('.') else texto.replace(',', '')
         elif ',' in texto:

@@ -390,6 +390,29 @@ class TestMapearDesdeElLote:
             'decisiones.5.cuenta_id': [TI['de_grupo'].format(codigo='1')], 'filas.7.debe': [ayudas_textos('decimales')]}
         assert en(empresa, LineaApertura.objects.count) == 0 and version(web, empresa, apertura) == 1
 
+    def test_importes_que_no_son_importes(self, web, empresa, cuentas, apertura):
+        """D1: lo que una hoja de cálculo escribe en un CSV para un número de 12 cifras («1,23457E+11») y otros textos que
+        Decimal() lee pero no son un importe («1e3», «1_000», «１２３») son un error de su fila, no un importe redondeado."""
+        lote = subido(web, empresa, apertura['id'], csv_de(
+            ('Código', 'Nombre', 'Debe', 'Haber'), ('1.1.01', 'Caja', '1,23457E+11', ''), ('1.1.02', 'Bancos', '1e3', ''),
+            ('1.1.03', 'Clientes', '1_000', ''), ('1.1.04', 'Inventario', '１２３', ''), ('3.1.01', 'Capital', '', '1000,00')))
+        importe = ayudas_textos('importe')
+        assert [(f['estado'], f['errores']) for f in lote['filas']] == [('error', [importe])] * 4 + [('valida', [])]
+        assert errores(mapear_lote(web, empresa, apertura, lote)) == {f'filas.{n}.debe': [importe] for n in (2, 3, 4, 5)}
+        assert en(empresa, LineaApertura.objects.count) == 0
+
+    def test_celdas_numericas_del_xlsx(self, web, empresa, cuentas, apertura):
+        """D1 no cambia el camino de las celdas numéricas: el lector las pasa a texto con repr(), y su ruido de coma
+        flotante se redondea, también el de una fórmula que da cero, que repr() escribe en notación científica."""
+        ruido_cero = 0.1 + 0.2 - 0.3
+        assert repr(ruido_cero) == '5.551115123125783e-17'
+        lote = subido(web, empresa, apertura['id'], xlsx_de(
+            ('Código', 'Nombre', 'Debe', 'Haber'), ('1.1.01', 'Caja', 1234.5600000000002, ruido_cero),
+            ('1.1.02', 'Bancos', 765, None), ('3.1.01', 'Capital', ruido_cero, 1999.56)))
+        assert [f['estado'] for f in lote['filas']] == ['valida'] * 3
+        datos = mapear_lote(web, empresa, apertura, lote).json()
+        assert [(l['debe'], l['haber']) for l in datos['lineas']] == [('1234.56', '0.00'), ('765.00', '0.00'), ('0.00', '1999.56')]
+
     def test_las_columnas_se_eligen_al_mapear(self, web, empresa, cuentas, apertura):
         lote = subido(web, empresa, apertura['id'], csv_de(('Cta', 'Detalle', 'Valor'), ('1.1.01', 'Caja', '7.00'),
                                                             ('3.1.01', 'Capital', '-7.00')))

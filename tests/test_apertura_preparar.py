@@ -622,6 +622,34 @@ class TestMapear:
         assert datos['apertura']['diferencia'] == '0.00'
         assert errores(mapear(web, empresa, datos['apertura'], [linea(cuentas['caja'], True)])) == {'lineas.0.debe': [T['importe']]}
 
+    @pytest.mark.parametrize('escrito', ['1e3', '1E3', '1_000', '１２３', '٣٠٠', '1,23457E+11', '1.23457E+11', '1e+03',
+                                         'NaN', 'Infinity', '1.5E-07', '5,551115123125783e-17', '1 000x'])
+    def test_lo_que_no_es_un_importe(self, web, empresa, cuentas, escrito):
+        """D1: un importe escrito lleva signo, cifras ASCII y los separadores de «1.234,56», «1,234.56» o «1234,56». La
+        notación científica (también el «1,23457E+11» de una hoja de cálculo), el guion bajo y las cifras de otras
+        escrituras no son un importe: Decimal() los leía y entraban redondeados sin aviso."""
+        apertura = creada(web, empresa)
+        assert errores(mapear(web, empresa, apertura, [linea(cuentas['caja'], escrito),
+                                                       linea(cuentas['capital'], None, '1000.00')])) == {'lineas.0.debe': [T['importe']]}
+        assert en(empresa, LineaApertura.objects.count) == 0
+
+    def test_leer_importe(self):
+        """Lo que sí es un importe: los formatos del contrato, con signo, el símbolo y los espacios de miles, y lo que viene
+        de una celda numérica (un número, o el texto de su ruido de coma flotante, también el cercano a cero que repr()
+        escribe en notación científica)."""
+        leer_ = servicio.leer_importe
+        assert [leer_(v) for v in ('1.234,56', '1,234.56', '1234,56', '$ 1.234,56', '-1.234,56', '+7', '1 234 567,8',
+                                   '1\u00a0234,50', '1234.5600000000002', '5.551115123125783e-17', '-1e-07')] == [
+            Decimal('1234.56'), Decimal('1234.56'), Decimal('1234.56'), Decimal('1234.56'), Decimal('-1234.56'), Decimal('7.00'),
+            Decimal('1234567.80'), Decimal('1234.50'), Decimal('1234.56'), Decimal('0.00'), Decimal('0.00')]
+        assert [leer_(v) for v in (765, 1234.5600000000002, 5.551115123125783e-17, None, '', '  ')] == [
+            Decimal('765.00'), Decimal('1234.56'), Decimal('0.00'), None, None, None]
+        with pytest.raises(ValueError, match=T['decimales']):
+            leer_('1e-05')   # notación de ruido, pero no es ruido: más de dos decimales
+        for escrito in ('1e3', '1_000', '１２３', '1,23457E+11', 'NaN', '-', '1.5E-07'):
+            with pytest.raises(ValueError, match=T['importe']):
+                leer_(escrito)
+
     def test_el_resultado_del_ejercicio_va_en_patrimonio(self, web, empresa, cuentas):
         apertura = creada(web, empresa)
         datos = mapeada(web, empresa, apertura, [linea(cuentas['caja'], '100.00'),
