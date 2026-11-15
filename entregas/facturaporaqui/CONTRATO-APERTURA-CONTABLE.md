@@ -382,7 +382,7 @@ GET /contabilidad/api/apertura/?empresa=1
      "acceso": …}
 ```
 
-Con la apertura confirmada (`cobertura.periodos`: un objeto por mes desde `contabilidad_desde` hasta el mes en curso; se muestra el primero):
+Con la apertura confirmada (`cobertura.periodos`: un objeto por mes del año en curso, desde el mes de `contabilidad_desde` si es de este año o desde enero, hasta el mes en curso; se muestra el primero):
 
 ```
 GET /contabilidad/api/apertura/?empresa=1
@@ -513,7 +513,7 @@ GET /contabilidad/api/apertura/?empresa=1
 - `contabilidad`: `pendiente` sin inicio (`inicio_sin_configurar`) o sin apertura confirmada (`apertura_sin_confirmar` / `saldo_anterior_sin_confirmar`); `parcial` si se confirmó con detalle incompleto aceptado (`detalle_incompleto_aceptado`); `conciliada` si no.
 - `cartera` (`clientes` y `proveedores`), `inventario`, `bancos` y `activos`: `no_aplica` **solo** si la apertura lo declara en `ambitos_no_aplican`; sin declaración y sin ninguna línea de ese detalle, `pendiente` con `sin_cuenta_declarada`; con líneas, `pendiente` mientras no tengan detalle (`sin_detalle`), `parcial` con detalle incompleto (`detalle_incompleto`, `detalle_excede`, `importe_pendiente`) y `conciliada` cuando el detalle explica cada línea. `cuenta` es el saldo de las líneas de ese detalle y `detallado` lo explicado por sus auxiliares (`null` sin líneas).
 - `tributario`: `saldos_anteriores` es `null` mientras no haya auxiliares tributarios (nunca `"0.00"`).
-- `periodos`: por mes, lo declarado para cada ámbito (`contabilidad`, `documentos`, `cartera`, `inventario`, `bancos`); sin declaración, `sin_cobertura`. Declararlo es del corte 2 (`POST apertura/cobertura/`), así que hoy todos los meses salen `sin_cobertura`.
+- `periodos`: por mes del año en curso (vacío sin inicio o si `contabilidad_desde` todavía no llega), lo declarado para cada ámbito (`contabilidad`, `documentos`, `cartera`, `inventario`, `bancos`); sin declaración, `sin_cobertura`. Declararlo es del corte 2 (`POST apertura/cobertura/`), así que hoy todos los meses salen `sin_cobertura`.
 - No es licencia ni autorización fiscal.
 
 `capacidades`: `editar` (borrador), `validar` y `descartar` (borrador o en revisión), `enviar` (borrador), `devolver` y `confirmar` (en revisión), cada una con su permiso; `sustituir`, `ajustar`, `reversar` y `cobrar` son siempre `false` hasta el corte 2.
