@@ -26,6 +26,7 @@ cambia la configuración (crear, mover el corte) toma antes el candado del libro
 de bloqueos de la decisión común 4: candado → apertura → auxiliares. Negativas en el orden de la decisión común 6: permiso
 → datos por completar → clave → versión → estado → conflicto → validación."""
 import hashlib
+import re
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -58,6 +59,12 @@ VALORES_FUENTE = tuple(f for f, _ in FUENTES)
 VALORES_RESULTADO = tuple(r for r, _ in RESULTADOS_EJERCICIO)
 VALORES_INVENTARIO = tuple(m for m, _ in MODOS_INVENTARIO)
 MOTIVO_DESCARTE_AUXILIAR = 'apertura descartada'
+# Lo que un texto libre (rubro, detalle de la fuente, motivo, nota, descripción) no admite, mirado después de colapsar los
+# espacios (el tabulador y los saltos de línea ya son un espacio): los controles C0 y DEL (el NUL, además, PostgreSQL no lo
+# guarda en un texto y la petición acababa en 500) y las mitades sueltas de un par sustituto, que no se escriben en UTF-8.
+# No se usa isprintable(): rechazaría caracteres de formato habituales en un texto pegado de Word o de un PDF (U+00AD,
+# U+200B, U+FEFF) y los emoji compuestos con ZWJ.
+CONTROL = re.compile('[\x00-\x1f\x7f\ud800-\udfff]')
 
 TEXTOS = {
     'no_existe': 'La apertura no existe o es de otra empresa.',
@@ -89,6 +96,8 @@ TEXTOS = {
     'motivo': 'Escribe el motivo.',
     'motivo_largo': f'El motivo admite hasta {MOTIVO_MAX} caracteres.',
     'descripcion_larga': f'La descripción admite hasta {DESCRIPCION_MAX} caracteres.',
+    'caracteres_de_control': 'Quita los caracteres de control o no válidos de este texto (suelen llegar al copiarlo de otro '
+                             'programa).',
     'archivo': 'Elige el archivo de respaldo.',
     # líneas
     'lineas': 'Envía las líneas como una lista.',
@@ -145,6 +154,13 @@ def _texto(valor):
     return ' '.join(valor.split())
 
 
+def con_control(texto):
+    """True si el texto (ya pasado por `_texto`) lleva algo que un texto libre no admite (CONTROL). Quien llama lo responde
+    como error de su campo, con su propio texto (`caracteres_de_control`), después del de largo: un texto demasiado largo
+    da ese error."""
+    return bool(texto) and CONTROL.search(texto) is not None
+
+
 ID_MAX = 2 ** 63 - 1
 
 
@@ -186,6 +202,8 @@ def _motivo(datos, errores, campo='motivo'):
         errores.agregar(campo, TEXTOS['motivo'])
     elif len(motivo) > MOTIVO_MAX:
         errores.agregar(campo, TEXTOS['motivo_largo'])
+    elif con_control(motivo):
+        errores.agregar(campo, TEXTOS['caracteres_de_control'])
     return motivo or ''
 
 
@@ -535,6 +553,8 @@ def _encabezado(datos, errores):
         detalle_ = ''
     elif len(detalle_) > FUENTE_DETALLE_MAX:
         errores.agregar('fuente_detalle', TEXTOS['fuente_detalle_largo'])
+    elif con_control(detalle_):
+        errores.agregar('fuente_detalle', TEXTOS['caracteres_de_control'])
     sin_saldos = _booleano(datos, 'sin_saldos', errores, TEXTOS['sin_saldos'])
     if sin_saldos and fuente in VALORES_FUENTE and fuente != INICIO_ACTIVIDADES:
         errores.agregar('sin_saldos', TEXTOS['sin_saldos_fuente'])
@@ -642,6 +662,8 @@ def _ambitos_no_aplican(apertura, valor, errores):
             errores.agregar(f'{prefijo}.nota', TEXTOS['nota_ambito'])
         elif len(nota) > NOTA_AMBITO_MAX:
             errores.agregar(f'{prefijo}.nota', TEXTOS['nota_ambito_larga'])
+        elif con_control(nota):
+            errores.agregar(f'{prefijo}.nota', TEXTOS['caracteres_de_control'])
         vistos.add(ambito)
         limpios.append({'ambito': ambito, 'nota': nota})
     return limpios
@@ -663,6 +685,9 @@ def _cambios(apertura, datos, errores):
         detalle_ = _texto(datos['fuente_detalle'])
         if detalle_ is None or len(detalle_) > FUENTE_DETALLE_MAX:
             errores.agregar('fuente_detalle', TEXTOS['fuente_detalle_largo'])
+            detalle_ = apertura.fuente_detalle
+        elif con_control(detalle_):
+            errores.agregar('fuente_detalle', TEXTOS['caracteres_de_control'])
             detalle_ = apertura.fuente_detalle
     if apertura.sin_saldos and fuente != INICIO_ACTIVIDADES:
         errores.agregar('fuente', TEXTOS['sin_saldos_fuente'])
@@ -823,6 +848,9 @@ def _capturadas(apertura, datos, cuentas, errores):
             rubro = _texto(enviada.get('rubro'))
             if rubro is None or len(rubro) > RUBRO_MAX:
                 errores.agregar(f'{prefijo}.rubro', TEXTOS['rubro_largo'])
+                rubro = None
+            elif con_control(rubro):
+                errores.agregar(f'{prefijo}.rubro', TEXTOS['caracteres_de_control'])
                 rubro = None
         debe, haber = saldos(enviada.get('debe'), enviada.get('haber'), errores, prefijo)
         es_resultado = _booleano(enviada, 'es_resultado_ejercicio', errores, TEXTOS['es_resultado'],
@@ -1017,6 +1045,9 @@ def subir_respaldo(request, pk, archivo, datos):
     if descripcion is None or len(descripcion) > DESCRIPCION_MAX:
         errores.agregar('descripcion', TEXTOS['descripcion_larga'])
         descripcion = ''
+    elif con_control(descripcion):
+        # Se conserva tal cual: comparada con un respaldo ya guardado (la misma clave), no es la misma descripción.
+        errores.agregar('descripcion', TEXTOS['caracteres_de_control'])
     validado = None
     if archivo is not None:
         try:
@@ -1512,6 +1543,9 @@ def _pedido_de_confirmacion(datos, errores):
     nota = _texto(datos.get('nota'))
     if nota is None or len(nota) > NOTA_REVISION_MAX:
         errores.agregar('nota', TEXTOS_VALIDACION['nota_larga'])
+        nota = ''
+    elif con_control(nota):
+        errores.agregar('nota', TEXTOS['caracteres_de_control'])
         nota = ''
     pedidas = datos.get('incompletos_aceptados', [])
     aceptadas = [_entero(i) for i in pedidas] if isinstance(pedidas, list) else None

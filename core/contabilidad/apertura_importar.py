@@ -183,6 +183,8 @@ def _decisiones(valor, lote, cuentas, errores):
             errores.agregar(f'{prefijo}.motivo', TEXTOS['motivo_omitir'])
         elif len(motivo) > servicio.MOTIVO_MAX:
             errores.agregar(f'{prefijo}.motivo', servicio.TEXTOS['motivo_largo'])
+        elif servicio.con_control(motivo):   # se guardaría en el mapeo del lote (en PostgreSQL, un NUL era un 500)
+            errores.agregar(f'{prefijo}.motivo', servicio.TEXTOS['caracteres_de_control'])
         decisiones[fila] = {'fila': fila, 'cuenta_id': cuenta_id, 'omitir': omitir, 'motivo': motivo, 'agrupar': agrupar,
                             'es_resultado_ejercicio': es_resultado, 'posicion': i}
     return decisiones, ajenas
