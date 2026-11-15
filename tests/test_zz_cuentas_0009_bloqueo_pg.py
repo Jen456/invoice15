@@ -10,9 +10,10 @@ propio punto de guardado, y entre intentos no retiene nada.
 Las pruebas vuelven a 0008 (hacia atrás 0009 no hace nada), dejan las cuatro claves como las crea Django (sin acción,
 diferidas y con su nombre), retienen `user_user` desde otra conexión, aplican 0009 y miden lo que esperan las lecturas
 de otra conexión. Son transaccionales (`transaction=True`: la migración confirma su transacción, como en `migrate`) y
-van al final (`test_zz_*`), y al terminar la base queda migrada y con las claves de 0009 pase lo que pase. Los márgenes
-son holgados porque la máquina es compartida: una espera de hasta `ESPERA_POR_INTENTO` + 1,5 s pasa; la de antes, de
-toda la retención, no. Marca `tiempos`: mide esperas reales."""
+van al final (`test_zz_*`), y al terminar la base queda migrada hasta las hojas del grafo (volver a 0008 deshace también
+lo que dependa de 0009) y con las claves de 0009 pase lo que pase. Los márgenes son holgados porque la máquina es
+compartida: una espera de hasta `ESPERA_POR_INTENTO` + 1,5 s pasa; la de antes, de toda la retención, no. Marca
+`tiempos`: mide esperas reales."""
 import importlib
 import threading
 import time
@@ -77,12 +78,14 @@ def como_antes_de_0009():
 
 @pytest.fixture
 def antes_de_0009():
-    """Las claves como antes de 0009; al terminar, 0009 aplicada sin nadie que retenga nada, como en el resto de la suite."""
+    """Las claves como antes de 0009; al terminar, todo migrado sin nadie que retenga nada, como en el resto de la suite.
+    Volver a 0008 deshace también las migraciones que dependan de 0009 (de cualquier app): se vuelve a las hojas del
+    grafo, no solo a 0009, como en tests/test_zzz_vigencias_migraciones.py."""
     try:
         yield como_antes_de_0009()
     finally:
-        if not aplicada():
-            migrar(MIGRACION)
+        ejecutor = MigrationExecutor(connection)
+        ejecutor.migrate(ejecutor.loader.graph.leaf_nodes())
         assert aplicada() and {fila[1:] for fila in claves().values()} == {('n', True, True)}
 
 
