@@ -1020,8 +1020,11 @@ def descartar(request, pk, datos):
 
 # ---------------------------------------------------------------- respaldos
 
-def _respaldo_repetido(existente, sha256, descripcion):
-    if existente.sha256 == sha256 and existente.descripcion == descripcion:
+def _respaldo_repetido(existente, pk, sha256, descripcion):
+    """El envío con una clave ya usada: si es el mismo (la apertura de la ruta, el archivo y la descripción) devuelve el
+    respaldo (`repetido`); si no, 409 `clave_usada` con el que ya existe (decisión común 5a). La apertura cuenta como en
+    apertura_importar._repetido: la misma clave en otra apertura no deja a esta sin su respaldo diciéndole que ya lo tiene."""
+    if existente.apertura_id == _entero(pk) and existente.sha256 == sha256 and existente.descripcion == descripcion:
         return existente, True
     raise _error('clave_usada', 409, respaldo=dict_respaldo(existente))
 
@@ -1057,7 +1060,7 @@ def subir_respaldo(request, pk, archivo, datos):
     sha256 = hashlib.sha256(contenido).hexdigest()
     existente = RespaldoApertura.objects.filter(clave=clave).first()
     if existente is not None:
-        return _respaldo_repetido(existente, sha256, descripcion)
+        return _respaldo_repetido(existente, pk, sha256, descripcion)
     guardado = None
     try:
         with transaction.atomic():
@@ -1084,7 +1087,7 @@ def subir_respaldo(request, pk, archivo, datos):
         existente = RespaldoApertura.objects.filter(clave=clave).first()
         if existente is None:
             raise
-        return _respaldo_repetido(existente, sha256, descripcion)
+        return _respaldo_repetido(existente, pk, sha256, descripcion)
     except Exception:
         if guardado:   # la transacción se deshizo: el archivo no queda huérfano en el disco
             respaldo.archivo.storage.delete(guardado)

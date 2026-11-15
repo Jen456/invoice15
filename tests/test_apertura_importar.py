@@ -499,6 +499,22 @@ class TestRespaldos:
         rechazo(subir_respaldo(web, empresa, apertura['id'], PDF, 'b.pdf'), 409, 'estado')
         assert en(empresa, RespaldoApertura.objects.count) == 1
 
+    def test_la_misma_clave_en_otra_apertura(self, web, empresa, apertura):
+        """B2-AP-5: la apertura de la ruta es parte del envío (decisión común 5a), como en la importación de saldos: la
+        misma clave con el mismo archivo en otra apertura es otro envío, 409 `clave_usada` con el respaldo que ya existe.
+        Antes respondía 200 `repetido` con el respaldo de la primera y la segunda se quedaba sin el suyo."""
+        primero = subir_respaldo(web, empresa, apertura['id'], PDF, 'balance.pdf', clave='respaldo-clave-0001')
+        assert primero.status_code == 201, primero.content
+        servicio_descartar(web, empresa, apertura)
+        otra = creada(web, empresa)
+        cuerpo = rechazo(subir_respaldo(web, empresa, otra['id'], PDF, 'balance.pdf', clave='respaldo-clave-0001'), 409,
+                         'clave_usada')
+        assert cuerpo['respaldo']['id'] == primero.json()['respaldo']['id']
+        assert en(empresa, lambda: list(RespaldoApertura.objects.values_list('apertura_id', flat=True))) == [apertura['id']]
+        # en su apertura, el mismo envío sigue siendo `repetido`
+        otra_vez = subir_respaldo(web, empresa, apertura['id'], PDF, 'balance.pdf', clave='respaldo-clave-0001')
+        assert otra_vez.status_code == 200 and otra_vez.json()['repetido'] is True
+
     def test_anular_conserva_el_archivo(self, web, empresa, apertura):
         respaldo = subir_respaldo(web, empresa, apertura['id'], PDF, 'balance.pdf').json()['respaldo']
         ruta = f'{API}respaldos/{respaldo["id"]}/anular/'
