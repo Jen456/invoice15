@@ -3157,7 +3157,7 @@ dos (`2 failed`); con el arreglo, el archivo entero: 8 aprobadas.
 Rama `fase/contable-2-apertura` sobre el bloque 1 (`fase/contable-1-cuentas`, `84d07cc`), sin `push` y sin publicar.
 Código final `a5bedf4`; después solo hay documentación. El 15/11/2026 se le unió el bloque 1 final (`8a421b3`) sin
 rebase y las migraciones de contabilidad de este corte pasaron de `0009`–`0014` a `0010`–`0015`: ver «Unión con el bloque
-1 final», al final de esta nota. Es el punto 2 de `ORDEN-CIERRE-CONTABLE-TRIBUTARIO.md`, Partes A
+1 final», al final de esta nota, que dice también el código final de la rama unida. Es el punto 2 de `ORDEN-CIERRE-CONTABLE-TRIBUTARIO.md`, Partes A
 y B de `contable/bloque-2-especificacion.md` (aceptaciones 1, 2, 7, 8 y 10 de C6-A). No se tocó ninguna plantilla, CSS ni
 JS, no hay páginas ni entradas de menú nuevas y no cambió quién entra al complemento, ni precios, ni planes.
 
@@ -3265,7 +3265,7 @@ bloquea el corte: cada una bloquea, como mucho, su regla o su activación.
 | Plantilla Supercias (D5), perfiles de banco (D6) y matriz de reglas (D7) | Contador y propietaria | Solo ofrecer una plantilla o activar su regla | No hay funciones propias `plantilla_supercias`, `perfiles_de_banco` ni `plantilla_de_reglas` en el registro todavía (las añadirá el bloque que las use); hoy D5 y D7 figuran como decisión en el texto de `estados_financieros` y `asientos` |
 | Contabilización de la operación diaria | Bloque 3 | Que un reporte posterior al corte deje de ser provisional | Causa `motor_pendiente` |
 | Cierre del ejercicio del corte (31/12 con resultados) | Bloque 6 | Los estados del año siguiente al corte | Advertencia `ejercicio_sin_cerrar`; la causa `ejercicio_anterior_sin_cerrar` es del bloque 6 |
-| Mover el lector tabular de `importar_cuentas.py` a `lectura_tabular.py` | Claude, al integrar con el cierre del bloque 1 | Nada | `lectura_tabular.py` es un adaptador sobre el lector de C3, con todas sus defensas |
+| Mover el lector tabular de `importar_cuentas.py` a `lectura_tabular.py` | Claude, al integrar con el cierre del bloque 1 | Nada | **Hecho en la unión con el bloque 1** (abajo): el código del lector vive en `lectura_tabular.py` y `importar_cuentas.leer` lo llama con los textos de C3 |
 
 **Dónde se apartó de la especificación** (lo que afecta a la interfaz; el detalle está en los commits):
 
@@ -3344,3 +3344,26 @@ nombres y números en `tests/test_migracion_vuelta_fase.py` (`BLOQUE_2`, conteo 
 0014), los comentarios de `core/security/menu.py`, `core/contabilidad/migrations/0013_rls_libro_apertura.py`,
 `tests/ayudas_contables.py` y `tests/test_rls_libro_apertura.py`, y estos documentos. Ninguna migración del corte hace
 `AlterField` sobre las claves de quién de `Cuenta` ni de `ImportacionCuentas` (las que 0009 deja con `ON DELETE SET NULL`).
+
+**Después de unir.** Dos commits más, solo de código y pruebas:
+
+- `acc55eb`, el lector común: el lector entero de C3, con las correcciones del bloque 1 (una parte que no es STORED ni
+  DEFLATED no se abre; cada parte se lee entera y solo las `.xml` y `.rels` pasan con su contenido a la copia que recibe
+  openpyxl), vive ahora en `core/contabilidad/lectura_tabular.py`, y `importar_cuentas.leer` lo llama con los textos y
+  límites de C3, idénticos a los de antes. La importación de los saldos de la apertura y la validación de sus respaldos
+  usan el mismo lector, así que las defensas del bloque 1 valen también allí (`tests/test_apertura_importar.py`,
+  `TestLectorComun`: bzip2 y lzma en `xl/media` y en la hoja, entidades XML, logo SVG; en los respaldos bzip2 y lzma no
+  pasan y el logo SVG sí). CONTRATO-APERTURA-CONTABLE.md dice esas respuestas.
+- `3193edc`, la guarda: `tests/test_convivencia_versiones.py` falla si una migración de contabilidad posterior a 0009 hace
+  `AlterField`, `RemoveField` o `RenameField` sobre una de las cuatro claves de quién que 0009 deja con
+  `ON DELETE SET NULL` (Django no conoce esa regla y la quitaría al recrear la restricción).
+
+**Código final de la rama unida: `3193edc`.** Pruebas sobre ese código (registros en la VM101,
+`/root/invoice15/contable/registros/union-b1-sqlite-1.log` y `union-b1-pg-1.log`):
+
+- SQLite, los 16 archivos que toca la unión (cuentas, importación, apertura, capacidades, convivencia, vuelta de la fase,
+  despliegue…): **782 aprobadas y 8 omitidas** (las de solo PostgreSQL), en 16 min.
+- PostgreSQL, los 9 archivos de esquema, seguridad por filas, libro inmutable, cuentas, bloqueo de 0009, concurrencia de
+  cuentas, diario y apertura, y vuelta de la fase: **335 aprobadas**, sin fallos ni omitidas, en 93 min.
+- Las suites completas, el ensayo de migraciones con la versión publicada atendiendo, la vuelta de solo código y el
+  recorrido en navegador se hacen al cerrar el corte, sobre este código.

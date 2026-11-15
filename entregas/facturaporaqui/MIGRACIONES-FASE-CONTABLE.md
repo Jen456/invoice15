@@ -664,7 +664,7 @@ Lo que se comprobó al unir:
   sobre `creada_por`/`actualizada_por` de `Cuenta` ni `creado_por`/`confirmado_por` de `ImportacionCuentas`: 0010 añade
   `clase` y `auxiliar` y dos CHECK, y las demás crean tablas nuevas. En PostgreSQL esas cuatro claves siguen con
   `ON DELETE SET NULL` y diferidas después de 0015 (`tests/test_cuentas.py::TestBorrarAlAutor`, que corre con todo
-  migrado).
+  migrado), y `tests/test_convivencia_versiones.py` falla si una migración posterior a 0009 toca una de ellas.
 - **SQLite.** 0009 no hace nada allí; el `AddConstraint` de 0010 reconstruye `contabilidad_cuenta` como antes, con las
   mismas FK del bloque 1 (las ida y vuelta de `tests/test_migracion_vuelta_fase.py` pasan por ella).
 - **La vuelta al bloque 1** es ahora `migrate contabilidad 0009_anular_autores_en_la_base`; la de la fase espera 55
