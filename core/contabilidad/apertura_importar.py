@@ -250,6 +250,11 @@ def evaluar(lote, mapeo, decisiones, cuentas, no_aplican=()):
         if not fila.errores:
             fila.debe, fila.haber = servicio.saldos(celda('debe'), celda('haber'), fila.errores, f'filas.{n}',
                                                     saldo=celda('saldo'), con_saldo=con_saldo)
+        # el código y el rubro llegan a la línea (codigo_origen, rubro, filas_origen) y el rubro, al confirmar, al concepto del
+        # asiento inicial, que ya no se cambia: un control que no es espacio se rechaza como en la captura directa
+        for campo, texto in (('codigo', fila.codigo), ('rubro', fila.rubro)):
+            if servicio.con_control(texto):
+                fila.errores.agregar(f'filas.{n}.{campo}', servicio.TEXTOS['caracteres_de_control'])
         elegida = fila.decision['cuenta_id'] if fila.decision is not None else None
         if elegida is not None:
             fila.cuenta = cuentas.get(elegida)

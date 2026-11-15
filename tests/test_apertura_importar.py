@@ -428,6 +428,22 @@ class TestMapearDesdeElLote:
         assert errores(mapear_lote(web, empresa, apertura, lote)) == {f'filas.{n}.debe': [importe] for n in (2, 3, 4, 5)}
         assert en(empresa, LineaApertura.objects.count) == 0
 
+    def test_controles_en_el_codigo_o_el_rubro(self, web, empresa, cuentas, apertura):
+        """Un control que no es espacio en el código o en el rubro de una fila es un error de esa fila, con el texto de la
+        captura directa: el código y el rubro llegan a la línea y el rubro, al confirmar, al concepto del asiento inicial,
+        que ya no se cambia. Los que Python trata como espacio (tabulador vertical, salto de página, U+001F) se colapsan."""
+        lote = subido(web, empresa, apertura['id'], csv_de(
+            ('Código', 'Nombre', 'Debe', 'Haber'), ('1.1.01', 'Caja\x07chica', '10000.00', ''),
+            ('3.1.01\x1b', 'Capital social', '', '10000.00'), ('1.1.02', 'Bancos\x0b\x0c\x1fdel\x7fpaís', '1.00', ''),
+            ('1.1.03', 'Clientes\x0b\x0c\x1fvarios', '', '1.00')))
+        control = ayudas_textos('caracteres_de_control')
+        assert [(f['estado'], f['errores']) for f in lote['filas']] == [
+            ('error', [control]), ('error', [control]), ('error', [control]), ('valida', [])]
+        assert lote['filas'][3]['rubro'] == 'Clientes varios'
+        assert errores(mapear_lote(web, empresa, apertura, lote)) == {
+            'filas.2.rubro': [control], 'filas.3.codigo': [control], 'filas.4.rubro': [control]}
+        assert en(empresa, LineaApertura.objects.count) == 0
+
     def test_celdas_numericas_del_xlsx(self, web, empresa, cuentas, apertura):
         """D1 no cambia el camino de las celdas numéricas: el lector las pasa a texto con repr(), y su ruido de coma
         flotante se redondea, también el de una fórmula que da cero, que repr() escribe en notación científica."""
