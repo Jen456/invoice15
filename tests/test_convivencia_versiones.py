@@ -53,6 +53,26 @@ def test_columnas_nuevas_en_tablas_existentes_son_nulas_o_con_db_default():
 
 
 
+# Las cuatro claves hacia el usuario a las que contabilidad 0009 (bloque 1) pone ON DELETE SET NULL en PostgreSQL.
+CLAVES_DE_0009 = {('cuenta', 'creada_por'), ('cuenta', 'actualizada_por'), ('importacioncuentas', 'creado_por'),
+                  ('importacioncuentas', 'confirmado_por')}
+
+
+def test_ninguna_migracion_de_los_bloques_cambia_las_claves_de_quien_del_plan():
+    """Django 5.2 no conoce la acción que pone 0009: un AlterField (o quitar o renombrar uno de esos campos) en una migración
+    posterior recrearía la restricción sin ella, y borrar a un usuario que creó cuentas en otra empresa volvería a fallar
+    con la seguridad por filas (tests/test_cuentas.py::TestBorrarAlAutor lo comprueba en PostgreSQL con todo migrado). La
+    migración que tenga que cambiarlas debe volver a ponerla, como hace 0009, y entonces se quita de esta prueba."""
+    tocadas = []
+    for (app, nombre), migracion in migraciones_de_los_bloques():
+        for op in migracion.operations:
+            if app == 'contabilidad' and isinstance(op, (migrations.AlterField, migrations.RemoveField, migrations.RenameField)):
+                campo = op.old_name if isinstance(op, migrations.RenameField) else op.name
+                if (op.model_name.lower(), campo.lower()) in CLAVES_DE_0009:
+                    tocadas.append(f'{app}.{nombre}: {type(op).__name__} {op.model_name}.{campo}')
+    assert not tocadas, tocadas
+
+
 def test_insert_que_no_conoce_las_columnas_nuevas_de_cuenta(empresa):
     with company_context(empresa), connection.cursor() as cursor:
         cursor.execute(f'INSERT INTO {Cuenta._meta.db_table} (company_id, codigo, codigo_norm, nombre, tipo, activa, version, '
