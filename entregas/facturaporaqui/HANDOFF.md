@@ -2922,3 +2922,159 @@ antes del cambio y los tres de documentación fijan el comportamiento que el con
   que declara 975 bytes, leído en 0,01 s. En ninguno sube la memoria.
 
 No se repitieron la suite completa de SQLite ni la completa de PostgreSQL. Sin navegador: no hay pantallas nuevas.
+
+## 14/11/2026 — Claude: bloque 2 del cierre contable, corte 1 (libro diario mínimo e inicio contable con apertura hasta confirmar), sin publicar
+
+Rama `fase/contable-2-apertura` sobre el bloque 1 (`fase/contable-1-cuentas`, `84d07cc`), sin `push` y sin publicar.
+Código final `a5bedf4`; después solo hay documentación. Es el punto 2 de `ORDEN-CIERRE-CONTABLE-TRIBUTARIO.md`, Partes A
+y B de `contable/bloque-2-especificacion.md` (aceptaciones 1, 2, 7, 8 y 10 de C6-A). No se tocó ninguna plantilla, CSS ni
+JS, no hay páginas ni entradas de menú nuevas y no cambió quién entra al complemento, ni precios, ni planes.
+
+- Contrato definitivo de lo que construye este corte, con peticiones y respuestas reales:
+  [CONTRATO-APERTURA-CONTABLE.md](CONTRATO-APERTURA-CONTABLE.md), sección 6.
+- Lo que cambia en lo que ya existía (reglas comunes, capacidades, C1, C2, C3 y C6):
+  [CONTRATO-CONTABLE-V9.md](CONTRATO-CONTABLE-V9.md).
+- Las siete migraciones, su vuelta y la recuperación de solo código:
+  [MIGRACIONES-FASE-CONTABLE.md](MIGRACIONES-FASE-CONTABLE.md), nota del 14/11 del bloque 2.
+
+**Rutas que Codex puede conectar** cuando el bloque se publique. Todas son API JSON bajo `/contabilidad/api/`, detrás del
+complemento como el resto de `/contabilidad/`.
+
+| Ruta | Para qué | Permiso |
+|---|---|---|
+| `GET diario/` · `GET diario/<id>/` | el libro diario por rango (sin fechas, el mes en curso) y un asiento | `view_asiento` |
+| `GET integridad/` | las siete comprobaciones del libro de un año (sin `anio`, el año en curso) | `view_asiento` |
+| `POST cuentas/clasificar/` | clase de una cuenta y de sus descendientes sin clase | `change_cuenta` |
+| `GET` y `POST apertura/` | estado del inicio y de la apertura · configurar el inicio y crear el borrador | `view_apertura` · `add_apertura` |
+| `GET` y `PATCH apertura/<id>/` | detalle con archivos e historia · encabezado del borrador | `view_apertura` · `add_apertura` |
+| `POST apertura/<id>/importar/` · `GET apertura/importar/<lote>/` | subir el balance (CSV o XLSX) con vista previa · recargarla | `add_apertura` · `view_apertura` |
+| `POST apertura/<id>/mapear/` · `GET apertura/<id>/lineas/` | fijar las líneas (desde el lote o a mano) · listarlas, paginadas | `add_apertura` · `view_apertura` |
+| `POST apertura/<id>/respaldos/` · `GET apertura/respaldos/<id>/descargar/` · `POST apertura/respaldos/<id>/anular/` | respaldos (PDF, JPG, PNG, XLSX, CSV) | `add_apertura` · `view_apertura` · `add_apertura` |
+| `POST apertura/<id>/validar/` · `enviar/` · `descartar/` | revisar sin escribir · a revisión · descartar | `add_apertura` |
+| `POST apertura/<id>/devolver/` · `confirmar/` | a borrador con motivo · confirmar con el asiento inicial | `change_confirmacion_apertura` |
+
+Ver: Propietario, Administrador, Contador y Consulta. Preparar, devolver y confirmar: Propietario, Administrador y Contador.
+Vendedor y Cliente, nada. Sin página nueva: los permisos cuelgan del módulo «Kardex por producto».
+
+**Valores y claves nuevas** (todo aditivo; ninguna clave que ya existía cambió):
+
+- `GET /contabilidad/api/capacidades/`: cada función trae `avisos` (`[{codigo, texto, cantidad, url, recurso, decision}]`);
+  funciones nuevas `cartera_inicial` e `historico` (pendientes, del corte 2); `apertura` (`ver`, `preparar`, `confirmar`)
+  y `diario_mayor` (`ver`) pasan a disponibles; `apertura` exige `plan_cuentas_vacio` y avisa `cuentas_sin_clase`,
+  `cuentas_sin_auxiliar`, `auxiliares_incompletos` y `vinculos_rotos`.
+- `GET /contabilidad/api/inicio/`: `etapas.apertura.estado` añade `sin_configurar`, `pendiente`, `en_revision` y
+  `confirmada`, con `fecha` = corte.
+- Cuentas (C2): `clase` (`""`, `activo`, `pasivo`, `patrimonio`, `ingreso`, `costo`, `gasto`) y `auxiliar` (`""`,
+  `cliente`, `proveedor`, `inventario`, `banco`, `activo`, `tributario`) en cada cuenta y en el PATCH; 409
+  `ejercicio_cerrado`, `apertura_confirmada` y `cuenta_con_detalle` al reclasificar. Importación (C3): columna opcional
+  «clase».
+- Apertura: estados `borrador`, `en_revision`, `confirmada` y `descartada` (`sustituida` y `reversada` llegan con el
+  corte 2); fuente `inicio_actividades` con `sin_saldos: true` para la empresa que empieza sin saldos (se confirma sin
+  asiento); `no_aplica` en la cobertura solo por declaración (`ambitos_no_aplican`, con nota); `sin_cobertura` por mes.
+- En toda respuesta de reporte o cobertura: `causas_detalle` con códigos estables, además de `provisional` y `causas`. En
+  todo recurso sin página: `"url": null` y `"recurso": {"tipo", "id", "api"}` (respaldos, lotes, la apertura).
+- Errores: 404 `{"codigo": "no_existe"}`; 409 `{"codigo": "estado", "estado", "permitidos"}`; errores de listas por
+  posición (`"lineas.0.debe"`).
+
+**Archivos compartidos que se tocaron** (fuera de `core/contabilidad/`):
+
+- `core/security/menu.py`: solo la tupla de codenames del módulo «Kardex por producto», que suma los seis del bloque. El
+  nombre, el orden, el icono y lo que muestra el menú no cambian.
+- `core/tenancy/roles.py`: `ACCOUNTANT_WRITE` suma `add_apertura`, `change_confirmacion_apertura`,
+  `add_aplicacionauxiliar` y `change_aplicacionauxiliar`. Ningún permiso de compras ni de importación.
+- `core/tenancy/models.py`: 25 acciones en `AuditLog.ACTIONS` (también las del corte 2), con `tenancy/0014`.
+- Del bloque 1, dentro de `core/contabilidad/`: `cuentas.py` (clase, auxiliar, clasificar, `tiene_movimientos`),
+  `importar_cuentas.py` (columna «clase»), `capacidades.py` (campo `avisos`, las funciones del bloque), `inicio.py` (etapa
+  de la apertura), `models.py` (dos líneas que importan los modelos del bloque) y `urls.py`.
+- Pruebas compartidas con aserciones exactas que se ampliaron: `tests/test_kardex.py`, `tests/test_adjuntos.py`,
+  `tests/test_capacidades.py`, `tests/test_inicio_contable.py`, `tests/test_cuentas.py`,
+  `tests/test_cuentas_importacion.py`, `tests/test_rutas.py`, `tests/test_complemento_contable.py` y
+  `tests/test_migracion_vuelta_fase.py`.
+- **No** se tocaron `core/tenancy/pestanas.py`, `PlanMiddleware`, `CompanyMiddleware`, `core/suscripciones/`,
+  `core/importacion/` ni `core/contabilidad/servicios.py` (el prefijo reservado del kardex y la guarda de la importación
+  son del corte 2).
+
+**Al conectar, tener en cuenta:**
+
+- `empresa` va en la consulta (`?empresa=<id>`) también en los envíos JSON, y puede repetirse en el cuerpo. El PATCH va
+  siempre en JSON; la importación y los respaldos, en multipart.
+- La apertura se prepara en este orden: crear (configura el inicio) → importar y mapear, o mapear a mano → validar →
+  enviar → (devolver) → confirmar. Mapear envía el conjunto completo de líneas: las que no vienen se retiran (no se
+  borran) y los ids de las que siguen no cambian.
+- **Confirmar en este corte pide aceptar como incompleta cada línea cuya cuenta declara auxiliar**: todavía no hay
+  auxiliares. `incompletos_aceptados` tiene que ser exactamente el conjunto de los `linea_id` de las advertencias
+  `auxiliar_incompleto` de validar; si no, 409 `auxiliar_incompleto` con las que faltan (`lineas`) y las que sobran.
+- Una diferencia, una cuenta de grupo o un importe pendiente se corrigen en la fuente: el servidor nunca añade una línea
+  de cuadre. La diferencia la calcula el servidor (`debe − haber`, con signo).
+- El diario de cualquier rango posterior al corte sale `provisional: true` con `motor_pendiente` aunque la apertura esté
+  confirmada: mostrarlo así, no como completo.
+- Las capacidades `sustituir`, `ajustar`, `reversar` y `cobrar` de la apertura son siempre `false` hasta el corte 2: sus
+  botones no tienen ruta todavía.
+- La descarga del respaldo va siempre como adjunto, con las cabeceras de aislamiento de los comprobantes.
+- `GET apertura/` lleva `acceso` (el objeto entero de capacidades), como el inicio.
+
+**Dependencia concreta del corte** (qué falta · de quién depende · qué bloquea · cómo queda mientras tanto). Ninguna fila
+bloquea el corte: cada una bloquea, como mucho, su regla o su activación.
+
+| Qué falta | De quién depende | Qué bloquea | Cómo queda mientras tanto |
+|---|---|---|---|
+| Integración con `fase/primera-entrega` (no se hizo rebase ni fusión) | Orquestador, tras la revisión de esa rama | Publicar el bloque | Choca la numeración: esa rama trae `tenancy 0013` (aquí `0013` es del bloque 1 y `0014` de este corte) e `importacion 0008-0009`; se suman el conteo (`54`), `sin_diseno` y `BLOQUE_2` de `tests/test_migracion_vuelta_fase.py` y lo que traiga en `tests/test_convivencia_versiones.py`. Repasar los creadores y estados de `Sale` que añade (borrador de factura, conversión de proforma) antes del motor del bloque 3. Este contrato se verificó contra `a5bedf4`, no contra la rama integrada |
+| Integración con el cierre del bloque 1 (`wt-contable`) | Orquestador | Publicar el bloque | Choques previsibles: `contabilidad 0009` (allí `0009_anular_autores_en_la_base`, aquí `0009_clases_de_cuenta`: una pasa a la siguiente libre y las de este corte van detrás), `capacidades.py` (campo `avisos`, acción `confirmar` de `apertura`), `cuentas.py`, `importar_cuentas.py`, `tests/test_cuentas*.py` y toda aserción exacta nueva de una función de capacidades (le falta `'avisos': []`) |
+| Ensayo con la versión publicada atendiendo y recorrido de las rutas en navegador (decisiones 18 y 19) | Orquestador, al cerrar el corte | Dar el corte por publicable | No hecho aquí. El código está preparado: toda columna nueva en una tabla existente lleva `db_default`, ninguna restricción va hacia tablas de la operación y las siete migraciones son reversibles; el ensayo debe comprobar que el rol de la aplicación crea las seis funciones de `contabilidad 0013` |
+| Pantallas de apertura y diario | Codex (y revisión de la propietaria, C6-A §9) | Uso por personas; el recorrido de **pantallas** en navegador, que se repite cuando se conecten | Rutas probadas por API; nada en el menú |
+| Saldos reales de cada empresa y quién los revisa | Contador de la empresa | Confirmar **su** apertura | Importes desconocidos en `null` (`importe_pendiente`); reportes provisionales con `apertura_sin_confirmar` |
+| Clase y auxiliar de cada cuenta | Contador de la empresa | Confirmar una apertura con cuentas sin clase (`cuenta_sin_clase`); que un ámbito tenga cobertura | Avisos `cuentas_sin_clase` y `cuentas_sin_auxiliar`; nunca se deducen del código |
+| Ámbitos que no aplican | Contador de la empresa | Que ese ámbito figure `no_aplica` | `pendiente` con `sin_cuenta_declarada` |
+| Auxiliares (detalle de clientes, proveedores, inventario, bancos, activos y tributario) | Claude, corte 2; después el contador | Cobertura de esos ámbitos; cobrar un documento concreto | Las líneas con detalle se aceptan como incompletas al confirmar; cobertura de contabilidad `parcial` |
+| Cobros, pagos y descargos sobre saldos iniciales; ajuste, sustitución y reverso de la apertura; documentos históricos y la guarda de la importación | Claude, corte 2 (aceptaciones 3, 4, 5, 6 —la reconstrucción— y 9) | Esas funciones | `cartera_inicial` e `historico` en `PENDIENTE` y sin ruta; sus tablas existen vacías; capacidades de la apertura en `false` |
+| Casilla `confirmar_anterior_al_corte` en la ficha, el lote y su JS | Codex | Encender `guarda_importacion` (corte 2) | Guarda apagada (`guarda_importacion: false`); la importación se comporta como hoy |
+| Costo inicial y modo de inventario | Contador de la empresa | El saldo inicial del kardex (corte 2) | `inventario_modo` se guarda; confirmar no escribe en el kardex en ningún modo |
+| Saldos tributarios anteriores | Contador de la empresa | Arrastres del 104 (bloque 5) | `saldos_anteriores: null` |
+| Quién confirma | Propietaria (reparto por rol) | Nada: hoy Propietario, Administrador y Contador | Cambiarlo es quitar o añadir el codename en `ACCOUNTANT_WRITE` |
+| Plantilla Supercias (D5), perfiles de banco (D6) y matriz de reglas (D7) | Contador y propietaria | Solo ofrecer una plantilla o activar su regla | No hay funciones propias `plantilla_supercias`, `perfiles_de_banco` ni `plantilla_de_reglas` en el registro todavía (las añadirá el bloque que las use); hoy D5 y D7 figuran como decisión en el texto de `estados_financieros` y `asientos` |
+| Contabilización de la operación diaria | Bloque 3 | Que un reporte posterior al corte deje de ser provisional | Causa `motor_pendiente` |
+| Cierre del ejercicio del corte (31/12 con resultados) | Bloque 6 | Los estados del año siguiente al corte | Advertencia `ejercicio_sin_cerrar`; la causa `ejercicio_anterior_sin_cerrar` es del bloque 6 |
+| Mover el lector tabular de `importar_cuentas.py` a `lectura_tabular.py` | Claude, al integrar con el cierre del bloque 1 | Nada | `lectura_tabular.py` es un adaptador sobre el lector de C3, con todas sus defensas |
+
+**Dónde se apartó de la especificación** (lo que afecta a la interfaz; el detalle está en los commits):
+
+- Con el complemento cerrado o el plan vencido, un envío para otra empresa con `empresa` solo en el cuerpo JSON recibe
+  409 `empresa_cambiada`, no el 403 de licencia: manda el código real del bloque 1 (`pestanas.py`), que no se tocó.
+- `auxiliar_incompleto` es una advertencia por línea en validar y enviar, y un bloqueo solo al confirmar: si fuera bloqueo
+  al enviar, ninguna apertura con una cuenta de detalle podría enviarse en este corte, que no tiene auxiliares.
+- Bloqueo nuevo `sin_saldos_con_lineas`: una apertura que declara que la empresa empieza sin saldos y tiene líneas.
+- El 404 de `cuentas/clasificar/` lleva el código del bloque 1 (`cuenta`), no `no_existe`.
+- Validar trae, en cada entrada de `reportes`, `desde` y `hasta`; el 409 de enviar, el cuerpo entero de validar.
+- Campos añadidos a las formas de la especificación: en la apertura `creado_por`, `creado_en` y `motivo`; en la línea
+  `codigo_origen`; en el lote `apertura_id`, `tamano`, `decisiones`, `muestra`, `subido_por/en` y `aplicado_por/en`; en
+  `archivos`, `clase` (`importacion` o `respaldo`); en el asiento, `motivo`.
+
+**Queda para el corte 2:** las rutas de las Partes C a F (lista en C6-A §6.3); `auxiliar_duplica_operativo`,
+`saldo_inicial_posterior` y las advertencias `vinculo_no_concilia`, `kardex_difiere`, `stock_no_concilia` y
+`un_solo_almacen` en validar; el evento `vinculo_roto` de la primera detección; los pasos de sustitución y de kardex de
+confirmar; quitar `sustituir`, `ajustar`, `reversar` y `cobrar` de las capacidades sin construir al publicar sus rutas;
+pasar `cartera_inicial` e `historico` a disponibles; la cobertura por mes con sus hechos (`cobertura.hechos`) y su
+declaración (`POST apertura/cobertura/`). Valores que llegan con él: `otro_descargo` (descargo de un saldo inicial que no es
+tesorería), `sustituida` y `reversada`. Para Codex, de cara a la guarda de la importación: una compra nace por tres caminos
+(`/pos/purchase/add/`, completar un recibo en `/adjuntos/capturas/` y la importación) y la guarda solo estará en el
+tercero; antes de encenderla en una empresa hay que publicar la casilla `confirmar_anterior_al_corte` en la ficha, el lote
+y su JS. Los otros dos caminos no se bloquean: lo anterior al corte quedará como excepción visible (bloques 3 y 4).
+
+**Pruebas.** Sobre `a5bedf4`, el código final (después solo hay documentación).
+
+- `makemigrations --check --dry-run`: sin cambios. `sqlmigrate` de las siete: ninguna clave foránea hacia tablas de la
+  operación ni hacia el usuario.
+- SQLite, la suite completa del worktree (en `2de96bb`, con el mismo código): **2557 aprobadas y 143 omitidas** (las
+  exclusivas de PostgreSQL), sin fallos, en 45 min. Antes del cierre, sobre `d23b109`: 2556 y 143, sin fallos.
+- PostgreSQL con seguridad por filas y disparadores, 21 archivos: los diez nuevos del bloque (`test_esquema_contable`,
+  `test_convivencia_versiones`, `test_rls_libro_apertura`, `test_zz_libro_inmutable_pg`, `test_diario`,
+  `test_zz_diario_concurrencia_pg`, `test_apertura_preparar`, `test_apertura_importar`, `test_apertura` y
+  `test_zz_apertura_concurrencia_pg`, 472 casos) y los que el bloque tocó o que vigilan registros (`test_capacidades`,
+  `test_complemento_contable`, `test_cuentas`, `test_cuentas_importacion`, `test_inicio_contable`, `test_kardex`,
+  `test_rutas`, `test_adjuntos`, `test_auditoria_acciones`, `test_rls_modelos_de_empresa` y
+  `test_migracion_vuelta_fase`): **864 aprobadas**, sin fallos ni omitidas, en 68 min.
+- Registros en la VM101, fuera del repositorio: `/root/invoice15/contable/registros/bloque2-c1-sqlite-2de96bb.log`,
+  `bloque2-c1-pg-a5bedf4.log` y `bloque2-c1-ejemplos.json` (las peticiones y respuestas de los ejemplos del contrato,
+  generadas con una prueba temporal que no se entrega).
+- **No hecho aquí:** el ensayo de migraciones con la versión publicada atendiendo, la vuelta de solo código con el código
+  anterior y el recorrido de las rutas en navegador (decisiones 18 y 19), que hace el orquestador al cerrar el corte.
