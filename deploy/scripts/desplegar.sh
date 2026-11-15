@@ -59,7 +59,18 @@ activar() {  # cambio atómico del enlace current
 # rutas resueltas (BASE podría ir por un enlace) y sin un `current` válido (primera instalación) no borra nada.
 borrar_si_no_quedo_activa() {
   if [ -d "$REL" ] && [ -d "$BASE/current/" ] && [ "$(readlink -f "$BASE/current")" != "$(readlink -f "$REL")" ]; then
-    echo "  se borra $(basename "$REL"): no quedó activa"; rm -rf -- "$REL"
+    # Un proceso que aún trabaja dentro (p. ej. un temporizador que arrancó desde current durante la salud) no se queda
+    # sin su código: la carpeta se aparta con un nombre oculto, que ni --revertir ni la limpieza ven, y se borra a mano.
+    local real usos aparte
+    real=$(readlink -f "$REL")
+    usos=$(find /proc/[0-9]*/cwd -maxdepth 0 \( -lname "$real" -o -lname "$real/*" \) -print -quit 2>/dev/null || true)
+    if [ -n "$usos" ]; then
+      aparte="$BASE/releases/.no-activa-$(basename "$REL")"
+      mv -T -- "$REL" "$aparte"
+      echo "  $(basename "$REL") no quedó activa y aún la usa un proceso: queda aparte en $aparte (bórrala cuando termine)"
+    else
+      echo "  se borra $(basename "$REL"): no quedó activa"; rm -rf -- "$REL"
+    fi
   fi
 }
 
@@ -79,6 +90,9 @@ COMMIT=$(git -C "$REPO" rev-parse --verify "$REF^{commit}")
 CORTO=${COMMIT:0:8}
 REL="$BASE/releases/$TS-$CORTO"
 trap borrar_si_no_quedo_activa EXIT
+# Con la señal atrapada, bash espera a que termine la orden en curso (migrate, collectstatic --clear…) antes de
+# salir y limpiar; sin esto, un kill o pkill al script borraba la carpeta con migrate todavía corriendo dentro.
+trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
 echo "FacturaPorAquí — despliegue $ENTORNO — $CORTO ($(git -C "$REPO" log -1 --format=%s "$COMMIT")) — $(date -Is)"
 
 echo "== 1. Código"

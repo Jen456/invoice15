@@ -67,7 +67,15 @@ PYTHON = '''#!/bin/bash
 shift
 echo "$(basename "$PWD") $*" >> "$SIM/registro"
 case "$1" in
-  migrate) if [ -e "$SIM/migrate-falla" ]; then
+  migrate) if [ -e "$SIM/migrate-lento" ]; then
+             echo "migrate empieza" >> "$SIM/registro"; /bin/sleep 2; echo "migrate termina" >> "$SIM/registro"
+             [ -d "$PWD" ] && echo "su carpeta sigue" >> "$SIM/registro"
+           fi
+           if [ -e "$SIM/migrate-ocupa" ]; then
+             (exec /bin/sleep 30) &   # un proceso que se queda trabajando dentro de la carpeta de la versión
+             echo $! > "$SIM/ocupante"
+           fi
+           if [ -e "$SIM/migrate-falla" ]; then
              echo "RuntimeError: contabilidad 0009: no se consiguió el bloqueo de user_user (simulado)" >&2
              exit 1
            fi ;;
@@ -148,7 +156,7 @@ class Entorno:
     def releases(self):
         """Commit de cada carpeta de releases/, por nombre (que es por orden de despliegue)."""
         carpeta = self.base / 'releases'
-        return [self.version(r) for r in sorted(carpeta.iterdir())] if carpeta.exists() else []
+        return [self.version(r) for r in sorted(carpeta.iterdir()) if not r.name.startswith('.')] if carpeta.exists() else []
 
     def version(self, carpeta):
         revision = (Path(carpeta) / 'REVISION').read_text().strip()
@@ -262,3 +270,51 @@ def test_despliegue_bueno_con_la_base_detras_de_un_enlace_conserva_su_version(tm
     bien(entorno, 'publicada')
     bien(entorno, 'nueva')
     assert entorno.releases() == ['publicada', 'nueva'] and entorno.activa == entorno.ejecutando == 'nueva'
+
+
+def test_matar_el_script_durante_migrate_espera_a_migrate_y_despues_limpia(entorno):
+    """Un kill (SIGTERM solo al bash del script) mientras migrate corre: el script espera a que migrate termine, sale con
+    143 y solo entonces borra la carpeta; antes la borraba al momento con migrate todavía trabajando dentro."""
+    bien(entorno, 'publicada')
+    (entorno.sim / 'migrate-lento').touch()
+    proceso = subprocess.Popen(['bash', str(entorno.script), 'pruebas', entorno.commits['nueva']], env=entorno.env,
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    registro = entorno.sim / 'registro'
+    limite = time.monotonic() + 60
+    while 'migrate empieza' not in (registro.read_text() if registro.exists() else ''):
+        assert time.monotonic() < limite and proceso.poll() is None, 'migrate no llegó a empezar'
+        time.sleep(0.05)
+    proceso.terminate()
+    salida, _ = proceso.communicate(timeout=60)
+    assert proceso.returncode == 143, salida
+    texto = registro.read_text()
+    assert 'migrate termina' in texto and 'su carpeta sigue' in texto, texto
+    assert 'no quedó activa' in salida
+    assert entorno.releases() == ['publicada'] and entorno.activa == entorno.ejecutando == 'publicada'
+
+
+def test_una_version_que_no_quedo_activa_y_aun_se_usa_se_aparta_sin_borrarla(entorno):
+    """Si al salir un proceso sigue trabajando dentro de la carpeta, no se borra: se aparta con un nombre oculto, que
+    --revertir y la limpieza no ven, así que la vuelta sigue yendo a la publicada."""
+    bien(entorno, 'publicada')
+    entorno.migrate_falla(True)
+    (entorno.sim / 'migrate-ocupa').touch()
+    try:
+        hecho = entorno.desplegar(entorno.commits['nueva'])
+        assert hecho.returncode == 1, hecho.salida
+        assert 'aún la usa un proceso' in hecho.salida and 'se borra' not in hecho.salida
+        apartadas = [r for r in (entorno.base / 'releases').iterdir() if r.name.startswith('.no-activa-')]
+        assert len(apartadas) == 1 and entorno.version(apartadas[0]) == 'nueva'
+        assert entorno.releases() == ['publicada'] and entorno.activa == 'publicada'
+    finally:
+        ocupante = entorno.sim / 'ocupante'
+        if ocupante.exists():
+            try:
+                os.kill(int(ocupante.read_text()), 15)
+            except ProcessLookupError:
+                pass
+    (entorno.sim / 'migrate-ocupa').unlink()
+    entorno.migrate_falla(False)
+    bien(entorno, 'nueva')
+    assert entorno.desplegar('--revertir').returncode == 0
+    assert entorno.activa == entorno.ejecutando == 'publicada'
