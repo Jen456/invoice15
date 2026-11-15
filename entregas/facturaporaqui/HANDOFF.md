@@ -2782,8 +2782,9 @@ y no cambió quién entra al complemento: `MENSAJE_COMPLEMENTO`, la lista de rev
 igual.
 
 **Hash.** El bloque se cierra en el último commit de la rama, el que trae esta nota. Código final de la aplicación y de
-las migraciones: `65cf28e`. Después, el arreglo de `deploy/scripts/desplegar.sh` (`4f9987f` y `d548b18`: ver «Archivos
-compartidos»), la vuelta a las hojas del grafo en `tests/test_zz_cuentas_0009_bloqueo_pg.py` (`41856a2`) y
+las migraciones: `65cf28e`. Después, el arreglo de `deploy/scripts/desplegar.sh` (`4f9987f`, `d548b18` y el de su
+verificación, que espera a la orden en curso ante una señal y aparta sin borrar la carpeta que aún usa un proceso: ver
+«Archivos compartidos»), la vuelta a las hojas del grafo en `tests/test_zz_cuentas_0009_bloqueo_pg.py` (`41856a2`) y
 documentación: ver «Ensayo con 0009 y sus correcciones», al final. (`282f17f` fue el código final de la primera ronda de
 correcciones y `84d07cc`, su nota; `47b166e` y `2009231`, los de la segunda ronda, antes de los tres P3 de su
 verificación, que van en su registro, más abajo.)
@@ -2841,7 +2842,8 @@ JSON y, salvo la primera, siguen detrás del complemento.
 - `core/tenancy/models.py`: tres `AuditLog.ACTIONS` (`cuenta_creada`, `cuenta_modificada` y `cuentas_importadas`) y su
   migración `tenancy 0013`, que choca con la de `fase/primera-entrega` (ver «Choque conocido» en
   [MIGRACIONES-FASE-CONTABLE.md](MIGRACIONES-FASE-CONTABLE.md)).
-- `deploy/scripts/desplegar.sh` (`4f9987f` y `d548b18`): al salir, por bien o por mal, borra la carpeta de la versión de
+- `deploy/scripts/desplegar.sh` (`4f9987f`, `d548b18` y el arreglo de su verificación): al salir, por bien o por mal
+  (también ante un kill, HUP, INT o TERM, que esperan a que termine la orden en curso, p. ej. `migrate`), borra la carpeta de la versión de
   ese despliegue si `current` no quedó en ella (falló antes de activarse, como 0009 al agotar sus intentos, o no pasó la
   salud y se volvió a la anterior). Compara rutas resueltas y, sin un `current` válido (primera instalación), no borra
   nada. Antes, `--revertir` (elige por fecha) y la limpieza (se conservan 5) contaban esas carpetas como versiones: en el
@@ -2868,7 +2870,7 @@ desactivado) y cuánto tiempo se conservan los lotes que se quedan en vista prev
 
 **Pruebas.** Sobre `6b7ccbf` (el código final `65cf28e` y su documentación): suite completa en SQLite, 2157 aprobadas y
 84 omitidas (las exclusivas de PostgreSQL), sin fallos (registro fuera del repositorio:
-`contable/registros/bloque1-sqlite-6b7ccbf.log`). PostgreSQL completa sobre `6b7ccbf`: (la añade el orquestador). Lo de
+`contable/registros/bloque1-sqlite-6b7ccbf.log`). PostgreSQL completa sobre `6b7ccbf`, con seguridad por filas: 2241 aprobadas, sin fallos ni omitidas, en 2 h 34 min con la máquina cargada (registro: `contable/registros/bloque1-pg-6b7ccbf.log`). Lo de
 después (`desplegar.sh`, una prueba de PostgreSQL y documentación) tiene sus pruebas en «Ensayo con 0009 y sus
 correcciones», al final. Antes, sobre `d8399e5`, antes de las dos rondas de correcciones: suite completa en SQLite, 2112
 aprobadas y 78 omitidas, sin fallos; `makemigrations --check --dry-run`, sin cambios; en PostgreSQL con seguridad por
@@ -3092,6 +3094,20 @@ precios o los planes.
 | La prueba de 0009 y las migraciones posteriores (revisión, P3; `41856a2`) | El fixture de `tests/test_zz_cuentas_0009_bloqueo_pg.py` vuelve a 0008, lo que deshace también lo que dependa de 0009, y al terminar solo reaplicaba hasta 0009: las del bloque 2, cuando se integren, quedarían sin aplicar para el resto de la suite | Al terminar migra a las hojas del grafo, como `tests/test_zzz_vigencias_migraciones.py`, y sigue comprobando que las cuatro claves quedan con `SET NULL` y diferidas |
 | Parón de las lecturas de `user_user` sin retención (ensayo, P3; documentación) | MIGRACIONES («Por qué 0009», «Peor caso de 0009», punto 1 del plan) y esta nota decían «milisegundos» o «1 s más los milisegundos del cambio» | Medido: 0009 espera a las escrituras en curso de la propia aplicación (cientos de ms; como mucho 1 s por intento) y retiene `user_user` hasta confirmar (de 150 a 510 ms con el disco cargado); lecturas paradas hasta 1,21 s. Texto ajustado; `ESPERA_POR_INTENTO` sigue en 1 s |
 | Notas del ensayo (documentación) | El ensayo con 0009 figuraba como pendiente | MIGRACIONES: «Ensayo con 0009», «Probado», «No probado» con lo que de verdad falta, los residuos de `Permission` y `ContentType` en la vuelta y el caso aislado de 46,9 s en D7; aquí, «Hash», «Pruebas», «Dependencia concreta», «Archivos compartidos» y las decisiones menores |
+
+**Verificación de estas correcciones (15/11/2026).** Un verificador independiente leyó el script entero, simuló todos
+sus caminos y confirmó lo de arriba. Encontró un P3: el `trap` de `EXIT` borraba la carpeta con `rm -rf` aunque un
+proceso siguiera corriendo dentro: (a) un `kill`/`pkill -f desplegar.sh` al bash del script ejecuta el `trap` en el
+acto, sin esperar a `migrate` (que puede estar esperando un bloqueo) ni a `collectstatic --clear` (que ya vació el
+`STATIC_ROOT` compartido); (b) un temporizador que arrancó desde `current` durante la ventana de salud y después se
+vuelve a la anterior. Arreglo: `trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM` justo después del de
+`EXIT` (con la señal atrapada, bash espera a que termine la orden en curso y solo entonces sale y limpia), y, antes de
+borrar, si algún proceso tiene su carpeta de trabajo dentro (`/proc/*/cwd`), la carpeta no se borra: se aparta como
+`releases/.no-activa-<nombre>`, que ni `--revertir` ni la limpieza ven, y se avisa de borrarla cuando termine. Dos
+pruebas nuevas en `tests/test_desplegar_releases.py`: SIGTERM solo al bash durante un `migrate` lento (sale con 143,
+`migrate` termina con su carpeta todavía en su sitio y después se borra; la publicada sigue activa) y un proceso que se
+queda dentro (la carpeta se aparta sin borrarse, `--revertir` vuelve a la publicada). Con el script anterior fallan las
+dos (`2 failed`); con el arreglo, el archivo entero: 8 aprobadas.
 
 **Visto al leer `desplegar.sh` entero, sin corregir** (no estaba en la orden; la guarda nueva no cambia nada de esto):
 

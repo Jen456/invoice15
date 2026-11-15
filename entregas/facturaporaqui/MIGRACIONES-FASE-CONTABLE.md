@@ -437,7 +437,10 @@ inflados.
    cambiar nada, `desplegar.sh` se detiene con la versión publicada atendiendo, borra al salir la carpeta de la versión
    que no activó y se repite el despliegue (ver «Por qué 0009»). Esa carpeta se queda solo en una primera instalación,
    sin `current`. Antes del arreglo (`4f9987f`) se quedaba siempre, y `--revertir` la tomaba por la versión anterior:
-   ensayo, 0009-B. Lo vigila `tests/test_desplegar_releases.py`.
+   ensayo, 0009-B. Si al salir un proceso aún trabaja dentro, la carpeta no se borra: se aparta como
+   `releases/.no-activa-<nombre>` (ni `--revertir` ni la limpieza la ven) y se borra a mano cuando termine. Un `kill` al
+   script espera a que termine la orden en curso (`migrate`, `collectstatic`) antes de limpiar. Lo vigila
+   `tests/test_desplegar_releases.py`.
 2. Deshacer migraciones solo con la aplicación detenida o en mantenimiento, sin escrituras, y con `lock_timeout` corto
    (2 a 5 s, en `PGOPTIONS`) y reintento: con tráfico, la vuelta puede interbloquearse con una escritura (D3). Toda vuelta
    del bloque por debajo de 0007 o de 0004 borra lotes o cuentas con sus datos: con datos registrados no se deshace, se
