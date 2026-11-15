@@ -24,8 +24,13 @@ Sin duplicados ni cambios pisados:
 - cada cambio sube `version`. Quien edita manda la que leyó; si ya no es la vigente, 409 `version` con la cuenta actual.
 
 Concurrencia: toda escritura del plan de una empresa pasa por `serializar(empresa)` y, además, bloquea la fila que cambia
-y la del padre bajo el que cuelga algo. Lo que depende del libro (tipo, activa, clase y auxiliar) toma antes el candado del
-libro si la empresa tiene inicio contable (paso 1 del orden de bloqueos, decisión común 4): así no se cruza con un asiento
+y la del padre bajo el que cuelga algo. Las que bloquean más de una cuenta (`modificar`: la cuenta y después el padre; la
+importación: todas) toman las que cambian con FOR NO KEY UPDATE, que excluye a cualquier otro escritor de la cuenta pero no
+el FOR KEY SHARE con que PostgreSQL comprueba, al confirmar, las FK diferidas de las filas nuevas que apuntan a ella (líneas
+de un asiento o de la apertura, acumulados): así no retienen una cuenta que el libro necesita mientras esperan otra (C2A-1).
+El padre (`_grupo_bloqueado`) y la cuenta que se clasifica siguen con FOR UPDATE: son la última cuenta que se bloquea y solo
+pueden hacer esperar. Lo que depende del libro (tipo, activa, clase y auxiliar) toma antes el candado del libro si la
+empresa tiene inicio contable (paso 1 del orden de bloqueos, decisión común 4): así no se cruza con un asiento
 que se contabiliza ni con una apertura que se confirma. La cola por empresa es lo que impide el ciclo cruzado (A bajo una hija de B
 mientras B pasa bajo una hija de A: cada movimiento, mirado solo, es válido); las filas bloqueadas y las restricciones
 únicas siguen valiendo para quien escriba sin pasar por ella.
@@ -459,7 +464,11 @@ def modificar(request, pk, datos):
         if any(campo in datos for campo in CON_EL_LIBRO):
             candado.tomar_si_existe()   # antes que la cola del plan y que la cuenta (orden global de bloqueos)
         serializar(request.company)
-        cuenta = Cuenta.objects.select_for_update().filter(pk=pk).first()
+        # FOR NO KEY UPDATE: un cambio de la cuenta nunca toca lo que es clave (id, código), así que no excluye el FOR KEY
+        # SHARE con que una línea nueva apunta a ella. Con FOR UPDATE, moverla bajo una cuenta a la que un asiento o una
+        # apertura apuntaban antes que a esta cerraba un interbloqueo: el cambio esperaba al libro por el padre y el libro
+        # al cambio por esta cuenta.
+        cuenta = Cuenta.objects.select_for_update(no_key=True).filter(pk=pk).first()
         if cuenta is None:
             raise api.ErrorApi('cuenta', TEXTOS['cuenta'], 404)
         errores = api.Errores()
