@@ -16,7 +16,9 @@ mitad; aceptaciones 1, 2, 7, 8 y 10 de C6-A §8): core/contabilidad/apertura.py 
   devolver con su historia; sin saldos (sin asiento); historial; corte futuro; solapamiento; período cerrado; el inicio
   contable sincronizado; incompletos aceptados línea por línea; ámbitos congelados; una confirmada no se edita; el diario
   posterior al corte sigue provisional (`motor_pendiente`); confirmar no toca stock, cartera ni kardex; 5 000 líneas sin
-  consultas por línea.
+  consultas por línea;
+- el detalle de cada línea es el auxiliar que su cuenta declara mientras la apertura se prepara (también si la cuenta
+  cambia en revisión, en los dos sentidos, o contradice un ámbito declarado «no aplica») y confirmar lo fija.
 
 La seguridad por filas y las confirmaciones simultáneas van en tests/test_zz_apertura_concurrencia_pg.py. Datos ficticios."""
 import json
@@ -40,8 +42,8 @@ from core.tenancy.models import (ROLE_ACCOUNTANT, ROLE_ADMIN, ROLE_CLIENT, ROLE_
 from tests import ayudas_contables as ayudas
 from tests import helpers
 from tests import test_emision_sri as emision_sri
-from tests.test_apertura_preparar import (API, acciones, balance, creada, en, entrar_como, eventos, leer, linea, mapeada,
-                                          plan_grande, rechazo, vencer)
+from tests.test_apertura_preparar import (API, CAPACIDADES, acciones, balance, creada, en, entrar_como, eventos, leer, linea,
+                                          mapeada, plan_grande, rechazo, vencer)
 from tests.test_apertura_preparar import cuentas, web   # noqa: F401 - fixtures
 from tests.test_apertura_preparar import enviar as envio
 from tests.test_emision_sri import p12, sri   # noqa: F401 - fixtures de la aceptación 10
@@ -115,6 +117,16 @@ def mitad_de_anio(cuentas, *extra):
     """Corte 30/06 con 1 000 de resultado en cuentas nominales: ventas 3 000 al haber y gastos 2 000 al debe."""
     return [linea(cuentas['caja'], '6000.00'), linea(cuentas['capital'], None, '5000.00'),
             linea(cuentas['ventas'], None, '3000.00'), linea(cuentas['gastos_generales'], '2000.00'), *extra]
+
+
+def cambiar_auxiliar(client, empresa, cuenta, auxiliar):
+    """PATCH /contabilidad/api/cuentas/<id>/ con el auxiliar (cuentas.modificar lo permite mientras la cuenta no tenga
+    auxiliares vigentes ni líneas de asiento con tercero: también con la apertura en revisión)."""
+    version = en(empresa, lambda: Cuenta.objects.get(pk=cuenta.pk).version)
+    respuesta = envio(client, f'/contabilidad/api/cuentas/{cuenta.pk}/', empresa, {'version': version, 'auxiliar': auxiliar},
+                      'patch')
+    assert respuesta.status_code == 200, respuesta.content
+    assert en(empresa, lambda: Cuenta.objects.get(pk=cuenta.pk).auxiliar) == auxiliar
 
 
 def conteos_de_la_operacion(empresa):
@@ -366,6 +378,107 @@ class TestAdvertencias:
         # una cuenta de un documento posterior al corte no cuenta
         en(empresa, lambda: Sale.objects.filter(pk=venta.pk).update(emission_date=date(2026, 1, 2)))
         assert 'cartera_operativa_anterior_al_corte' not in codigos(validar(web, empresa, apertura)['advertencias'])
+
+
+# ---------------------------------------------------------------- el detalle de cada línea es el de su cuenta
+
+class TestDetalleDeLaCuenta:
+    """B2-AP-1: `detalle` es la copia de `cuenta.auxiliar` tomada al mapear, y el auxiliar de la cuenta puede cambiar después
+    (cuentas.modificar lo permite sin auxiliares vigentes ni líneas con tercero), también con la apertura en revisión.
+    Mientras se prepara, validar, enviar, confirmar, la cobertura, la lista de líneas, el PATCH de los ámbitos y el aviso
+    del registro miran la cuenta; confirmar fija la copia con el candado tomado. Antes se confirmaba con la copia vieja:
+    sin aceptar una línea cuya cuenta declara detalle, o pidiendo aceptar una que ya no lo declara."""
+
+    def test_la_cuenta_declara_auxiliar_en_revision(self, web, empresa, cuentas):
+        apertura = enviada(web, empresa, balance(cuentas))
+        caja = ids_de_lineas(empresa, apertura, cuentas['caja'])[0]
+        cambiar_auxiliar(web, empresa, cuentas['caja'], 'cliente')
+        datos = validar(web, empresa, apertura)
+        assert {'codigo': 'auxiliar_incompleto', 'texto': TV['detalle_incompleto'].format(
+            codigo='1.1.01', detallado='0.00', importe='10000.00'), 'linea_id': caja} in datos['advertencias']
+        sin_cuenta = [a['ambito'] for a in datos['advertencias'] if a['codigo'] == 'sin_cuenta_declarada']
+        assert 'clientes' not in sin_cuenta
+        clientes = {'estado': 'pendiente', 'cuenta': '10000.00', 'detallado': '0.00', 'documentos': 0}
+        assert datos['cobertura']['cartera']['clientes'] == clientes
+        # para confirmar hay que aceptarla (contrato §6.5, regla 8)
+        assert rechazo(confirmar(web, empresa, apertura), 409, 'auxiliar_incompleto')['lineas'] == [caja]
+        datos = confirmada(web, empresa, apertura, aceptadas=[caja])
+        guardada = en(empresa, lambda: LineaApertura.objects.get(pk=caja))
+        assert (guardada.detalle, guardada.incompleto_aceptado) == ('cliente', True)
+        assert datos['cobertura']['contabilidad']['estado'] == 'parcial'
+        assert datos['cobertura']['cartera']['clientes'] == clientes
+        confirmacion = en(empresa, lambda: EventoApertura.objects.get(apertura_id=apertura['id'], accion='confirmada').detalle)
+        assert confirmacion['detalle_fijado'] == [{'linea_id': caja, 'anterior': '', 'nuevo': 'cliente'}]
+        assert confirmacion['incompletos_aceptados'] == [caja]
+
+    def test_la_cuenta_deja_de_declarar_auxiliar_en_revision(self, web, empresa, cuentas):
+        apertura = enviada(web, empresa, [linea(cuentas['clientes'], '10000.00'), linea(cuentas['capital'], None, '10000.00')])
+        clientes = ids_de_lineas(empresa, apertura, cuentas['clientes'])[0]
+        cambiar_auxiliar(web, empresa, cuentas['clientes'], '')
+        assert 'auxiliar_incompleto' not in codigos(validar(web, empresa, apertura)['advertencias'])
+        cuerpo = rechazo(confirmar(web, empresa, apertura, aceptadas=[clientes]), 409, 'auxiliar_incompleto')
+        assert (cuerpo['lineas'], cuerpo['sobran']) == ([], [clientes])
+        datos = confirmada(web, empresa, apertura)
+        guardada = en(empresa, lambda: LineaApertura.objects.get(pk=clientes))
+        assert (guardada.detalle, guardada.incompleto_aceptado) == ('', False)
+        assert datos['cobertura']['contabilidad']['estado'] == 'conciliada'
+        assert datos['cobertura']['cartera']['clientes'] == {'estado': 'pendiente', 'cuenta': None, 'detallado': None,
+                                                              'documentos': 0}
+        assert en(empresa, lambda: EventoApertura.objects.get(apertura_id=apertura['id'], accion='confirmada').detalle)[
+            'detalle_fijado'] == [{'linea_id': clientes, 'anterior': 'cliente', 'nuevo': ''}]
+
+    def test_el_ambito_que_no_aplica_y_la_cuenta_que_lo_contradice(self, web, empresa, cuentas):
+        apertura = enviada(web, empresa, balance(cuentas), cambios={'ambitos_no_aplican': [
+            {'ambito': 'clientes', 'nota': 'No vende a crédito.'}]})
+        caja = ids_de_lineas(empresa, apertura, cuentas['caja'])[0]
+        cambiar_auxiliar(web, empresa, cuentas['caja'], 'cliente')
+        bloqueo = {'codigo': 'cuenta_no_aplica', 'texto': TV['cuenta_no_aplica'].format(n=1, ambitos='clientes'),
+                   'lineas': [caja], 'ambitos': ['clientes']}
+        assert validar(web, empresa, apertura)['bloqueos'] == [bloqueo]
+        cuerpo = rechazo(confirmar(web, empresa, apertura, aceptadas=[caja]), 409, 'cuenta_no_aplica')
+        assert (cuerpo['lineas'], cuerpo['ambitos'], codigos(cuerpo['bloqueos'])) == ([caja], ['clientes'], ['cuenta_no_aplica'])
+        assert asientos(empresa) == []
+        assert en(empresa, lambda: Apertura.objects.get(pk=apertura['id']).ambitos_no_aplican) == [
+            {'ambito': 'clientes', 'nota': 'No vende a crédito.'}]   # nada congelado
+        # sin el auxiliar, la declaración vale y se confirma
+        cambiar_auxiliar(web, empresa, cuentas['caja'], '')
+        datos = confirmada(web, empresa, apertura)
+        assert datos['cobertura']['cartera']['clientes']['estado'] == 'no_aplica'
+
+    def test_en_borrador_sin_volver_a_mapear(self, web, empresa, cuentas):
+        apertura = preparada(web, empresa, balance(cuentas))
+        caja = ids_de_lineas(empresa, apertura, cuentas['caja'])[0]
+        cambiar_auxiliar(web, empresa, cuentas['caja'], 'cliente')
+        # el PATCH de los ámbitos mira la cuenta, como mapear
+        no_aplica = {'version': apertura['version'], 'ambitos_no_aplican': [{'ambito': 'clientes', 'nota': 'No aplica.'}]}
+        assert rechazo(envio(web, f'{API}{apertura["id"]}/', empresa, no_aplica, 'patch'), 400, 'validacion')['errores'] == {
+            'ambitos_no_aplican.0.ambito': [servicio.TEXTOS['ambito_con_cuentas']]}
+        # la lista de líneas, la cobertura de la empresa y el aviso del registro, también
+        lista = {l['id']: l for l in leer(web, f'{API}{apertura["id"]}/lineas/', empresa)['lineas']}
+        assert (lista[caja]['detalle'], lista[caja]['auxiliares']['estado']) == ('cliente', 'sin_detalle')
+        assert leer(web, API, empresa)['cobertura']['cartera']['clientes'] == {
+            'estado': 'pendiente', 'cuenta': '10000.00', 'detallado': '0.00', 'documentos': 0}
+        avisos = {a['codigo']: a for a in web.get(CAPACIDADES).json()['funciones']['apertura']['avisos']}
+        assert avisos['auxiliares_incompletos']['cantidad'] == 1
+        # declarado antes de que la cuenta cambie: enviar lo bloquea
+        cambiar_auxiliar(web, empresa, cuentas['caja'], '')
+        assert envio(web, f'{API}{apertura["id"]}/', empresa, no_aplica, 'patch').status_code == 200
+        cambiar_auxiliar(web, empresa, cuentas['caja'], 'cliente')
+        cuerpo = rechazo(accion(web, empresa, apertura, 'enviar', version=apertura['version'] + 1), 409, 'cuenta_no_aplica')
+        assert cuerpo['lineas'] == [caja]
+        assert en(empresa, lambda: LineaApertura.objects.get(pk=caja).detalle) == ''   # validar y enviar no escriben
+
+    def test_confirmada_vale_lo_que_se_fijo(self, web, empresa, cuentas):
+        """Después de confirmar, la Parte A deja cambiar el auxiliar (sin auxiliares vigentes): la apertura confirmada no
+        cambia, y su lista de líneas y su cobertura siguen con el detalle fijado al confirmar."""
+        apertura = enviada(web, empresa, balance(cuentas))
+        confirmada(web, empresa, apertura)
+        caja = ids_de_lineas(empresa, apertura, cuentas['caja'])[0]
+        cambiar_auxiliar(web, empresa, cuentas['caja'], 'cliente')
+        lista = {l['id']: l for l in leer(web, f'{API}{apertura["id"]}/lineas/', empresa)['lineas']}
+        assert (lista[caja]['detalle'], lista[caja]['auxiliares']['estado']) == ('', 'sin_declarar')
+        assert leer(web, API, empresa)['cobertura']['cartera']['clientes']['cuenta'] is None
+        assert 'auxiliares_incompletos' not in {a['codigo'] for a in web.get(CAPACIDADES).json()['funciones']['apertura']['avisos']}
 
 
 # ---------------------------------------------------------------- aceptación 7: el resultado del ejercicio

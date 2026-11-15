@@ -51,7 +51,8 @@ TIPOS = tuple(tipo for tipo, _ in TIPOS_CUENTA)
 CLASES = tuple(clase for clase, _ in CLASES_CUENTA)            # con '' (sin clase)
 AUXILIARES = tuple(auxiliar for auxiliar, _ in AUXILIARES_CUENTA)
 BALANCE, RESULTADOS = ('activo', 'pasivo', 'patrimonio'), ('ingreso', 'costo', 'gasto')
-# Lo que cambia algo que el libro ya usó: con inicio contable, va con el candado del libro.
+# Lo que cambia algo que el libro ya usó: con inicio contable, va con el candado del libro. `auxiliar` también por la
+# apertura: confirmarla lee el auxiliar de cada cuenta y lo fija en sus líneas con el candado tomado (apertura._fijar_detalle).
 CON_EL_LIBRO = ('tipo', 'activa', 'clase', 'auxiliar')
 BLOQUEO_PLAN = 0x43544153   # 'CTAS': clase del bloqueo consultivo de PostgreSQL que pone en cola las escrituras por empresa
 BUSQUEDA_MAX = 200

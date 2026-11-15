@@ -26,10 +26,10 @@ por línea y una de los meses declarados."""
 from collections import defaultdict
 from decimal import Decimal
 
-from django.db.models import Count, Sum
+from django.db.models import Count, F, Sum
 
 from core.contabilidad import reportes
-from core.contabilidad.modelos_apertura import AMBITOS, VIGENTE
+from core.contabilidad.modelos_apertura import AMBITOS, EN_PREPARACION, VIGENTE
 from core.contabilidad.models import AuxiliarApertura, CoberturaPeriodo, LineaApertura
 
 PENDIENTE, PARCIAL, CONCILIADA, NO_APLICA, SIN_COBERTURA = 'pendiente', 'parcial', 'conciliada', 'no_aplica', 'sin_cobertura'
@@ -37,6 +37,7 @@ CERO = Decimal('0')
 # Ámbito de la apertura que puede declararse «no aplica» → el `detalle` (Cuenta.auxiliar) de sus líneas.
 DETALLE_DE = {'clientes': 'cliente', 'proveedores': 'proveedor', 'inventario': 'inventario', 'bancos': 'banco',
               'activos': 'activo', 'tributario': 'tributario'}
+AMBITO_DE = {detalle: ambito for ambito, detalle in DETALLE_DE.items()}
 AMBITOS_DECLARABLES = tuple(DETALLE_DE)
 NOMBRE = {'clientes': 'clientes', 'proveedores': 'proveedores', 'inventario': 'inventario', 'bancos': 'bancos',
           'activos': 'activos fijos', 'tributario': 'saldos tributarios'}
@@ -81,18 +82,30 @@ def importe_de(debe, haber):
     return debe if debe > 0 else haber
 
 
+def con_detalle(lineas, en_preparacion):
+    """De las líneas (`LineaApertura` filtradas), las que llevan detalle, con él anotado en `detalle_vigente`. En una
+    apertura en preparación es el auxiliar que su cuenta declara ahora: `detalle` es la copia tomada al mapear y la cuenta
+    puede cambiar de auxiliar después, también en revisión. Confirmada, la copia, que confirmar fijó con el candado. Sin
+    consultas: un filtro y una anotación sobre la misma consulta (con la cuenta unida en preparación)."""
+    if en_preparacion:
+        return lineas.filter(cuenta__isnull=False).exclude(cuenta__auxiliar='').annotate(detalle_vigente=F('cuenta__auxiliar'))
+    return lineas.exclude(detalle='').annotate(detalle_vigente=F('detalle'))
+
+
 def _lineas_con_detalle(apertura):
-    """Por detalle: las líneas (no retiradas) de la apertura con su saldo y lo detallado de cada una."""
+    """Por detalle: las líneas (no retiradas) de la apertura con su saldo y lo detallado de cada una (el detalle de
+    `con_detalle`)."""
     if apertura is None:
         return {}
-    lineas = list(LineaApertura.objects.filter(apertura=apertura, retirada=False).exclude(detalle='')
-                  .values('id', 'detalle', 'debe', 'haber', 'incompleto_aceptado'))
+    lineas = list(con_detalle(LineaApertura.objects.filter(apertura=apertura, retirada=False),
+                              apertura.estado in EN_PREPARACION)
+                  .values('id', 'detalle_vigente', 'debe', 'haber', 'incompleto_aceptado'))
     detallado = {fila['linea']: fila for fila in AuxiliarApertura.objects.filter(apertura=apertura, estado=VIGENTE)
                  .values('linea').annotate(total=Sum('saldo_inicial'), filas=Count('id')).order_by()}
     por_detalle = defaultdict(list)
     for linea in lineas:
         aux = detallado.get(linea['id'], {})
-        por_detalle[linea['detalle']].append((importe_de(linea['debe'], linea['haber']), aux.get('total') or CERO,
+        por_detalle[linea['detalle_vigente']].append((importe_de(linea['debe'], linea['haber']), aux.get('total') or CERO,
                                               aux.get('filas', 0)))
     return por_detalle
 

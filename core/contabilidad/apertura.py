@@ -10,7 +10,9 @@ Estados: `borrador → en_revision → confirmada → sustituida | reversada`, `
 Reglas de las líneas (regla 4):
 
 - una línea es una cuenta de movimiento activa de la empresa, con un solo lado mayor que cero o los dos nulos
-  (desconocido: nunca cero). `detalle` es la copia de `cuenta.auxiliar` al escribir la línea;
+  (desconocido: nunca cero). `detalle` es la copia de `cuenta.auxiliar` al escribir la línea; como la cuenta puede
+  cambiar de auxiliar después, en preparación vale el que declara ahora (validar, enviar, confirmar, la cobertura, la
+  lista de líneas y el PATCH de los ámbitos lo leen de la cuenta) y confirmar fija la copia con el candado tomado;
 - dos filas de la fuente hacia la misma cuenta se suman solo con `agrupar` (quedan en `filas_origen`); una fila de subtotal
   se omite solo con `omitir` y su motivo; un PDF respalda, nunca alimenta líneas;
 - las líneas no se borran: mapear concilia el conjunto enviado con el que ya existe por `cuenta_id` (alta de las nuevas,
@@ -24,6 +26,7 @@ cambia la configuración (crear, mover el corte) toma antes el candado del libro
 de bloqueos de la decisión común 4: candado → apertura → auxiliares. Negativas en el orden de la decisión común 6: permiso
 → datos por completar → clave → versión → estado → conflicto → validación."""
 import hashlib
+from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -373,10 +376,20 @@ def detallado_por_linea(apertura):
         apertura=apertura, estado=VIGENTE).values('linea').annotate(total=Sum('saldo_inicial'), filas=Count('id')).order_by()}
 
 
-def estado_auxiliares(linea, detallado, filas):
+def detalle_de(linea, en_preparacion):
+    """El detalle que vale para la línea (con su cuenta ya leída). En preparación, el auxiliar que su cuenta declara ahora:
+    `detalle` es la copia tomada al mapear y la cuenta puede cambiar después, también en revisión (cuentas.modificar); al
+    confirmar, la copia se fija con el candado tomado (`_fijar_detalle`) y desde entonces vale ella."""
+    if not en_preparacion:
+        return linea.detalle
+    return linea.cuenta.auxiliar if linea.cuenta is not None else ''
+
+
+def estado_auxiliares(linea, detallado, filas, detalle_):
     """`sin_declarar` (la cuenta no declara auxiliar: no es «no aplica»), `sin_detalle`, `incompleto`, `conciliada` o,
-    si el detalle suma más que la línea, `no_concilia` (bloquea al validar: `auxiliar_no_concilia`)."""
-    if not linea.detalle:
+    si el detalle suma más que la línea, `no_concilia` (bloquea al validar: `auxiliar_no_concilia`). `detalle_`: el de
+    `detalle_de`."""
+    if not detalle_:
         return 'sin_declarar'
     if not filas:
         return 'sin_detalle'
@@ -386,26 +399,29 @@ def estado_auxiliares(linea, detallado, filas):
     return 'conciliada' if detallado == importe else 'no_concilia'
 
 
-def dict_linea(linea, detallado):
+def dict_linea(linea, detallado, en_preparacion):
     total, filas = detallado.get(linea.pk, (CERO, 0))
     cuenta = linea.cuenta
+    detalle_ = detalle_de(linea, en_preparacion)
     return {'id': linea.pk, 'orden': linea.orden,
             'cuenta': {'id': cuenta.pk, 'codigo': cuenta.codigo, 'nombre': cuenta.nombre, 'clase': cuenta.clase}
             if cuenta is not None else None,
             'rubro': linea.rubro_origen, 'codigo_origen': linea.codigo_origen, 'debe': importe_texto(linea.debe),
-            'haber': importe_texto(linea.haber), 'detalle': linea.detalle, 'es_resultado_ejercicio': linea.es_resultado_ejercicio,
+            'haber': importe_texto(linea.haber), 'detalle': detalle_, 'es_resultado_ejercicio': linea.es_resultado_ejercicio,
             'retirada': linea.retirada,
-            'auxiliares': {'estado': estado_auxiliares(linea, total, filas), 'detallado': importe_texto(total), 'filas': filas},
+            'auxiliares': {'estado': estado_auxiliares(linea, total, filas, detalle_), 'detallado': importe_texto(total),
+                           'filas': filas},
             'filas_origen': linea.filas_origen}
 
 
 def lineas(apertura, desde=0, hasta=None):
     """Las líneas de la apertura (también las retiradas) por orden, de `desde` a `hasta`: una consulta para las líneas con
-    su cuenta y otra para lo detallado."""
+    su cuenta y otra para lo detallado. `detalle` es el de `detalle_de`."""
     consulta = LineaApertura.objects.filter(apertura=apertura).select_related('cuenta').order_by('orden')
     filas = list(consulta[desde:hasta] if hasta is not None else consulta[desde:])
     detallado = detallado_por_linea(apertura) if filas else {}
-    return [dict_linea(linea, detallado) for linea in filas]
+    en_preparacion = apertura.estado in EN_PREPARACION
+    return [dict_linea(linea, detallado, en_preparacion) for linea in filas]
 
 
 def historial(apertura):
@@ -603,12 +619,12 @@ def crear(request, datos):
 
 def _ambitos_no_aplican(apertura, valor, errores):
     """La declaración `[{ambito, nota}]`: ámbito conocido y sin repetir, nota obligatoria, y ningún ámbito con cuentas de
-    ese detalle en la apertura (una consulta)."""
+    ese detalle en la apertura (una consulta: el auxiliar que declaran ahora las cuentas de sus líneas, cobertura.con_detalle)."""
     if not isinstance(valor, list):
         errores.agregar('ambitos_no_aplican', TEXTOS['ambitos'])
         return None
-    con_cuentas = set(LineaApertura.objects.filter(apertura=apertura, retirada=False).exclude(detalle='')
-                      .values_list('detalle', flat=True).distinct())
+    con_cuentas = set(cobertura.con_detalle(LineaApertura.objects.filter(apertura=apertura, retirada=False), True)
+                      .order_by().values_list('detalle_vigente', flat=True).distinct())
     limpios, vistos = [], set()
     for i, declarado in enumerate(valor):
         prefijo = f'ambitos_no_aplican.{i}'
@@ -1080,8 +1096,9 @@ def anular_respaldo(request, pk, datos):
 #
 # Reglas 5 a 8 de la Parte B. `evaluar` es la única que decide si una apertura se puede enviar o confirmar: validar la
 # muestra, enviar la exige sin bloqueos y confirmar la repite con el candado del libro tomado. Solo lee, con consultas
-# agregadas: una de líneas (con la clase y el tipo de su cuenta), una de auxiliares por línea, dos de solapamiento, una de
-# períodos cerrados, una por tipo de vínculo (solo si hay auxiliares) y dos de la cartera operativa anterior al corte.
+# agregadas: una de líneas (con la clase, el tipo y el auxiliar de su cuenta), una de auxiliares por línea, dos de
+# solapamiento, una de períodos cerrados, una por tipo de vínculo (solo si hay auxiliares) y dos de la cartera operativa
+# anterior al corte.
 
 NOMINALES = ('ingreso', 'costo', 'gasto')   # las cuentas cuyo saldo es el resultado del ejercicio en curso al corte
 EN_CUENTAS_NOMINALES, EN_PATRIMONIO, NO_APLICA = 'en_cuentas_nominales', 'en_patrimonio', 'no_aplica'
@@ -1089,11 +1106,14 @@ NOTA_REVISION_MAX = 500
 # Regla 5: el orden de los bloqueos (el primero da el `codigo` de la respuesta). `sin_saldos_con_lineas` no está en la
 # especificación (una declaración «sin saldos» con líneas se contradice: no se ignora ninguna de las dos). Los dos de la
 # Parte C que todavía no tienen con qué darse en este corte (sin rutas de auxiliares), `auxiliar_duplica_operativo` y
-# `saldo_inicial_posterior`, los añade el corte 2 en su lugar de esta lista.
+# `saldo_inicial_posterior`, los añade el corte 2 en su lugar de esta lista. Tampoco está en la especificación
+# `cuenta_no_aplica` (el ámbito que se declaró «no aplica» tiene una cuenta de ese detalle en la apertura: la cuenta cambió
+# de auxiliar después de mapear; va donde mapear lo comprueba, tras la cuenta inactiva).
 ORDEN_BLOQUEOS = ('sin_lineas', 'sin_saldos_con_lineas', 'cuenta_sin_mapear', 'cuenta_de_grupo', 'cuenta_inactiva',
-                  'importe_pendiente', 'cuenta_sin_clase', 'apertura_desbalanceada', 'auxiliar_no_concilia',
-                  'auxiliar_duplica_operativo', 'vinculo_roto', 'auxiliar_incompleto', 'saldo_inicial_posterior',
-                  'resultado_sin_declarar', 'resultado_duplicado', 'rango_solapado', 'periodo_cerrado', 'fecha_corte_futura')
+                  'cuenta_no_aplica', 'importe_pendiente', 'cuenta_sin_clase', 'apertura_desbalanceada',
+                  'auxiliar_no_concilia', 'auxiliar_duplica_operativo', 'vinculo_roto', 'auxiliar_incompleto',
+                  'saldo_inicial_posterior', 'resultado_sin_declarar', 'resultado_duplicado', 'rango_solapado',
+                  'periodo_cerrado', 'fecha_corte_futura')
 # Los reportes que validar describe (C6-A §6: «cobertura por reporte»), con lo que necesitan de la apertura.
 REPORTES = (
     ('estado_situacion', 'La apertura confirmada y los movimientos posteriores al corte contabilizados.'),
@@ -1111,6 +1131,8 @@ TEXTOS_VALIDACION = {
     'cuenta_sin_mapear': '{n} línea(s) no tienen cuenta: elige la cuenta de movimiento de cada una.',
     'cuenta_de_grupo': '{n} línea(s) van a una cuenta de grupo: una cuenta de grupo no recibe saldos.',
     'cuenta_inactiva': '{n} línea(s) van a una cuenta desactivada.',
+    'cuenta_no_aplica': '{n} línea(s) van a una cuenta con detalle de {ambitos}, y la apertura declara que ese detalle no '
+                        'aplica: quita la declaración o el auxiliar de la cuenta.',
     'importe_pendiente': 'El saldo de {n} línea(s) está pendiente: escríbelo desde la fuente (no se supone cero).',
     'cuenta_sin_clase': '{n} cuenta(s) de la apertura no tienen clase (activo, pasivo, patrimonio, ingreso, costo o gasto): '
                         'decláralas en el plan de cuentas.',
@@ -1168,10 +1190,15 @@ class Evaluacion:
 
 
 def _lineas_a_validar(apertura):
-    """Las líneas no retiradas, por orden, con lo que la validación mira de su cuenta: una consulta."""
-    return list(LineaApertura.objects.filter(apertura=apertura, retirada=False).order_by('orden').values(
+    """Las líneas no retiradas, por orden, con lo que la validación mira de su cuenta: una consulta. Como la clase, el
+    detalle se lee de la cuenta: `detalle` es el auxiliar que declara ahora (la copia de la línea se toma al mapear y la
+    cuenta puede cambiar después, también en revisión) y `copia` lo que la línea guardó, que confirmar pone al día."""
+    filas = list(LineaApertura.objects.filter(apertura=apertura, retirada=False).order_by('orden').values(
         'id', 'orden', 'cuenta_id', 'debe', 'haber', 'detalle', 'es_resultado_ejercicio', 'incompleto_aceptado',
-        'rubro_origen', 'cuenta__codigo', 'cuenta__tipo', 'cuenta__activa', 'cuenta__clase'))
+        'rubro_origen', 'cuenta__codigo', 'cuenta__tipo', 'cuenta__activa', 'cuenta__clase', 'cuenta__auxiliar'))
+    for f in filas:
+        f['copia'], f['detalle'] = f['detalle'], f.pop('cuenta__auxiliar') or ''
+    return filas
 
 
 def _auxiliares_por_linea(apertura):
@@ -1236,6 +1263,15 @@ def evaluar(apertura, inicio, *, al_confirmar=False, aceptadas=(), nota=''):
     de_lineas('cuenta_sin_mapear', [f['id'] for f in filas if f['cuenta_id'] is None])
     de_lineas('cuenta_de_grupo', [f['id'] for f in con_cuenta if f['cuenta__tipo'] != 'movimiento'])
     de_lineas('cuenta_inactiva', [f['id'] for f in con_cuenta if f['cuenta__tipo'] == 'movimiento' and not f['cuenta__activa']])
+    # Lo que mapear y el PATCH de los ámbitos rechazan, comprobado otra vez: la cuenta pudo recibir después el auxiliar de
+    # un ámbito que la apertura declara «no aplica».
+    no_aplican = no_aplican_de(apertura)
+    contradichas = [f for f in con_cuenta if f['detalle'] and cobertura.AMBITO_DE.get(f['detalle']) in no_aplican]
+    if contradichas:
+        ambitos = sorted({cobertura.AMBITO_DE[f['detalle']] for f in contradichas})
+        bloqueo('cuenta_no_aplica', TEXTOS_VALIDACION['cuenta_no_aplica'].format(
+            n=len(contradichas), ambitos=', '.join(cobertura.NOMBRE[a] for a in ambitos)),
+            lineas=[f['id'] for f in contradichas], ambitos=ambitos)
     pendientes = [f['id'] for f in filas if f['debe'] is None or f['haber'] is None]
     de_lineas('importe_pendiente', pendientes)
     sin_clase = [f['id'] for f in con_cuenta if not f['cuenta__clase']]
@@ -1515,6 +1551,22 @@ def _asiento_de_apertura(request, apertura, evaluacion):
         origen=('apertura', apertura.pk, 'confirmacion'), autor=inicio_contable.autor(request))
 
 
+def _fijar_detalle(filas):
+    """Paso 7 de confirmar: cada línea guarda en `detalle` el auxiliar de su cuenta con el que se acaba de validar (las
+    `filas` de evaluar). Mientras dura, el auxiliar no cambia: cuentas.modificar toma el mismo candado del libro antes de
+    cambiarlo (cuentas.CON_EL_LIBRO). Una sentencia por detalle distinto (como mucho siete), por tandas. Devuelve
+    `[{linea_id, anterior, nuevo}]` de las líneas cuya copia cambió."""
+    cambiadas = [{'linea_id': f['id'], 'anterior': f['copia'], 'nuevo': f['detalle']} for f in filas
+                 if f['copia'] != f['detalle']]
+    por_detalle = defaultdict(list)
+    for cambio in cambiadas:
+        por_detalle[cambio['nuevo']].append(cambio['linea_id'])
+    for detalle_, ids in por_detalle.items():
+        for desde in range(0, len(ids), lotes.TAMANO_LOTE):
+            LineaApertura.objects.filter(pk__in=ids[desde:desde + lotes.TAMANO_LOTE]).update(detalle=detalle_)
+    return cambiadas
+
+
 def _congelar_ambitos(apertura, por_nombre, ahora):
     """`ambitos_no_aplican` al confirmar: la declaración queda fija con quién la confirmó y cuándo (Parte C, regla 8)."""
     return [{**declarado, 'declarado_por': por_nombre, 'declarado_en': ahora.isoformat()}
@@ -1532,7 +1584,9 @@ def confirmar(request, pk, datos):
     4. revalida todo con el candado (409 con el primer código y la lista completa);
     5. la sustitución (Parte E) es del corte 2: aquí ninguna apertura sustituye a otra;
     6. el asiento inicial con diario.contabilizar (ninguno si la empresa empieza sin saldos);
-    7. los incompletos aceptados, línea por línea (sin auxiliares, en este corte, toda línea con detalle);
+    7. el `detalle` de cada línea, fijado con el auxiliar de su cuenta con que se validó (en preparación vale el de la
+       cuenta: `_lineas_a_validar`), y los incompletos aceptados, línea por línea (sin auxiliares, en este corte, toda línea
+       cuya cuenta declara auxiliar);
     8. la apertura confirmada (asiento, totales, revisión, confirmación, clave, ámbitos congelados, versión) y el inicio
        contable con su corte;
     9. su evento y la auditoría `apertura_confirmada` con el asiento.
@@ -1574,6 +1628,7 @@ def confirmar(request, pk, datos):
 
         _sincronizar_inicio(request, inicio, apertura)
         asiento = None if apertura.sin_saldos else _asiento_de_apertura(request, apertura, evaluacion)
+        detalle_fijado = _fijar_detalle(evaluacion.lineas)
         for desde in range(0, len(evaluacion.incompletas), lotes.TAMANO_LOTE):
             LineaApertura.objects.filter(pk__in=evaluacion.incompletas[desde:desde + lotes.TAMANO_LOTE]).update(
                 incompleto_aceptado=True)
@@ -1597,7 +1652,7 @@ def confirmar(request, pk, datos):
                         'haber': importe_texto(asiento.total_haber)} if asiento is not None else None)
         evento(request, apertura, 'confirmada', de_estado=EN_REVISION, a_estado=CONFIRMADA, detalle={
             'version': apertura.version, 'asiento': del_asiento, 'sin_saldos': apertura.sin_saldos,
-            'incompletos_aceptados': evaluacion.incompletas, 'nota': nota,
+            'incompletos_aceptados': evaluacion.incompletas, 'detalle_fijado': detalle_fijado, 'nota': nota,
             'advertencias': [a['codigo'] for a in evaluacion.advertencias]})
         audit(request, 'apertura_confirmada', company=request.company, apertura=apertura.pk, version=apertura.version,
               asiento=del_asiento, sin_saldos=apertura.sin_saldos, fecha_corte=apertura.fecha_corte.isoformat(),
