@@ -3591,10 +3591,15 @@ apertura lo revisó un escéptico. Registro en `/root/invoice15/contable/registr
   tabla de arriba).
 - El ensayo repetido sobre `72a68ee` (abajo, y MIGRACIONES) encontró además C2R-1 a C2R-3, de documento: corregidos.
 
-**Pruebas finales sobre el hash de cierre: las completa el orquestador.**
+**Pruebas finales sobre el hash de cierre (`7a5c567`; después solo hay documentos).**
 
-- SQLite, suite completa sobre `7a5c567`: _pendiente; lo completa el orquestador_.
-- PostgreSQL sobre `7a5c567`: _pendiente; lo completa el orquestador_.
+- SQLite, suite completa sobre `7a5c567` (copia fija `wt-c2c1-pruebas`), el 15/11/2026 de 14:57 a 15:43 UTC: **2645
+  aprobadas, 156 omitidas, 0 fallidas** (46 min, carga de 2,7 a 8,1). Registro:
+  `/root/invoice15/contable/registros/cierre-c2c1-sqlite-7a5c567.log`.
+- PostgreSQL con RLS sobre `7a5c567`, los 24 archivos del bloque y los guardianes (los 21 de siempre más
+  `test_apertura_textos.py`, `test_zz_claves_anteriores_pg.py` y `test_desplegar_releases.py`), el 15/11/2026 de 14:57
+  a 16:18 UTC: **963 aprobadas, 0 fallidas** (1 h 21 min). Registro:
+  `/root/invoice15/contable/registros/cierre-c2c1-pg-7a5c567.log`.
 - Ensayo de la decisión 18 repetido sobre `72a68ee` (0016 y el `desplegar.sh` nuevo; `7a5c567` no toca migraciones ni
   despliegue), **hecho el 15/11/2026** de 13:29 a 14:16 UTC, con `e0f2902` atendiendo y la máquina cargada (de 5,2 a
   10,3 con 6 núcleos): ida con tráfico bien al primer intento, 285 peticiones durante `migrate` y ninguna fallida, 0
