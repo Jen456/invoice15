@@ -12,7 +12,12 @@ que la primera instalación no escriba en la carpeta real de credenciales, y UV,
 Las órdenes que tocarían el sistema (systemctl, journalctl, curl, pg_dump, runuser, chown, install con dueño, sleep y
 la fecha que nombra cada carpeta) van simuladas en PATH; el `manage.py` de cada versión es un guion que falla en `migrate`
 mientras exista `migrate-falla`, como 0009 con `user_user` retenido. La salud es propiedad del código: la versión cuyo
-commit trae `salud-falla` responde 500 a /login/."""
+commit trae `salud-falla` responde 500 a /login/.
+
+C2E-3 (cierre del corte 1 del bloque 2): `migrate` va con `lock_timeout=5s` y se repite, hasta 3 intentos, solo si acaba
+por lock_timeout (55P03) o por un interbloqueo (40P01). Las marcas `migrate-bloqueo-luego-bien` (falla la primera vez),
+`migrate-bloqueo-siempre` y `migrate-otro-error` hacen que el `manage.py` simulado imprima la salida de un `migrate`
+real cortado (Django 5.2 con psycopg 3 y PostgreSQL 16, recortada a sus primeros marcos): la del archivo de la marca."""
 import os
 import shutil
 import stat
@@ -44,7 +49,7 @@ SIMULADAS = {
     # systemctl restart: «arranca» la versión a la que apunta current
     'systemctl': '[ "$1" = restart ] && readlink -f "$SIM_BASE/current" > "$SIM/ejecutando"\nexit 0',
     'journalctl': 'exit 0',
-    'sleep': 'exit 0',
+    'sleep': 'echo "$*" >> "$SIM/pausas"\nexit 0',
     'chown': 'exit 0',
     # /login/ responde 200 salvo que el código de la versión que se ejecuta traiga salud-falla
     'curl': 'v=$(cat "$SIM/ejecutando" 2>/dev/null || true)\n'
@@ -62,12 +67,56 @@ SIMULADAS = {
           'exit 0',
 }
 
+# Salida de `migrate` cortado: «  Applying …» por la salida normal y, en la misma línea, la traza encadenada por la de
+# errores, como la imprime Python al salir de manage.py. Cada excepción de la cadena es un argumento (con sus líneas de
+# DETAIL o HINT); la primera es la de la base y cada una es causa directa de la siguiente.
+TRAZA = r'''cortado() {
+  local migracion="$1" primera=1 excepcion; shift
+  printf '  Applying %s...' "$migracion"
+  for excepcion; do
+    [ -n "$primera" ] || printf '\nThe above exception was the direct cause of the following exception:\n\n' >&2
+    primera=
+    printf 'Traceback (most recent call last):\n  File "%s", line 103, in _execute\n' \
+      "$PWD/.venv/lib/python3.12/site-packages/django/db/backends/utils.py" >&2
+    printf '    return self.cursor.execute(sql)\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n%s\n' "$excepcion" >&2
+  done
+}
+error_de_migrate() {
+  local lock='canceling statement due to lock timeout'
+  local deadlock='deadlock detected
+DETAIL:  Process 3004752 waits for AccessExclusiveLock on relation 1977162 of database 1970226; blocked by process 3004.
+Process 3004 waits for AccessExclusiveLock on relation 1977159 of database 1970226; blocked by process 3004752.
+HINT:  See server log for query details.'
+  local statement='canceling statement due to statement timeout'
+  case "$1" in
+    LockNotAvailable) cortado contabilidad.0010_clases_de_cuenta "psycopg.errors.LockNotAvailable: $lock" \
+                        "django.db.utils.OperationalError: $lock" ;;
+    DeadlockDetected) cortado contabilidad.0011_libro_diario "psycopg.errors.DeadlockDetected: $deadlock" \
+                        "django.db.utils.OperationalError: $deadlock" ;;
+    statement_timeout) cortado contabilidad.0012_apertura "psycopg.errors.QueryCanceled: $statement" \
+                         "django.db.utils.OperationalError: $statement" ;;
+    0009) cortado contabilidad.0009_anular_autores_en_la_base "psycopg.errors.LockNotAvailable: $lock" \
+            "django.db.utils.OperationalError: $lock" \
+            "RuntimeError: contabilidad 0009: en 8 intentos de 1 s no se consiguió el bloqueo de user_user, que retiene\
+ otra transacción. No se cambió nada: repite \`migrate\` (o el despliegue), mejor con poco tráfico." ;;
+    *) exit 3 ;;
+  esac
+  exit 1
+}
+'''
+
 PYTHON = '''#!/bin/bash
 [ "$1" = manage.py ] || exit 2
 shift
 echo "$(basename "$PWD") $*" >> "$SIM/registro"
-case "$1" in
-  migrate) if [ -e "$SIM/migrate-lento" ]; then
+''' + TRAZA + '''case "$1" in
+  migrate) echo "migrate con PGOPTIONS=$PGOPTIONS" >> "$SIM/registro"
+           if [ -e "$SIM/migrate-bloqueo-luego-bien" ] && [ ! -e "$SIM/migrate-bloqueo-hecho" ]; then
+             touch "$SIM/migrate-bloqueo-hecho"; error_de_migrate "$(cat "$SIM/migrate-bloqueo-luego-bien")"
+           fi
+           [ -e "$SIM/migrate-bloqueo-siempre" ] && error_de_migrate "$(cat "$SIM/migrate-bloqueo-siempre")"
+           [ -e "$SIM/migrate-otro-error" ] && error_de_migrate "$(cat "$SIM/migrate-otro-error")"
+           if [ -e "$SIM/migrate-lento" ]; then
              echo "migrate empieza" >> "$SIM/registro"; /bin/sleep 2; echo "migrate termina" >> "$SIM/registro"
              [ -d "$PWD" ] && echo "su carpeta sigue" >> "$SIM/registro"
            fi
@@ -169,6 +218,23 @@ class Entorno:
     @property
     def ejecutando(self):
         return self.version((self.sim / 'ejecutando').read_text().strip())
+
+    def migrates(self):
+        """El PGOPTIONS de cada `migrate` simulado, en orden, de todos los despliegues de la prueba."""
+        registro = self.sim / 'registro'
+        lineas = registro.read_text().splitlines() if registro.exists() else []
+        return [linea.split('=', 1)[1] for linea in lineas if linea.startswith('migrate con PGOPTIONS=')]
+
+    def pausas(self):
+        pausas = self.sim / 'pausas'
+        return pausas.read_text().split() if pausas.exists() else []
+
+    def registro_de_migrate(self):
+        """La salida de `migrate` del último despliegue, en registros/ (fuera de releases/: queda aunque la versión se
+        borre). Comprueba que la carpeta solo la lee root."""
+        carpeta = self.base / 'registros'
+        assert stat.S_IMODE(carpeta.stat().st_mode) == 0o700
+        return sorted(carpeta.glob('migrate-*.log'))[-1]
 
 
 @pytest.fixture
@@ -318,3 +384,78 @@ def test_una_version_que_no_quedo_activa_y_aun_se_usa_se_aparta_sin_borrarla(ent
     bien(entorno, 'nueva')
     assert entorno.desplegar('--revertir').returncode == 0
     assert entorno.activa == entorno.ejecutando == 'publicada'
+
+
+CON_LOCK_TIMEOUT = '-c app.platform=on -c lock_timeout=5s'
+
+
+@pytest.mark.parametrize('error', ['LockNotAvailable', 'DeadlockDetected'])
+def test_migrate_que_no_consigue_un_bloqueo_se_repite_y_publica(entorno, error):
+    """C2E-3: migrate va con lock_timeout=5s y, si el primer intento acaba por lock_timeout (55P03) o por un
+    interbloqueo (40P01), se repite tras una pausa y el despliegue sigue y publica. Antes migrate iba sin lock_timeout
+    ni reintento: un fallo así paraba el despliegue. La salida de cada intento queda en registros/, sin la URL de la
+    base."""
+    bien(entorno, 'publicada')
+    antes = len(entorno.migrates())
+    (entorno.sim / 'migrate-bloqueo-luego-bien').write_text(error)
+    hecho = entorno.desplegar(entorno.commits['nueva'])
+    assert hecho.returncode == 0, hecho.salida
+    assert entorno.migrates()[antes:] == [CON_LOCK_TIMEOUT] * 2
+    assert entorno.pausas() == ['10']
+    assert 'se repite migrate en 10 s (intento 2 de 3)' in hecho.salida
+    assert 'migrate: bien en el intento 2 de 3' in hecho.salida and 'se borra' not in hecho.salida
+    assert f'psycopg.errors.{error}' in hecho.salida   # la salida de migrate también se ve
+    assert entorno.releases() == ['publicada', 'nueva'] and entorno.activa == entorno.ejecutando == 'nueva'
+    registro = entorno.registro_de_migrate()
+    assert str(registro) in hecho.salida
+    texto = registro.read_text()
+    assert texto.count('== intento ') == 2 and '== intento 2 de 3, lock_timeout=5s' in texto
+    migracion = {'LockNotAvailable': '0010_clases_de_cuenta', 'DeadlockDetected': '0011_libro_diario'}[error]
+    assert f'  Applying contabilidad.{migracion}...Traceback (most recent call last):\n' in texto
+    assert 'postgresql://' not in texto
+
+
+def test_migrate_que_nunca_consigue_el_bloqueo_agota_los_intentos_y_no_publica(entorno):
+    """C2E-3: si los tres intentos acaban por lock_timeout, el despliegue se detiene con un mensaje que dice cuántos
+    intentos hubo y qué hacer; la versión nueva se borra al salir y la publicada sigue activa y atendiendo, así que
+    --revertir después de un despliegue bueno vuelve a ella."""
+    bien(entorno, 'publicada')
+    antes = len(entorno.migrates())
+    (entorno.sim / 'migrate-bloqueo-siempre').write_text('LockNotAvailable')
+    hecho = entorno.desplegar(entorno.commits['nueva'])
+    assert hecho.returncode == 1, hecho.salida
+    assert entorno.migrates()[antes:] == [CON_LOCK_TIMEOUT] * 3
+    assert entorno.pausas() == ['10', '10']
+    assert 'FALLO de migrate: en los 3 intentos' in hecho.salida and 'pg_stat_activity' in hecho.salida
+    assert 'repite el despliegue' in hecho.salida
+    assert 'no quedó activa' in hecho.salida
+    assert entorno.releases() == ['publicada'] and entorno.activa == entorno.ejecutando == 'publicada'
+    registro = entorno.registro_de_migrate()
+    assert str(registro) in hecho.salida and registro.read_text().count('== intento ') == 3
+
+    (entorno.sim / 'migrate-bloqueo-siempre').unlink()
+    bien(entorno, 'nueva')
+    assert entorno.desplegar('--revertir').returncode == 0
+    assert entorno.activa == entorno.ejecutando == 'publicada'
+
+
+@pytest.mark.parametrize('error', ['statement_timeout', '0009'])
+def test_migrate_con_otro_error_no_se_repite(entorno, error):
+    """C2E-3: cualquier otro fallo para el despliegue al primer intento, como antes. statement_timeout también es un
+    OperationalError que empieza por «canceling statement»; 0009 cuando agota sus propios intentos acaba en
+    RuntimeError, aunque su causa sea un lock_timeout: ya repitió ocho veces y su mensaje dice qué hacer."""
+    bien(entorno, 'publicada')
+    antes = len(entorno.migrates())
+    (entorno.sim / 'migrate-otro-error').write_text(error)
+    hecho = entorno.desplegar(entorno.commits['nueva'])
+    assert hecho.returncode == 1, hecho.salida
+    assert entorno.migrates()[antes:] == [CON_LOCK_TIMEOUT]
+    assert entorno.pausas() == [] and 'se repite migrate' not in hecho.salida
+    assert 'FALLO de migrate en el intento 1 de 3; no se repite' in hecho.salida
+    assert 'no quedó activa' in hecho.salida
+    assert entorno.releases() == ['publicada'] and entorno.activa == entorno.ejecutando == 'publicada'
+    registro = entorno.registro_de_migrate()
+    final = {'statement_timeout': 'django.db.utils.OperationalError: canceling statement due to statement timeout',
+             '0009': 'RuntimeError: contabilidad 0009: en 8 intentos'}[error]
+    assert final in hecho.salida and final in registro.read_text()
+    assert registro.read_text().count('== intento ') == 1

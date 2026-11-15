@@ -6,11 +6,13 @@
 #   bash desplegar.sh <entorno> --revertir           vuelve a la versión anterior
 #
 # Pasos: git archive de <ref> → venv con hashes → volcado previo de la base →
-# migraciones → caché → estáticos → check --deploy → cambio atómico de `current`
+# migraciones (con lock_timeout; si no consiguen un bloqueo, hasta 3 intentos) → caché
+# → estáticos → check --deploy → cambio atómico de `current`
 # → reinicio del servicio → comprobación de salud (si falla, vuelve a la anterior).
 # Las órdenes de Django corren como el usuario facturaporaqui (los archivos que
 # crean quedan con su dueño). Conserva las 5 últimas versiones; la de un despliegue que
-# no queda activo (falla antes de activarse o no pasa la salud) se borra al salir.
+# no queda activo (falla antes de activarse o no pasa la salud) se borra al salir. La salida
+# de migrate queda en $BASE/registros/migrate-<versión>.log (se conservan 30), también si falla.
 # Variables opcionales: FPA_REPO (por defecto /root/invoice15/src) y
 # FPA_STATIC_LIB (librerías de static/lib que aún no están en el repositorio).
 # =============================================================================
@@ -31,6 +33,9 @@ CRED_DIR=/root/invoice15/credenciales
 UV=/root/.local/bin/uv
 SERVICIO="facturaporaqui@$ENTORNO.service"
 TS=$(date +%Y%m%d-%H%M%S)
+REGISTROS=$BASE/registros   # salida de migrate de cada despliegue: queda aunque se borre la carpeta de la versión
+# migrate: lo que espera cada bloqueo, cuántas veces se intenta si no lo consigue y la pausa entre intentos (s)
+LOCK_TIMEOUT_MIGRATE=5s; INTENTOS_MIGRATE=3; PAUSA_MIGRATE=10
 
 PUERTO=$(sed -n 's/^FPA_PUERTO=//p' "$ENVF")
 DOMINIO=$(sed -n 's/^ALLOWED_HOSTS=\([^,]*\).*/\1/p' "$ENVF")
@@ -72,6 +77,71 @@ borrar_si_no_quedo_activa() {
       echo "  se borra $(basename "$REL"): no quedó activa"; rm -rf -- "$REL"
     fi
   fi
+}
+
+# ¿Acabó un intento de migrate por lock_timeout (lock_not_available, 55P03) o por un interbloqueo
+# (deadlock_detected, 40P01)? Lee su salida y mira la última excepción que imprimió Python, la de la última
+# «Traceback (most recent call last):», que puede ir en la línea de «Applying …»: la de la base por su clase
+# (psycopg.errors.LockNotAvailable o DeadlockDetected; el texto depende del idioma del servidor, la clase no), o el
+# OperationalError con que Django la envuelve si esa es su causa directa. Un corte que solo aparece antes en la cadena
+# no cuenta: así acaba contabilidad 0009 cuando agota sus propios intentos (RuntimeError). Un statement_timeout también
+# es OperationalError, pero no es un bloqueo.
+fallo_por_bloqueo() {
+  awk '
+    function clase(linea) { sub(/:.*/, "", linea); return linea }
+    /Traceback \(most recent call last\):$/ { n++; separador[n] = ultima; excepcion[n] = ""; next }
+    n && excepcion[n] == "" && /^[^ \t]/ { excepcion[n] = clase($0) }   # la primera sin sangría tras los marcos
+    NF { ultima = $0 }
+    END {
+      bloqueo = "^psycopg2?\\.errors\\.(LockNotAvailable|DeadlockDetected)$"
+      if (n && excepcion[n] ~ bloqueo) exit 0
+      if (n > 1 && excepcion[n] == "django.db.utils.OperationalError" && excepcion[n-1] ~ bloqueo &&
+          separador[n] == "The above exception was the direct cause of the following exception:") exit 0
+      exit 1
+    }'
+}
+
+# migrate con lock_timeout: una migración que topa con una transacción larga sobre una tabla que necesita no espera
+# sin límite, con las escrituras de la aplicación en cola detrás de ella; se corta a los $LOCK_TIMEOUT_MIGRATE y lo que
+# esperaba detrás pasa. Solo se repite ese corte o un interbloqueo, tras una pausa sin retener nada: cada migración va
+# en su propia transacción (ninguna de core/ tiene atomic = False y las apps de terceros instaladas no migran), así que
+# la cortada no deja nada, las anteriores quedan confirmadas y el intento siguiente sigue donde se quedó. Cualquier
+# otro fallo para el despliegue, como antes. El SET LOCAL lock_timeout de 1 s de contabilidad 0009 manda en su
+# transacción sobre el de la sesión, y si 0009 agota sus 8 intentos tampoco se repite: su mensaje dice qué hacer. La
+# salida de cada intento va a $REGISTRO (sin el entorno ni la URL de la base) y, al terminar, a la pantalla.
+migrar() {
+  local intento estado desde
+  for intento in $(seq 1 "$INTENTOS_MIGRATE"); do
+    if [ "$intento" -gt 1 ]; then
+      echo "  se repite migrate en $PAUSA_MIGRATE s (intento $intento de $INTENTOS_MIGRATE)"; sleep "$PAUSA_MIGRATE"
+    fi
+    echo "  migrate, intento $intento de $INTENTOS_MIGRATE (su salida, al terminar; mientras, en $REGISTRO)"
+    echo "== intento $intento de $INTENTOS_MIGRATE, lock_timeout=$LOCK_TIMEOUT_MIGRATE, $(date -Is)" >> "$REGISTRO"
+    desde=$(( $(wc -c < "$REGISTRO") + 1 ))   # el byte donde empieza la salida de este intento
+    estado=0
+    # app.platform=on: migraciones de datos sobre todas las empresas. Al archivo, no por una tubería con tee: así el
+    # guion espera solo a migrate, también cuando llega una señal (ver los trap), y no a quien herede su salida. En una
+    # subshell: si llega una señal, su trap corre después, fuera de la redirección, y lo que dice al salir se ve.
+    ( PGOPTIONS="-c app.platform=on -c lock_timeout=$LOCK_TIMEOUT_MIGRATE" django "$REL" migrate --noinput ) \
+      >> "$REGISTRO" 2>&1 || estado=$?
+    tail -c +"$desde" "$REGISTRO"
+    if [ "$estado" -eq 0 ]; then
+      echo "  migrate: bien en el intento $intento de $INTENTOS_MIGRATE (salida en $REGISTRO)"; return 0
+    fi
+    if ! tail -c +"$desde" "$REGISTRO" | fallo_por_bloqueo; then
+      echo "FALLO de migrate en el intento $intento de $INTENTOS_MIGRATE; no se repite (solo se repiten un lock_timeout"
+      echo "  o un interbloqueo de la base) y la versión nueva no se activa. El error, arriba y en $REGISTRO"
+      exit "$estado"
+    fi
+    echo "  migrate no consiguió un bloqueo en $LOCK_TIMEOUT_MIGRATE o chocó en un interbloqueo" \
+         "(intento $intento de $INTENTOS_MIGRATE)"
+  done
+  echo "FALLO de migrate: en los $INTENTOS_MIGRATE intentos, una migración no consiguió en $LOCK_TIMEOUT_MIGRATE el"
+  echo "  bloqueo de una tabla que necesita (o chocó en un interbloqueo). La cortada no cambió nada, las anteriores"
+  echo "  quedan aplicadas y la versión nueva no se activa. Qué hacer: mira en pg_stat_activity y pg_locks qué"
+  echo "  transacción retiene la tabla (una transacción larga, un respaldo con pg_dump en curso), espera a que termine"
+  echo "  y repite el despliegue, mejor con poco tráfico. La salida de cada intento está en $REGISTRO"
+  exit "$estado"
 }
 
 if [ "$REF" = "--revertir" ]; then
@@ -121,7 +191,10 @@ chmod 600 "$DUMP"; echo "  $DUMP ($(du -h "$DUMP" | cut -f1))"
 ls -1t "$RESPALDOS"/pre-*.dump 2>/dev/null | tail -n +31 | xargs -r rm -f   # conserva 30
 
 echo "== 4. Migraciones, caché, estáticos y comprobación"
-PGOPTIONS="-c app.platform=on" django "$REL" migrate --noinput   # migraciones de datos sobre todas las empresas
+install -d -m 700 "$REGISTROS"
+REGISTRO="$REGISTROS/migrate-$TS-$CORTO.log"; : > "$REGISTRO"
+ls -1t "$REGISTROS"/migrate-*.log | tail -n +31 | xargs -r rm -f   # conserva 30
+migrar
 django "$REL" createcachetable
 django "$REL" collectstatic --noinput --clear -v 0
 chmod -R a+rX "$STATIC_ROOT"   # nginx (www-data) lee los estáticos
