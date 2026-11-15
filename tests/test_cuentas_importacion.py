@@ -24,10 +24,11 @@ from types import SimpleNamespace
 
 import openpyxl
 import pytest
+from psycopg import errors as errores_pg
 from django.conf import settings as configuracion
 from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import DatabaseError, connection, transaction
+from django.db import DatabaseError, OperationalError, connection, transaction
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
@@ -1032,6 +1033,44 @@ class TestConfirmar:
         guardado = plan(empresa)
         assert guardado['N0'] == ('Nivel 0', 'grupo', None) and guardado['N1099'] == ('Nivel 1099', 'movimiento', 'N1098')
         assert all(guardado[f'N{n}'][2] == f'N{n - 1}' for n in range(1, 1100))
+
+
+class TestCruceDeBloqueos:
+    """Un cruce con otra transacción que PostgreSQL aborta (interbloqueo 40P01, espera de bloqueo agotada 55P03) responde
+    409 `reintentar` en JSON (api.ApiContable; antes, un 500) y queda en el registro; la transacción se deshizo entera y el
+    mismo envío, repetido, confirma. Se simula con los errores reales de psycopg, envueltos como los envuelve Django; los
+    de verdad salen en tests/test_zz_diario_concurrencia_pg.py. Cualquier otro error de la base no se esconde."""
+
+    @pytest.mark.parametrize('cruce', [errores_pg.DeadlockDetected, errores_pg.LockNotAvailable], ids=['40P01', '55P03'])
+    def test_responde_reintentar_y_el_reintento_confirma(self, entrar, empresa, monkeypatch, caplog, cruce):
+        lote = lote_de(entrar, empresa, *PLAN)
+        crear = importar_cuentas._crear
+
+        def cruzarse(*args):
+            crear(*args)   # las cuentas ya están insertadas en la transacción: el cruce las deshace
+            raise OperationalError(cruce.__name__) from cruce(cruce.__name__)
+        monkeypatch.setattr(importar_cuentas, '_crear', cruzarse)
+        respuesta = confirmar(entrar, empresa, lote, clave='confirma-con-cruce-1')
+        assert respuesta.status_code == 409
+        assert respuesta.json() == {'error': api.TEXTOS['reintentar'], 'codigo': 'reintentar'}
+        assert cuantas(empresa) == 0 and lotes(empresa)[0].estado == 'vista_previa'
+        assert [r.levelname for r in caplog.records if r.name == 'core.contabilidad.api' and cruce.sqlstate in r.getMessage()] \
+            == ['WARNING']
+        monkeypatch.setattr(importar_cuentas, '_crear', crear)
+        respuesta = confirmar(entrar, empresa, lote, clave='confirma-con-cruce-1')
+        assert respuesta.status_code == 200 and respuesta.json()['lote']['creadas'] == 5 and cuantas(empresa) == 5
+
+    @pytest.mark.parametrize('causa', [errores_pg.QueryCanceled('canceling statement due to statement timeout'), None],
+                             ids=['57014', 'sin_causa'])
+    def test_otro_error_de_la_base_no_se_esconde(self, entrar, empresa, monkeypatch, causa):
+        lote = lote_de(entrar, empresa, *PLAN)
+
+        def fallar(*args):
+            raise OperationalError('otro error de la base') from causa
+        monkeypatch.setattr(importar_cuentas, '_crear', fallar)
+        with pytest.raises(OperationalError):
+            confirmar(entrar, empresa, lote)
+        assert cuantas(empresa) == 0 and lotes(empresa)[0].estado == 'vista_previa'
 
 
 def confirmar_resultado(lote):

@@ -175,10 +175,17 @@ class Previa:
 def cuentas_de_la_empresa(bloqueadas=False):
     """Las cuentas de la empresa activa por su código comparable, con lo que la vista previa necesita de cada una. Una
     consulta. `bloqueadas` (al confirmar, dentro de la transacción): con sus filas bloqueadas, para que ni el tipo de un
-    padre ni un nombre cambien entre lo que se revisa y lo que se escribe, tampoco desde quien no pase por la cola."""
+    padre ni un nombre cambien entre lo que se revisa y lo que se escribe, tampoco desde quien no pase por la cola.
+
+    El bloqueo es FOR NO KEY UPDATE: la importación solo cambia nombre y versión, que no son clave, y así sigue excluyendo a
+    todo otro escritor de esas cuentas (cambiarlas, clasificarlas, otra importación) sin chocar con el FOR KEY SHARE que
+    PostgreSQL toma, por sus FK diferidas y al confirmar, de cada cuenta a la que apunta una fila nueva (líneas de un
+    asiento o de la apertura, acumulados). Con FOR UPDATE, la importación, que recorre todas las cuentas por id, y un
+    asiento o una apertura que se confirma, que toma ese FOR KEY SHARE en el orden de sus líneas, se esperaban en cruz: el
+    interbloqueo C2A-1. Ya no comparten ningún bloqueo que choque, por eso la importación no necesita el candado del libro."""
     consulta = Cuenta.objects.order_by('pk')
     if bloqueadas:
-        consulta = consulta.select_for_update()
+        consulta = consulta.select_for_update(no_key=True)
     return {c['codigo_norm']: c for c in consulta.values('id', 'codigo', 'codigo_norm', 'nombre', 'tipo', 'padre_id')}
 
 
