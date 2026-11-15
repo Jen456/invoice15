@@ -1,7 +1,7 @@
 """Apertura contable en preparación (Parte B de contable/bloque-2-especificacion.md; C6-A): crearla, cambiar su encabezado,
 fijar sus líneas (captura directa del conjunto completo o desde un lote importado), sus respaldos y descartarla. Todo
-ocurre en borrador. Validar, enviar a revisión, devolver y confirmar son de la parte siguiente del corte 1; ajustar,
-sustituir, reversar y los auxiliares, del corte 2.
+ocurre en borrador. Después, validar, enviar a revisión, devolver y confirmar (al final del módulo); ajustar, sustituir,
+reversar y los auxiliares son del corte 2.
 
 Estados: `borrador → en_revision → confirmada → sustituida | reversada`, `en_revision → borrador` y
 `borrador | en_revision → descartada`. Solo el borrador se edita. Como mucho una confirmada y una en preparación por empresa
@@ -26,6 +26,7 @@ de bloqueos de la decisión común 4: candado → apertura → auxiliares. Negat
 import hashlib
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.core.files.base import ContentFile
@@ -34,7 +35,7 @@ from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.utils import timezone
 
-from core.contabilidad import api, cobertura, inicio_contable, lotes, respaldos
+from core.contabilidad import api, cobertura, inicio_contable, lotes, reportes, respaldos
 from core.contabilidad import capacidades as cap
 from core.contabilidad.modelos_apertura import (ANULADO, BORRADOR, CON_CONFIRMACION, CONFIRMADA, DESCARTADA, EN_PREPARACION,
                                                 EN_REVISION, FUENTES, MODOS_INVENTARIO, RESULTADOS_EJERCICIO, VIGENTE)
@@ -454,11 +455,10 @@ REGLAS_CAPACIDAD = {
     'reversar': (CONFIRMAR, (CONFIRMADA,), 'vigente'),
     'cobrar': (COBRAR, (CONFIRMADA,), 'vigente'),
 }
-# PUNTO DE UNIÓN con la parte siguiente: acciones cuya ruta todavía no existe en esta rama. Responden falso aunque el rol,
-# el estado y la licencia las permitan (nada se anuncia sin su ruta, como capacidades.Funcion). Quien publique la ruta
-# quita aquí su acción: validar, enviar, devolver y confirmar la parte siguiente del corte 1; el resto, el corte 2.
-# tests/test_apertura_preparar.py::test_capacidades_solo_con_su_ruta lo vigila.
-SIN_CONSTRUIR = frozenset({'validar', 'enviar', 'devolver', 'confirmar', 'sustituir', 'ajustar', 'reversar', 'cobrar'})
+# Acciones cuya ruta todavía no existe: responden falso aunque el rol, el estado y la licencia las permitan (nada se anuncia
+# sin su ruta, como capacidades.Funcion). Quien publique la ruta quita aquí su acción: sustituir, ajustar, reversar y
+# cobrar son del corte 2. tests/test_apertura_preparar.py::test_capacidades_solo_con_su_ruta lo vigila.
+SIN_CONSTRUIR = frozenset({'sustituir', 'ajustar', 'reversar', 'cobrar'})
 
 
 def capacidades_de(request, apertura, vigente=None):
@@ -1074,3 +1074,532 @@ def anular_respaldo(request, pk, datos):
         audit(request, 'apertura_respaldo', company=request.company, apertura=apertura.pk, respaldo=anulado.pk,
               accion='anulado', motivo=motivo)
     return anulado
+
+
+# ---------------------------------------------------------------- validar, enviar, devolver y confirmar
+#
+# Reglas 5 a 8 de la Parte B. `evaluar` es la única que decide si una apertura se puede enviar o confirmar: validar la
+# muestra, enviar la exige sin bloqueos y confirmar la repite con el candado del libro tomado. Solo lee, con consultas
+# agregadas: una de líneas (con la clase y el tipo de su cuenta), una de auxiliares por línea, dos de solapamiento, una de
+# períodos cerrados, una por tipo de vínculo (solo si hay auxiliares) y dos de la cartera operativa anterior al corte.
+
+NOMINALES = ('ingreso', 'costo', 'gasto')   # las cuentas cuyo saldo es el resultado del ejercicio en curso al corte
+EN_CUENTAS_NOMINALES, EN_PATRIMONIO, NO_APLICA = 'en_cuentas_nominales', 'en_patrimonio', 'no_aplica'
+NOTA_REVISION_MAX = 500
+# Regla 5: el orden de los bloqueos (el primero da el `codigo` de la respuesta). `sin_saldos_con_lineas` no está en la
+# especificación (una declaración «sin saldos» con líneas se contradice: no se ignora ninguna de las dos). Los dos de la
+# Parte C que todavía no tienen con qué darse en este corte (sin rutas de auxiliares), `auxiliar_duplica_operativo` y
+# `saldo_inicial_posterior`, los añade el corte 2 en su lugar de esta lista.
+ORDEN_BLOQUEOS = ('sin_lineas', 'sin_saldos_con_lineas', 'cuenta_sin_mapear', 'cuenta_de_grupo', 'cuenta_inactiva',
+                  'importe_pendiente', 'cuenta_sin_clase', 'apertura_desbalanceada', 'auxiliar_no_concilia',
+                  'auxiliar_duplica_operativo', 'vinculo_roto', 'auxiliar_incompleto', 'saldo_inicial_posterior',
+                  'resultado_sin_declarar', 'resultado_duplicado', 'rango_solapado', 'periodo_cerrado', 'fecha_corte_futura')
+# Los reportes que validar describe (C6-A §6: «cobertura por reporte»), con lo que necesitan de la apertura.
+REPORTES = (
+    ('estado_situacion', 'La apertura confirmada y los movimientos posteriores al corte contabilizados.'),
+    ('f104_f103_ats', 'Los comprobantes de cada mes y los saldos tributarios anteriores al corte (créditos y retenciones).'),
+    ('resultado_anual_101', 'Los ingresos, costos y gastos de todo el año del corte, también los anteriores al corte, y la '
+                            'conciliación tributaria.'),
+)
+
+TEXTOS_VALIDACION = {
+    # bloqueos
+    'sin_lineas': 'La apertura no tiene líneas: mapea los saldos o, si la empresa empieza sin saldos, crea la apertura como '
+                  'inicio de actividades.',
+    'sin_saldos_con_lineas': 'La apertura declara que la empresa empieza sin saldos, pero tiene líneas: quítalas, o descarta '
+                             'esta apertura y crea una con saldos.',
+    'cuenta_sin_mapear': '{n} línea(s) no tienen cuenta: elige la cuenta de movimiento de cada una.',
+    'cuenta_de_grupo': '{n} línea(s) van a una cuenta de grupo: una cuenta de grupo no recibe saldos.',
+    'cuenta_inactiva': '{n} línea(s) van a una cuenta desactivada.',
+    'importe_pendiente': 'El saldo de {n} línea(s) está pendiente: escríbelo desde la fuente (no se supone cero).',
+    'cuenta_sin_clase': '{n} cuenta(s) de la apertura no tienen clase (activo, pasivo, patrimonio, ingreso, costo o gasto): '
+                        'decláralas en el plan de cuentas.',
+    'apertura_desbalanceada': 'El debe ({debe}) y el haber ({haber}) no cuadran: la diferencia es {diferencia}. Corrígela en '
+                              'la fuente: no se añade ninguna cuenta para cuadrar.',
+    'auxiliar_no_concilia': 'El detalle de {n} cuenta(s) suma más que su saldo, o no es de la naturaleza de la cuenta.',
+    'vinculo_roto': '{n} auxiliar(es) están vinculados a un documento que ya no existe: desvincúlalos con su motivo.',
+    'auxiliar_incompleto': 'Acepta una por una las cuentas con el detalle incompleto, o completa su detalle antes de confirmar.',
+    'resultado_sin_declarar': 'El corte no es a fin de año y la apertura no trae ingresos, costos ni gastos, ni una línea con '
+                              'el resultado del ejercicio: declara dónde está el resultado (o que no aplica, con la nota de '
+                              'la revisión).',
+    'resultado_duplicado': 'El resultado del ejercicio estaría contado dos veces, o lo declarado no coincide con las líneas: '
+                           'en cuentas de resultados suma {en_cuentas_nominales} y en patrimonio {en_patrimonio}.',
+    'rango_solapado': inicio_contable.TEXTOS['rango_solapado'],
+    'periodo_cerrado': 'Hay períodos cerrados desde el inicio de la contabilidad ({periodos}): la apertura no se confirma '
+                       'sobre ellos.',
+    'fecha_corte_futura': 'El día del corte ({fecha:%d/%m/%Y}) todavía no termina: la apertura se confirma desde el día '
+                          'siguiente.',
+    # advertencias
+    'detalle_incompleto': 'El detalle de la cuenta {codigo} explica {detallado} de {importe}: para confirmar hay que aceptarlo '
+                          'como incompleto.',
+    'sin_resultados_acumulados': 'El corte es a mitad de año y la apertura no trae ingresos, costos ni gastos: el estado de '
+                                 'resultados y el 101 de {anio} quedarán sin los anteriores al corte.',
+    'ejercicio_sin_cerrar': 'El corte es a fin de año y las cuentas de resultados tienen saldo: el ejercicio {anio} se cierra '
+                            'después con su asiento de cierre.',
+    'cartera_operativa_anterior_al_corte': 'La aplicación ya tiene {n} cuenta(s) por cobrar o por pagar abiertas de documentos '
+                                           'anteriores al corte: su saldo no debe sumarse otra vez en la apertura.',
+    # envíos
+    'revisado': 'Confirma que revisaste la apertura.',
+    'nota_larga': f'La nota de la revisión admite hasta {NOTA_REVISION_MAX} caracteres.',
+    'incompletos': 'Envía las líneas aceptadas como incompletas como una lista de ids.',
+    'estado_revision': 'La apertura no está en revisión.',
+    'estado_validar': 'Solo se valida una apertura en preparación.',
+    'apertura_confirmada': 'La apertura ya está confirmada con otro envío: vuelve a cargarla.',
+    'otra_confirmada': 'La empresa ya tiene una apertura confirmada: la configuración solo cambia sustituyéndola.',
+    'concepto': 'Apertura contable al {fecha:%d/%m/%Y}',
+}
+
+
+@dataclass
+class Evaluacion:
+    """Lo que `evaluar` encontró: bloqueos (en el orden de la regla 5) y advertencias, más lo que confirmar necesita sin
+    volver a leer (las líneas, los totales, las líneas con el detalle incompleto y el resultado que dicen las líneas)."""
+    bloqueos: list
+    advertencias: list
+    lineas: list
+    debe: Decimal | None
+    haber: Decimal | None
+    incompletas: list
+    resultado: str = ''
+
+    @property
+    def valida(self):
+        return not self.bloqueos
+
+
+def _lineas_a_validar(apertura):
+    """Las líneas no retiradas, por orden, con lo que la validación mira de su cuenta: una consulta."""
+    return list(LineaApertura.objects.filter(apertura=apertura, retirada=False).order_by('orden').values(
+        'id', 'orden', 'cuenta_id', 'debe', 'haber', 'detalle', 'es_resultado_ejercicio', 'incompleto_aceptado',
+        'rubro_origen', 'cuenta__codigo', 'cuenta__tipo', 'cuenta__activa', 'cuenta__clase'))
+
+
+def _auxiliares_por_linea(apertura):
+    """`{linea_id: (Σ saldo_inicial, filas, {naturalezas})}` de los auxiliares vigentes: una consulta agregada."""
+    por_linea = {}
+    for fila in (AuxiliarApertura.objects.filter(apertura=apertura, estado=VIGENTE).values('linea', 'naturaleza')
+                 .annotate(total=Sum('saldo_inicial'), filas=Count('id')).order_by()):
+        total, filas, naturalezas = por_linea.get(fila['linea'], (CERO, 0, frozenset()))
+        por_linea[fila['linea']] = (total + fila['total'], filas + fila['filas'], naturalezas | {fila['naturaleza']})
+    return por_linea
+
+
+def _cartera_operativa_anterior(apertura):
+    """Cuentas por cobrar y por pagar de la aplicación con saldo, de documentos con fecha hasta el corte (la del hecho:
+    emisión de la venta, emisión de la compra; decisión común 15) y sin vincular a un auxiliar vigente. Dos consultas."""
+    from django.db.models.functions import Coalesce
+    from core.pos.consultas import fecha_efectiva
+    from core.pos.models import CtasCollect, DebtsPay, Sale
+    vigentes = AuxiliarApertura.objects.filter(apertura=apertura, estado=VIGENTE)
+    cxc = (CtasCollect.objects.filter(saldo__gt=0).annotate(fecha_del_hecho=fecha_efectiva(Sale, 'sale__'))
+           .filter(fecha_del_hecho__lte=apertura.fecha_corte)
+           .exclude(pk__in=vigentes.filter(cxc_id__isnull=False).values('cxc_id')).count())
+    cxp = (DebtsPay.objects.filter(saldo__gt=0).annotate(fecha_del_hecho=Coalesce('purchase__fecha_emision',
+                                                                                 'purchase__date_joined'))
+           .filter(fecha_del_hecho__lte=apertura.fecha_corte)
+           .exclude(pk__in=vigentes.filter(cxp_id__isnull=False).values('cxp_id')).count())
+    return cxc, cxp
+
+
+def _periodos_cerrados(desde):
+    from core.contabilidad.modelos_libro import CERRADO
+    from core.contabilidad.models import PeriodoContable
+    return [f'{anio}-{mes:02d}' for anio, mes in PeriodoContable.objects.filter(estado=CERRADO).filter(
+        Q(anio__gt=desde.year) | Q(anio=desde.year, mes__gte=desde.month)).order_by('anio', 'mes').values_list('anio', 'mes')]
+
+
+def evaluar(apertura, inicio, *, al_confirmar=False, aceptadas=(), nota=''):
+    """Bloqueos y advertencias de la apertura (reglas 5 y 6). `al_confirmar`: el detalle incompleto deja de ser una
+    advertencia y debe venir aceptado línea por línea (`aceptadas` = exactamente esas líneas), y el «no aplica» del
+    resultado exige la nota de la revisión (`nota`). No escribe nada."""
+    hoy = inicio_contable.hoy()
+    corte = apertura.fecha_corte
+    filas = _lineas_a_validar(apertura)
+    auxiliares = _auxiliares_por_linea(apertura) if filas else {}
+    bloqueos, advertencias = [], []
+
+    def bloqueo(codigo, texto=None, **extra):
+        bloqueos.append({'codigo': codigo, 'texto': texto or TEXTOS_VALIDACION[codigo], **extra})
+
+    def advertencia(codigo, texto, **extra):
+        advertencias.append({'codigo': codigo, 'texto': texto, **extra})
+
+    def de_lineas(codigo, ids):
+        if ids:
+            bloqueo(codigo, TEXTOS_VALIDACION[codigo].format(n=len(ids)), lineas=ids)
+
+    if not filas and not apertura.sin_saldos:
+        bloqueo('sin_lineas')
+    if filas and apertura.sin_saldos:
+        bloqueo('sin_saldos_con_lineas', lineas=[f['id'] for f in filas])
+    con_cuenta = [f for f in filas if f['cuenta_id'] is not None]
+    de_lineas('cuenta_sin_mapear', [f['id'] for f in filas if f['cuenta_id'] is None])
+    de_lineas('cuenta_de_grupo', [f['id'] for f in con_cuenta if f['cuenta__tipo'] != 'movimiento'])
+    de_lineas('cuenta_inactiva', [f['id'] for f in con_cuenta if f['cuenta__tipo'] == 'movimiento' and not f['cuenta__activa']])
+    pendientes = [f['id'] for f in filas if f['debe'] is None or f['haber'] is None]
+    de_lineas('importe_pendiente', pendientes)
+    sin_clase = [f['id'] for f in con_cuenta if not f['cuenta__clase']]
+    de_lineas('cuenta_sin_clase', sin_clase)
+
+    debe = haber = None
+    if filas and not pendientes:   # con un importe pendiente la suma no es el total: no se presenta ninguna diferencia
+        debe, haber = sum((f['debe'] for f in filas), CERO), sum((f['haber'] for f in filas), CERO)
+        if debe != haber:
+            textos = {'debe': importe_texto(debe), 'haber': importe_texto(haber), 'diferencia': importe_texto(debe - haber)}
+            bloqueo('apertura_desbalanceada', TEXTOS_VALIDACION['apertura_desbalanceada'].format(**textos), **textos)
+
+    # Auxiliar ≤ cuenta (Parte C, regla 2; sin ajustes en este corte: J = 0).
+    no_concilian, incompletas = [], []
+    for f in filas:
+        total, n, naturalezas = auxiliares.get(f['id'], (CERO, 0, frozenset()))
+        importe = cobertura.importe_de(f['debe'], f['haber'])
+        if n and (not f['detalle'] or naturalezas != {f['detalle']} or (importe is not None and total > importe)):
+            no_concilian.append(f['id'])
+        elif f['detalle'] and importe is not None and total < importe and not f['incompleto_aceptado']:
+            incompletas.append(f)
+    de_lineas('auxiliar_no_concilia', no_concilian)
+    rotos = cobertura.vinculos_rotos(apertura.pk) if auxiliares else []
+    if rotos:
+        bloqueo('vinculo_roto', TEXTOS_VALIDACION['vinculo_roto'].format(n=len(rotos)), auxiliares=rotos)
+    if al_confirmar:
+        pedidas, aceptadas = {f['id'] for f in incompletas}, set(aceptadas)
+        if pedidas != aceptadas:
+            extra = {'lineas': sorted(pedidas - aceptadas)}
+            if aceptadas - pedidas:
+                extra['sobran'] = sorted(aceptadas - pedidas)
+            bloqueo('auxiliar_incompleto', **extra)
+    else:
+        for f in incompletas:
+            total = auxiliares.get(f['id'], (CERO, 0, ()))[0]
+            advertencia('auxiliar_incompleto', TEXTOS_VALIDACION['detalle_incompleto'].format(
+                codigo=f['cuenta__codigo'], detallado=importe_texto(total),
+                importe=importe_texto(cobertura.importe_de(f['debe'], f['haber']))), linea_id=f['id'])
+
+    resultado = _resultado_del_ejercicio(apertura, filas, pendientes, sin_clase, al_confirmar, nota, bloqueo, advertencia)
+
+    solape = inicio_contable.solapamiento(corte)
+    if solape['asientos'] or solape['aplicaciones']:
+        bloqueo('rango_solapado', **solape)
+    desde = inicio.contabilidad_desde if inicio is not None else corte + timedelta(days=1)
+    cerrados = _periodos_cerrados(desde)
+    if cerrados:
+        bloqueo('periodo_cerrado', TEXTOS_VALIDACION['periodo_cerrado'].format(periodos=', '.join(cerrados)), periodos=cerrados)
+    if corte >= hoy:
+        bloqueo('fecha_corte_futura', TEXTOS_VALIDACION['fecha_corte_futura'].format(fecha=corte), fecha_corte=corte.isoformat())
+
+    _advertencias_de_cobertura(apertura, filas, auxiliares, advertencia)
+    bloqueos.sort(key=lambda b: ORDEN_BLOQUEOS.index(b['codigo']))
+    return Evaluacion(bloqueos, advertencias, filas, debe, haber, [f['id'] for f in incompletas], resultado)
+
+
+def _resultado_del_ejercicio(apertura, filas, pendientes, sin_clase, al_confirmar, nota, bloqueo, advertencia):
+    """Regla 6. N = Σ (haber − debe) de las líneas en cuentas de ingreso, costo o gasto; P = lo mismo de las líneas marcadas
+    como resultado del ejercicio (solo en patrimonio). Devuelve dónde dicen las líneas que está el resultado
+    (`en_cuentas_nominales`, `en_patrimonio` o '' si no lo dicen). Con líneas sin cuenta, sin clase o con el importe
+    pendiente, N y P no se conocen: la regla se evalúa cuando se resuelven (esos bloqueos ya están)."""
+    sin_cuenta = any(f['cuenta_id'] is None for f in filas)
+    if pendientes or sin_clase or sin_cuenta:
+        return ''
+    n = sum((f['haber'] - f['debe'] for f in filas if f['cuenta__clase'] in NOMINALES), CERO)
+    p = sum((f['haber'] - f['debe'] for f in filas if f['es_resultado_ejercicio']), CERO)
+    corte, declarado, acumulado = apertura.fecha_corte, apertura.resultado_ejercicio, apertura.resultado_acumulado
+    cifras = {'en_cuentas_nominales': importe_texto(n), 'en_patrimonio': importe_texto(p)}
+    fin_de_anio = (corte.month, corte.day) == (12, 31)
+
+    def duplicado():
+        bloqueo('resultado_duplicado', TEXTOS_VALIDACION['resultado_duplicado'].format(**cifras), **cifras,
+                declarado=declarado, resultado_acumulado=importe_texto(acumulado))
+
+    if n and p:
+        duplicado()
+        return ''
+    if n:
+        # El resultado está en las cuentas nominales: lo declarado (si se declaró) debe decir lo mismo y la cifra declarada
+        # coincidir con la de las líneas; si no, se contaría dos veces.
+        if declarado not in ('', EN_CUENTAS_NOMINALES) or (acumulado is not None and acumulado != n):
+            duplicado()
+        elif fin_de_anio:
+            advertencia('ejercicio_sin_cerrar', TEXTOS_VALIDACION['ejercicio_sin_cerrar'].format(anio=corte.year))
+        return EN_CUENTAS_NOMINALES
+    if p:
+        # Solo en patrimonio: válida, con la causa permanente `resultados_acumulados_sin_detalle` (reportes.py).
+        if declarado not in ('', EN_PATRIMONIO) or (acumulado is not None and acumulado != p):
+            duplicado()
+        return EN_PATRIMONIO
+    if not fin_de_anio:
+        if not declarado or (al_confirmar and declarado == NO_APLICA and not nota):
+            bloqueo('resultado_sin_declarar')
+        advertencia('sin_resultados_acumulados', TEXTOS_VALIDACION['sin_resultados_acumulados'].format(anio=corte.year))
+    return ''
+
+
+def _advertencias_de_cobertura(apertura, filas, auxiliares, advertencia):
+    """Lo que no impide confirmar pero queda pendiente: ámbitos sin ninguna cuenta declarada (ni declaración de que no
+    aplican), saldos tributarios anteriores sin registrar y cartera de la aplicación anterior al corte."""
+    no_aplican = no_aplican_de(apertura)
+    con_detalle = {f['detalle'] for f in filas if f['detalle']}
+    for ambito, detalle_ in cobertura.DETALLE_DE.items():
+        if detalle_ not in con_detalle and ambito not in no_aplican:
+            advertencia('sin_cuenta_declarada', cobertura.TEXTOS['sin_cuenta_declarada'].format(nombre=cobertura.NOMBRE[ambito]),
+                        ambito=ambito)
+    tributarios = any('tributario' in naturalezas for _, _, naturalezas in auxiliares.values())
+    if 'tributario' not in no_aplican and not tributarios:
+        advertencia('tributario_sin_saldos', cobertura.TEXTOS['tributario_sin_saldos'])
+    cxc, cxp = _cartera_operativa_anterior(apertura)
+    if cxc or cxp:
+        advertencia('cartera_operativa_anterior_al_corte',
+                    TEXTOS_VALIDACION['cartera_operativa_anterior_al_corte'].format(n=cxc + cxp),
+                    documentos={'cuentas_por_cobrar': cxc, 'cuentas_por_pagar': cxp})
+
+
+def _reportes(apertura, hoy):
+    """Cobertura por reporte: la provisionalidad de cada uno con el registro de reportes.py (decisión común 17), en el
+    rango que cada uno leería de esta apertura."""
+    corte = apertura.fecha_corte
+    siguiente = corte + timedelta(days=1)
+    fin_de_mes = (siguiente.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    rangos = {'estado_situacion': (None, max(hoy, corte)), 'f104_f103_ats': (siguiente, fin_de_mes),
+              'resultado_anual_101': (date(corte.year, 1, 1), date(corte.year, 12, 31))}
+    salida = []
+    for reporte, necesita in REPORTES:
+        desde, hasta = rangos[reporte]
+        provisional, causas, detalle_ = reportes.provisionalidad(reporte, desde, hasta)
+        salida.append({'reporte': reporte, 'necesita': necesita, 'desde': desde.isoformat() if desde else None,
+                       'hasta': hasta.isoformat(), 'provisional': provisional, 'causas': causas, 'causas_detalle': detalle_})
+    return salida
+
+
+def cuerpo_de_validacion(request, apertura, inicio, evaluacion):
+    """La respuesta de validar (y el cuerpo de los 409 de enviar): `{"apertura", "valida", "bloqueos", "advertencias",
+    "ambitos_no_aplican", "cobertura", "reportes"}`."""
+    _, vigente = actuales()
+    hoy = inicio_contable.hoy()
+    en_preparacion = apertura if apertura.estado in EN_PREPARACION else None
+    return {'apertura': dict_apertura(apertura), 'valida': evaluacion.valida, 'bloqueos': evaluacion.bloqueos,
+            'advertencias': evaluacion.advertencias, 'ambitos_no_aplican': list(apertura.ambitos_no_aplican or []),
+            'cobertura': cobertura.de_la_empresa(inicio, vigente, en_preparacion, hoy, base=apertura),
+            'reportes': _reportes(apertura, hoy)}
+
+
+def _rechazo_por_bloqueos(cuerpo):
+    """409 con el `codigo` del primer bloqueo (y su detalle arriba, como cualquier 409 de conflicto) y el cuerpo entero."""
+    primero = cuerpo['bloqueos'][0]
+    extra = {k: v for k, v in primero.items() if k not in ('codigo', 'texto')}
+    return api.ErrorApi(primero['codigo'], primero['texto'], 409, **{**extra, **cuerpo})
+
+
+def _version_y_estado(apertura, datos, errores, permitidos, texto_estado=None):
+    """Versión (409 si es otra; la que falta es un error de campo que se responde al final) y estado (409 `estado`)."""
+    version = _version(datos, errores)
+    if version is not None and version != apertura.version:
+        raise _error('version', 409, apertura=dict_apertura(apertura))
+    if apertura.estado not in permitidos:
+        raise rechazo_de_estado(apertura, permitidos, texto_estado)
+
+
+def validar(request, pk, datos):
+    """POST /contabilidad/api/apertura/<id>/validar/ `{version}`: bloqueos, advertencias, cobertura y reportes de la
+    apertura en preparación. No escribe nada (no aprueba nada)."""
+    api.exigir_permiso(request, PREPARAR)
+    errores = api.Errores()
+    with transaction.atomic():
+        apertura = obtener(pk)
+        _version_y_estado(apertura, datos, errores, EN_PREPARACION, TEXTOS_VALIDACION['estado_validar'])
+        errores.comprobar()
+        inicio = InicioContable.objects.first()
+        return cuerpo_de_validacion(request, apertura, inicio, evaluar(apertura, inicio))
+
+
+def enviar(request, pk, datos):
+    """POST /contabilidad/api/apertura/<id>/enviar/ `{version}`: `borrador → en_revision`, solo sin bloqueos (409 con el
+    primero y el cuerpo de validar). Deja quién la envió, su evento y su auditoría."""
+    api.exigir_permiso(request, PREPARAR)
+    errores = api.Errores()
+    with transaction.atomic():
+        apertura = obtener(pk, bloqueada=True)
+        _version_y_estado(apertura, datos, errores, (BORRADOR,))
+        errores.comprobar()
+        inicio = InicioContable.objects.first()
+        evaluacion = evaluar(apertura, inicio)
+        if not evaluacion.valida:
+            raise _rechazo_por_bloqueos(cuerpo_de_validacion(request, apertura, inicio, evaluacion))
+        apertura.estado = EN_REVISION
+        apertura.enviado_por_id, apertura.enviado_por_nombre = inicio_contable.autor(request)
+        apertura.enviado_en = timezone.now()
+        apertura.version += 1
+        apertura.save(update_fields=['estado', 'enviado_por_id', 'enviado_por_nombre', 'enviado_en', 'version'])
+        evento(request, apertura, 'enviada_revision', de_estado=BORRADOR, a_estado=EN_REVISION,
+               detalle={'version': apertura.version, 'advertencias': [a['codigo'] for a in evaluacion.advertencias]})
+        audit(request, 'apertura_enviada_revision', company=request.company, apertura=apertura.pk, version=apertura.version,
+              advertencias=len(evaluacion.advertencias))
+    return apertura
+
+
+def devolver(request, pk, datos):
+    """POST /contabilidad/api/apertura/<id>/devolver/ `{version, motivo}` (quien revisa): `en_revision → borrador`, para que
+    se corrija. El motivo queda en la historia y en la auditoría; el envío anterior también (la apertura vuelve a no estar
+    enviada)."""
+    api.exigir_permiso(request, CONFIRMAR)
+    errores = api.Errores()
+    with transaction.atomic():
+        apertura = obtener(pk, bloqueada=True)
+        _version_y_estado(apertura, datos, errores, (EN_REVISION,), TEXTOS_VALIDACION['estado_revision'])
+        motivo = _motivo(datos, errores)
+        errores.comprobar()
+        enviada = {'por': apertura.enviado_por_nombre, 'en': _instante(apertura.enviado_en)}
+        apertura.estado = BORRADOR
+        apertura.enviado_por_id, apertura.enviado_por_nombre, apertura.enviado_en = None, '', None
+        apertura.version += 1
+        apertura.save(update_fields=['estado', 'enviado_por_id', 'enviado_por_nombre', 'enviado_en', 'version'])
+        evento(request, apertura, 'devuelta', de_estado=EN_REVISION, a_estado=BORRADOR,
+               detalle={'version': apertura.version, 'motivo': motivo, 'enviada': enviada})
+        audit(request, 'apertura_devuelta', company=request.company, apertura=apertura.pk, version=apertura.version,
+              motivo=motivo)
+    return apertura
+
+
+def _pedido_de_confirmacion(datos, errores):
+    """`(revisado, nota, aceptadas)` del envío de confirmar, con sus errores de campo."""
+    if datos.get('revisado') is not True:
+        errores.agregar('revisado', TEXTOS_VALIDACION['revisado'])
+    nota = _texto(datos.get('nota'))
+    if nota is None or len(nota) > NOTA_REVISION_MAX:
+        errores.agregar('nota', TEXTOS_VALIDACION['nota_larga'])
+        nota = ''
+    pedidas = datos.get('incompletos_aceptados', [])
+    aceptadas = [_entero(i) for i in pedidas] if isinstance(pedidas, list) else None
+    if aceptadas is None or None in aceptadas:
+        errores.agregar('incompletos_aceptados', TEXTOS_VALIDACION['incompletos'])
+        aceptadas = []
+    return nota, aceptadas
+
+
+def dict_confirmada(apertura):
+    """`apertura` de la respuesta de confirmar."""
+    datos = resumen(apertura)
+    return {'id': apertura.pk, 'version': apertura.version, 'estado': apertura.estado, 'debe': importe_texto(datos['debe']),
+            'haber': importe_texto(datos['haber']), 'diferencia': importe_texto(datos['diferencia']),
+            'revisado_por': _nombre(apertura.revisado_por_nombre), 'confirmado_por': _nombre(apertura.confirmado_por_nombre),
+            'confirmado_en': _instante(apertura.confirmado_en),
+            'asiento': dict_asiento(apertura.asiento) if apertura.asiento_id is not None else None}
+
+
+def respuesta_de_confirmar(request, apertura, repetido):
+    inicio = InicioContable.objects.first()
+    en_preparacion, vigente = actuales()
+    return {'apertura': dict_confirmada(apertura),
+            'cobertura': cobertura.de_la_empresa(inicio, vigente, en_preparacion, inicio_contable.hoy()),
+            'repetido': repetido}
+
+
+def _sincronizar_inicio(request, inicio, apertura):
+    """Paso 8 de confirmar, antes del asiento (diario.contabilizar exige la fecha de corte del inicio): la configuración
+    dice el corte de la apertura que se confirma. En este corte ya coinciden siempre (crear y editar los mueven juntos);
+    la sustitución con otro corte (Parte E) lo necesita."""
+    if inicio.fecha_corte == apertura.fecha_corte:
+        return
+    errores = api.Errores()
+    config = inicio_contable.cambiar(inicio, {'fecha_corte': apertura.fecha_corte.isoformat()}, errores)
+    errores.comprobar()
+    inicio_contable.guardar(request, inicio, config, apertura=apertura)
+
+
+def _asiento_de_apertura(request, apertura, evaluacion):
+    """Regla 7: un solo asiento `apertura` en la fecha de corte, una línea por línea no retirada, sin tercero ni documento
+    (el detalle vive en los auxiliares)."""
+    from core.contabilidad import diario   # diario usa el candado y los modelos: se importa al confirmar
+    return diario.contabilizar(
+        tipo='apertura', fecha=apertura.fecha_corte, concepto=TEXTOS_VALIDACION['concepto'].format(fecha=apertura.fecha_corte),
+        lineas=[{'cuenta_id': f['cuenta_id'], 'debe': f['debe'], 'haber': f['haber'], 'concepto': f['rubro_origen']}
+                for f in evaluacion.lineas],
+        origen=('apertura', apertura.pk, 'confirmacion'), autor=inicio_contable.autor(request))
+
+
+def _congelar_ambitos(apertura, por_nombre, ahora):
+    """`ambitos_no_aplican` al confirmar: la declaración queda fija con quién la confirmó y cuándo (Parte C, regla 8)."""
+    return [{**declarado, 'declarado_por': por_nombre, 'declarado_en': ahora.isoformat()}
+            for declarado in apertura.ambitos_no_aplican or [] if isinstance(declarado, dict)]
+
+
+def confirmar(request, pk, datos):
+    """POST /contabilidad/api/apertura/<id>/confirmar/ `{version, clave, revisado: true, nota, incompletos_aceptados}`.
+    Devuelve `(apertura, repetido)`. Los pasos de la especificación (Parte B):
+
+    1. fuera de la transacción: permiso `change_confirmacion_apertura`, `clave`, `revisado is True` y la forma del resto;
+    2. candado del libro → la apertura bloqueada (antes, la que sustituye, por id: orden global de bloqueos);
+    3. ya confirmada con la misma `clave_confirmacion` → la misma respuesta con `repetido`; con otra → 409
+       `apertura_confirmada`; `version`; estado distinto de `en_revision` → 409 `estado`;
+    4. revalida todo con el candado (409 con el primer código y la lista completa);
+    5. la sustitución (Parte E) es del corte 2: aquí ninguna apertura sustituye a otra;
+    6. el asiento inicial con diario.contabilizar (ninguno si la empresa empieza sin saldos);
+    7. los incompletos aceptados, línea por línea (sin auxiliares, en este corte, toda línea con detalle);
+    8. la apertura confirmada (asiento, totales, revisión, confirmación, clave, ámbitos congelados, versión) y el inicio
+       contable con su corte;
+    9. su evento y la auditoría `apertura_confirmada` con el asiento.
+
+    Confirmar no llama al SRI, no envía correo y no crea ningún documento de la operación (regla 8)."""
+    api.exigir_permiso(request, CONFIRMAR)
+    clave = api.clave_de(datos)
+    errores = api.Errores()
+    version = _version(datos, errores)
+    nota, aceptadas = _pedido_de_confirmacion(datos, errores)
+    errores.comprobar()
+    obtener(pk)   # 404 antes de tomar el candado
+    with inicio_contable.libro() as inicio:
+        sustituye = Apertura.objects.filter(pk=pk).values_list('sustituye_id', flat=True).first()
+        bloqueadas = {a.pk: a for a in Apertura.objects.select_for_update(of=('self',)).filter(
+            pk__in=[i for i in (pk, sustituye) if i is not None]).order_by('id')}
+        apertura = bloqueadas[int(pk)]
+        if apertura.clave_confirmacion is not None and apertura.clave_confirmacion == clave:
+            return apertura, True
+        if apertura.estado in CON_CONFIRMACION:
+            raise _error('apertura_confirmada', 409, texto=TEXTOS_VALIDACION['apertura_confirmada'],
+                         apertura=dict_confirmada(apertura))
+        otra = Apertura.objects.filter(clave_confirmacion=clave).exclude(pk=apertura.pk).first()
+        if otra is not None:
+            raise _error('clave_usada', 409, apertura={'id': otra.pk, 'estado': otra.estado})
+        if version != apertura.version:
+            raise _error('version', 409, apertura=dict_apertura(apertura))
+        if apertura.estado != EN_REVISION:
+            raise rechazo_de_estado(apertura, [EN_REVISION], TEXTOS_VALIDACION['estado_revision'])
+        if apertura.sustituye_id is None and Apertura.objects.filter(estado=CONFIRMADA).exclude(pk=apertura.pk).exists():
+            raise _error('apertura_confirmada', 409, texto=TEXTOS_VALIDACION['otra_confirmada'])
+
+        evaluacion = evaluar(apertura, inicio, al_confirmar=True, aceptadas=aceptadas, nota=nota)
+        if not evaluacion.valida:
+            primero = evaluacion.bloqueos[0]
+            raise api.ErrorApi(primero['codigo'], primero['texto'], 409,
+                               **{k: v for k, v in primero.items() if k not in ('codigo', 'texto')},
+                               bloqueos=evaluacion.bloqueos, advertencias=evaluacion.advertencias)
+
+        _sincronizar_inicio(request, inicio, apertura)
+        asiento = None if apertura.sin_saldos else _asiento_de_apertura(request, apertura, evaluacion)
+        for desde in range(0, len(evaluacion.incompletas), lotes.TAMANO_LOTE):
+            LineaApertura.objects.filter(pk__in=evaluacion.incompletas[desde:desde + lotes.TAMANO_LOTE]).update(
+                incompleto_aceptado=True)
+
+        ahora = timezone.now()
+        por_id, por_nombre = inicio_contable.autor(request)
+        total = asiento.total_debe if asiento is not None else CERO   # sin saldos: cero por declaración expresa
+        apertura.estado, apertura.asiento, apertura.total_debe, apertura.total_haber = CONFIRMADA, asiento, total, total
+        apertura.revisado_por_id, apertura.revisado_por_nombre, apertura.revisado_en = por_id, por_nombre, ahora
+        apertura.confirmado_por_id, apertura.confirmado_por_nombre, apertura.confirmado_en = por_id, por_nombre, ahora
+        apertura.nota_revision, apertura.clave_confirmacion = nota, clave
+        apertura.ambitos_no_aplican = _congelar_ambitos(apertura, por_nombre, ahora)
+        if not apertura.resultado_ejercicio and evaluacion.resultado:
+            apertura.resultado_ejercicio = evaluacion.resultado   # lo que dicen las líneas (regla 6), no una suposición
+        apertura.version += 1
+        apertura.save(update_fields=[
+            'estado', 'asiento', 'total_debe', 'total_haber', 'revisado_por_id', 'revisado_por_nombre', 'revisado_en',
+            'confirmado_por_id', 'confirmado_por_nombre', 'confirmado_en', 'nota_revision', 'clave_confirmacion',
+            'ambitos_no_aplican', 'resultado_ejercicio', 'version'])
+        del_asiento = ({'id': asiento.pk, 'numero': asiento.numero_completo, 'debe': importe_texto(asiento.total_debe),
+                        'haber': importe_texto(asiento.total_haber)} if asiento is not None else None)
+        evento(request, apertura, 'confirmada', de_estado=EN_REVISION, a_estado=CONFIRMADA, detalle={
+            'version': apertura.version, 'asiento': del_asiento, 'sin_saldos': apertura.sin_saldos,
+            'incompletos_aceptados': evaluacion.incompletas, 'nota': nota,
+            'advertencias': [a['codigo'] for a in evaluacion.advertencias]})
+        audit(request, 'apertura_confirmada', company=request.company, apertura=apertura.pk, version=apertura.version,
+              asiento=del_asiento, sin_saldos=apertura.sin_saldos, fecha_corte=apertura.fecha_corte.isoformat(),
+              incompletos_aceptados=len(evaluacion.incompletas))
+    return apertura, False

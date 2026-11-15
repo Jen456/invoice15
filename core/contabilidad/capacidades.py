@@ -200,9 +200,10 @@ FUNCIONES = (
     # Bloques siguientes de la orden de cierre. La decisión citada bloquea su regla o su activación, no la construcción.
     Funcion('evidencias', 'Evidencias de presentación', TRIBUTARIO, POR_DEFINIR, construccion=PENDIENTE,
             que_falta='El registro de evidencias de presentación del 104, del 103 y del ATS está en construcción.'),
-    # Bloque 2 · Parte B (vistas_apertura.py). `confirmar` (change_confirmacion_apertura) lo añade la parte siguiente del
-    # corte 1 al publicar su ruta: nada se anuncia sin ella.
-    Funcion('apertura', 'Apertura contable', CONTABILIDAD, {'ver': 'view_apertura', 'preparar': 'add_apertura'},
+    # Bloque 2 · Parte B (vistas_apertura.py). `preparar` incluye validar, enviar a revisión y descartar; `confirmar`,
+    # también devolver a borrador (quien revisa).
+    Funcion('apertura', 'Apertura contable', CONTABILIDAD,
+            {'ver': 'view_apertura', 'preparar': 'add_apertura', 'confirmar': 'change_confirmacion_apertura'},
             requisitos=(_plan_cuentas_vacio,),
             avisos=(_cuentas_sin_clase, _cuentas_sin_auxiliar, _auxiliares_incompletos, _vinculos_rotos),
             ruta='/contabilidad/api/apertura/'),

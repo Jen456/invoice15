@@ -184,8 +184,10 @@ class TestConsulta:
         # Sin saldo anterior no se supone cero: la contabilidad sigue pendiente mientras no se confirme.
         assert datos['cobertura']['contabilidad']['causas_detalle'] == [
             {'codigo': 'apertura_sin_confirmar', 'texto': cobertura.TEXTOS['apertura_sin_confirmar']}]
-        # Solo `editar` y `descartar` tienen su ruta en esta parte; el resto se anuncia al publicarse la suya.
-        assert datos['capacidades'] == {**dict.fromkeys(servicio.REGLAS_CAPACIDAD, False), 'editar': True, 'descartar': True}
+        # En borrador: editar, validar, enviar y descartar; devolver y confirmar son de la revisión, y sustituir, ajustar,
+        # reversar y cobrar, de una confirmada (y del corte 2: se anuncian al publicarse su ruta).
+        assert datos['capacidades'] == {**dict.fromkeys(servicio.REGLAS_CAPACIDAD, False), 'editar': True, 'validar': True,
+                                        'enviar': True, 'descartar': True}
 
     def test_cobertura_por_ambito_sin_auxiliares(self, web, empresa, cuentas):
         apertura = creada(web, empresa)
@@ -777,12 +779,14 @@ class TestCapacidades:
     def test_la_funcion_en_el_registro(self, web):
         funcion = capacidades.funcion_de('apertura')
         assert (funcion.construccion, funcion.ruta, funcion.permisos) == (
-            capacidades.DISPONIBLE, API, {'ver': 'view_apertura', 'preparar': 'add_apertura'})
+            capacidades.DISPONIBLE, API, {'ver': 'view_apertura', 'preparar': 'add_apertura',
+                                          'confirmar': 'change_confirmacion_apertura'})
         for codigo in ('cartera_inicial', 'historico'):
             assert capacidades.funcion_de(codigo).construccion == capacidades.PENDIENTE
         anunciada = web.get(CAPACIDADES).json()['funciones']['apertura']
         assert anunciada == {'nombre': 'Apertura contable', 'ambito': 'contabilidad', 'estado': 'disponible', 'causa': None,
-                             'texto': None, 'acciones': {'ver': True, 'preparar': True}, 'faltan': [], 'avisos': []}
+                             'texto': None, 'acciones': {'ver': True, 'preparar': True, 'confirmar': True}, 'faltan': [],
+                             'avisos': []}
 
     def test_plan_de_cuentas_vacio_es_un_dato_por_completar(self, client, empresa, admin):
         helpers.iniciar_sesion(client, admin, empresa=empresa)

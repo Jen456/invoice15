@@ -47,6 +47,10 @@ urlpatterns = [
     path('api/apertura/<int:pk>/lineas/', vistas_apertura.LineasApi.as_view(), name='contabilidad_apertura_lineas'),
     path('api/apertura/<int:pk>/respaldos/', vistas_apertura.RespaldosApi.as_view(), name='contabilidad_apertura_respaldos'),
     path('api/apertura/<int:pk>/descartar/', vistas_apertura.DescartarApi.as_view(), name='contabilidad_apertura_descartar'),
+    path('api/apertura/<int:pk>/validar/', vistas_apertura.ValidarApi.as_view(), name='contabilidad_apertura_validar'),
+    path('api/apertura/<int:pk>/enviar/', vistas_apertura.EnviarApi.as_view(), name='contabilidad_apertura_enviar'),
+    path('api/apertura/<int:pk>/devolver/', vistas_apertura.DevolverApi.as_view(), name='contabilidad_apertura_devolver'),
+    path('api/apertura/<int:pk>/confirmar/', vistas_apertura.ConfirmarApi.as_view(), name='contabilidad_apertura_confirmar'),
 
     # Bloque 2 · corte 2 (Partes C a F: vistas_apertura.py, vistas_cartera_inicial.py, vistas_historico.py).
 ]

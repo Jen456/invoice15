@@ -17,8 +17,16 @@ las conecta la interfaz.
 - GET   /contabilidad/api/apertura/respaldos/<id>/descargar/  `view_apertura`  el archivo, como adjunto
 - POST  /contabilidad/api/apertura/respaldos/<id>/anular/     `add_apertura`   `{motivo}`
 - POST  /contabilidad/api/apertura/<id>/descartar/            `add_apertura`   `{version, motivo}`
+- POST  /contabilidad/api/apertura/<id>/validar/              `add_apertura`   `{version}`: bloqueos, advertencias, cobertura
+                                                                               y reportes; no escribe nada
+- POST  /contabilidad/api/apertura/<id>/enviar/               `add_apertura`   `{version}`: a revisión, solo sin bloqueos
+- POST  /contabilidad/api/apertura/<id>/devolver/             `change_confirmacion_apertura`  `{version, motivo}`: a borrador
+- POST  /contabilidad/api/apertura/<id>/confirmar/            `change_confirmacion_apertura`  `{version, clave, revisado,
+                                                                               nota, incompletos_aceptados}`: el asiento
+                                                                               inicial; la misma clave, `repetido`
 
-Ver: Propietario, Administrador, Contador y Consulta. Preparar: Propietario, Administrador y Contador. La sesión, la
+Ver: Propietario, Administrador, Contador y Consulta. Preparar, devolver y confirmar: Propietario, Administrador y
+Contador. La sesión, la
 empresa de la pestaña (`?empresa=` o el envío), que el plan deje guardar y el permiso los comprueba api.ApiContable antes
 de llegar aquí; cada servicio vuelve a exigir su permiso. Las reglas están en apertura.py, apertura_importar.py e
 inicio_contable.py."""
@@ -134,3 +142,32 @@ class DescartarApi(api.ApiContable):
 
     def post(self, request, pk):
         return JsonResponse({'apertura': apertura.dict_apertura(apertura.descartar(request, pk, api.cuerpo(request)))})
+
+
+class ValidarApi(api.ApiContable):
+    permisos = {'POST': apertura.PREPARAR}
+
+    def post(self, request, pk):
+        return JsonResponse(apertura.validar(request, pk, api.cuerpo(request)))
+
+
+class EnviarApi(api.ApiContable):
+    permisos = {'POST': apertura.PREPARAR}
+
+    def post(self, request, pk):
+        return JsonResponse({'apertura': apertura.dict_apertura(apertura.enviar(request, pk, api.cuerpo(request)))})
+
+
+class DevolverApi(api.ApiContable):
+    permisos = {'POST': apertura.CONFIRMAR}
+
+    def post(self, request, pk):
+        return JsonResponse({'apertura': apertura.dict_apertura(apertura.devolver(request, pk, api.cuerpo(request)))})
+
+
+class ConfirmarApi(api.ApiContable):
+    permisos = {'POST': apertura.CONFIRMAR}
+
+    def post(self, request, pk):
+        confirmada, repetido = apertura.confirmar(request, pk, api.cuerpo(request))
+        return JsonResponse(apertura.respuesta_de_confirmar(request, confirmada, repetido))
