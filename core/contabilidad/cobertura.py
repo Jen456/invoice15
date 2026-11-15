@@ -130,8 +130,7 @@ def _contabilidad(inicio, vigente, aceptadas):
     provisionalidad que hablan del inicio y de la apertura (las demás, como `motor_pendiente`, son de lo posterior al corte
     y van en los períodos y en cada reporte)."""
     hasta = inicio.fecha_corte if inicio is not None else None
-    _, _, detalle = reportes.provisionalidad('cobertura', None, hasta)
-    causas = [causa for causa in detalle if causa['codigo'] in DEL_REGISTRO]
+    _, _, causas = reportes.provisionalidad('cobertura', None, hasta, solo=DEL_REGISTRO, inicio=inicio, apertura=vigente)
     if causas or vigente is None:
         return _ambito(PENDIENTE, causas)
     if aceptadas:

@@ -70,12 +70,21 @@ class Contexto:
         return self.inicio is None or self.hasta is None or self.hasta > self.inicio.fecha_corte
 
 
-def provisionalidad(reporte, desde, hasta):
-    """`(provisional, causas, causas_detalle)` del reporte `reporte` para el rango [desde, hasta], en la empresa activa."""
+def provisionalidad(reporte, desde, hasta, *, solo=None, **leido):
+    """`(provisional, causas, causas_detalle)` del reporte `reporte` para el rango [desde, hasta], en la empresa activa.
+
+    `solo`: los códigos que se evalúan (la cobertura de lo anterior al corte solo pregunta por el inicio y la apertura).
+    `leido`: lo que quien llama ya leyó de la empresa activa (`inicio`, `apertura` confirmada o None), para no volver a
+    consultarlo; nunca cambia qué se decide, solo de dónde sale."""
     contexto = Contexto(reporte, desde, hasta)
+    for nombre in ('inicio', 'apertura'):
+        if nombre in leido:
+            contexto.__dict__[nombre] = leido[nombre]   # lo que cached_property habría leído
     detalle = []
     for causa in CAUSAS.values():
         if causa.reportes and reporte not in causa.reportes:
+            continue
+        if solo is not None and causa.codigo not in solo:
             continue
         resultado = causa.evaluar(contexto)
         if resultado is None or resultado is False or (resultado is not True and not resultado):
