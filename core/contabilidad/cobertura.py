@@ -6,8 +6,9 @@ además `sin_cobertura`. No es licencia ni autorización fiscal.
 En este corte (Partes A y B) solo lo que GET /contabilidad/api/apertura/ necesita, sin auxiliares propios:
 
 - `contabilidad`: `pendiente` sin inicio (`inicio_sin_configurar`) o sin apertura confirmada (`apertura_sin_confirmar`; en
-  historial, `saldo_anterior_sin_confirmar`): sin saldo anterior no se supone cero. `parcial` si se confirmó con detalle
-  incompleto aceptado; si no, `conciliada`;
+  historial, `saldo_anterior_sin_confirmar`): sin saldo anterior no se supone cero. Esas tres causas salen del registro de
+  provisionalidad (reportes.provisionalidad, decisión común 17), con su código y su texto: la cobertura no mantiene una
+  lista paralela. `parcial` si se confirmó con detalle incompleto aceptado; si no, `conciliada`;
 - clientes, proveedores, inventario, bancos y activos: `no_aplica` si la apertura lo declara (`ambitos_no_aplican`, con su
   nota). Sin declaración y sin ninguna línea con ese detalle, `pendiente` con `sin_cuenta_declarada`: `Cuenta.auxiliar`
   solo existe si alguien lo marca y no marcarla no prueba que no haya cartera. Con líneas: `pendiente` mientras su saldo
@@ -27,6 +28,7 @@ from decimal import Decimal
 
 from django.db.models import Count, Sum
 
+from core.contabilidad import reportes
 from core.contabilidad.modelos_apertura import AMBITOS, VIGENTE
 from core.contabilidad.models import AuxiliarApertura, CoberturaPeriodo, LineaApertura
 
@@ -40,10 +42,10 @@ NOMBRE = {'clientes': 'clientes', 'proveedores': 'proveedores', 'inventario': 'i
           'activos': 'activos fijos', 'tributario': 'saldos tributarios'}
 AMBITOS_POR_MES = tuple(ambito for ambito, _ in AMBITOS)
 
+# Causas de la cobertura de contabilidad que son las del registro de provisionalidad (mismo código y mismo texto).
+DEL_REGISTRO = ('inicio_sin_configurar', 'apertura_sin_confirmar', 'saldo_anterior_sin_confirmar')
 TEXTOS = {
-    'inicio_sin_configurar': 'Falta configurar el inicio contable: la modalidad y la fecha de corte.',
-    'apertura_sin_confirmar': 'La apertura contable todavía no está confirmada: no se supone ningún saldo inicial.',
-    'saldo_anterior_sin_confirmar': 'El saldo anterior al historial todavía no está confirmado: no se supone cero.',
+    **{codigo: reportes.CAUSAS[codigo].texto for codigo in DEL_REGISTRO},
     'detalle_incompleto_aceptado': 'La apertura se confirmó aceptando el detalle incompleto de {n} cuenta(s).',
     'sin_cuenta_declarada': 'Ninguna cuenta de la apertura está declarada como de {nombre}.',
     'sin_detalle': 'El saldo de {nombre} en la apertura todavía no tiene su detalle.',
@@ -124,11 +126,14 @@ def _de_detalle(ambito, lineas):
 
 
 def _contabilidad(inicio, vigente, aceptadas):
-    if inicio is None:
-        return _ambito(PENDIENTE, [_causa('inicio_sin_configurar')])
-    if vigente is None:
-        codigo = 'saldo_anterior_sin_confirmar' if inicio.modalidad == 'historial' else 'apertura_sin_confirmar'
-        return _ambito(PENDIENTE, [_causa(codigo)])
+    """La cobertura de lo anterior al corte: el rango que termina en la fecha de corte, con las causas del registro de
+    provisionalidad que hablan del inicio y de la apertura (las demás, como `motor_pendiente`, son de lo posterior al corte
+    y van en los períodos y en cada reporte)."""
+    hasta = inicio.fecha_corte if inicio is not None else None
+    _, _, detalle = reportes.provisionalidad('cobertura', None, hasta)
+    causas = [causa for causa in detalle if causa['codigo'] in DEL_REGISTRO]
+    if causas or vigente is None:
+        return _ambito(PENDIENTE, causas)
     if aceptadas:
         return _ambito(PARCIAL, [_causa('detalle_incompleto_aceptado', aceptadas, n=aceptadas)])
     return _ambito(CONCILIADA, [])
@@ -153,9 +158,25 @@ def _periodos(inicio, hoy):
     return periodos
 
 
-def de_la_empresa(inicio, vigente, en_preparacion, hoy):
-    """`cobertura` de GET /contabilidad/api/apertura/ (forma de la especificación, Parte B)."""
-    base = vigente or en_preparacion
+def vinculos_rotos(apertura_id):
+    """Ids de los auxiliares vigentes de la apertura enlazados a una cuenta por cobrar o por pagar, o a un documento
+    importado, que ya no existe (Parte C, regla 4: el borrado de la operación no toca la contabilidad y el vínculo queda
+    roto, visible). Una consulta por tipo de vínculo, y ninguna si la apertura no tiene auxiliares vinculados."""
+    from core.importacion.models import DocumentoImportado
+    from core.pos.models import CtasCollect, DebtsPay
+    vigentes = AuxiliarApertura.objects.filter(apertura_id=apertura_id, estado=VIGENTE)
+    rotos = set()
+    for campo, modelo in (('cxc_id', CtasCollect), ('cxp_id', DebtsPay), ('documento_importado_id', DocumentoImportado)):
+        rotos.update(vigentes.filter(**{f'{campo}__isnull': False}).exclude(**{f'{campo}__in': modelo.objects.values('pk')})
+                     .values_list('id', flat=True))
+    return sorted(rotos)
+
+
+def de_la_empresa(inicio, vigente, en_preparacion, hoy, base=None):
+    """`cobertura` de GET /contabilidad/api/apertura/ (forma de la especificación, Parte B). `base`: la apertura cuyos
+    ámbitos se miran (validar la pasa: es la que se valida); por defecto, la vigente o, si no la hay, la que está en
+    preparación."""
+    base = base or vigente or en_preparacion
     no_aplican = {d['ambito'] for d in (base.ambitos_no_aplican if base is not None else []) if isinstance(d, dict)}
     por_detalle = _lineas_con_detalle(base)
     aceptadas = (LineaApertura.objects.filter(apertura=vigente, retirada=False, incompleto_aceptado=True).count()

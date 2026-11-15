@@ -165,16 +165,13 @@ def _auxiliares_incompletos(request):
 
 def _vinculos_rotos(request):
     """Auxiliares vigentes de la apertura de trabajo enlazados a una cuenta por cobrar o por pagar, o a un documento
-    importado, que ya no existe. Hoy no los crea nada (los vínculos son del corte 2): la consulta ya responde por ellos."""
-    from core.contabilidad.models import AuxiliarApertura
-    from core.importacion.models import DocumentoImportado
-    from core.pos.models import CtasCollect, DebtsPay
+    importado, que ya no existe. Hoy no los crea nada (los vínculos son del corte 2): la consulta ya responde por ellos.
+    Es la misma que bloquea validar y confirmar (`vinculo_roto`, cobertura.vinculos_rotos)."""
+    from core.contabilidad.cobertura import vinculos_rotos
     trabajo = _apertura_de_trabajo()
     if trabajo is None:
         return []
-    vigentes = AuxiliarApertura.objects.filter(apertura_id=trabajo[0], estado='vigente')
-    n = sum(vigentes.filter(**{f'{campo}__isnull': False}).exclude(**{f'{campo}__in': modelo.objects.values('pk')}).count()
-            for campo, modelo in (('cxc_id', CtasCollect), ('cxp_id', DebtsPay), ('documento_importado_id', DocumentoImportado)))
+    n = len(vinculos_rotos(trabajo[0]))
     return [aviso('vinculos_rotos', f'{n} auxiliar(es) de la apertura están vinculados a un documento que ya no existe: '
                   'desvincúlalos con su motivo.', n, recurso={'tipo': 'apertura', 'id': trabajo[0],
                                                               'api': f'/contabilidad/api/apertura/{trabajo[0]}/'})] if n else []
