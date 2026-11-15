@@ -5,13 +5,18 @@ conoce, y una vuelta de solo código lo deja atendiendo sobre la base migrada.
 - Toda columna que una migración de los bloques 2 a 6 añade a una tabla que ya existía es nula o lleva `db_default`: el
   INSERT de quien no la conoce no falla (se comprueba también por SQL en `contabilidad_cuenta`).
 - Ninguna tabla nueva tiene una clave foránea fuera de contabilidad salvo la empresa (introspección de la base real).
+- Ninguna migración de los bloques crea una clave foránea hacia una tabla anterior a ellos (lo publicado y el bloque 1)
+  fuera de la migración corta del final que solo hace eso (hallazgo C2E-1; recorrido de las operaciones, sin base).
 - Borrar por SQL directo, sin los modelos nuevos de por medio, una venta, una compra, una cuenta por cobrar o por pagar,
   un producto o un usuario a los que se refieren filas contables no falla (ni al comprobar las restricciones diferidas), y
   las filas contables siguen como estaban.
 
 Si la rama integrada con fase/primera-entrega trae ya este archivo, se amplía con estas pruebas (dependencia anotada)."""
+import re
+import sys
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from django.db import connection, migrations
@@ -71,6 +76,75 @@ def test_ninguna_migracion_de_los_bloques_cambia_las_claves_de_quien_del_plan():
                 if (op.model_name.lower(), campo.lower()) in CLAVES_DE_0009:
                     tocadas.append(f'{app}.{nombre}: {type(op).__name__} {op.model_name}.{campo}')
     assert not tocadas, tocadas
+
+
+def _apunta_a(app, campo):
+    """(app, modelo en minúsculas) al que apunta un campo de relación tal como lo escribe la migración."""
+    destino = campo.remote_field.model
+    etiqueta = destino if isinstance(destino, str) else destino._meta.label
+    app_destino, modelo = etiqueta.split('.') if '.' in etiqueta else (app, etiqueta)
+    return app_destino, modelo.lower()
+
+
+SQL_DE_CLAVE = re.compile(r'\bFOREIGN\s+KEY\b|\bREFERENCES\b', re.IGNORECASE)
+
+
+def test_claves_hacia_tablas_anteriores_solo_en_la_migracion_corta_del_final():
+    """Hallazgo C2E-1 (ensayo del corte 1 con e0f2902 atendiendo): en PostgreSQL, cada clave foránea hacia una tabla que
+    ya existía toma `ShareRowExclusiveLock` sobre ella (choca con toda escritura) desde que se crea hasta que la migración
+    confirma, y Django crea las de un `CreateModel` al final, entre los índices de la migración: 0011 y 0012 retenían
+    así `pos_company` 6 y 12 s y `contabilidad_movimientomanual` 8 s. Ahora la migración que crea la tabla las aplaza
+    (`AplazarClaves`, core/contabilidad/migrations/_claves_aplazadas.py) y las crea otra que solo hace eso
+    (`CrearClavesAplazadas`), detrás. «Anterior» es toda tabla que no crea un `CreateModel` de los bloques 2 a 6 (la
+    empresa, el usuario, la operación, el kardex, el plan de cuentas del bloque 1...), como en la prueba de las columnas.
+
+    Falla si una migración de los bloques: crea en un `CreateModel` una clave (o una ManyToMany) hacia una tabla anterior
+    sin aplazarla; la añade o la cambia con `AddField` o `AlterField` (en PostgreSQL va en línea y bloquea en el acto);
+    tiene SQL con FOREIGN KEY o REFERENCES (RunSQL o RunPython) fuera de la migración corta; aplaza lo que no es una clave
+    hacia una tabla anterior de un `CreateModel` suyo; o si lo aplazado y lo creado al final no coinciden, la migración
+    corta no va sola o va antes que lo que aplaza. tests/test_zz_claves_anteriores_pg.py mide los bloqueos de verdad."""
+    bloques = migraciones_de_los_bloques()
+    creadas = {(app, op.name.lower()) for (app, _), m in bloques for op in m.operations
+               if isinstance(op, migrations.CreateModel)}
+    malas, aplazadas, al_final = [], {}, {}
+    for (app, nombre), migracion in bloques:
+        operaciones = migracion.operations
+        aqui = {clave for op in operaciones if type(op).__name__ == 'AplazarClaves' for clave in op.claves}
+        hacia_anteriores = set()
+        for op in operaciones:
+            tipo = type(op).__name__
+            if tipo == 'CrearClavesAplazadas':
+                if len(operaciones) != 1:
+                    malas.append(f'{app}.{nombre}: CrearClavesAplazadas no va sola en su migración')
+                al_final.update({(app, *clave): nombre for clave in op.claves})
+            elif tipo == 'AplazarClaves':
+                aplazadas.update({(app, *clave): nombre for clave in op.claves})
+            elif isinstance(op, (migrations.CreateModel, migrations.AddField, migrations.AlterField)):
+                crea = isinstance(op, migrations.CreateModel)
+                modelo = (op.name if crea else op.model_name).lower()
+                for campo_nombre, campo in (op.fields if crea else [(op.name, op.field)]):
+                    if not campo.is_relation or not getattr(campo, 'db_constraint', True):
+                        continue
+                    destino = _apunta_a(app, campo)
+                    if destino in creadas:
+                        continue
+                    hacia_anteriores.add((modelo, campo_nombre))
+                    if not (crea and not campo.many_to_many and (modelo, campo_nombre) in aqui):
+                        malas.append(f'{app}.{nombre}: {tipo} {modelo}.{campo_nombre} → {".".join(destino)} sin aplazar')
+        malas += [f'{app}.{nombre}: AplazarClaves nombra {m}.{c}, que no es una clave hacia una tabla anterior de un '
+                  'CreateModel de esta migración' for m, c in sorted(aqui - hacia_anteriores)]
+        if not any(type(op).__name__ == 'CrearClavesAplazadas' for op in operaciones):
+            if SQL_DE_CLAVE.search(Path(sys.modules[type(migracion).__module__].__file__).read_text()):
+                malas.append(f'{app}.{nombre}: SQL con FOREIGN KEY o REFERENCES fuera de la migración corta')
+    malas += [f'{".".join(clave)}: aplazada en {aplazadas.get(clave)}, creada al final en {al_final.get(clave)}'
+              for clave in sorted(set(aplazadas) ^ set(al_final))]
+    malas += [f'{".".join(clave)}: se crea en {nombre}, que no va detrás de {aplazadas[clave]}'
+              for clave, nombre in sorted(al_final.items()) if clave in aplazadas and nombre <= aplazadas[clave]]
+    assert not malas, malas
+    # Las del corte 1 del bloque 2: la empresa en las 19 tablas, el plan de cuentas en seis y el kardex en una.
+    del_corte = {clave for clave, nombre in al_final.items() if nombre == '0016_claves_hacia_tablas_anteriores'}
+    assert len(del_corte) == 26 and {('contabilidad', 'asiento', 'company'), ('contabilidad', 'lineaasiento', 'cuenta'),
+                                     ('contabilidad', 'auxiliarapertura', 'movimiento_kardex')} <= del_corte
 
 
 def test_insert_que_no_conoce_las_columnas_nuevas_de_cuenta(empresa):

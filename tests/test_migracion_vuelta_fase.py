@@ -16,8 +16,8 @@ filas de Permission aún en la base, 0003 no debe volver a crear «Diseño de fa
 Y la vuelta del plan de cuentas (bloque 1 del cierre contable) hasta lo que estaba publicado antes de él: el módulo del
 kardex conserva sus permisos, nadie conserva los del plan de cuentas y otra ida lo deja como estaba. Con el bloque 2
 (libro diario y apertura), primero la vuelta hasta el final del bloque 1: el módulo del kardex se queda con lo suyo y lo
-del plan de cuentas, nadie conserva los permisos del libro ni de la apertura, y las siete migraciones del bloque quedan
-pendientes."""
+del plan de cuentas, nadie conserva los permisos del libro ni de la apertura, y las ocho migraciones del bloque quedan
+pendientes (las siete del corte 1 y su 0016, que crea al final las claves hacia tablas anteriores)."""
 import json
 import os
 import subprocess
@@ -98,10 +98,11 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
             # y tenancy 0013 (acciones de auditoría, sobre 0012), con la vuelta a tenancy 0006. 45 con eso.
             # Importación del plan: contabilidad 0007-0008 (lotes y su seguridad por filas) caen también con
             # `contabilidad zero`, y contabilidad 0009 (la base anula a los autores de cuentas y lotes). 48 con eso.
-            # Bloque 2 (libro diario y apertura): contabilidad 0010-0015 (columnas de Cuenta, tablas del libro y de la
-            # apertura, seguridad por filas, disparadores y permisos) caen con `contabilidad zero`, y tenancy 0014
-            # (acciones de auditoría, sobre 0013), con la vuelta a tenancy 0006. 55 en total.
-            assert len(pendientes(env)) == 55
+            # Bloque 2 (libro diario y apertura): contabilidad 0010-0016 (columnas de Cuenta, tablas del libro y de la
+            # apertura, seguridad por filas, disparadores, permisos y las claves hacia tablas anteriores, que 0016 crea al
+            # final) caen con `contabilidad zero`, y tenancy 0014 (acciones de auditoría, sobre 0013), con la vuelta a
+            # tenancy 0006. 56 en total.
+            assert len(pendientes(env)) == 56
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)
@@ -136,7 +137,7 @@ def test_vuelta_del_diseno_y_otra_pasada_por_configuracion_0003(tmp_path):
                              ('tenancy', '0011_acciones_kardex')):   # la vuelta de DISENO-FACTURA.md
             manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
         # tenancy 0013 (acciones del plan de cuentas) y 0014 (las del libro y la apertura) van sobre 0012 y caen con ella.
-        # Las migraciones del plan de cuentas, de su importación y del bloque 2 (contabilidad 0004-0015) no dependen de
+        # Las migraciones del plan de cuentas, de su importación y del bloque 2 (contabilidad 0004-0016) no dependen de
         # nada del diseño (cuelgan de pos 0034, no de 0035): sus tablas no se tocan en esta vuelta.
         sin_diseno = ['configuracion.0004_diseno_factura', 'configuracion.0005_modulo_diseno_factura',
                       'configuracion.0006_personalizacion_factura', 'pos.0035_sale_ride_diseno',
@@ -160,7 +161,7 @@ def test_vuelta_del_diseno_y_otra_pasada_por_configuracion_0003(tmp_path):
 
 BLOQUE_2 = ['contabilidad.0010_clases_de_cuenta', 'contabilidad.0011_libro_diario', 'contabilidad.0012_apertura',
             'contabilidad.0013_rls_libro_apertura', 'contabilidad.0014_libro_inmutable', 'contabilidad.0015_permisos_apertura',
-            'tenancy.0014_acciones_apertura']
+            'contabilidad.0016_claves_hacia_tablas_anteriores', 'tenancy.0014_acciones_apertura']
 
 
 def test_vuelta_del_plan_de_cuentas_a_lo_publicado(tmp_path):
