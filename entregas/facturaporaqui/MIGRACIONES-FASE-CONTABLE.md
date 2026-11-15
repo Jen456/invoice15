@@ -851,11 +851,12 @@ Ningún nombre de restricción cambia.
   escritura más lenta esperó 1,20 s (de 23); ocupada hasta rendirse (3 intentos en la prueba), falla a los 7,00 s con el
   mensaje, sin cambiar nada, y la escritura más lenta esperó 1,10 s (de 69).
 - **Ensayo de la decisión 18 repetido sobre `72a68ee`** (15/11, de 13:29 a 14:16 UTC, carga de 5,2 a 10,3 con 6
-  núcleos, `e0f2902` atendiendo; detalle en «Ensayo repetido sobre `72a68ee`», abajo). En las cuatro idas (la
-  principal, la otra ida después de la vuelta y los escenarios `r1` y `r3`), 0011 y 0012 no tomaron ningún bloqueo sobre
-  tablas existentes, y tampoco a la vuelta. 0016 duró de 0,23 a 0,60 s, con un intento, y retuvo `pos_company` y
-  `contabilidad_movimientomanual` de 0,10 a 0,49 s (espera del `LOCK` de 81 a 264 ms, los 26 ALTER de 61 a 119 ms, y el
-  resto, el COMMIT). Su vuelta, con la aplicación parada, tomó `AccessExclusiveLock` de 0,51 a 0,64 s. El kardex de
+  núcleos, `e0f2902` atendiendo; detalle en «Ensayo repetido sobre `72a68ee`», abajo). En las tres idas completas (la
+  principal, la otra ida después de la vuelta y `r1`), 0011 y 0012 no tomaron ningún bloqueo sobre tablas existentes, y
+  tampoco a la vuelta. En las cuatro idas (también `r3`, que solo aplicó 0016), 0016 duró de 0,23 a 0,60 s, con un
+  intento, y retuvo `pos_company` y `contabilidad_movimientomanual` de 0,10 a 0,49 s (espera del `LOCK` de 81 a 264 ms,
+  los 26 ALTER de 61 a 119 ms, y el resto, el COMMIT). Su vuelta, con la aplicación parada, tomó `AccessExclusiveLock`
+  de 0,51 a 0,64 s. El kardex de
   `e0f2902` no esperó nada (antes, 55 muestras y 5,47 s) y la escritura más lenta en `pos_company`, 1,14 s, es de 0007,
   del bloque 1 (C2E-2). Las 26 claves quedaron diferidas y validadas, con la misma huella tras cada ida. **C2E-1 queda
   resuelto.**
@@ -1102,9 +1103,10 @@ bloqueos sí):
 - Ventana de 30 s o más con `e0f2902` sobre la base migrada: seguridad 33/33 y 373 peticiones, 0 fallidas. Con
   `72a68ee`: 1007 peticiones, 0 fallidas, y los 22 casos `[C]` bien (controles, `1e3`, PNG dañado, auxiliar cambiado en
   revisión con `detalle_fijado`, la clave usada en otra apertura).
-- Con el rol de la aplicación, los 13 intentos de cambiar el libro o la historia, rechazados con `P0001`, y la seguridad
-  por filas de otra empresa con 0 filas: los mismos intentos que la primera pasada. `DISABLE TRIGGER` sigue siendo
-  posible (C2E-4). El rol de la aplicación creó las seis funciones y sus disparadores.
+- Con el rol de la aplicación, los 13 intentos de cambiar el libro o la historia, rechazados con `P0001`, más el asiento
+  sin sellar que se rechaza al confirmar (`r4`): 14, como en la primera pasada. La seguridad por filas de otra empresa
+  da 0 filas. `DISABLE TRIGGER` sigue siendo posible (C2E-4). El rol de la aplicación creó las seis funciones y sus
+  disparadores.
 - Vuelta de solo código a `e0f2902`: 528 peticiones; la única fallida, el 500 esperado al borrar desde `/plataforma/` una
   empresa con plan de cuentas. Borrados por pantallas 10/10 y por SQL 9/9. No desapareció nada salvo lo borrado a
   propósito.

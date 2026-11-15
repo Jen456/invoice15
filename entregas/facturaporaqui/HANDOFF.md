@@ -2990,7 +2990,8 @@ quién entra al complemento, los precios o los planes. Hay una migración nueva,
   vuelta del bloque con la aplicación detenida (MIGRACIONES, «Ensayo con 0009»). Sigue sin probar (MIGRACIONES, «No
   probado»): la versión nueva atendiendo durante 0009, que en un despliegue normal no pasa (0009 corre antes de
   activarla), y 0004 y 0007 con una escritura larga en `user_user` o `pos_company`, que esperarían lo que dure porque
-  `desplegar.sh` no pone `lock_timeout` a `migrate`: eso sí puede pasar al publicar, y lo acota hacerlo con poco
+  el `desplegar.sh` de `8a421b3` no pone `lock_timeout` a `migrate` (desde `72a68ee`, C2E-3, sí: como mucho 5 s por
+  intento, hasta 3 intentos; MIGRACIONES, «No probado»): eso sí puede pasar al publicar, y lo acota hacerlo con poco
   tráfico. Publicar con poco tráfico y con la máquina sin otras suites (punto 1 del plan de recuperación y D7). Bloquea
   la publicación, no el desarrollo: los bloques siguientes pueden seguir sobre esta rama.
 - Para usar C1, C2 y C3, ninguna dependencia funcional. Quién entra sigue la lista de revisión del complemento y el plan
@@ -3157,7 +3158,7 @@ dos (`2 failed`); con el arreglo, el archivo entero: 8 aprobadas.
 ## 14/11/2026 — Claude: bloque 2 del cierre contable, corte 1 (libro diario mínimo e inicio contable con apertura hasta confirmar), sin publicar
 
 Rama `fase/contable-2-apertura` sobre el bloque 1 (`fase/contable-1-cuentas`, `84d07cc`), sin `push` y sin publicar.
-Código final `a5bedf4`; después solo hay documentación. El 15/11/2026 se le unió el bloque 1 final (`8a421b3`) sin
+Código final al construirlo, `a5bedf4`. El 15/11/2026 se le unió el bloque 1 final (`8a421b3`) sin
 rebase y las migraciones de contabilidad de este corte pasaron de `0009`–`0014` a `0010`–`0015`: ver «Unión con el bloque
 1 final», al final de esta nota, que dice también el código final de la rama unida; las correcciones del cierre quedaron
 en `72a68ee`, y con la que dejó la verificación del cierre el código final del corte es **`7a5c567`** («Cierre del corte
@@ -3284,8 +3285,10 @@ bloquea el corte: cada una bloquea, como mucho, su regla o su activación.
 | `core/adjuntos/archivos._comprobar_imagen`: un PNG dañado da 500 en los comprobantes de pago y las capturas (lo que H1 corrigió en los respaldos de la apertura) — del cierre | Propietaria y orquestador: entrega aparte (código publicado en `e0f2902` y compartido) | Nada del corte | Los respaldos de la apertura responden 400 `errores.archivo`; las rutas publicadas siguen con el 500 |
 | Qué hacer si el auxiliar de una cuenta cambia después de confirmar la apertura — del cierre | Claude, corte 2 (Partes C y E) | Colgar auxiliares de esa línea | La línea confirmada conserva el `detalle` fijado al confirmar; la cuenta declara otro |
 | Rechazos confirmados del SRI de primera entrega en los documentos históricos (I3) — del cierre | Claude, corte 2 (Parte F), con primera entrega integrada | `historico.destinar` sobre esos documentos | Nota en la Parte F de la especificación |
-| Controles C0 en las celdas de un CSV del lote — del cierre | Claude | Nada | **Corregido en `7a5c567`** (DOC44-2 de la verificación del cierre): un control en el código o el rubro de una fila deja la fila en `error` y mapear desde ese lote responde 400 con `filas.<n>.codigo` / `filas.<n>.rubro` (C6-A §6.1, «Textos libres», e importar). `lectura_tabular` no cambió: los controles que no son NUL en las demás celdas (columnas no elegidas, encabezados) se guardan en el lote y salen en `encabezados` y `muestra`, pero no llegan a la línea ni al asiento |
+| Controles C0 en las celdas de un CSV del lote — del cierre | Claude | Nada | **Corregido en `7a5c567`** (DOC44-2 de la verificación del cierre): un control en el código o el rubro de una fila deja la fila en `error` y mapear desde ese lote responde 400 con `filas.<n>.codigo` / `filas.<n>.rubro` (C6-A §6.1, «Textos libres», e importar). `lectura_tabular` no cambió: los controles que no son NUL en las demás celdas (columnas no elegidas, encabezados) se guardan en el lote (los encabezados y las cinco primeras filas salen en `encabezados` y `muestra`), pero no llegan a la línea ni al asiento |
 | Publicar sin tráfico, o aceptar por escrito la excepción a la decisión 18a (C2E-2, bloque 1) — del cierre | **Propietaria** | Publicar el bloque con tráfico | En el ensayo repetido, durante 0009 un cobro y un movimiento del kardex esperaron unos 0,4–0,5 s por `user_user`; si 0004 o 0007 esperan un bloqueo, hasta 5 s por intento. Recomendación: publicar sin tráfico (MIGRACIONES, plan del bloque 1, punto 1) |
+| Que `desplegar.sh` repita también cuando 0009 o 0016 se rinden con su `RuntimeError` — del cierre | Propietaria, si lo quiere (decisión aparte) | Nada | Sale con error, `current` sigue en la versión anterior y el despliegue se repite a mano cuando la otra transacción suelta el bloqueo |
+| La medida de 0016 con la máquina tranquila y la limpieza de la base y el rol de medida del corrector — del cierre | Orquestador | Nada | Sin hacer; el guion de la medida está en MIGRACIONES (C2E-1) |
 | Inmutabilidad del libro frente al DDL del rol dueño de las tablas (C2E-4) — del cierre | **Propietaria** e infraestructura | Que «imposible» valga también frente al dueño de las tablas | Límite escrito en MIGRACIONES; `verificar` detecta un libro alterado |
 | Borrar a un usuario con registros en otra empresa, con las tres claves que suma primera entrega (I5) — del cierre | El bloque propio de ese pendiente, con su ensayo (la propietaria decide cuándo) | Ese borrado | Falla como en producción |
 
@@ -3313,7 +3316,7 @@ tesorería), `sustituida` y `reversada`. Para Codex, de cara a la guarda de la i
 tercero; antes de encenderla en una empresa hay que publicar la casilla `confirmar_anterior_al_corte` en la ficha, el lote
 y su JS. Los otros dos caminos no se bloquean: lo anterior al corte quedará como excepción visible (bloques 3 y 4).
 
-**Pruebas.** Sobre `a5bedf4`, el código final (después solo hay documentación).
+**Pruebas.** Sobre `a5bedf4`, el código final al construirlo.
 
 - `makemigrations --check --dry-run`: sin cambios. `sqlmigrate` de las siete: ninguna clave foránea hacia tablas de la
   operación ni hacia el usuario.
@@ -3489,7 +3492,7 @@ final la corrección de código que dejó la verificación del cierre (abajo):
 | H7 | P3 | El 409 `auxiliar_incompleto` trae `sobran` y el contrato no lo nombraba | documento: forma completa (C6-A §6.5, regla 8, y §6.6, confirmar; aquí, «Al conectar») |
 | H9 | P3 | La vuelta de solo código no distinguía si el anterior es el bloque 1 o `e0f2902` | documento: los dos casos, con el punto 3 del plan del bloque 1 (MIGRACIONES) |
 | C2E-1 | P2 | 0011 y 0012 retenían `pos_company` (6,0 y 12,0 s) y `contabilidad_movimientomanual` (8,1 s) hasta confirmar; el kardex esperó hasta 5,47 s | `9826cd0`, `4c052a0`, `6f27265`: `AplazarClaves` y la nueva 0016, con su guarda y su prueba en PostgreSQL (MIGRACIONES). Resuelto en el ensayo repetido: 0011 y 0012 sin bloqueos, 0016 de 0,10 a 0,49 s, kardex sin esperas |
-| C2E-2 | P3 | Un cobro esperó 1,80 s por `user_user` durante 0004/0007 (bloque 1) | documento: publicar sin tráfico (MIGRACIONES, plan del bloque 1, punto 1). Sigue en el ensayo repetido: durante 0009, un cobro y un kardex esperaron unos 0,4–0,5 s; publicar sin tráfico o que la propietaria acepte por escrito la excepción a 18a |
+| C2E-2 | P3 | Una escritura esperó 1,80 s por `user_user` durante 0004/0007 (bloque 1; el muestreo fino la atribuyó a un cobro, pero puede ser otra petición de la misma conexión) | documento: publicar sin tráfico (MIGRACIONES, plan del bloque 1, punto 1). Sigue en el ensayo repetido: durante 0009, un cobro y un kardex esperaron unos 0,4–0,5 s; publicar sin tráfico o que la propietaria acepte por escrito la excepción a 18a |
 | C2E-3 | P3 | `desplegar.sh` migraba sin `lock_timeout` ni reintento | `85a8e10`: `lock_timeout=5s` y hasta 3 intentos solo ante `55P03`/`40P01` (MIGRACIONES). Probado con tráfico en el ensayo repetido; si 0009 o 0016 se rinden, no se repite y el despliegue se repite a mano |
 | C2E-4 | P3 | El libro es de solo inserción frente al DML del rol de la aplicación, pero no frente a su DDL: es dueño de las tablas | documento: límite escrito (MIGRACIONES); la medida de fondo la decide la propietaria |
 | D1 | P3 | Los importes escritos admitían notación científica, `_` y cifras que no son ASCII | `238c04d` (C6-A §6.1) |

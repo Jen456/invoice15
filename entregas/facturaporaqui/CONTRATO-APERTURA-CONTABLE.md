@@ -18,10 +18,11 @@
   de la fecha y lo que se corrige abajo (H3 y H7; H10 se refutó). El recorrido en navegador del cierre (37 casos) también
   fue sobre `6efad50`, y no se repitió sobre el código corregido.
 - Tras las correcciones del 15/11 (código `72a68ee`), cada corrección pasó sus pruebas (registro
-  `/root/invoice15/contable/registros/correcciones-c2c1.json`), y las formas nuevas o corregidas de la lista de abajo,
-  salvo `importe_total_excedido`, se comprobaron con el cliente de pruebas de Django en una copia de `72a68ee` hecha con
-  `git archive` (SQLite, datos ficticios, el 15/11/2026 de 13:21 a 13:23 UTC, carga de 3,78 a 4,46 con 6 núcleos
-  compartidos; respuestas en `/root/invoice15/contable/registros/doc-c2c1-sondeo-72a68ee.json`). Los ejemplos que llevan
+  `/root/invoice15/contable/registros/correcciones-c2c1.json`), y las formas nuevas o corregidas de los puntos 1 a 7 de
+  la lista de abajo, salvo `importe_total_excedido`, se comprobaron con el cliente de pruebas de Django en una copia de
+  `72a68ee` hecha con `git archive` (SQLite, datos ficticios, el 15/11/2026 de 13:21 a 13:23 UTC, carga de 3,78 a 4,46
+  con 6 núcleos compartidos; respuestas en `/root/invoice15/contable/registros/doc-c2c1-sondeo-72a68ee.json`). El punto
+  8 es de `7a5c567` y se comprobó en una copia de ese código (abajo). Los ejemplos que llevan
   la marca «(`72a68ee`)» salen de ahí. La de `importe_total_excedido` (punto 3) no está en ese sondeo: la comprueba
   `tests/test_apertura.py::TestBloqueos::test_total_que_no_cabe_en_un_asiento` (en `19105ff`), y su texto y su máximo se
   leyeron en el código.
@@ -183,10 +184,11 @@ Son las de `CONTRATO-CONTABLE-V9.md` («Reglas comunes» y «Rutas nuevas de `/c
   `,`: `1.234,56`, `1,234.56`, `1234,56`, `$ 1 234,56` y `+1234.56` se leen 1234.56. Lo demás es «Escribe un importe
   válido.»: `1e3`, `1E3`, `1_000`, cifras de otras escrituras (`１２３`), la notación científica que escribe una hoja de
   cálculo en un CSV (`1,23457E+11`), `NaN` e `Infinity`. La única notación científica que se lee, venga del XLSX, del
-  CSV o de un texto JSON, es la de la forma `d.ddd…e-NN` o `de-NN` (minúscula y con exponente negativo de dos o tres
-  cifras), que es la que trae una celda numérica del XLSX con el ruido de una fórmula que da cero:
-  `5.551115123125783e-17` se lee `0.00` (y en mapear, como todo cero, da «El saldo debe ser mayor que cero; si no lo
-  conoces, déjalo vacío.»), y `1e-05` da «Usa dos decimales.», como antes. Los números de un envío JSON no cambian.
+  CSV o de un texto JSON, es la de la forma `d.ddd…e-NN` o `de-NN`, con un `-` delante opcional (minúscula y con
+  exponente negativo de dos o tres cifras), que es la que trae una celda numérica del XLSX con el ruido de una
+  fórmula que da cero: `5.551115123125783e-17` se lee `0.00` (y en mapear, como todo cero, da «El saldo debe ser mayor
+  que cero; si no lo conoces, déjalo vacío.»), y `1e-05` da «Usa dos decimales.», como antes. Los números de un envío
+  JSON no cambian.
   Antes, `1e3`, `1_000` y `１２３` se leían como importes.
 - **Textos libres** (desde `72a68ee`): `fuente_detalle` (al crear y en el PATCH), `ambitos_no_aplican.<i>.nota`,
   `lineas.<i>.rubro` en la captura directa de mapear, `decisiones.<i>.motivo` al mapear desde un lote, `motivo` de
@@ -232,9 +234,11 @@ Son las de `CONTRATO-CONTABLE-V9.md` («Reglas comunes» y «Rutas nuevas de `/c
   ```
 
   Lo que el lector (`lectura_tabular.py`, compartido con C3) sigue dejando pasar son los controles que no son NUL en las
-  demás celdas: las de las columnas que no se eligen y los encabezados. Se guardan en el lote y salen en `encabezados` y
-  `muestra` de su respuesta, pero no llegan a la línea ni al asiento: `filas_origen` solo lleva la fila, el código, el
-  rubro, el debe y el haber. Un control en una celda de importe deja la fila en `error` con «Escribe un importe válido.».
+  demás celdas: las de las columnas que no se eligen y los encabezados. Se guardan en el lote; en su respuesta, los
+  encabezados salen en `encabezados` y las cinco primeras filas en `muestra`. No llegan a la línea ni al asiento:
+  `filas_origen` solo lleva la fila, el código, el rubro, el debe y el haber. Un control en una celda de importe deja la
+  fila en `error` con «Escribe un importe válido.», salvo los que Python trata como espacio (el tabulador, por ejemplo)
+  al principio o al final de la celda: esos se quitan, como los espacios.
 - **Errores:** 400 `{"error", "codigo", "errores": {campo: [textos]}}` con todos los errores a la vez; en listas la clave lleva la posición enviada, base 0 (`"lineas.0.debe"`, `"decisiones.0.motivo"`, `"ambitos_no_aplican.0.nota"`). Inexistente o de otra empresa: 404 `{"codigo": "no_existe"}` (salvo las rutas de cuentas del bloque 1, que siguen con `"codigo": "cuenta"`). Conflicto de estado: 409 `{"codigo": "estado", "estado": actual, "permitidos": [...]}`. `version` vieja: 409 `version` con el recurso como está ahora.
 - **Paginación:** `?pagina=1&por_pagina=100` (máximo 500) → `"paginacion": {"pagina", "por_pagina", "total", "paginas"}`; `paginas` vale al menos 1.
 - **Reportes y coberturas:** `provisional` (booleano), `causas` (textos) y `causas_detalle` (`[{"codigo", "texto", "cantidad"?}]`, con códigos estables; sección 6.8).
