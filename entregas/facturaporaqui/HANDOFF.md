@@ -2781,6 +2781,14 @@ Rama `fase/contable-1-cuentas` sobre `74ebb3d`, sin `push` y sin publicar. Es el
 y no cambió quién entra al complemento: `MENSAJE_COMPLEMENTO`, la lista de revisión, los precios y los planes siguen
 igual.
 
+**Hash.** El bloque se cierra en el último commit de la rama, el que trae esta nota. Código final de la aplicación y de
+las migraciones: `65cf28e`. Después, el arreglo de `deploy/scripts/desplegar.sh` (`4f9987f`, `d548b18` y el de su
+verificación, que espera a la orden en curso ante una señal y aparta sin borrar la carpeta que aún usa un proceso: ver
+«Archivos compartidos»), la vuelta a las hojas del grafo en `tests/test_zz_cuentas_0009_bloqueo_pg.py` (`41856a2`) y
+documentación: ver «Ensayo con 0009 y sus correcciones», al final. (`282f17f` fue el código final de la primera ronda de
+correcciones y `84d07cc`, su nota; `47b166e` y `2009231`, los de la segunda ronda, antes de los tres P3 de su
+verificación, que van en su registro, más abajo.)
+
 - Contrato definitivo, con respuestas reales: [CONTRATO-CONTABLE-V9.md](CONTRATO-CONTABLE-V9.md) (reglas comunes,
   «Capacidades», C1, C2 y C3).
 - Migraciones y su vuelta: [MIGRACIONES-FASE-CONTABLE.md](MIGRACIONES-FASE-CONTABLE.md), nota del 14/11.
@@ -2798,12 +2806,14 @@ JSON y, salvo la primera, siguen detrás del complemento.
 **Decisiones de API.** Valen para esas rutas; el kardex y lo tributario no cambian.
 
 1. Toda negativa de la ruta es JSON, también en GET. Sin permiso: 403 `{"codigo": "sin_permiso", "causa": "permiso"}`.
-   Dos excepciones, las de todo el proyecto, que responden antes de llegar a la ruta: sin sesión, 302 a `/login/`; con
+   Tres excepciones, las de todo el proyecto, que responden antes de llegar a la ruta: sin sesión, 302 a `/login/`; con
    sesión y sin empresa activa (`CompanyMiddleware`), un GET recibe 302 a `/empresas/` y un POST o un PATCH, 403
-   `{"error": "Selecciona una empresa para continuar"}`, sin `codigo`. Una respuesta que no es JSON o un 403 sin
-   `codigo` se tratan como «vuelve a cargar la página».
+   `{"error": "Selecciona una empresa para continuar"}`, sin `codigo`; y un envío sin token CSRF válido (cabecera
+   `X-CSRFToken` con el valor de la cookie `csrftoken`), el 403 en HTML de Django. Una respuesta que no es JSON o un
+   403 sin `codigo` se tratan como «vuelve a cargar la página».
 2. `empresa` va en la consulta o en el cuerpo, también en JSON. Si no es la activa: 409 `empresa_cambiada`. En POST y
-   PATCH es obligatoria: sin ella, 409 `sin_empresa`. El formulario vale solo en POST (alta y subida del archivo): un
+   PATCH es obligatoria: sin ella, o si va dentro de un JSON que no se puede leer, 409 `sin_empresa`. El formulario
+   vale solo en POST (alta y subida del archivo): un
    PATCH va siempre en JSON.
 3. `clave`, con el formato del kardex. Misma clave y mismo contenido: mismo resultado con `repetido: true`. Misma clave y
    otro contenido: 409 `clave_usada`.
@@ -2824,6 +2834,25 @@ JSON y, salvo la primera, siguen detrás del complemento.
 - `core/tenancy/pestanas.py`: `empresa` se lee también de un cuerpo JSON. Ninguna pantalla actual lo manda así.
 - `core/suscripciones/middleware.py`: los 403 de licencia añaden `causa` y, en `/tributario/` y `/contabilidad/`,
   `licencia`; el del plan añade `codigo: "plan"`. No se quitó ninguna clave ni cambió ninguna redirección.
+- `core/suscripciones/reglas.py`: `RUTAS_DE_CAPACIDADES`, de coincidencia exacta (no por prefijo), con la que
+  `requiere_plan` y `requiere_complemento` dejan pasar solo `/contabilidad/api/capacidades/`. Son las funciones que
+  deciden quién entra: una rama que las toque tiene que conservar esa excepción y nada más.
+- `core/tenancy/roles.py`: `add_cuenta` y `change_cuenta` en `ACCOUNTANT_WRITE` (el Contador crea, edita e importa el
+  plan de cuentas).
+- `core/tenancy/models.py`: tres `AuditLog.ACTIONS` (`cuenta_creada`, `cuenta_modificada` y `cuentas_importadas`) y su
+  migración `tenancy 0013`, que choca con la de `fase/primera-entrega` (ver «Choque conocido» en
+  [MIGRACIONES-FASE-CONTABLE.md](MIGRACIONES-FASE-CONTABLE.md)).
+- `deploy/scripts/desplegar.sh` (`4f9987f`, `d548b18` y el arreglo de su verificación): al salir, por bien o por mal
+  (también ante un kill, HUP, INT o TERM, que esperan a que termine la orden en curso, p. ej. `migrate`), borra la carpeta de la versión de
+  ese despliegue si `current` no quedó en ella (falló antes de activarse, como 0009 al agotar sus intentos, o no pasó la
+  salud y se volvió a la anterior). Compara rutas resueltas y, sin un `current` válido (primera instalación), no borra
+  nada. Antes, `--revertir` (elige por fecha) y la limpieza (se conservan 5) contaban esas carpetas como versiones: en el
+  ensayo con 0009, `--revertir` activó la del despliegue fallido y, repetido, alternaba entre dos carpetas de `6b7ccbf`
+  sin volver a `e0f2902`. Además, en la primera instalación con la salud fallida `current` ya no queda apuntando a sí
+  mismo (`readlink -e`). Vale para cualquier despliegue, no solo para este bloque. `fase/primera-entrega` no toca
+  `deploy/` (`git diff --stat 96d39e1 e0d7c38 -- deploy/` no da nada), así que la integración no choca. Lo vigila
+  `tests/test_desplegar_releases.py`; `README.md` dice lo mismo en «Despliegue, respaldo y reversión» (esa rama tampoco
+  toca `README.md`).
 
 **Al conectar, tener en cuenta:**
 
@@ -2839,14 +2868,16 @@ JSON y, salvo la primera, siguen detrás del complemento.
 **Sin decidir, y no bloquea conectar:** reglas sobre padres inactivos (hoy se puede colgar una cuenta de un grupo
 desactivado) y cuánto tiempo se conservan los lotes que se quedan en vista previa.
 
-**Pruebas.** Sobre `d8399e5`, el código final del bloque (después solo hay documentación): suite completa en SQLite, 2112
-aprobadas y 78 omitidas (las exclusivas de PostgreSQL), sin fallos; `makemigrations --check --dry-run`, sin cambios. En
-PostgreSQL con seguridad por filas, los archivos del bloque y los que vigilan menú, roles, rutas, migraciones y
-auditoría: 375 aprobadas, sin fallos (once archivos sobre `8b2e57c` y el del inicio sobre `d8399e5`; entre los dos commits
-solo cambió ese archivo de pruebas). **Falta** repetir sobre el código final la suite completa de PostgreSQL, que incluye
-las 18 pruebas de concurrencia de `tests/test_zz_cuentas_concurrencia_pg.py`; el código que ejercitan no cambió desde
-`dbef3ba`, el commit que las completó. Sin ensayo de migraciones sobre una copia de producción y sin navegador: no hay
-pantallas nuevas.
+**Pruebas.** Sobre `6b7ccbf` (el código final `65cf28e` y su documentación): suite completa en SQLite, 2157 aprobadas y
+84 omitidas (las exclusivas de PostgreSQL), sin fallos (registro fuera del repositorio:
+`contable/registros/bloque1-sqlite-6b7ccbf.log`). PostgreSQL completa sobre `6b7ccbf`, con seguridad por filas: 2241 aprobadas, sin fallos ni omitidas, en 2 h 34 min con la máquina cargada (registro: `contable/registros/bloque1-pg-6b7ccbf.log`). Lo de
+después (`desplegar.sh`, una prueba de PostgreSQL y documentación) tiene sus pruebas en «Ensayo con 0009 y sus
+correcciones», al final. Antes, sobre `d8399e5`, antes de las dos rondas de correcciones: suite completa en SQLite, 2112
+aprobadas y 78 omitidas, sin fallos; `makemigrations --check --dry-run`, sin cambios; en PostgreSQL con seguridad por
+filas, los archivos del bloque y los que vigilan menú, roles, rutas, migraciones y auditoría: 375 aprobadas, sin fallos
+(once archivos sobre `8b2e57c` y el del inicio sobre `d8399e5`; entre los dos commits solo cambió ese archivo de
+pruebas). Ensayos de migración con la aplicación atendiendo, sobre copias del volcado diario: en MIGRACIONES, sobre
+`84d07cc` sin 0009 y sobre `6b7ccbf` con ella. Sin navegador: no hay pantallas nuevas.
 
 ### Correcciones de la revisión independiente del bloque 1 (14/11/2026)
 
@@ -2904,8 +2935,9 @@ original.
   de `/tributario/` que acepte formularios y no use `ApiContable` tiene que comprobar la licencia por su cuenta, como
   el kardex.
 
-**Pruebas de las correcciones.** Sobre `282f17f`, el código final (después solo hay documentación y una aserción de
-prueba partida en dos líneas). Son 37 casos nuevos en `tests/test_capacidades.py` (7), `tests/test_cuentas.py` (6),
+**Pruebas de las correcciones.** Sobre `282f17f`, el código final de esa ronda (después solo hay documentación y una
+aserción de prueba partida en dos líneas). Son 37 casos nuevos en `tests/test_capacidades.py` (7),
+`tests/test_cuentas.py` (6),
 `tests/test_cuentas_importacion.py` (23) y `tests/test_zz_cuentas_concurrencia_pg.py` (1); los de los defectos fallaban
 antes del cambio y los tres de documentación fijan el comportamiento que el contrato describe ahora.
 
@@ -2923,10 +2955,209 @@ antes del cambio y los tres de documentación fijan el comportamiento que el con
 
 No se repitieron la suite completa de SQLite ni la completa de PostgreSQL. Sin navegador: no hay pantallas nuevas.
 
+Después de esta nota, la revisión contra la orden corrió sobre su copia de `84d07cc` la suite completa de SQLite: 2148
+aprobadas y 79 omitidas, sin fallos (43 min con la máquina cargada).
+
+### Segunda ronda de correcciones del bloque 1 (14/11/2026)
+
+Vienen de la revisión de las correcciones, de la revisión contra la orden, del ensayo de migración con la versión
+publicada atendiendo (sobre una copia), del recorrido en navegador y de una integración de prueba con
+`fase/primera-entrega`. Todo en la misma rama, sin `push` y sin publicar. No se tocó ninguna plantilla, CSS ni JS, ni
+quién entra al complemento, los precios o los planes. Hay una migración nueva, `contabilidad 0009`.
+
+| Hallazgo | Qué pasaba | Qué se hizo |
+|---|---|---|
+| XLSX con una parte en bzip2 o lzma (P2) | `ZipFile` descomprime de una vez cada trozo leído de esas partes: un XLSX de 5 KB que declaraba 1 KB ocupaba cientos de megas, también en una parte que el lector nunca abre (`xl/media/…`, desde la primera ronda) | 400 `formato` antes de abrir la parte: un XLSX solo usa deflate o nada |
+| Logo SVG dentro del XLSX (P3) | Su `DOCTYPE` estándar rechazaba el libro como «declaraciones» | La copia que recibe el lector lleva con su contenido solo las partes `.xml` y `.rels`, revisadas; las demás se leen (suma y cifrado) y su contenido no se copia (van vacías desde la verificación, abajo), así que el lector tampoco puede tomar por hoja una parte sin revisar |
+| Borrar a quien creó cuentas en otra empresa (ensayo D1, P2) | La seguridad por filas limitaba a la empresa activa el UPDATE con el que Django anula `creada_por` y los demás: el borrado fallaba al confirmar con la membresía ya quitada | `contabilidad 0009`: `ON DELETE SET NULL` en la base para las cuatro claves de cuentas y lotes hacia el usuario |
+| Borrar usuarios con el código anterior (ensayo D2 y D5, P2 y P3) | `e0f2902` no conoce estas tablas: con la base migrada, borrar a un autor fallaba siempre (200 con el error crudo, o 500 en `/plataforma/`) | La misma 0009. Borrar una empresa con plan de cuentas sigue sin poder hacerse (`PROTECT`, querido): queda en el plan de recuperación |
+| Vuelta con tráfico, ida, `start_installation` anterior y corte del reinicio (ensayo D3, D4, D6 y D7) | Ver MIGRACIONES | Plan de recuperación del bloque en MIGRACIONES; sin cambio de código |
+| CSRF (orden y navegador, P3) | Un envío sin `X-CSRFToken` recibe el 403 en HTML de Django, y el contrato decía que había solo dos excepciones | Tercera excepción en el contrato; una prueba la fija |
+| JSON ilegible con la empresa dentro (navegador, P3) | 409 `sin_empresa`, y el contrato decía 400 `cuerpo` sin condición | Contrato; una prueba lo fija |
+| C3: lote de otra empresa (orden, P3) | 404 `lote`; los cambios de C3 no lo decían frente al 409 de la propuesta | Contrato |
+| Nota del bloque (orden, P3) | Sin hash del bloque cerrado, con el código final mal nombrado, sin «dependencia concreta» y sin tres archivos compartidos | Esta nota: «Hash», «Pruebas», «Archivos compartidos» y lo de abajo |
+| Integración con primera entrega (P3) | Cabecera `X-FPA-Empresa`, orden de las vueltas y guarda de convivencia | Receta de abajo; la nota de vueltas, también en MIGRACIONES |
+| Parón de las lecturas de `user_user` durante 0009 (verificación de la ronda, P3; `65cf28e`) | Mientras 0009 esperaba su `AccessExclusiveLock` sobre `user_user` (una sola espera de hasta 5 s), toda lectura nueva de `user_user` hacía cola: con otra transacción que solo lo había leído, cada petición con sesión se paraba hasta 5 s y, con una retención de más de 5 s, `migrate` fallaba. MIGRACIONES decía «milisegundos». 0004 y 0007 no paran lecturas | Intentos cortos: cada uno en su punto de guardado, con las tablas del plan primero y `user_user` el último, `lock_timeout` de 1 s y 2 s sin bloqueo entre intentos, hasta 8 (unos 22 s); agotados, falla sin cambiar nada con un mensaje que nombra la tabla y dice qué hacer. Peor caso en la migración, en MIGRACIONES («Por qué 0009» y punto 1 del plan) y aquí; el ensayo pendiente debe retener `user_user` |
+| Hoja de gráfico con imagen en el XLSX (verificación, P3; regresión de `191a5c9`; `cd23065`) | Aun en solo lectura, el lector abre las imágenes del dibujo de una hoja de gráfico: la que faltaba en la copia daba `KeyError`, que no descarta como imagen ilegible, y era 400 `formato` para un plan que `84d07cc` aceptaba | Las partes que no son XML se siguen leyendo enteras y van vacías en la copia (su contenido no se copia nunca): la imagen se descarta y el plan se lee. Una hoja guardada como `xl/media/hoja.png` sigue siendo 400 `formato`: una parte vacía no es una hoja |
+| Reparación de D6 con `migrate contabilidad 0005` (verificación, P3; `a934190`) | El plan de recuperación la daba por equivalente a `organizar_menu` + `sync_roles`, sin aviso: volver a 0005 deshace también 0007, borra todos los lotes y `cuenta.lote_id`, deja sin dueño sus archivos privados y toma los bloqueos de D3 | Punto 4 del plan: la única reparación es `organizar_menu`, `sync_roles` y `strip_platform_modules` del código nuevo, en ese orden, con cómo comprobarla; la vía de `migrate`, descartada (y, si alguna vez se usa, con la aplicación detenida y respaldo). El punto 2, la vuelta solo de la importación y el orden de vueltas con primera entrega dicen ahora qué borran |
+
+**Dependencia concreta.**
+
+- Para publicar el bloque, en este orden: (1) la suite completa de PostgreSQL sobre el commit final (el orquestador la
+  corre sobre `6b7ccbf`; lo posterior solo toca `desplegar.sh`, una prueba de PostgreSQL y documentación, con sus
+  pruebas en «Ensayo con 0009 y sus correcciones»); (2) la revisión de esta ronda; (3) la autorización de la
+  propietaria. El ensayo con 0009 y la aplicación atendiendo ya se hizo, también con `user_user` retenido y con la
+  vuelta del bloque con la aplicación detenida (MIGRACIONES, «Ensayo con 0009»). Sigue sin probar (MIGRACIONES, «No
+  probado»): la versión nueva atendiendo durante 0009, que en un despliegue normal no pasa (0009 corre antes de
+  activarla), y 0004 y 0007 con una escritura larga en `user_user` o `pos_company`, que esperarían lo que dure porque
+  `desplegar.sh` no pone `lock_timeout` a `migrate`: eso sí puede pasar al publicar, y lo acota hacerlo con poco
+  tráfico. Publicar con poco tráfico y con la máquina sin otras suites (punto 1 del plan de recuperación y D7). Bloquea
+  la publicación, no el desarrollo: los bloques siguientes pueden seguir sobre esta rama.
+- Para usar C1, C2 y C3, ninguna dependencia funcional. Quién entra sigue la lista de revisión del complemento y el plan
+  pagado, y abrirlo a más empresas depende de D9 (propietaria: impuestos, alcance multiempresa y condiciones de
+  activación); mientras tanto, cerrado salvo la lista. El piloto NEXALLTI necesita su Excel real (lo trae el cliente) y
+  la decisión de incluir su RUC en la lista (propietaria); mientras tanto, no está. D5 (contador) solo hace falta para
+  ofrecer la plantilla Supercias; mientras tanto, cada empresa trae su plan por importación o por alta.
+- Decisiones menores abiertas, que no bloquean conectar, con su valor provisional:
+
+  | Decisión | Quién decide | Mientras tanto |
+  |---|---|---|
+  | Tope descomprimido del XLSX (`MAX_DESCOMPRIMIDO`): un XLSX de 55 KB con 1,2 millones de cadenas diminutas tarda 20 s | Claude, técnica; la propietaria si llega a rechazar archivos reales | 20 MB |
+  | Cuánto se conservan los lotes en vista previa y sus archivos, y si hay un límite por empresa | Propietaria (retención de datos subidos) | No caducan ni se limitan |
+  | Colgar cuentas de un grupo desactivado | Contador | Se permite |
+  | Borrar usuarios con registros en tablas ya publicadas de otra empresa (ver «Pendiente») | Propietaria, con la propuesta de Claude | Como hoy en producción |
+  | Recarga sin corte en `desplegar.sh` (ensayo D7) | Propietaria, con la propuesta de Claude | Se anuncia el corte y se publica con la máquina sin otras suites: en el ensayo con 0009, de 3,6 a 7,7 s sin servicio por cambio; un caso aislado de 46,9 s con la máquina saturada (carga 12 y un checkpoint de PostgreSQL), que no es el rango normal |
+  | Intentos de 0009 (`ESPERA_POR_INTENTO`, `PAUSA`, `INTENTOS`) | Claude, técnica; el ensayo con 0009 no pidió cambiarlos | 1 s, 2 s y 8. Sin nadie que retenga `user_user`, lecturas paradas hasta 1,21 s en el ensayo: 0009 espera a las escrituras en curso de la aplicación (cientos de ms, como mucho 1 s por intento) y retiene `user_user` hasta confirmar (de 150 a 510 ms con el disco cargado). Con retención, hasta 1 s por intento, más esa confirmación en el que lo consigue, y unos 22 s en total como mucho |
+
+**Receta de integración con `fase/primera-entrega`** (no se fusionó aquí):
+
+- Migraciones: lo de «Choque conocido» en MIGRACIONES (una `tenancy 0013` pasa a `0014`, el orden de las vueltas si primera
+  entrega se publica antes, y `DE_ESTA_ENTREGA` de `tests/test_convivencia_versiones.py` con `contabilidad 0004-0009` y
+  la `tenancy` del bloque; `NO_NULAS_AGREGADAS` no cambia).
+- Contrato: con esa rama, la cabecera `X-FPA-Empresa` (jQuery la manda sola, `static/js/functions.js`) también produce el
+  409 `empresa_cambiada` en las rutas nuevas, en GET incluido, antes que `PlanMiddleware` y que la vista, con el mismo
+  cuerpo que `?empresa=`. Al integrar hay que añadirla en las reglas comunes y en el puesto 1 del orden de las
+  negativas, y aclarar en el puesto 3 que no sustituye a `empresa` del cuerpo: un envío con la cabecera correcta y sin
+  `empresa` sigue recibiendo 409 `sin_empresa`. Aquí no se escribió porque en esta rama la cabecera no existe.
+
+**Pendiente (no se corrigió en esta ronda):**
+
+- Borrar desde una empresa a un usuario que, en otra, dejó registros en tablas ya publicadas con `SET_NULL` hacia él
+  (movimientos manuales del kardex, cobros, adjuntos, proformas, puntos…) sigue fallando como en producción: la
+  membresía se quita y el usuario queda sin ninguna, con el error crudo de PostgreSQL. No se aplicaron las dos salidas
+  de código propuestas: con la baja y el borrado en una transacción común, una empresa no podría retirarle el acceso
+  mientras tenga registros en otra; con `platform_scope`, el borrado alcanzaría en cascada filas de otras empresas
+  (`pos.Client.user` y los puntos autorizados son `CASCADE`). La salida limpia es la misma regla de la base para esas
+  claves, en un bloque propio con su ensayo, porque son tablas con datos.
+- La vuelta en caliente sin interbloqueos (quitar primero las claves hacia `user_user` y `pos_company` en transacciones
+  separadas en las vueltas de 0007 y 0004) y una ida que no bloquee escrituras (crear esas claves en migraciones cortas
+  propias): no se cambiaron migraciones ya ensayadas; el plan de recuperación pide la vuelta con la aplicación detenida.
+- Lo que ya estaba: `PlanMiddleware` sigue tomando por consulta un formulario con `action=search…`.
+
+**Pruebas de esta ronda.** Sobre `47b166e`, el código final, con la máquina compartida y cargada (media de 4 a 6 con 6
+núcleos). Son 11 casos nuevos: 6 en `tests/test_cuentas_importacion.py` (bzip2 y lzma en `xl/media` y en
+`[Content_Types].xml` con un techo de memoria de 16 MB, el logo SVG y la hoja guardada como imagen), 4 en
+`tests/test_cuentas.py` (las tres de `TestBorrarAlAutor`, solo PostgreSQL, y el JSON ilegible con la empresa dentro) y 1
+en `tests/test_capacidades.py` (CSRF). Los de defectos fallaban antes del cambio: los seis del XLSX en SQLite y los tres
+de `TestBorrarAlAutor` en PostgreSQL, con la misma restricción que el ensayo. Los dos de documentación fijan lo que el
+código ya hacía y el contrato dice ahora.
+
+- `makemigrations --check --dry-run`: sin cambios.
+- SQLite, 38 archivos de contabilidad, tributario, complemento, capacidades, planes, menú, roles, rutas, migraciones,
+  auditoría y seguridad por filas: 725 aprobadas y 37 omitidas (las exclusivas de PostgreSQL), sin fallos, en 21 min.
+- PostgreSQL con seguridad por filas: `tests/test_cuentas.py`, `tests/test_cuentas_importacion.py` y
+  `tests/test_rls_modelos_de_empresa.py`, 204 aprobadas, sin fallos ni omitidas.
+- Una sonda que no se entrega, en PostgreSQL: dentro de una transacción, crear una clave hacia `user_user` toma
+  `ShareRowExclusiveLock` sobre `user_user` y quitarla, `AccessExclusiveLock`. Es lo que cuenta MIGRACIONES para 0009.
+
+**Pruebas de la verificación** (los tres P3 del final de la tabla, en `cd23065`, `a934190` y `65cf28e`, el código final),
+con la máquina compartida y cargada (media de 4 a 9 con 6 núcleos):
+
+- XLSX: `tests/test_cuentas_importacion.py::TestLectura::test_xlsx_con_una_hoja_de_grafico_con_imagen` (SQLite) daba 400
+  `formato` sin el cambio y da 200 con las cinco filas con él; la de `hoja.png` comprueba además que esa parte llega vacía
+  al lector y sigue dando 400 `formato`. `TestLectura`, 62 aprobadas (los 61 de antes y el nuevo).
+- 0009: `tests/test_zz_cuentas_0009_bloqueo_pg.py` (PostgreSQL, transaccional y al final de la suite, marca `tiempos`
+  registrada en `pytest.ini`) vuelve a 0008, deja las cuatro claves como las crea Django y retiene `user_user` desde otra
+  conexión mientras una tercera lo lee sin parar. Con la 0009 anterior, en un árbol exportado aparte, fallan las dos:
+  con la retención de 3,5 s, 0009 termina pero la lectura más lenta espera 3,59 s, toda la retención; con la larga,
+  0009 se corta por `lock_timeout` a los 5 s con `OperationalError` en lugar del fallo limpio. Con la nueva (23:55 UTC,
+  carga de 4): retenido 3,5 s desde el primer intento, 0009 termina a los 3,53 s con nombres y diferido intactos y la
+  lectura más lenta espera 0,98 s (de 50); retenido hasta que se rinde (3 intentos en la prueba), falla a los 6,99 s con
+  el mensaje («contabilidad 0009: en 3 intentos de 1 s no se consiguió el bloqueo de user_user, que retiene otra
+  transacción. No se cambió nada: repite `migrate` (o el despliegue), mejor con poco tráfico.»), sin anotarse y con las
+  claves como estaban, y la lectura más lenta espera 1,00 s (de 90).
+- D6: solo documentación.
+- `makemigrations --check --dry-run`: sin cambios.
+- SQLite, `tests/test_cuentas_importacion.py`, `tests/test_cuentas.py`, `tests/test_migracion_vuelta_fase.py`,
+  `tests/test_capacidades.py` y `tests/test_inicio_contable.py`: 302 aprobadas y 8 omitidas (las de PostgreSQL), sin
+  fallos, en 632,6 s (23:10 a 23:21 UTC, carga de 8 a 9).
+- PostgreSQL con seguridad por filas: `tests/test_cuentas.py`, `tests/test_rls_modelos_de_empresa.py` y
+  `tests/test_zz_cuentas_0009_bloqueo_pg.py`, por ese orden: 87 aprobadas, sin fallos ni omitidas, en 327,3 s (23:53 a
+  23:59 UTC, carga de 4).
+
+Quedan para el orquestador la suite completa de PostgreSQL (con las de concurrencia y la nueva de 0009) y, antes de
+publicar, el ensayo con 0009, que ahora tiene que incluir una transacción que retenga `user_user` (ver «Dependencia
+concreta»). El ensayo se hizo después: ver la sección siguiente.
+
+### Ensayo con 0009 y sus correcciones (15/11/2026)
+
+El ensayo con 0009 y la aplicación atendiendo, sobre copias del volcado diario, ya se hizo: las cifras están en
+MIGRACIONES («Ensayo con 0009»), y lo que demostró, en «Probado». Del ensayo y de su revisión salieron un P2 y dos P3, más
+un defecto que apareció al probar el P2. Todo va en la misma rama, sin `push` y sin publicar. No se tocó el código de la
+aplicación ni sus migraciones (sigue en `65cf28e`), ni ninguna plantilla, CSS ni JS, ni quién entra al complemento, los
+precios o los planes.
+
+| Hallazgo | Qué pasaba | Qué se hizo |
+|---|---|---|
+| Carpeta del despliegue fallido (ensayo 0009-B y revisión, P2; `4f9987f`) | Tras un despliegue que falla en `migrate` (0009 agota sus intentos, por diseño) o en la salud, la carpeta de esa versión se quedaba en releases/. `--revertir`, que elige por fecha la más reciente que no es `current`, la activaba (el mismo `6b7ccbf`) y, repetido, alternaba entre las dos de `6b7ccbf` sin volver a `e0f2902`; y la limpieza (se conservan 5) la contaba. Contradecía los puntos 1 y 3 del plan de recuperación | `desplegar.sh` la borra al salir (`trap` de `EXIT`, puesto en cuanto existe `REL`, así que no se dispara en `--revertir`) si `current` no quedó en ella. Mira el estado final de `current`, no si la versión llegó a activarse; compara rutas resueltas (con la comparación literal propuesta en la revisión, una `BASE` detrás de un enlace borraba la versión recién activada) y sin un `current` válido no borra nada. El código de salida no cambia. No había otro `trap` en el script |
+| `current` apuntando a sí mismo (apareció al probar lo anterior en la primera instalación; `d548b18`) | Sin `current`, `readlink -f` devuelve la ruta de `current`; si la salud fallaba, la vuelta «a la anterior» la activaba y `current` quedaba como un enlace a sí mismo | `readlink -e`: sin `current`, no hay vuelta, como dice el script |
+| La prueba de 0009 y las migraciones posteriores (revisión, P3; `41856a2`) | El fixture de `tests/test_zz_cuentas_0009_bloqueo_pg.py` vuelve a 0008, lo que deshace también lo que dependa de 0009, y al terminar solo reaplicaba hasta 0009: las del bloque 2, cuando se integren, quedarían sin aplicar para el resto de la suite | Al terminar migra a las hojas del grafo, como `tests/test_zzz_vigencias_migraciones.py`, y sigue comprobando que las cuatro claves quedan con `SET NULL` y diferidas |
+| Parón de las lecturas de `user_user` sin retención (ensayo, P3; documentación) | MIGRACIONES («Por qué 0009», «Peor caso de 0009», punto 1 del plan) y esta nota decían «milisegundos» o «1 s más los milisegundos del cambio» | Medido: 0009 espera a las escrituras en curso de la propia aplicación (cientos de ms; como mucho 1 s por intento) y retiene `user_user` hasta confirmar (de 150 a 510 ms con el disco cargado); lecturas paradas hasta 1,21 s. Texto ajustado; `ESPERA_POR_INTENTO` sigue en 1 s |
+| Notas del ensayo (documentación) | El ensayo con 0009 figuraba como pendiente | MIGRACIONES: «Ensayo con 0009», «Probado», «No probado» con lo que de verdad falta, los residuos de `Permission` y `ContentType` en la vuelta y el caso aislado de 46,9 s en D7; aquí, «Hash», «Pruebas», «Dependencia concreta», «Archivos compartidos» y las decisiones menores |
+
+**Verificación de estas correcciones (15/11/2026).** Un verificador independiente leyó el script entero, simuló todos
+sus caminos y confirmó lo de arriba. Encontró un P3: el `trap` de `EXIT` borraba la carpeta con `rm -rf` aunque un
+proceso siguiera corriendo dentro: (a) un `kill`/`pkill -f desplegar.sh` al bash del script ejecuta el `trap` en el
+acto, sin esperar a `migrate` (que puede estar esperando un bloqueo) ni a `collectstatic --clear` (que ya vació el
+`STATIC_ROOT` compartido); (b) un temporizador que arrancó desde `current` durante la ventana de salud y después se
+vuelve a la anterior. Arreglo: `trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM` justo después del de
+`EXIT` (con la señal atrapada, bash espera a que termine la orden en curso y solo entonces sale y limpia), y, antes de
+borrar, si algún proceso tiene su carpeta de trabajo dentro (`/proc/*/cwd`), la carpeta no se borra: se aparta como
+`releases/.no-activa-<nombre>`, que ni `--revertir` ni la limpieza ven, y se avisa de borrarla cuando termine. Dos
+pruebas nuevas en `tests/test_desplegar_releases.py`: SIGTERM solo al bash durante un `migrate` lento (sale con 143,
+`migrate` termina con su carpeta todavía en su sitio y después se borra; la publicada sigue activa) y un proceso que se
+queda dentro (la carpeta se aparta sin borrarse, `--revertir` vuelve a la publicada). Con el script anterior fallan las
+dos (`2 failed`); con el arreglo, el archivo entero: 8 aprobadas.
+
+**Visto al leer `desplegar.sh` entero, sin corregir** (no estaba en la orden; la guarda nueva no cambia nada de esto):
+
+- `--revertir` compara la ruta resuelta de `current` con las de `ls`, sin resolver: con `BASE` detrás de un enlace, no
+  excluiría la versión activa. En la máquina, `/opt`, `/opt/facturaporaqui` y `/opt/facturaporaqui/pruebas` son
+  carpetas, no enlaces.
+- Con una sola versión, `--revertir` sale con 1 sin escribir «No hay versión anterior» (`grep` sin coincidencias y
+  `pipefail`). No cambia nada.
+- Si `systemctl restart` devuelve error justo después de activar la versión nueva, `set -e` corta el script antes de
+  la salud y de la vuelta a la anterior: `current` queda en la nueva (y la guarda la conserva, porque es la activa).
+- El texto de la migración 0009 dice que las lecturas se paran «como mucho 1 s por intento», sin la retención hasta
+  confirmar; no se tocó para no cambiar el código final. MIGRACIONES tiene la medida.
+
+**Pruebas de estas correcciones.**
+
+- `tests/test_desplegar_releases.py` (nueva, SQLite). Copia el script real a `tmp_path` y solo cambia sus rutas fijas:
+  `BASE`, `ENVF` y `RESPALDOS`, y además `CRED_DIR` (para que la primera instalación no escriba en la carpeta real de
+  credenciales) y `UV` (para no instalar dependencias). Simula en `PATH` systemctl, journalctl, curl, pg_dump, runuser,
+  uv, chown, install con dueño, sleep y la fecha que nombra cada carpeta; el `manage.py` de cada versión falla en
+  `migrate` cuando se le pide. Se salta sin bash o git (o fuera de Linux). Seis casos: B (`migrate` falla dos veces: la
+  carpeta no se queda, la publicada sigue activa y atendiendo, la repetición sale bien y `--revertir` vuelve a la
+  publicada), C (cinco fallos y uno bueno: la anterior sobrevive a la limpieza y `--revertir` vuelve a ella), F (salud
+  fallida: vuelve a la publicada, sale con 1, borra la nueva y `--revertir` va a la anterior), primera instalación con la
+  salud fallida (conserva su versión y `current` apunta a ella), primera instalación que falla en `migrate` (no borra
+  nada) y despliegue bueno con `BASE` detrás de un enlace. Con el `desplegar.sh` de `6b7ccbf` fallan B, C, F y la de
+  primera instalación con la salud fallida (esta, por el `current` en bucle); con la guarda de comparación literal falla
+  la del enlace; con `4f9987f` pasan todas menos la de primera instalación con la salud fallida, que pasa con `d548b18`.
+  Los códigos de salida se conservan: 1 si falla, 0 si va bien.
+- F1, en dos copias exportadas (`d548b18` y `41856a2`) con una `contabilidad 0010` ficticia sobre 0009 y una
+  comprobación antes y otra después de `tests/test_zz_cuentas_0009_bloqueo_pg.py` de que
+  `migration_plan(leaf_nodes())` queda vacío: con el fixture anterior, después queda pendiente
+  `contabilidad.0010_ficticia_demo` (1 fallida y 3 aprobadas); con el nuevo, vacío antes y después (4 aprobadas). Las
+  copias se borraron al terminar.
+- `makemigrations --check --dry-run` (sobre `41856a2`): sin cambios.
+- SQLite, `tests/test_desplegar_releases.py` y `tests/test_migracion_vuelta_fase.py`: 9 aprobadas, sin fallos, en
+  437,4 s (02:10 a 02:18 UTC, carga de 5,5 a 7,9).
+- PostgreSQL con seguridad por filas, `tests/test_zz_cuentas_0009_bloqueo_pg.py` seguido de
+  `tests/test_zz_cuentas_concurrencia_pg.py`, en una sola orden: 21 aprobadas, sin fallos ni omitidas, en 1764,8 s
+  (04:03 a 04:32 UTC, carga de 5,7). 0009 retenida 3,5 s: bien a los 3,64 s del primer intento, con la lectura más lenta
+  en 0,96 s (de 55); retenida hasta rendirse: falla a los 7,01 s con el mensaje, con la lectura más lenta en 0,98 s (de
+  90).
+- Registros, fuera del repositorio: `contable/registros/bloque1-e1b-*.log`. En la máquina solo se miró, sin tocar nada,
+  que `/opt/facturaporaqui/pruebas` no va por un enlace.
+
 ## 14/11/2026 — Claude: bloque 2 del cierre contable, corte 1 (libro diario mínimo e inicio contable con apertura hasta confirmar), sin publicar
 
 Rama `fase/contable-2-apertura` sobre el bloque 1 (`fase/contable-1-cuentas`, `84d07cc`), sin `push` y sin publicar.
-Código final `a5bedf4`; después solo hay documentación. Es el punto 2 de `ORDEN-CIERRE-CONTABLE-TRIBUTARIO.md`, Partes A
+Código final `a5bedf4`; después solo hay documentación. El 15/11/2026 se le unió el bloque 1 final (`8a421b3`) sin
+rebase y las migraciones de contabilidad de este corte pasaron de `0009`–`0014` a `0010`–`0015`: ver «Unión con el bloque
+1 final», al final de esta nota. Es el punto 2 de `ORDEN-CIERRE-CONTABLE-TRIBUTARIO.md`, Partes A
 y B de `contable/bloque-2-especificacion.md` (aceptaciones 1, 2, 7, 8 y 10 de C6-A). No se tocó ninguna plantilla, CSS ni
 JS, no hay páginas ni entradas de menú nuevas y no cambió quién entra al complemento, ni precios, ni planes.
 
@@ -3018,9 +3249,9 @@ bloquea el corte: cada una bloquea, como mucho, su regla o su activación.
 
 | Qué falta | De quién depende | Qué bloquea | Cómo queda mientras tanto |
 |---|---|---|---|
-| Integración con `fase/primera-entrega` (no se hizo rebase ni fusión) | Orquestador, tras la revisión de esa rama | Publicar el bloque | Choca la numeración: esa rama trae `tenancy 0013` (aquí `0013` es del bloque 1 y `0014` de este corte) e `importacion 0008-0009`; se suman el conteo (`54`), `sin_diseno` y `BLOQUE_2` de `tests/test_migracion_vuelta_fase.py` y lo que traiga en `tests/test_convivencia_versiones.py`. Repasar los creadores y estados de `Sale` que añade (borrador de factura, conversión de proforma) antes del motor del bloque 3. Este contrato se verificó contra `a5bedf4`, no contra la rama integrada |
-| Integración con el cierre del bloque 1 (`wt-contable`) | Orquestador | Publicar el bloque | Choques previsibles: `contabilidad 0009` (allí `0009_anular_autores_en_la_base`, aquí `0009_clases_de_cuenta`: una pasa a la siguiente libre y las de este corte van detrás), `capacidades.py` (campo `avisos`, acción `confirmar` de `apertura`), `cuentas.py`, `importar_cuentas.py`, `tests/test_cuentas*.py` y toda aserción exacta nueva de una función de capacidades (le falta `'avisos': []`) |
-| Ensayo con la versión publicada atendiendo y recorrido de las rutas en navegador (decisiones 18 y 19) | Orquestador, al cerrar el corte | Dar el corte por publicable | No hecho aquí. El código está preparado: toda columna nueva en una tabla existente lleva `db_default`, ninguna restricción va hacia tablas de la operación y las siete migraciones son reversibles; el ensayo debe comprobar que el rol de la aplicación crea las seis funciones de `contabilidad 0013` |
+| Integración con `fase/primera-entrega` (no se hizo rebase ni fusión) | Orquestador, tras la revisión de esa rama | Publicar el bloque | Choca la numeración: esa rama trae `tenancy 0013` (aquí `0013` es del bloque 1 y `0014` de este corte) e `importacion 0008-0009`; se suman el conteo (`55` desde la unión con el bloque 1), `sin_diseno` y `BLOQUE_2` de `tests/test_migracion_vuelta_fase.py` y lo que traiga en `tests/test_convivencia_versiones.py`. Repasar los creadores y estados de `Sale` que añade (borrador de factura, conversión de proforma) antes del motor del bloque 3. Este contrato se verificó contra `a5bedf4`, no contra la rama integrada |
+| Integración con el cierre del bloque 1 (`wt-contable`) | Orquestador | Publicar el bloque | **Hecha el 15/11/2026** sobre `8a421b3` («Unión con el bloque 1 final», abajo). Se preveía: `contabilidad 0009` (allí `0009_anular_autores_en_la_base`, aquí `0009_clases_de_cuenta`: una pasa a la siguiente libre y las de este corte van detrás; quedan de `0010` a `0015`), `capacidades.py` (campo `avisos`, acción `confirmar` de `apertura`), `cuentas.py`, `importar_cuentas.py`, `tests/test_cuentas*.py` y toda aserción exacta nueva de una función de capacidades (le falta `'avisos': []`) |
+| Ensayo con la versión publicada atendiendo y recorrido de las rutas en navegador (decisiones 18 y 19) | Orquestador, al cerrar el corte | Dar el corte por publicable | No hecho aquí. El código está preparado: toda columna nueva en una tabla existente lleva `db_default`, ninguna restricción va hacia tablas de la operación y las siete migraciones son reversibles; el ensayo debe comprobar que el rol de la aplicación crea las seis funciones de `contabilidad 0014` (`0013` antes de la unión con el bloque 1) |
 | Pantallas de apertura y diario | Codex (y revisión de la propietaria, C6-A §9) | Uso por personas; el recorrido de **pantallas** en navegador, que se repite cuando se conecten | Rutas probadas por API; nada en el menú |
 | Saldos reales de cada empresa y quién los revisa | Contador de la empresa | Confirmar **su** apertura | Importes desconocidos en `null` (`importe_pendiente`); reportes provisionales con `apertura_sin_confirmar` |
 | Clase y auxiliar de cada cuenta | Contador de la empresa | Confirmar una apertura con cuentas sin clase (`cuenta_sin_clase`); que un ámbito tenga cobertura | Avisos `cuentas_sin_clase` y `cuentas_sin_auxiliar`; nunca se deducen del código |
@@ -3078,3 +3309,38 @@ y su JS. Los otros dos caminos no se bloquean: lo anterior al corte quedará com
   generadas con una prueba temporal que no se entrega).
 - **No hecho aquí:** el ensayo de migraciones con la versión publicada atendiendo, la vuelta de solo código con el código
   anterior y el recorrido de las rutas en navegador (decisiones 18 y 19), que hace el orquestador al cerrar el corte.
+
+### Unión con el bloque 1 final (15/11/2026)
+
+`git merge --no-ff fase/contable-1-cuentas` (`8a421b3`; código final del bloque 1 `65cf28e`) sobre `98b0a27`, sin rebase
+ni `push`. La rama trae así el bloque 1 entero: `contabilidad 0009_anular_autores_en_la_base`, el lector endurecido de C3
+(`191a5c9` y `cd23065`), `deploy/scripts/desplegar.sh` y `tests/test_desplegar_releases.py` (solo del bloque 1: este corte
+no los había tocado y quedan idénticos a `8a421b3`, como `README.md` y `pytest.ini`) y sus notas.
+
+**Conflictos.** Cuatro, de texto:
+
+| Archivo | Qué chocaba | Cómo quedó |
+|---|---|---|
+| `tests/test_migracion_vuelta_fase.py` | el conteo de la vuelta de la fase (`54` aquí, `48` allí), el comentario de la vuelta del diseño y la lista de la vuelta del plan | `55` (las 47 de antes, la 0009 del bloque 1 y las siete del corte); la vuelta del corte va hasta `contabilidad 0009_anular_autores_en_la_base` y la del plan espera las del bloque 1 con su 0009 y `BLOQUE_2` |
+| `MIGRACIONES-FASE-CONTABLE.md` | las dos añadían detrás del «Choque conocido al fusionar con `fase/primera-entrega`» | primero lo del bloque 1, tal cual; después la nota del corte con la numeración nueva y su «Unión con el bloque 1 final» |
+| `HANDOFF.md` | las dos añadían al final | primero las dos secciones del bloque 1 («Segunda ronda de correcciones…» y «Ensayo con 0009…»), tal cual; después esta nota |
+| `CONTRATO-CONTABLE-V9.md` | las dos añadían una nota de cabecera | primero la del bloque 1 («Corregido otra vez…»), tal cual; después la del corte, con la base nueva |
+
+Sin conflicto, unidos solos y revisados: `core/contabilidad/importar_cuentas.py` (la columna «clase» del corte y las
+defensas del bloque 1), `core/contabilidad/models.py` (`clase` y `auxiliar`, y los comentarios de las claves de 0009),
+`tests/test_capacidades.py`, `tests/test_cuentas.py` y `tests/test_cuentas_importacion.py`. Las pruebas nuevas del bloque
+1 no comparan funciones de capacidades enteras, así que ninguna necesitaba `'avisos': []`; `capacidades.py` solo lo cambió
+este corte.
+
+**Renumeración** (con `git mv`, mismos sufijos; la tabla está en MIGRACIONES-FASE-CONTABLE.md, «Unión con el bloque 1
+final»): `contabilidad 0009_clases_de_cuenta` → `0010_clases_de_cuenta`, que depende de
+`('contabilidad', '0009_anular_autores_en_la_base')`; `0010_libro_diario` → `0011_libro_diario`; `0011_apertura` →
+`0012_apertura`; `0012_rls_libro_apertura` → `0013_rls_libro_apertura`; `0013_libro_inmutable` → `0014_libro_inmutable`;
+`0014_permisos_apertura` → `0015_permisos_apertura`. `tenancy 0014_acciones_apertura` no cambia: va sobre
+`tenancy 0013_acciones_plan_cuentas`, que el bloque 1 ya traía en `84d07cc`. `contabilidad` y `tenancy` tienen una sola
+hoja cada una y `makemigrations --check --dry-run` no ve cambios. Cambiaron con ella las dependencias internas, los
+nombres y números en `tests/test_migracion_vuelta_fase.py` (`BLOQUE_2`, conteo y vueltas), `tests/test_convivencia_versiones.py`
+(`DESDE`: los bloques 2 a 6 empiezan en `contabilidad 0010`), `tests/test_zz_libro_inmutable_pg.py` (los módulos de 0013 y
+0014), los comentarios de `core/security/menu.py`, `core/contabilidad/migrations/0013_rls_libro_apertura.py`,
+`tests/ayudas_contables.py` y `tests/test_rls_libro_apertura.py`, y estos documentos. Ninguna migración del corte hace
+`AlterField` sobre las claves de quién de `Cuenta` ni de `ImportacionCuentas` (las que 0009 deja con `ON DELETE SET NULL`).

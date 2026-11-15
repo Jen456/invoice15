@@ -1,4 +1,4 @@
-"""Seguridad por filas de PostgreSQL en las 19 tablas del bloque 2 (contabilidad 0012), tabla por tabla y por SQL: activa y
+"""Seguridad por filas de PostgreSQL en las 19 tablas del bloque 2 (contabilidad 0013), tabla por tabla y por SQL: activa y
 forzada con la política `fpa_empresa`; una consulta sin filtro solo ve la empresa fijada; una fila de otra empresa no se
 ve, no se cambia, no se inserta y no se le pasa a otra empresa una fila propia. (La prueba genérica de todo TenantModel es
 tests/test_rls_modelos_de_empresa.py.)"""

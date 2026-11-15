@@ -5,10 +5,10 @@ from django.db import migrations
 CONDITION = ("current_setting('app.platform', true) = 'on' "
              "OR company_id = NULLIF(current_setting('app.company_id', true), '')::integer")
 TABLAS = (
-    # Libro (contabilidad 0010)
+    # Libro (contabilidad 0011)
     'contabilidad_iniciocontable', 'contabilidad_ejerciciocontable', 'contabilidad_periodocontable', 'contabilidad_asiento',
     'contabilidad_lineaasiento', 'contabilidad_saldocuentames', 'contabilidad_contabilizacion', 'contabilidad_registroclave',
-    # Apertura (contabilidad 0011)
+    # Apertura (contabilidad 0012)
     'contabilidad_apertura', 'contabilidad_lineaapertura', 'contabilidad_importacionapertura', 'contabilidad_respaldoapertura',
     'contabilidad_ajusteapertura', 'contabilidad_auxiliarapertura', 'contabilidad_partidabancoapertura',
     'contabilidad_aplicacionauxiliar', 'contabilidad_vinculohistorico', 'contabilidad_coberturaperiodo',
@@ -38,6 +38,6 @@ def backwards(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [('contabilidad', '0011_apertura')]
+    dependencies = [('contabilidad', '0012_apertura')]
 
     operations = [migrations.RunPython(forwards, backwards)]

@@ -54,7 +54,7 @@ def backwards(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('contabilidad', '0013_libro_inmutable'),
+        ('contabilidad', '0014_libro_inmutable'),
         ('security', '0003_orden_menu'),
         ('importacion', '0004_menu_con_guias'),
         ('auth', '0012_alter_user_first_name_max_length'),

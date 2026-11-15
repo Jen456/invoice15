@@ -7,9 +7,12 @@ class Migration(migrations.Migration):
 
     # Dos columnas con `db_default` en la tabla del bloque 1 (quien inserte sin conocerlas recibe ''): solo necesita esa
     # tabla. makemigrations apuntaba además a la última de pos (0035) y al usuario; con pos 0035 aquí, la vuelta documentada
-    # del diseño de factura (`migrate pos 0034_cliente_nacimiento_opcional`) arrastraría el libro y la apertura.
+    # del diseño de factura (`migrate pos 0034_cliente_nacimiento_opcional`) arrastraría el libro y la apertura. Va detrás
+    # de la última del bloque 1 (0009, que en PostgreSQL pone ON DELETE SET NULL en las claves de quién de `Cuenta` y
+    # `ImportacionCuentas`): contabilidad tiene una sola hoja. Ninguna migración de este bloque hace AlterField de esas
+    # cuatro claves; si alguna lo hiciera, recrearía la restricción sin esa acción (ver 0009).
     dependencies = [
-        ('contabilidad', '0008_seguridad_por_filas_importacion'),
+        ('contabilidad', '0009_anular_autores_en_la_base'),
     ]
 
     operations = [

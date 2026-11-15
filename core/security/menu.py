@@ -129,7 +129,7 @@ MODULOS_NUEVOS = (
       # (sync_roles), así que viajan con este hasta que la pantalla tenga el suyo (contabilidad 0006 en instalaciones
       # existentes). No cambia el nombre, el orden ni lo que muestra el menú.
       'view_cuenta', 'add_cuenta', 'change_cuenta',
-      # Libro diario y apertura contable (bloque 2): lo mismo, sin pantalla ni módulo propios (contabilidad 0014 en
+      # Libro diario y apertura contable (bloque 2): lo mismo, sin pantalla ni módulo propios (contabilidad 0015 en
       # instalaciones existentes). Solo los que el bloque reparte; los declarados para bloques posteriores (asiento manual,
       # reverso, período, ejercicio) no cuelgan de ningún módulo hasta entonces.
       'view_asiento', 'view_apertura', 'add_apertura', 'change_confirmacion_apertura',

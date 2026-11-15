@@ -16,8 +16,17 @@ comunes); con el plan vencido tampoco guarda un formulario que lleve `action`; y
 más, cada uno con su texto: el CSV con las comillas mal cerradas, el XLSX que declara entidades XML y la tabla con
 demasiado texto.
 
+**Corregido otra vez el 14/11/2026** (revisión de las correcciones, ensayo de migración y recorrido en navegador). Para
+quien conecte las pantallas: un envío sin token CSRF válido es la tercera excepción de las reglas comunes (403 en HTML de
+Django); un JSON que no se puede leer y que traía dentro la empresa recibe 409 `sin_empresa`, no 400 `cuerpo`; en C3, un
+logo SVG dentro del XLSX ya no impide subirlo y un XLSX con una parte comprimida en bzip2 o lzma se rechaza (400
+`formato`), y la lista de cambios dice ya que un lote de otra empresa es 404 `lote`. No hay códigos nuevos: salvo lo del
+XLSX, el código ya respondía así y ahora el contrato lo dice.
+
 **Actualizado el 14/11/2026 (corte 1 del bloque 2: libro diario mínimo, inicio contable y apertura hasta confirmar).**
-Rama `fase/contable-2-apertura`, código final `a5bedf4`, sin publicar. Las rutas de la apertura y del diario y sus ejemplos
+Rama `fase/contable-2-apertura`, código final del corte `a5bedf4`, sin publicar; el 15/11/2026 se le unió el bloque 1
+final (`fase/contable-1-cuentas`, `8a421b3`), con las dos correcciones de arriba, así que C3 vale aquí tal como lo
+describen (también la importación de los saldos de la apertura, que lee con el mismo lector, `lectura_tabular.py`). Las rutas de la apertura y del diario y sus ejemplos
 reales están en `CONTRATO-APERTURA-CONTABLE.md` (C6-A, sección 6). Aquí cambia lo que ya existía: las reglas comunes
 (`empresa` en la consulta, `url` y `recurso`), «Capacidades» (funciones nuevas, el campo `avisos` y el primer requisito
 real), C1 (la etapa de la apertura), C2 (clase y auxiliar de cada cuenta, reclasificar y la ruta para clasificar por lote)
@@ -43,7 +52,7 @@ Valen para todo lo que cuelga de `/tributario/` y `/contabilidad/`:
 Las rutas que ya existían (kardex, inventario y todo `/tributario/`) no cambiaron: allí un GET sin permiso sigue
 redirigiendo (302). Las nuevas cumplen además esto:
 
-- **Toda negativa de la ruta es JSON, también en GET.** Hay dos excepciones, las de todo el proyecto, que responden
+- **Toda negativa de la ruta es JSON, también en GET.** Hay tres excepciones, las de todo el proyecto, que responden
   antes de llegar a la ruta:
 
   1. Sin sesión: 302 a `/login/?next=…`.
@@ -53,16 +62,21 @@ redirigiendo (302). Las nuevas cumplen además esto:
      la empresa que tenía abierta y al superusuario que no eligió empresa. (Si a quien perdió la membresía le queda
      exactamente otra empresa, la sesión pasa sola a esa: la pestaña armada para la anterior recibe el 409
      `empresa_cambiada` de siempre.)
+  3. Un envío (POST o PATCH) sin token CSRF válido: Django lo corta con su 403 en HTML («403 Forbidden», sin `codigo`).
+     Los envíos llevan la cabecera `X-CSRFToken` con el valor de la cookie `csrftoken`, como el resto del proyecto
+     (`static/js/functions.js` ya la pone). Conviene leer la cookie al enviar y no al cargar la página: iniciar sesión
+     en otra pestaña la cambia. Las consultas (GET) no la necesitan.
 
   Para la interfaz: una respuesta redirigida o que no es JSON, y un 403 sin `codigo`, no son de la ruta. Se tratan como
-  «vuelve a cargar la página»: al recargar, el proyecto lleva al inicio de sesión o al selector de empresas.
+  «vuelve a cargar la página»: al recargar, el proyecto lleva al inicio de sesión o al selector de empresas, o renueva el
+  token.
 - **Orden de las negativas.** Se responde la primera que aplique:
 
   | # | Causa | Respuesta |
   |---|---|---|
   | 1 | La consulta o el envío se armó para otra empresa | 409 `empresa_cambiada` |
   | 2 | Licencia: complemento cerrado, sin plan pagado o, en un envío, plan vencido | 403 `complemento_pendiente` o `plan`, con `causa: "licencia"` |
-  | 3 | El envío no dice para qué empresa se preparó | 409 `sin_empresa` |
+  | 3 | El envío no dice para qué empresa se preparó (tampoco cuando la trae dentro de un JSON que no se puede leer) | 409 `sin_empresa` |
   | 4 | El rol no tiene el permiso | 403 `sin_permiso`, con `causa: "permiso"` |
   | 5 | Faltan datos por completar | 409 `datos_por_completar`, con `causa: "datos"` |
   | 6 | Validación | 400 `clave`, `cuerpo`, `validacion` o el código propio de la ruta |
@@ -78,7 +92,8 @@ redirigiendo (302). Las nuevas cumplen además esto:
   en PATCH (Django solo lo hace en POST), y `activa` (booleano) y `padre_id: null` no se pueden escribir en un
   formulario. Un PATCH de formulario no cambia nada y llega vacío: recibe 409 `sin_empresa` aunque traiga `empresa` en
   el cuerpo, o 400 `validacion` por `version` si la empresa va en la consulta. Un JSON que no se puede leer o que no es
-  un objeto: 400 `cuerpo`.
+  un objeto: 400 `cuerpo` si la empresa va en la consulta (`?empresa=`); si iba dentro de ese JSON, el servidor no la
+  puede leer y responde antes el 409 `sin_empresa` (puesto 3 del orden).
 - **`clave`.** De 8 a 40 caracteres: letras, cifras, guion y guion bajo. La genera el navegador una vez por formulario.
   Misma clave y mismo contenido: el mismo resultado con 200 y `"repetido": true`. Misma clave y otro contenido: 409
   `clave_usada`. Sin clave o mal formada: 400 `clave`.
@@ -287,8 +302,8 @@ Fuera del complemento (ventas, importación, proformas, cobros) el 403 del plan 
   lleva a donde se resuelve, si este usuario puede.
 - Con `licencia.solo_consulta` se puede leer y no se puede guardar: las acciones que guardan ya vienen en `false`.
 - Ante un 403 o un 409 de una ruta nueva, `codigo` y `causa` dicen cuál de las cuatro es; `error` es el texto para la
-  persona. Un 403 sin `codigo`, o una respuesta que no es JSON, no viene de la ruta: es una de las dos excepciones de las
-  reglas comunes (sin sesión o sin empresa activa) y se resuelve recargando la página.
+  persona. Un 403 sin `codigo`, o una respuesta que no es JSON, no viene de la ruta: es una de las tres excepciones de las
+  reglas comunes (sin sesión, sin empresa activa o un envío sin token CSRF válido) y se resuelve recargando la página.
 
 ### Cambios respecto de lo que había
 
@@ -597,10 +612,13 @@ cerrarlas) o guarda el archivo de nuevo desde la hoja de cálculo.» Un salto de
 cerradas vale, y se guarda como un espacio. Las hojas de cálculo exportan siempre las comillas bien cerradas: esto solo
 alcanza a un CSV escrito a mano.
 
-Un XLSX que declara entidades XML (un `DOCTYPE` en cualquiera de sus partes) no se abre: 400 `formato`, «El XLSX trae
-declaraciones que una hoja de cálculo no escribe (DOCTYPE): ábrelo y guárdalo de nuevo como XLSX, o súbelo como CSV
-UTF-8.» Ninguna hoja de cálculo las escribe, y con ellas unos kilobytes ocupan gigas de memoria al leerlos. Tampoco se
-abre un XLSX con una parte dañada o cifrada, aunque no sea la hoja.
+Un XLSX que declara entidades XML (un `DOCTYPE` en cualquiera de sus partes XML, las `.xml` y las `.rels`) no se abre:
+400 `formato`, «El XLSX trae declaraciones que una hoja de cálculo no escribe (DOCTYPE): ábrelo y guárdalo de nuevo como
+XLSX, o súbelo como CSV UTF-8.» Ninguna hoja de cálculo las escribe en esas partes, y con ellas unos kilobytes ocupan gigas
+de memoria al leerlos. De las imágenes y los objetos incrustados solo se comprueba que no estén dañados, cifrados ni
+comprimidos de otra forma, y lo que traen no se interpreta: un logo SVG, que sí puede traer su `DOCTYPE`, o una imagen
+en una hoja de gráfico no impiden subir el libro. Tampoco se abre un XLSX con una parte dañada o cifrada, o comprimida de
+otra forma que la de un XLSX (bzip2, lzma…), aunque no sea la hoja: 400 `formato` con el texto general.
 
 **Columnas.** Se reconocen por su encabezado, sin distinguir mayúsculas ni tildes:
 
@@ -727,7 +745,7 @@ Envío JSON: `{"empresa", "clave", "duplicadas": "omitir" | "actualizar_nombre"}
 | 400 | `validacion` | falta `archivo`; `duplicadas` falta o no es válido; en el mapeo, una columna que no está o que se repite |
 | 400 | `archivo_grande` | más de 2 MB, XLSX de más de 20 MB al abrirlo, demasiadas celdas fuera de la tabla o demasiado texto en la tabla («El archivo trae demasiado texto para un plan de cuentas: deja solo las columnas del plan (código, nombre, padre y tipo) y súbelo de nuevo.») |
 | 400 | `demasiadas_filas` | más de 5 000 filas de cuentas |
-| 400 | `formato` | no es CSV ni XLSX, está dañado, vacío o solo trae encabezados, tiene más de 40 columnas, es un `.xls` o un libro con contraseña, el CSV no está en UTF-8 o tiene las comillas mal cerradas, o el XLSX declara entidades XML (`DOCTYPE`). `error` dice cuál |
+| 400 | `formato` | no es CSV ni XLSX, está dañado, vacío o solo trae encabezados, tiene más de 40 columnas, es un `.xls` o un libro con contraseña, el CSV no está en UTF-8 o tiene las comillas mal cerradas, o el XLSX declara entidades XML (`DOCTYPE`) en una de sus partes XML o trae una parte dañada, cifrada o comprimida de otra forma que la de un XLSX. `error` dice cuál |
 | 400 | `faltan_columnas` | al confirmar sin columna de código o de nombre; trae `resumen` |
 | 400 | `filas_con_error` | al confirmar con alguna fila en error; trae `resumen` |
 | 404 | `lote` | el lote no existe o es de otra empresa |
@@ -744,6 +762,8 @@ Cambios respecto de la propuesta del 04/11:
 - La subida y la confirmación responden siempre `repetido`. El lote confirmado añade `id`, `archivo` y `duplicadas`.
 - Códigos que la propuesta no nombraba: `faltan_columnas`, `plan_cambiado`, `archivo_grande`, `demasiadas_filas` y
   `formato`.
+- Un lote que no existe o es de otra empresa responde 404 `lote`, no el 409 de la propuesta; el ya confirmado, 409
+  `lote_confirmado`.
 - La maqueta v9 acepta `.xls`: el servidor no lo lee.
 - Sin decidir: cuánto tiempo se conservan los lotes que se quedan en vista previa y su archivo. Hoy no se borran.
 

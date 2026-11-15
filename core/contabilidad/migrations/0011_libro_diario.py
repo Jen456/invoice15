@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
     # (`migrate pos 0034_cliente_nacimiento_opcional`) las arrastraría. Ninguna restricción hacia pos_* (salvo la
     # empresa), importacion_* ni el usuario (decisión común 16).
     dependencies = [
-        ('contabilidad', '0009_clases_de_cuenta'),
+        ('contabilidad', '0010_clases_de_cuenta'),
         ('pos', '0034_cliente_nacimiento_opcional'),
     ]
 

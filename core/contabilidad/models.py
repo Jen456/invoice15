@@ -137,6 +137,8 @@ class Cuenta(TenantModel):
     # La importación que la creó; nulo en las que se dan de alta a mano. El lote no se borra (PROTECT).
     lote = models.ForeignKey('ImportacionCuentas', null=True, blank=True, on_delete=models.PROTECT, related_name='cuentas',
                              verbose_name='Importación que la creó')
+    # Las dos de quién: en PostgreSQL la base también las anula al borrar al usuario (contabilidad 0009), porque la
+    # seguridad por filas no deja a Django anular las de otra empresa. Un AlterField de una de ellas tiene que reponerlo.
     creada_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
                                    verbose_name='Creada por')
     creada_en = models.DateTimeField(default=timezone.now, verbose_name='Creada el')
@@ -195,6 +197,7 @@ class ImportacionCuentas(TenantModel):
     duplicadas = models.CharField(max_length=17, choices=DUPLICADAS_IMPORTACION, blank=True, default='',
                                   verbose_name='Qué se hizo con las que ya existían')
     resultado = models.JSONField(null=True, blank=True, verbose_name='Resultado de la confirmación')
+    # Como en Cuenta: en PostgreSQL la base anula también estas dos al borrar al usuario (contabilidad 0009).
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
                                    verbose_name='Subido por')
     creado_en = models.DateTimeField(default=timezone.now, verbose_name='Subido el')

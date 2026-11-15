@@ -26,8 +26,9 @@ from tests import ayuda_compras, ayudas_contables as ac, ayudas_ventas, helpers
 
 pytestmark = pytest.mark.django_db
 
-# Primera migración de los bloques 2 a 6 en cada app que tocan (lo anterior ya estaba antes de la fase de cierre).
-DESDE = {'contabilidad': 9, 'tributario': 4}
+# Primera migración de los bloques 2 a 6 en cada app que tocan (lo anterior es de antes de la fase de cierre o del bloque 1,
+# que acaba en contabilidad 0009_anular_autores_en_la_base).
+DESDE = {'contabilidad': 10, 'tributario': 4}
 
 
 def migraciones_de_los_bloques():
@@ -38,7 +39,7 @@ def migraciones_de_los_bloques():
 
 def test_columnas_nuevas_en_tablas_existentes_son_nulas_o_con_db_default():
     bloques = migraciones_de_los_bloques()
-    assert ('contabilidad', '0009_clases_de_cuenta') in {clave for clave, _ in bloques}
+    assert ('contabilidad', '0010_clases_de_cuenta') in {clave for clave, _ in bloques}
     creadas = {(app, op.name.lower()) for (app, _), m in bloques for op in m.operations if isinstance(op, migrations.CreateModel)}
     revisadas, malas = [], []
     for (app, nombre), migracion in bloques:
@@ -49,6 +50,7 @@ def test_columnas_nuevas_en_tablas_existentes_son_nulas_o_con_db_default():
                     malas.append(f'{app}.{nombre}: {op.model_name}.{op.name}')
     assert not malas, malas
     assert {('contabilidad', 'cuenta', 'clase'), ('contabilidad', 'cuenta', 'auxiliar')} <= set(revisadas)
+
 
 
 def test_insert_que_no_conoce_las_columnas_nuevas_de_cuenta(empresa):

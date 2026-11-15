@@ -158,6 +158,6 @@ def backwards(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [('contabilidad', '0012_rls_libro_apertura')]
+    dependencies = [('contabilidad', '0013_rls_libro_apertura')]
 
     operations = [migrations.RunPython(forwards, backwards)]

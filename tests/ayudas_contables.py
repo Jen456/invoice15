@@ -387,7 +387,7 @@ def filas_de_cada_tabla(empresa, cuentas=None):
     return filas
 
 
-# Las 19 tablas nuevas del bloque, por modelo (las que recorre la seguridad por filas de contabilidad 0012).
+# Las 19 tablas nuevas del bloque, por modelo (las que recorre la seguridad por filas de contabilidad 0013).
 MODELOS_DEL_BLOQUE = (InicioContable, EjercicioContable, PeriodoContable, Asiento, LineaAsiento, SaldoCuentaMes,
                       Contabilizacion, RegistroClave, Apertura, LineaApertura, ImportacionApertura, RespaldoApertura,
                       AjusteApertura, AuxiliarApertura, PartidaBancoApertura, AplicacionAuxiliar, VinculoHistorico,

@@ -1,4 +1,4 @@
-"""Disparadores del libro en PostgreSQL (contabilidad 0013 `libro_inmutable`), a nivel SQL: lo que rechazan aunque se
+"""Disparadores del libro en PostgreSQL (contabilidad 0014 `libro_inmutable`), a nivel SQL: lo que rechazan aunque se
 escriba sin los modelos. Transacciones reales (transaction=True), porque `fpa_asiento_sellado` se comprueba al confirmar;
 va al final (test_zz_*) y crea todos sus datos, porque las pruebas transaccionales vacían la base.
 
@@ -246,7 +246,7 @@ def funciones():
 def test_la_migracion_de_los_disparadores_se_deshace_y_se_rehace(libro):
     a, cuentas, *_ = libro
     asiento = ac.asiento_directo(a, lineas(cuentas))
-    migracion = importlib.import_module('core.contabilidad.migrations.0013_libro_inmutable')
+    migracion = importlib.import_module('core.contabilidad.migrations.0014_libro_inmutable')
     assert disparadores() == DISPARADORES and funciones() == DISPARADORES
     with connection.cursor() as cursor:
         cursor.execute("SELECT tgdeferrable, tginitdeferred FROM pg_trigger WHERE tgname = 'fpa_asiento_sellado'")
@@ -270,7 +270,7 @@ def test_la_migracion_de_los_disparadores_se_deshace_y_se_rehace(libro):
 
 
 def test_la_migracion_de_la_seguridad_por_filas_se_deshace_y_se_rehace(libro):
-    migracion = importlib.import_module('core.contabilidad.migrations.0012_rls_libro_apertura')
+    migracion = importlib.import_module('core.contabilidad.migrations.0013_rls_libro_apertura')
     tablas = [m._meta.db_table for m in ac.MODELOS_DEL_BLOQUE]
     assert sorted(migracion.TABLAS) == sorted(tablas) and len(tablas) == 19
 
