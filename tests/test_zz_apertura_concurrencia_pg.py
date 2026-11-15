@@ -6,7 +6,11 @@ la concurrencia de crear y mapear:
   recibe `apertura_existente` (el candado del libro las pone en fila; la carrera por crear la fila del candado la resuelve
   su UNIQUE);
 - dos creaciones a la vez con la misma clave: una apertura y la otra `repetido`;
-- dos mapeos a la vez con la misma versión: uno escribe y el otro recibe `version`, sin líneas de más.
+- dos mapeos a la vez con la misma versión: uno escribe y el otro recibe `version`, sin líneas de más;
+- lo que escribe la confirmación (asiento, líneas, acumulados, ejercicio, historia) queda en su empresa;
+- dos confirmaciones a la vez, con la misma clave y con claves distintas (aceptación 1, doble clic o dos personas): una
+  sola apertura confirmada y un solo asiento; la otra recibe `repetido` o `apertura_confirmada` (el candado del libro las
+  pone en fila).
 
 Va al final (test_zz_*) y crea todos sus datos: las pruebas transaccionales vacían la base."""
 import json
@@ -16,7 +20,7 @@ from django.contrib.auth.models import Group, Permission
 from django.db import DatabaseError, connection, transaction
 
 from core.contabilidad import api, apertura as servicio
-from core.contabilidad.models import Apertura, EventoApertura, InicioContable, LineaApertura
+from core.contabilidad.models import Apertura, Asiento, EventoApertura, InicioContable, LineaApertura
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_OWNER
 from tests import ayudas_contables as ayudas
@@ -26,7 +30,7 @@ pytestmark = [
     pytest.mark.skipif(connection.vendor != 'postgresql', reason='Bloqueos y seguridad por filas reales solo en PostgreSQL'),
     pytest.mark.django_db(transaction=True),
 ]
-CODIGOS = ('view_apertura', 'add_apertura', 'view_cuenta')
+CODIGOS = ('view_apertura', 'add_apertura', 'change_confirmacion_apertura', 'view_cuenta')
 DATOS = {'modalidad': 'saldos', 'fecha_corte': '2025-12-31', 'fuente': 'balance_comprobacion', 'fuente_detalle': 'Balance'}
 
 
@@ -128,3 +132,38 @@ def test_dos_mapeos_a_la_vez_con_la_misma_version():
         assert Apertura.objects.get(pk=apertura.pk).version == 2
         assert LineaApertura.objects.filter(apertura_id=apertura.pk).count() == 2
         assert EventoApertura.objects.filter(apertura_id=apertura.pk, accion='mapeada').count() == 1
+
+
+def test_lo_que_escribe_la_confirmacion_queda_en_su_empresa():
+    empresa, (usuario, _), cuentas = preparar()
+    otra, _, _ = preparar('OTRA PG')
+    ayudas.apertura_confirmada(empresa, cuentas, usuario=usuario)
+    tablas = ('contabilidad_asiento', 'contabilidad_lineaasiento', 'contabilidad_saldocuentames',
+              'contabilidad_ejerciciocontable', 'contabilidad_eventoapertura')
+    with company_context(empresa):
+        assert [contar(t) for t in tablas] == [1, 2, 2, 1, 5]   # historia: inicio, creada, mapeada, enviada y confirmada
+        assert Asiento.objects.get().sellado is True
+    with company_context(otra):
+        assert [contar(t) for t in tablas] == [0, 0, 0, 0, 0]
+
+
+@pytest.mark.parametrize('misma_clave', [True, False])
+def test_dos_confirmaciones_a_la_vez(misma_clave):
+    empresa, usuarios, cuentas = preparar()
+    apertura = ayudas.apertura_en_revision(empresa, [(cuentas['caja'], '10000.00', None), (cuentas['capital'], None, '10000.00')],
+                                           usuario=usuarios[0])
+    claves = ['confirmar-pg-misma'] * 2 if misma_clave else ['confirmar-pg-0001', 'confirmar-pg-0002']
+
+    def confirmar(usuario, clave):
+        def tarea():
+            with company_context(empresa):
+                return resultado(lambda: servicio.confirmar(ayudas.peticion(usuario, empresa), apertura.pk, {
+                    'version': apertura.version, 'clave': clave, 'revisado': True, 'incompletos_aceptados': []}))
+        return tarea
+    resultados, errores = ayudas.en_paralelo([confirmar(u, c) for u, c in zip(usuarios, claves)])
+    assert errores == []
+    assert sorted(resultados) == sorted(['ok', 'repetido' if misma_clave else 'apertura_confirmada'])
+    with company_context(empresa):
+        assert list(Apertura.objects.values_list('estado', flat=True)) == ['confirmada']
+        assert list(Asiento.objects.values_list('tipo', 'numero', 'total_debe')) == [('apertura', 1, 10000)]
+        assert EventoApertura.objects.filter(accion='confirmada').count() == 1
