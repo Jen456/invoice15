@@ -124,7 +124,7 @@ if [ -n "$PRIMERA" ]; then
 fi
 
 echo "== 5. Activación"
-ANTES=$(readlink -f "$BASE/current" 2>/dev/null || true)
+ANTES=$(readlink -e "$BASE/current" 2>/dev/null || true)   # -e: vacío sin current (con -f, la ruta de current)
 activar "$REL"
 systemctl restart "$SERVICIO"
 if ! salud; then

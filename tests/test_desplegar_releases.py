@@ -231,6 +231,18 @@ def test_salud_fallida_vuelve_a_la_anterior_y_borra_la_nueva(entorno):
     assert entorno.activa == entorno.ejecutando == 'anterior'
 
 
+def test_primera_instalacion_con_salud_fallida_conserva_su_version(entorno):
+    """Sin `current` no hay a qué volver: la versión se queda activa aunque no pase la salud, el script sale con 1 y su
+    carpeta no se borra. Antes, `readlink -f` de un `current` que no existe daba su propia ruta, la vuelta «a la
+    anterior» la activaba y `current` quedaba apuntando a sí mismo."""
+    hecho = entorno.desplegar(entorno.commits['sin-salud'], '--primera-instalacion', 'admin@example.test')
+    assert hecho.returncode == 1, hecho.salida
+    assert 'FALLO de salud' in hecho.salida and 'se borra' not in hecho.salida
+    assert os.readlink(entorno.base / 'current') != str(entorno.base / 'current'), 'current apunta a sí mismo'
+    assert entorno.releases() == ['sin-salud'] and entorno.activa == 'sin-salud'
+    assert len(list((entorno.raiz / 'credenciales').glob('admin-pruebas-*.txt'))) == 1
+
+
 def test_primera_instalacion_que_falla_en_migrate_no_toca_nada(entorno):
     """Sin `current`, un fallo antes de activar tampoco borra: sale con 1 y la carpeta queda para revisarla."""
     entorno.migrate_falla(True)
