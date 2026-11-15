@@ -361,11 +361,11 @@ Estos comandos no se ejecutaron al redactar este manual técnico.
 
 ### Despliegue, respaldo y reversión
 
-El script versionado de la aplicación crea una release desde Git, instala dependencias con hashes, respalda PostgreSQL, aplica migraciones, crea caché, recopila estáticos, ejecuta comprobaciones y activa `current`. Reinicia el servicio y comprueba `/login/`. Conserva cinco releases y hasta treinta respaldos previos de despliegue. `entregas/` se excluye del archivo desplegado.
+El script versionado de la aplicación crea una release desde Git, instala dependencias con hashes, respalda PostgreSQL, aplica migraciones, crea caché, recopila estáticos, ejecuta comprobaciones y activa `current`. Reinicia el servicio y comprueba `/login/`; si esa comprobación falla, vuelve a la release anterior. Conserva cinco releases y hasta treinta respaldos previos de despliegue. La release de un despliegue que no queda activo (falla antes de activarse, por ejemplo en las migraciones, o no pasa la comprobación) se borra al terminar, salvo en la primera instalación. `entregas/` se excluye del archivo desplegado.
 
 El respaldo diario conserva catorce volcados PostgreSQL, usa exclusión mutua y comprueba que el archivo contenga datos de suficientes tablas. Las políticas RLS exigen el alcance de plataforma previsto por los scripts para no generar un respaldo parcial. Además de la base deben preservarse archivos privados y llaves de cifrado mediante el procedimiento seguro de operación. La estrategia externa de copias debe verificarse en infraestructura; un script en Git no demuestra que una copia remota se haya realizado.
 
-**Revertir código no revierte la base.** `desplegar.sh <entorno> --revertir` cambia a la release anterior; las migraciones/datos requieren evaluación y, si procede, restauración del respaldo correspondiente. La prueba de recuperación se hace en una instancia aislada, validando empresas, archivos, descifrado y versión antes de intervenir producción. Evitar instrucciones destructivas de restauración copiadas sin conocer la topología.
+**Revertir código no revierte la base.** `desplegar.sh <entorno> --revertir` cambia a la release anterior (la más reciente que no es `current`); las migraciones/datos requieren evaluación y, si procede, restauración del respaldo correspondiente. La prueba de recuperación se hace en una instancia aislada, validando empresas, archivos, descifrado y versión antes de intervenir producción. Evitar instrucciones destructivas de restauración copiadas sin conocer la topología.
 
 ### Pruebas y criterios de integración
 

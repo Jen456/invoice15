@@ -284,16 +284,21 @@ plan y al final `user_user`, con `lock_timeout` de 1 s por bloqueo; si no lo con
 que suelta lo que había tomado y las lecturas en cola pasan, espera 2 s sin retener nada y lo intenta de nuevo, hasta 8
 veces. Con `user_user` ya tomado no queda ningún bloqueo que esperar: los dos `ALTER TABLE` (uno por tabla, con sus dos
 claves; cada clave se quita y se vuelve a crear con su nombre y `DEFERRABLE INITIALLY DEFERRED`) van sobre tablas recién
-creadas y vacías y duran milisegundos, hasta que `migrate` confirma la migración. Tomar `user_user` el último es lo que
+creadas y vacías y duran milisegundos (de 9 a 20 ms en el ensayo con 0009), pero `user_user` sigue tomado hasta que
+`migrate` confirma la migración: de 150 a 510 ms en ese ensayo, con el disco cargado. Tomar `user_user` el último es lo que
 acota el parón: con los `ALTER TABLE` solos, el segundo podía esperar por su tabla con `user_user` ya tomado. Un
 interbloqueo con una petición que ya leyó `user_user` y quiere leer una tabla del plan cuenta como un intento fallido.
 
-**Peor caso de 0009:** las lecturas de `user_user` se paran como mucho un intento (1 s, más los milisegundos del cambio
-en el que lo consigue), como mucho 8 veces, separadas por 2 s sin bloqueo: unos 22 s en total. Las de las tablas del
-plan, que la versión publicada no conoce, se paran durante todo el intento. Si se agotan los intentos, porque otra
-transacción retiene `user_user` todo ese tiempo, `migrate` falla sin haber cambiado nada, con un mensaje que dice qué
-tabla esperaba y qué hacer: `desplegar.sh` se detiene antes de activar el código nuevo (0004 a 0008 quedan aplicadas, y
-la versión publicada sigue atendiendo sin problema) y basta repetir el despliegue, mejor con poco tráfico.
+**Peor caso de 0009:** en cada intento, las lecturas de `user_user` se paran lo que 0009 espera el bloqueo (como mucho
+1 s) y, en el intento que lo consigue, además lo que tarda `migrate` en confirmar (de 150 a 510 ms en el ensayo con 0009,
+con el disco cargado); como mucho 8 intentos, separados por 2 s sin bloqueo: unos 22 s en total. Sin nadie que retenga
+`user_user` tampoco son milisegundos: 0009 espera a las escrituras en curso de la propia aplicación, que ya tocaron
+`user_user` (en el ensayo, de 0,20 a 0,78 s; como mucho 1 s por intento), y la lectura más lenta esperó 1,21 s (0,34 y
+0,42 s en las dos pasadas principales). Las de las tablas del plan, que la versión publicada no conoce, se paran durante
+todo el intento. Si se agotan los intentos, porque otra transacción retiene `user_user` todo ese tiempo, `migrate` falla
+sin haber cambiado nada, con un mensaje que dice qué tabla esperaba y qué hacer: `desplegar.sh` se detiene antes de
+activar el código nuevo (0004 a 0008 quedan aplicadas, y la versión publicada sigue atendiendo sin problema), borra al
+salir la carpeta de la versión que no activó y basta repetir el despliegue, mejor con poco tráfico.
 
 Medido con `tests/test_zz_cuentas_0009_bloqueo_pg.py` (PostgreSQL 16, 14/11/2026 hacia las 23:55 UTC, carga de 4 con 6
 núcleos), que vuelve a 0008, deja las claves como las crea Django y retiene `user_user` desde otra conexión mientras una
@@ -327,7 +332,8 @@ migrate tenancy 0012_accion_diseno_factura
 ```
 
 Quedan pendientes las siete de la tabla. El módulo del kardex vuelve a sus tres permisos, ningún rol conserva los del plan
-de cuentas y el resto del menú y de los roles queda igual. Otra ida lo deja todo como estaba. Lo recorre
+de cuentas y el resto del menú y de los roles queda igual. Quedan las filas de `Permission` y `ContentType` de `cuenta` e
+`importacioncuentas`, inocuas. Otra ida lo deja todo como estaba. Lo recorre
 `tests/test_migracion_vuelta_fase.py::test_vuelta_del_plan_de_cuentas_a_lo_publicado`, por subproceso, sobre una
 instalación SQLite con menú. Vuelta solo de la importación: `migrate contabilidad 0006_permisos_plan_cuentas`; borra la
 tabla de lotes con sus filas, su mapeo y su resultado, y la columna `lote_id` de las cuentas, y los archivos de los lotes
@@ -356,7 +362,11 @@ carpeta de cada empresa) y volver al código anterior, no `migrate` hacia atrás
 `tests/test_cuentas_importacion.py`); en PostgreSQL, la acción y el diferido de las cuatro claves de 0009 y el borrado del
 usuario autor desde otra empresa y sin pasar por Django (`tests/test_cuentas.py::TestBorrarAlAutor`, que fallaba antes de
 0009 con la misma restricción que el ensayo); 0009 con `user_user` retenido desde otra conexión
-(`tests/test_zz_cuentas_0009_bloqueo_pg.py`, ver «Por qué 0009»); `makemigrations --check --dry-run` sin cambios.
+(`tests/test_zz_cuentas_0009_bloqueo_pg.py`, ver «Por qué 0009»); `makemigrations --check --dry-run` sin cambios. Con
+la aplicación atendiendo, sobre copias del volcado diario: la ida con 0009, también con `user_user` retenido, su fallo
+limpio, la vuelta con la aplicación detenida, D1, D2, la reparación de D6 y el borrado de una empresa con plan de cuentas
+(«Ensayo con 0009», abajo). Que `desplegar.sh` no deje la carpeta de una versión que no quedó activa:
+`tests/test_desplegar_releases.py` (punto 1 del plan).
 
 **Ensayo con la aplicación atendiendo (14/11/2026, sobre `84d07cc`, sin 0009).** Guiones propios fuera del repositorio
 (`ensayo-contable-1/guiones/`); los de la fase (`verif-firma/ensayo-fase/`) y de primera entrega no se tocaron. Tres
@@ -381,19 +391,61 @@ están inflados.
 - El reinicio del servicio deja de 3,5 a 13,8 s sin atender con la máquina cargada, de 15 a 27 peticiones fallidas por
   cambio (conexiones rechazadas o cortadas); no es de este bloque (D7).
 
+**Ensayo con 0009 y la aplicación atendiendo (15/11/2026, de 00:29 a 01:13 UTC, sobre `6b7ccbf`).** Guiones propios
+fuera del repositorio (`ensayo-contable-1b/guiones/`; las cifras, en `ensayo-contable-1b/resultados.json`), con el
+montaje del anterior: el último volcado diario restaurado de nuevo en cada pasada principal, un rol con los atributos
+del de producción, `e0f2902` atendiendo el mismo tráfico ficticio y el SRI simulado. El despliegue del ensayo sigue los
+pasos, el orden y el `set -euo pipefail` de `desplegar.sh`, y esta vez `migrate` va sin `lock_timeout` añadido (0009
+pone el suyo). Para retener `user_user`, otra transacción lo lee y queda abierta hasta N s después de ver a 0009 pedir
+su bloqueo. La máquina estaba compartida con suites completas (carga de 7,8 a 12,2 con 6 núcleos): los tiempos están
+inflados.
+
+- Ida, dos pasadas: `migrate` sin errores (23,9 y 14,2 s) y 0 peticiones fallidas durante `migrate` y en la ventana de
+  al menos 30 s con `e0f2902` sobre la base migrada. 0009 terminó en 0,30 y 0,21 s, con 1 intento que esperó 0,29 y
+  0,20 s a las escrituras en curso de la aplicación; la lectura de `user_user` más lenta, 0,34 y 0,42 s.
+- 0009-A, `user_user` retenido 5 s: 3 intentos, 0009 bien a los 6,0 s, la lectura más lenta 1,00 s y 0 peticiones
+  fallidas.
+- 0009-B, retenido 40 s: 8 intentos en 22,1 s y `RuntimeError` con el mensaje, sin cambiar nada (0009 sin anotar y las
+  cuatro claves como estaban); el despliegue se detuvo en el paso 4 con `current` en `e0f2902` y la aplicación
+  atendiendo, 0 peticiones fallidas y la lectura más lenta 1,00 s. Repetido sin retención: 1 intento, que esperó 0,78 s
+  a las escrituras en curso, y la lectura más lenta 1,21 s. Después, `--revertir` eligió la carpeta del despliegue
+  fallido (el mismo `6b7ccbf`) y, repetido, la de la repetición: alternaba entre las dos sin volver a `e0f2902`.
+  Corregido en `desplegar.sh` (punto 1 del plan).
+- Borrar a usuarios que crearon cuentas o lotes (D1, desde otra empresa, con la versión nueva y con `e0f2902`; D2, con
+  `e0f2902`): sin errores.
+- Vuelta del bloque con la aplicación detenida (48,1 y 4,2 s las dos órdenes): borra las cuentas, los lotes y `lote_id`;
+  el kardex, los roles y los módulos vuelven idénticos; quedan pendientes las siete y los archivos de los lotes, sin
+  dueño, en `privado/`.
+- D6: `start_installation` de `e0f2902` sobre la base migrada lo reproduce y la reparación del punto 4 lo deja como dice
+  su comprobación (`organizar_menu` 11,4 s y `sync_roles` 2,3 s con la máquina cargada).
+- Borrar desde `/plataforma/` con `e0f2902` una empresa con plan de cuentas: 500 sin borrar nada, como dice el punto 3.
+- Cambio de proceso (D7): de 3,6 a 7,7 s sin servicio y de 16 a 24 peticiones fallidas por cambio (conexiones
+  rechazadas o cortadas, ningún 5xx). Un caso aislado, la segunda `--revertir` de 0009-B, con la máquina saturada (carga
+  12) y un checkpoint de PostgreSQL en curso: 46,9 s y 28 fallidas. No es el rango normal; por eso se publica con la
+  máquina sin otras suites corriendo.
+- Producción intacta: `facturaporaqui@pruebas` con el mismo MainPID (1447381) y sin reinicios al empezar y al terminar
+  cada corrida; ninguna conexión a la base publicada.
+
 **Plan de recuperación del bloque** (además de «Restauración»):
 
-1. Publicar con poco tráfico: la ida bloquea unos segundos las escrituras en `user_user` y `pos_company` (inicios de
-   sesión, ediciones de empresa) y, en 0009, las lecturas de `user_user` (cada petición con sesión): milisegundos si
-   nada retiene `user_user`; si una transacción lo retiene, hasta 1 s por intento y como mucho 8 intentos en unos 22 s,
-   con 2 s sin bloqueo entre uno y otro. Si no lo consigue, `migrate` falla sin cambiar nada, `desplegar.sh` se detiene
-   con la versión publicada atendiendo y se repite el despliegue (ver «Por qué 0009»).
+1. Publicar con poco tráfico y con la máquina sin otras suites: la ida bloquea unos segundos las escrituras en
+   `user_user` y `pos_company` (inicios de sesión, ediciones de empresa) y, en 0009, las lecturas de `user_user` (cada
+   petición con sesión). Si nada retiene `user_user`, hasta 1,21 s en el ensayo: 0009 espera a las escrituras en curso
+   de la propia aplicación (como mucho 1 s por intento) y retiene `user_user` hasta confirmar (de 150 a 510 ms con el
+   disco cargado). Si una transacción lo retiene, hasta 1 s por intento más esa confirmación en el que lo consigue, y
+   como mucho 8 intentos en unos 22 s, con 2 s sin bloqueo entre uno y otro. Si no lo consigue, `migrate` falla sin
+   cambiar nada, `desplegar.sh` se detiene con la versión publicada atendiendo, borra al salir la carpeta de la versión
+   que no activó y se repite el despliegue (ver «Por qué 0009»). Esa carpeta se queda solo en una primera instalación,
+   sin `current`. Antes del arreglo (`4f9987f`) se quedaba siempre, y `--revertir` la tomaba por la versión anterior:
+   ensayo, 0009-B. Lo vigila `tests/test_desplegar_releases.py`.
 2. Deshacer migraciones solo con la aplicación detenida o en mantenimiento, sin escrituras, y con `lock_timeout` corto
    (2 a 5 s, en `PGOPTIONS`) y reintento: con tráfico, la vuelta puede interbloquearse con una escritura (D3). Toda vuelta
    del bloque por debajo de 0007 o de 0004 borra lotes o cuentas con sus datos: con datos registrados no se deshace, se
    restaura (ver «Restauración»).
-3. Volver solo el código (`desplegar.sh … --revertir`) con la base migrada: la versión anterior atiende. Con 0009 puede
-   borrar a un usuario que creó cuentas o lotes; sin 0009 (si el despliegue se detuvo antes) no hay que borrar usuarios
+3. Volver solo el código (`desplegar.sh … --revertir`) con la base migrada: la versión anterior atiende. `--revertir`
+   toma por fecha la carpeta más reciente que no es `current`; como la de un despliegue fallido ya no se queda (punto 1),
+   es la de la versión que atendía antes. Con 0009 puede borrar a un usuario que creó cuentas o lotes; sin 0009 (si el
+   despliegue se detuvo antes) no hay que borrar usuarios
    que crearon o editaron cuentas o lotes, y si ocurre, devolverle la membresía o borrarlo con la versión nueva. Borrar
    una empresa con plan de cuentas da 500 y no borra nada (lo impide `PROTECT`, como debe; ya lo impedían su período de
    suscripción y el `PROTECT` de los demás modelos de empresa). Desde `/plataforma/`, igual.
@@ -434,14 +486,18 @@ están inflados.
    `lote_id` de las cuentas, deja sin dueño los archivos privados de los lotes y toma sobre `user_user` y `pos_company`
    los bloqueos de la vuelta (D3). Si alguna vez se elige esa vía por otra razón, solo con la aplicación detenida y con
    respaldo previo de la base y de `privado/`.
-5. El corte del reinicio (D7) se anuncia o se evita con una recarga sin corte de gunicorn: queda fuera del bloque.
+5. El corte del reinicio (D7) se anuncia o se evita con una recarga sin corte de gunicorn: queda fuera del bloque. En el
+   ensayo con 0009, de 3,6 a 7,7 s por cambio; el caso aislado de 46,9 s fue con la máquina saturada (carga 12 y un
+   checkpoint de PostgreSQL): publicar con la máquina sin otras suites.
 
 **No probado:**
 
-- 0009 con la aplicación atendiendo: se añadió después del ensayo. Hay que repetirlo antes de publicar, con la vuelta de
-  arriba, y con una transacción que retenga `user_user` (que lo lea y quede abierta) mientras corre 0009: una vez más
-  que un intento y menos que todos, para medir con tráfico el parón de las peticiones con sesión, y otra más que todos,
-  para ver el fallo limpio y que repetir el despliegue basta. La prueba de PostgreSQL lo mide sin tráfico.
+- 0009 con la versión nueva atendiendo (si alguna vez se aplicara con `6b7ccbf` ya activa, por ejemplo después de una
+  vuelta a 0008): el ensayo atendía con `e0f2902`, que no lee las tablas del plan, así que no midió las peticiones de
+  C1–C3, que esperan durante todo el intento.
+- 0004 y 0007 con una transacción que retenga `user_user` o `pos_company` (una escritura larga): `desplegar.sh` no pone
+  `lock_timeout` a `migrate`, así que esperarían lo que dure, con las escrituras de esas tablas en cola detrás. En los
+  dos ensayos nadie las retuvo.
 - La base real.
 
 **Choque conocido al fusionar con `fase/primera-entrega`.** Esa rama trae `tenancy/0013_acciones_borrador_factura`, también
