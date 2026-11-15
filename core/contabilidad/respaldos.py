@@ -5,7 +5,8 @@ bloque y, después, las evidencias de presentación del bloque 5, que lo reutili
 usuario. El tipo se decide por lo que el archivo trae, nunca por su nombre ni por el tipo que declara el navegador:
 
 - PDF, JPG y PNG por su firma (`core.adjuntos.archivos.tipo_real`), con las imágenes abiertas por Pillow (las de los
-  comprobantes de pago: `archivos.validar`, que además limita su resolución);
+  comprobantes de pago: `archivos.validar`, que además limita su resolución). Cualquier error de Pillow con una imagen
+  dañada es también «La imagen no se puede leer» (`archivos.validar` traduce solo algunos);
 - WEBP se reconoce para rechazarlo con su propio texto: `archivos.validar` lo admite para los comprobantes, pero un
   respaldo contable se guarda en un formato que cualquier programa de contabilidad abre;
 - XLSX por la firma ZIP y abriéndolo en solo lectura, con las mismas defensas que la importación del plan de cuentas
@@ -30,6 +31,8 @@ NOMBRES = {PDF: 'PDF', JPG: 'JPG', PNG: 'PNG', XLSX: 'XLSX', CSV: 'CSV'}
 _POR_TIPO_REAL = {'application/pdf': PDF, 'image/jpeg': JPG, 'image/png': PNG}
 _CONTROL = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
 NOMBRE_MAX = 150
+# El mismo texto que da core.adjuntos.archivos a una imagen que Pillow no puede leer.
+IMAGEN_ILEGIBLE = 'La imagen no se puede leer: vuelve a tomarla o expórtala como JPG, PNG o PDF.'
 
 
 class ArchivoInvalido(ValueError):
@@ -92,4 +95,8 @@ def validar(nombre, contenido, admitidos=(PDF, JPG, PNG, XLSX, CSV)):
             archivos.validar(nombre, contenido)   # abre la imagen y limita su resolución
         except archivos.ArchivoInvalido as e:
             raise ArchivoInvalido(str(e)) from None
+        except Exception:   # noqa: BLE001 - lo que Pillow lanza con una imagen dañada y archivos.validar no traduce
+            # Un PNG con la suma (CRC) de un bloque dañada da SyntaxError; otros daños, IndexError, EOFError o struct.error.
+            # Sin esto la ruta respondía 500 en HTML: el archivo se rechaza igual, con su texto y por su campo.
+            raise ArchivoInvalido(IMAGEN_ILEGIBLE) from None
     return nombre_saneado(nombre, tipo), TIPOS[tipo], hashlib.sha256(contenido).hexdigest()

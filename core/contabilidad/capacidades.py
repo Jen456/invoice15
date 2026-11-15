@@ -120,13 +120,13 @@ def _cuentas_sin_clase(request):
 
 
 def _apertura_de_trabajo():
-    """`(id, ambitos_no_aplican)` de la apertura en preparación o, si no la hay, de la confirmada (la que muestra GET
-    /contabilidad/api/apertura/), o None."""
+    """`(id, ambitos_no_aplican, estado)` de la apertura en preparación o, si no la hay, de la confirmada (la que muestra
+    GET /contabilidad/api/apertura/), o None."""
     from core.contabilidad.models import Apertura
     filas = list(Apertura.objects.filter(estado__in=('borrador', 'en_revision', 'confirmada'))
                  .values_list('id', 'estado', 'ambitos_no_aplican'))
     filas.sort(key=lambda f: f[1] == 'confirmada')   # la que está en preparación primero
-    return (filas[0][0], filas[0][2]) if filas else None
+    return (filas[0][0], filas[0][2], filas[0][1]) if filas else None
 
 
 def _cuentas_sin_auxiliar(request):
@@ -147,16 +147,18 @@ def _cuentas_sin_auxiliar(request):
 
 def _auxiliares_incompletos(request):
     """Líneas de la apertura de trabajo con detalle (Cuenta.auxiliar) cuyo saldo no está explicado del todo (o es
-    desconocido). Dos consultas: las líneas con detalle y lo detallado por línea."""
+    desconocido). Dos consultas: las líneas con detalle (en preparación, el auxiliar que su cuenta declara ahora:
+    cobertura.con_detalle) y lo detallado por línea."""
     from django.db.models import Sum
+    from core.contabilidad.cobertura import con_detalle
     from core.contabilidad.models import AuxiliarApertura, LineaApertura
     trabajo = _apertura_de_trabajo()
     if trabajo is None:
         return []
     detallado = dict(AuxiliarApertura.objects.filter(apertura_id=trabajo[0], estado='vigente').order_by().values('linea')
                      .annotate(total=Sum('saldo_inicial')).values_list('linea', 'total'))
-    n = sum(1 for pk, debe, haber in LineaApertura.objects.filter(apertura_id=trabajo[0], retirada=False).exclude(detalle='')
-            .values_list('id', 'debe', 'haber')
+    lineas = con_detalle(LineaApertura.objects.filter(apertura_id=trabajo[0], retirada=False), trabajo[2] != 'confirmada')
+    n = sum(1 for pk, debe, haber in lineas.values_list('id', 'debe', 'haber')
             if debe is None or haber is None or detallado.get(pk, 0) < debe + haber)
     return [aviso('auxiliares_incompletos', f'{n} cuenta(s) de la apertura tienen su detalle (clientes, proveedores, '
                   'inventario…) incompleto.', n, recurso={'tipo': 'apertura', 'id': trabajo[0],

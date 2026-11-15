@@ -16,7 +16,10 @@ mitad; aceptaciones 1, 2, 7, 8 y 10 de C6-A §8): core/contabilidad/apertura.py 
   devolver con su historia; sin saldos (sin asiento); historial; corte futuro; solapamiento; período cerrado; el inicio
   contable sincronizado; incompletos aceptados línea por línea; ámbitos congelados; una confirmada no se edita; el diario
   posterior al corte sigue provisional (`motor_pendiente`); confirmar no toca stock, cartera ni kardex; 5 000 líneas sin
-  consultas por línea.
+  consultas por línea;
+- el detalle de cada línea es el auxiliar que su cuenta declara mientras la apertura se prepara (también si la cuenta
+  cambia en revisión, en los dos sentidos, o contradice un ámbito declarado «no aplica») y confirmar lo fija; lo declarado
+  del resultado no contradice unas líneas sin resultado; un total que no cabe en un asiento bloquea antes de confirmar.
 
 La seguridad por filas y las confirmaciones simultáneas van en tests/test_zz_apertura_concurrencia_pg.py. Datos ficticios."""
 import json
@@ -33,15 +36,16 @@ from django.utils import timezone
 from core.contabilidad import apertura as servicio
 from core.contabilidad import reportes
 from core.contabilidad.models import (Apertura, Asiento, AuxiliarApertura, Cuenta, EventoApertura, InicioContable,
-                                      LineaApertura, LineaAsiento, MovimientoManual, PeriodoContable, SaldoCuentaMes)
+                                      LineaApertura, LineaAsiento, MovimientoManual, PeriodoContable, SaldoCuentaMes,
+                                      norma_codigo)
 from core.pos.models import Client, CtasCollect, DebtsPay, Product, Purchase, Sale
 from core.tenancy.context import company_context
 from core.tenancy.models import (ROLE_ACCOUNTANT, ROLE_ADMIN, ROLE_CLIENT, ROLE_OWNER, ROLE_READONLY, ROLE_SELLER, AuditLog)
 from tests import ayudas_contables as ayudas
 from tests import helpers
 from tests import test_emision_sri as emision_sri
-from tests.test_apertura_preparar import (API, acciones, balance, creada, en, entrar_como, eventos, leer, linea, mapeada,
-                                          plan_grande, rechazo, vencer)
+from tests.test_apertura_preparar import (API, CAPACIDADES, acciones, balance, creada, en, entrar_como, eventos, leer, linea,
+                                          mapeada, plan_grande, rechazo, vencer)
 from tests.test_apertura_preparar import cuentas, web   # noqa: F401 - fixtures
 from tests.test_apertura_preparar import enviar as envio
 from tests.test_emision_sri import p12, sri   # noqa: F401 - fixtures de la aceptación 10
@@ -115,6 +119,16 @@ def mitad_de_anio(cuentas, *extra):
     """Corte 30/06 con 1 000 de resultado en cuentas nominales: ventas 3 000 al haber y gastos 2 000 al debe."""
     return [linea(cuentas['caja'], '6000.00'), linea(cuentas['capital'], None, '5000.00'),
             linea(cuentas['ventas'], None, '3000.00'), linea(cuentas['gastos_generales'], '2000.00'), *extra]
+
+
+def cambiar_auxiliar(client, empresa, cuenta, auxiliar):
+    """PATCH /contabilidad/api/cuentas/<id>/ con el auxiliar (cuentas.modificar lo permite mientras la cuenta no tenga
+    auxiliares vigentes ni líneas de asiento con tercero: también con la apertura en revisión)."""
+    version = en(empresa, lambda: Cuenta.objects.get(pk=cuenta.pk).version)
+    respuesta = envio(client, f'/contabilidad/api/cuentas/{cuenta.pk}/', empresa, {'version': version, 'auxiliar': auxiliar},
+                      'patch')
+    assert respuesta.status_code == 200, respuesta.content
+    assert en(empresa, lambda: Cuenta.objects.get(pk=cuenta.pk).auxiliar) == auxiliar
 
 
 def conteos_de_la_operacion(empresa):
@@ -312,13 +326,72 @@ class TestBloqueos:
         assert en(empresa, lambda: Asiento.objects.filter(tipo='apertura').count()) == 0
 
     def test_validar_no_escribe(self, web, empresa, cuentas):
-        apertura = preparada(web, empresa, [linea(cuentas['clientes'], '300.00'), linea(cuentas['capital'], None, '300.00')])
-        historia, auditoria = en(empresa, EventoApertura.objects.count), AuditLog.objects.filter(company=empresa).count()
+        """Parte B: validar «no cambia la apertura, sus líneas ni sus auxiliares» (ni deja historia ni auditoría). Se
+        compara la foto entera de las tres tablas, no solo los conteos y la versión: un validar que marcara las líneas
+        con detalle como aceptadas, o que tocara un campo de la apertura sin subir la versión, también se ve."""
+        apertura = preparada(web, empresa, [linea(cuentas['clientes'], '300.00'), linea(cuentas['capital'], None, '300.00')],
+                             cambios={'ambitos_no_aplican': [{'ambito': 'activos', 'nota': 'No tiene activos fijos.'}]})
+        with company_context(empresa):
+            clientes = LineaApertura.objects.get(apertura_id=apertura['id'], cuenta=cuentas['clientes'])
+            AuxiliarApertura.objects.create(apertura_id=apertura['id'], linea=clientes, cuenta=cuentas['clientes'],
+                                            naturaleza='cliente', saldo_inicial=Decimal('100.00'), tercero_nombre='CLIENTE',
+                                            creado_por_nombre='x')   # incompleto: validar lo advierte y no lo acepta
+
+        def foto():
+            with company_context(empresa):
+                return {'apertura': list(Apertura.objects.filter(pk=apertura['id']).values()),
+                        'lineas': list(LineaApertura.objects.filter(apertura_id=apertura['id']).order_by('id').values()),
+                        'auxiliares': list(AuxiliarApertura.objects.filter(apertura_id=apertura['id']).order_by('id').values()),
+                        'historia': list(EventoApertura.objects.order_by('id').values_list('id', flat=True)),
+                        'auditoria': list(AuditLog.objects.filter(company=empresa).order_by('id').values_list('id', flat=True))}
+        antes = foto()
+        assert len(antes['lineas']) == 2 and len(antes['auxiliares']) == 1
+        assert 'auxiliar_incompleto' in codigos(validar(web, empresa, apertura)['advertencias'])
         validar(web, empresa, apertura)
-        validar(web, empresa, apertura)
-        assert en(empresa, EventoApertura.objects.count) == historia
-        assert AuditLog.objects.filter(company=empresa).count() == auditoria
+        assert foto() == antes
         assert leer(web, f'{API}{apertura["id"]}/', empresa)['apertura']['version'] == apertura['version']
+
+    def test_total_que_no_cabe_en_un_asiento(self, web, empresa, cuentas):
+        """B2-AP-4: cada línea admite hasta 999 999 999 999,99, pero el asiento (16, 2) no pasa de 99 999 999 999 999,99 por
+        lado (diario.TOTAL_MAX): validar y enviar lo dicen con `importe_total_excedido`, y confirmar lo revalida, en vez de
+        fallar en diario.contabilizar con un 400 que no es un bloqueo."""
+        from core.contabilidad import diario
+        with company_context(empresa):
+            Cuenta.objects.bulk_create(
+                [Cuenta(company=empresa, codigo=f'{lado}.9.{i:03d}', codigo_norm=norma_codigo(f'{lado}.9.{i:03d}'),
+                        nombre=f'Cuenta {lado}.{i}', tipo='movimiento', clase=clase, padre=cuentas[grupo])
+                 for lado, clase, grupo in (('1', 'activo', 'activo'), ('2', 'pasivo', 'pasivo')) for i in range(101)])
+            activos = list(Cuenta.objects.filter(codigo__startswith='1.9.').order_by('codigo'))
+            pasivos = list(Cuenta.objects.filter(codigo__startswith='2.9.').order_by('codigo'))
+        mayor = str(servicio.IMPORTE_MAX - servicio.CENTAVO)   # el mayor importe de una línea
+
+        def filas(ultimo):
+            return ([linea(c, mayor) for c in activos[:100]] + [linea(activos[100], ultimo)]
+                    + [linea(c, None, mayor) for c in pasivos[:100]] + [linea(pasivos[100], None, ultimo)])
+        # 100 × 999 999 999 999,99 + 0,99 = 99 999 999 999 999,99 por lado: cabe
+        apertura = preparada(web, empresa, filas('0.99'))
+        assert validar(web, empresa, apertura)['valida'] is True
+        # un centavo más por lado ya no
+        mapeada(web, empresa, apertura, filas('1.00'))
+        apertura = leer(web, f'{API}{apertura["id"]}/', empresa)['apertura']
+        maximo = '99999999999999.99'
+        assert str(diario.TOTAL_MAX - servicio.CENTAVO) == maximo
+        textos = {'debe': '100000000000000.00', 'haber': '100000000000000.00', 'maximo': maximo}
+        assert validar(web, empresa, apertura)['bloqueos'] == [{
+            'codigo': 'importe_total_excedido', 'texto': TV['importe_total_excedido'].format(**textos), **textos}]
+        cuerpo = rechazo(accion(web, empresa, apertura, 'enviar', version=apertura['version']), 409, 'importe_total_excedido')
+        assert (cuerpo['debe'], cuerpo['maximo']) == ('100000000000000.00', maximo)
+        # Enviada con el total que cabe y crecida después (escrito en la base): confirmar lo revalida con el candado.
+        mapeada(web, empresa, apertura, filas('0.99'))
+        apertura = leer(web, f'{API}{apertura["id"]}/', empresa)['apertura']
+        enviada_ = accion(web, empresa, apertura, 'enviar', version=apertura['version']).json()['apertura']
+        with company_context(empresa):
+            LineaApertura.objects.filter(apertura_id=apertura['id'], cuenta=activos[100]).update(debe=Decimal('1.00'))
+            LineaApertura.objects.filter(apertura_id=apertura['id'], cuenta=pasivos[100]).update(haber=Decimal('1.00'))
+        cuerpo = rechazo(confirmar(web, empresa, enviada_), 409, 'importe_total_excedido')
+        assert codigos(cuerpo['bloqueos']) == ['importe_total_excedido']
+        assert asientos(empresa) == []
+        assert en(empresa, lambda: Apertura.objects.get(pk=apertura['id']).estado) == 'en_revision'
 
     def test_la_forma_de_validar(self, web, empresa, cuentas):
         apertura = preparada(web, empresa, balance(cuentas))
@@ -366,6 +439,107 @@ class TestAdvertencias:
         # una cuenta de un documento posterior al corte no cuenta
         en(empresa, lambda: Sale.objects.filter(pk=venta.pk).update(emission_date=date(2026, 1, 2)))
         assert 'cartera_operativa_anterior_al_corte' not in codigos(validar(web, empresa, apertura)['advertencias'])
+
+
+# ---------------------------------------------------------------- el detalle de cada línea es el de su cuenta
+
+class TestDetalleDeLaCuenta:
+    """B2-AP-1: `detalle` es la copia de `cuenta.auxiliar` tomada al mapear, y el auxiliar de la cuenta puede cambiar después
+    (cuentas.modificar lo permite sin auxiliares vigentes ni líneas con tercero), también con la apertura en revisión.
+    Mientras se prepara, validar, enviar, confirmar, la cobertura, la lista de líneas, el PATCH de los ámbitos y el aviso
+    del registro miran la cuenta; confirmar fija la copia con el candado tomado. Antes se confirmaba con la copia vieja:
+    sin aceptar una línea cuya cuenta declara detalle, o pidiendo aceptar una que ya no lo declara."""
+
+    def test_la_cuenta_declara_auxiliar_en_revision(self, web, empresa, cuentas):
+        apertura = enviada(web, empresa, balance(cuentas))
+        caja = ids_de_lineas(empresa, apertura, cuentas['caja'])[0]
+        cambiar_auxiliar(web, empresa, cuentas['caja'], 'cliente')
+        datos = validar(web, empresa, apertura)
+        assert {'codigo': 'auxiliar_incompleto', 'texto': TV['detalle_incompleto'].format(
+            codigo='1.1.01', detallado='0.00', importe='10000.00'), 'linea_id': caja} in datos['advertencias']
+        sin_cuenta = [a['ambito'] for a in datos['advertencias'] if a['codigo'] == 'sin_cuenta_declarada']
+        assert 'clientes' not in sin_cuenta
+        clientes = {'estado': 'pendiente', 'cuenta': '10000.00', 'detallado': '0.00', 'documentos': 0}
+        assert datos['cobertura']['cartera']['clientes'] == clientes
+        # para confirmar hay que aceptarla (contrato §6.5, regla 8)
+        assert rechazo(confirmar(web, empresa, apertura), 409, 'auxiliar_incompleto')['lineas'] == [caja]
+        datos = confirmada(web, empresa, apertura, aceptadas=[caja])
+        guardada = en(empresa, lambda: LineaApertura.objects.get(pk=caja))
+        assert (guardada.detalle, guardada.incompleto_aceptado) == ('cliente', True)
+        assert datos['cobertura']['contabilidad']['estado'] == 'parcial'
+        assert datos['cobertura']['cartera']['clientes'] == clientes
+        confirmacion = en(empresa, lambda: EventoApertura.objects.get(apertura_id=apertura['id'], accion='confirmada').detalle)
+        assert confirmacion['detalle_fijado'] == [{'linea_id': caja, 'anterior': '', 'nuevo': 'cliente'}]
+        assert confirmacion['incompletos_aceptados'] == [caja]
+
+    def test_la_cuenta_deja_de_declarar_auxiliar_en_revision(self, web, empresa, cuentas):
+        apertura = enviada(web, empresa, [linea(cuentas['clientes'], '10000.00'), linea(cuentas['capital'], None, '10000.00')])
+        clientes = ids_de_lineas(empresa, apertura, cuentas['clientes'])[0]
+        cambiar_auxiliar(web, empresa, cuentas['clientes'], '')
+        assert 'auxiliar_incompleto' not in codigos(validar(web, empresa, apertura)['advertencias'])
+        cuerpo = rechazo(confirmar(web, empresa, apertura, aceptadas=[clientes]), 409, 'auxiliar_incompleto')
+        assert (cuerpo['lineas'], cuerpo['sobran']) == ([], [clientes])
+        datos = confirmada(web, empresa, apertura)
+        guardada = en(empresa, lambda: LineaApertura.objects.get(pk=clientes))
+        assert (guardada.detalle, guardada.incompleto_aceptado) == ('', False)
+        assert datos['cobertura']['contabilidad']['estado'] == 'conciliada'
+        assert datos['cobertura']['cartera']['clientes'] == {'estado': 'pendiente', 'cuenta': None, 'detallado': None,
+                                                              'documentos': 0}
+        assert en(empresa, lambda: EventoApertura.objects.get(apertura_id=apertura['id'], accion='confirmada').detalle)[
+            'detalle_fijado'] == [{'linea_id': clientes, 'anterior': 'cliente', 'nuevo': ''}]
+
+    def test_el_ambito_que_no_aplica_y_la_cuenta_que_lo_contradice(self, web, empresa, cuentas):
+        apertura = enviada(web, empresa, balance(cuentas), cambios={'ambitos_no_aplican': [
+            {'ambito': 'clientes', 'nota': 'No vende a crédito.'}]})
+        caja = ids_de_lineas(empresa, apertura, cuentas['caja'])[0]
+        cambiar_auxiliar(web, empresa, cuentas['caja'], 'cliente')
+        bloqueo = {'codigo': 'cuenta_no_aplica', 'texto': TV['cuenta_no_aplica'].format(n=1, ambitos='clientes'),
+                   'lineas': [caja], 'ambitos': ['clientes']}
+        assert validar(web, empresa, apertura)['bloqueos'] == [bloqueo]
+        cuerpo = rechazo(confirmar(web, empresa, apertura, aceptadas=[caja]), 409, 'cuenta_no_aplica')
+        assert (cuerpo['lineas'], cuerpo['ambitos'], codigos(cuerpo['bloqueos'])) == ([caja], ['clientes'], ['cuenta_no_aplica'])
+        assert asientos(empresa) == []
+        assert en(empresa, lambda: Apertura.objects.get(pk=apertura['id']).ambitos_no_aplican) == [
+            {'ambito': 'clientes', 'nota': 'No vende a crédito.'}]   # nada congelado
+        # sin el auxiliar, la declaración vale y se confirma
+        cambiar_auxiliar(web, empresa, cuentas['caja'], '')
+        datos = confirmada(web, empresa, apertura)
+        assert datos['cobertura']['cartera']['clientes']['estado'] == 'no_aplica'
+
+    def test_en_borrador_sin_volver_a_mapear(self, web, empresa, cuentas):
+        apertura = preparada(web, empresa, balance(cuentas))
+        caja = ids_de_lineas(empresa, apertura, cuentas['caja'])[0]
+        cambiar_auxiliar(web, empresa, cuentas['caja'], 'cliente')
+        # el PATCH de los ámbitos mira la cuenta, como mapear
+        no_aplica = {'version': apertura['version'], 'ambitos_no_aplican': [{'ambito': 'clientes', 'nota': 'No aplica.'}]}
+        assert rechazo(envio(web, f'{API}{apertura["id"]}/', empresa, no_aplica, 'patch'), 400, 'validacion')['errores'] == {
+            'ambitos_no_aplican.0.ambito': [servicio.TEXTOS['ambito_con_cuentas']]}
+        # la lista de líneas, la cobertura de la empresa y el aviso del registro, también
+        lista = {l['id']: l for l in leer(web, f'{API}{apertura["id"]}/lineas/', empresa)['lineas']}
+        assert (lista[caja]['detalle'], lista[caja]['auxiliares']['estado']) == ('cliente', 'sin_detalle')
+        assert leer(web, API, empresa)['cobertura']['cartera']['clientes'] == {
+            'estado': 'pendiente', 'cuenta': '10000.00', 'detallado': '0.00', 'documentos': 0}
+        avisos = {a['codigo']: a for a in web.get(CAPACIDADES).json()['funciones']['apertura']['avisos']}
+        assert avisos['auxiliares_incompletos']['cantidad'] == 1
+        # declarado antes de que la cuenta cambie: enviar lo bloquea
+        cambiar_auxiliar(web, empresa, cuentas['caja'], '')
+        assert envio(web, f'{API}{apertura["id"]}/', empresa, no_aplica, 'patch').status_code == 200
+        cambiar_auxiliar(web, empresa, cuentas['caja'], 'cliente')
+        cuerpo = rechazo(accion(web, empresa, apertura, 'enviar', version=apertura['version'] + 1), 409, 'cuenta_no_aplica')
+        assert cuerpo['lineas'] == [caja]
+        assert en(empresa, lambda: LineaApertura.objects.get(pk=caja).detalle) == ''   # validar y enviar no escriben
+
+    def test_confirmada_vale_lo_que_se_fijo(self, web, empresa, cuentas):
+        """Después de confirmar, la Parte A deja cambiar el auxiliar (sin auxiliares vigentes): la apertura confirmada no
+        cambia, y su lista de líneas y su cobertura siguen con el detalle fijado al confirmar."""
+        apertura = enviada(web, empresa, balance(cuentas))
+        confirmada(web, empresa, apertura)
+        caja = ids_de_lineas(empresa, apertura, cuentas['caja'])[0]
+        cambiar_auxiliar(web, empresa, cuentas['caja'], 'cliente')
+        lista = {l['id']: l for l in leer(web, f'{API}{apertura["id"]}/lineas/', empresa)['lineas']}
+        assert (lista[caja]['detalle'], lista[caja]['auxiliares']['estado']) == ('', 'sin_declarar')
+        assert leer(web, API, empresa)['cobertura']['cartera']['clientes']['cuenta'] is None
+        assert 'auxiliares_incompletos' not in {a['codigo'] for a in web.get(CAPACIDADES).json()['funciones']['apertura']['avisos']}
 
 
 # ---------------------------------------------------------------- aceptación 7: el resultado del ejercicio
@@ -430,6 +604,45 @@ class TestAceptacion7:
         rechazo(confirmar(web, empresa, enviada_), 409, 'resultado_sin_declarar')
         datos = confirmada(web, empresa, enviada_, nota='La empresa no tuvo actividad antes del corte.')
         assert datos['apertura']['estado'] == 'confirmada'
+
+    @pytest.mark.parametrize('corte, cambios', [
+        (MITAD, {'resultado_ejercicio': 'en_cuentas_nominales', 'resultado_acumulado': '5000.00'}),
+        (MITAD, {'resultado_ejercicio': 'en_patrimonio'}),   # tampoco sirve para no escribir la nota de «no aplica»
+        (MITAD, {'resultado_ejercicio': 'no_aplica', 'resultado_acumulado': '5000.00'}),
+        (CORTE, {'resultado_ejercicio': 'en_patrimonio', 'resultado_acumulado': '7000.00'}),
+        (CORTE, {'resultado_ejercicio': 'en_cuentas_nominales'}),
+        (CORTE, {'resultado_acumulado': '7000.00'}),
+    ], ids=['mitad-nominales-5000', 'mitad-patrimonio', 'mitad-no-aplica-5000', '31-12-patrimonio-7000', '31-12-nominales',
+            '31-12-solo-cifra'])
+    def test_sin_resultado_en_las_lineas_lo_declarado_las_contradice(self, web, empresa, cuentas, corte, cambios):
+        """B2-AP-2 (contrato §6.5, regla 6): con N = 0 y P = 0, declarar el resultado en cuentas de resultados o en
+        patrimonio, o una cifra distinta de cero, contradice las líneas: `resultado_duplicado` con las dos cifras, a mitad
+        de año y a fin de año. Antes se confirmaba guardando la declaración en vez de lo que dicen las líneas."""
+        filas = [linea(cuentas['caja'], '6000.00'), linea(cuentas['capital'], None, '6000.00')]
+        apertura = preparada(web, empresa, filas, fecha_corte=corte.isoformat(), cambios=cambios)
+        datos = validar(web, empresa, apertura)
+        cifras = {'en_cuentas_nominales': '0.00', 'en_patrimonio': '0.00'}
+        assert datos['bloqueos'] == [{'codigo': 'resultado_duplicado', 'texto': TV['resultado_duplicado'].format(**cifras),
+                                      **cifras, 'declarado': cambios.get('resultado_ejercicio', ''),
+                                      'resultado_acumulado': cambios.get('resultado_acumulado')}]
+        assert ('sin_resultados_acumulados' in codigos(datos['advertencias'])) is (corte == MITAD)
+        rechazo(accion(web, empresa, apertura, 'enviar', version=apertura['version']), 409, 'resultado_duplicado')
+        assert en(empresa, lambda: Apertura.objects.get(pk=apertura['id']).estado) == 'borrador'
+
+    @pytest.mark.parametrize('corte, cambios, nota', [
+        (CORTE, {}, ''),
+        (CORTE, {'resultado_acumulado': '0.00'}, ''),
+        (CORTE, {'resultado_ejercicio': 'no_aplica'}, ''),
+        (MITAD, {'resultado_ejercicio': 'no_aplica', 'resultado_acumulado': '0.00'}, 'Sin actividad antes del corte.'),
+    ], ids=['31-12-vacio', '31-12-cero', '31-12-no-aplica', 'mitad-no-aplica-cero'])
+    def test_sin_resultado_en_las_lineas_lo_que_vale(self, web, empresa, cuentas, corte, cambios, nota):
+        """Con N = P = 0 valen el vacío (a fin de año) y «no aplica» (a mitad de año, con la nota de la revisión), y la
+        cifra cero, que es la de las líneas."""
+        filas = [linea(cuentas['caja'], '6000.00'), linea(cuentas['capital'], None, '6000.00')]
+        apertura = enviada(web, empresa, filas, fecha_corte=corte.isoformat(), cambios=cambios)
+        confirmada(web, empresa, apertura, nota=nota)
+        guardada = en(empresa, lambda: Apertura.objects.get(pk=apertura['id']))
+        assert (guardada.estado, guardada.resultado_ejercicio) == ('confirmada', cambios.get('resultado_ejercicio', ''))
 
     def test_31_de_diciembre_con_nominales(self, web, empresa, cuentas):
         apertura = preparada(web, empresa, mitad_de_anio(cuentas))
@@ -553,9 +766,11 @@ class TestConfirmar:
         assert diario['provisional'] is True and codigos(diario['causas_detalle']) == ['motor_pendiente']
 
     def test_historial(self, web, empresa, cuentas):
+        # El corte (30/06) es a mitad de año y las líneas no traen el resultado: se declara que no aplica, con la nota de la
+        # revisión al confirmar («en patrimonio» contradiría las líneas: `resultado_duplicado`).
         apertura = preparada(web, empresa, balance(cuentas), modalidad='historial', fecha_corte=None,
                              historial_desde='2025-07-01', historial_hasta='2025-09-30',
-                             cambios={'resultado_ejercicio': 'en_patrimonio'})
+                             cambios={'resultado_ejercicio': 'no_aplica'})
         datos = leer(web, API, empresa)
         assert datos['configuracion']['fecha_corte'] == '2025-06-30'
         assert codigos(datos['cobertura']['contabilidad']['causas_detalle']) == ['saldo_anterior_sin_confirmar']
@@ -563,7 +778,7 @@ class TestConfirmar:
         assert diario['provisional'] is True and codigos(diario['causas_detalle']) == ['saldo_anterior_sin_confirmar',
                                                                                         'motor_pendiente']
         enviada_ = accion(web, empresa, apertura, 'enviar', version=apertura['version']).json()['apertura']
-        datos = confirmada(web, empresa, enviada_)
+        datos = confirmada(web, empresa, enviada_, nota='Sin ingresos ni gastos en el año antes del rango.')
         assert datos['apertura']['asiento']['fecha'] == '2025-06-30'
         assert datos['cobertura']['contabilidad']['estado'] == 'conciliada'
         inicio = en(empresa, InicioContable.objects.get)

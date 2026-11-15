@@ -350,14 +350,15 @@ def apertura_en_revision(empresa, filas, *, usuario=None, fecha_corte=date(2025,
 
 
 def confirmar(empresa, apertura, *, usuario=None, aceptadas=None, nota='', clave_confirmacion=None):
-    """apertura.confirmar con el servicio. Sin `aceptadas`, acepta como incompletas todas las líneas con detalle (en este
-    corte ninguna tiene auxiliares). Devuelve `(apertura, repetido)`."""
+    """apertura.confirmar con el servicio. Sin `aceptadas`, acepta como incompletas todas las líneas cuya cuenta declara
+    auxiliar (en este corte ninguna tiene auxiliares; en preparación vale el auxiliar actual de la cuenta, no la copia de la
+    línea). Devuelve `(apertura, repetido)`."""
     from core.contabilidad import apertura as servicio
     usuario = usuario or confirmador(empresa)
     with company_context(empresa):
         if aceptadas is None:
-            aceptadas = list(LineaApertura.objects.filter(apertura=apertura, retirada=False).exclude(detalle='')
-                             .values_list('id', flat=True))
+            aceptadas = list(LineaApertura.objects.filter(apertura=apertura, retirada=False, cuenta__isnull=False)
+                             .exclude(cuenta__auxiliar='').values_list('id', flat=True))
         apertura = Apertura.objects.get(pk=apertura.pk)
         return servicio.confirmar(peticion(usuario, empresa), apertura.pk, {
             'version': apertura.version, 'clave': clave_confirmacion or clave('confirmar'), 'revisado': True, 'nota': nota,

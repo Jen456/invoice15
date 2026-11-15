@@ -74,6 +74,33 @@ PDF = b'%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>
 MB = lectura_tabular.MB
 
 
+def png_por_trozos(*cambios):
+    """El PNG de 4×4 de `imagen` rehecho trozo a trozo (`[(tipo, datos)]`), cada uno con su suma bien calculada;
+    `cambios` recibe la lista y la devuelve cambiada."""
+    datos = imagen('PNG')
+    trozos, i = [], 8
+    while i < len(datos):
+        largo = struct.unpack('>I', datos[i:i + 4])[0]
+        trozos.append((datos[i + 4:i + 8], datos[i + 8:i + 8 + largo]))
+        i += 12 + largo
+    for cambio in cambios:
+        trozos = cambio(trozos)
+    return datos[:8] + b''.join(struct.pack('>I', len(c)) + t + c + struct.pack('>I', zlib.crc32(t + c)) for t, c in trozos)
+
+
+def png_con_la_suma_del_idat_danada():
+    """Una foto dañada en la transmisión: un byte de la suma (CRC) del bloque IDAT cambiado. Pillow lanza SyntaxError."""
+    datos = bytearray(imagen('PNG'))
+    i = datos.find(b'IDAT')
+    datos[i + 4 + int.from_bytes(datos[i - 4:i], 'big')] ^= 0xFF
+    return bytes(datos)
+
+
+def png_sin_imagen():
+    """Un PNG con su cabecera y su final pero sin el bloque IDAT: Pillow lanza IndexError al verificarlo."""
+    return png_por_trozos(lambda trozos: [t for t in trozos if t[0] != b'IDAT'])
+
+
 def saldos_con_entidad():
     """Los saldos de siempre en un XLSX cuyo rubro de la fila 2 no está escrito: sale de una entidad XML declarada en la hoja
     (`&a;&a;`, que el lector de XML expande a «CajaCaja»). Es la forma de que unos kilobytes ocupen gigas al abrirlos."""
@@ -390,6 +417,29 @@ class TestMapearDesdeElLote:
             'decisiones.5.cuenta_id': [TI['de_grupo'].format(codigo='1')], 'filas.7.debe': [ayudas_textos('decimales')]}
         assert en(empresa, LineaApertura.objects.count) == 0 and version(web, empresa, apertura) == 1
 
+    def test_importes_que_no_son_importes(self, web, empresa, cuentas, apertura):
+        """D1: lo que una hoja de cálculo escribe en un CSV para un número de 12 cifras («1,23457E+11») y otros textos que
+        Decimal() lee pero no son un importe («1e3», «1_000», «１２３») son un error de su fila, no un importe redondeado."""
+        lote = subido(web, empresa, apertura['id'], csv_de(
+            ('Código', 'Nombre', 'Debe', 'Haber'), ('1.1.01', 'Caja', '1,23457E+11', ''), ('1.1.02', 'Bancos', '1e3', ''),
+            ('1.1.03', 'Clientes', '1_000', ''), ('1.1.04', 'Inventario', '１２３', ''), ('3.1.01', 'Capital', '', '1000,00')))
+        importe = ayudas_textos('importe')
+        assert [(f['estado'], f['errores']) for f in lote['filas']] == [('error', [importe])] * 4 + [('valida', [])]
+        assert errores(mapear_lote(web, empresa, apertura, lote)) == {f'filas.{n}.debe': [importe] for n in (2, 3, 4, 5)}
+        assert en(empresa, LineaApertura.objects.count) == 0
+
+    def test_celdas_numericas_del_xlsx(self, web, empresa, cuentas, apertura):
+        """D1 no cambia el camino de las celdas numéricas: el lector las pasa a texto con repr(), y su ruido de coma
+        flotante se redondea, también el de una fórmula que da cero, que repr() escribe en notación científica."""
+        ruido_cero = 0.1 + 0.2 - 0.3
+        assert repr(ruido_cero) == '5.551115123125783e-17'
+        lote = subido(web, empresa, apertura['id'], xlsx_de(
+            ('Código', 'Nombre', 'Debe', 'Haber'), ('1.1.01', 'Caja', 1234.5600000000002, ruido_cero),
+            ('1.1.02', 'Bancos', 765, None), ('3.1.01', 'Capital', ruido_cero, 1999.56)))
+        assert [f['estado'] for f in lote['filas']] == ['valida'] * 3
+        datos = mapear_lote(web, empresa, apertura, lote).json()
+        assert [(l['debe'], l['haber']) for l in datos['lineas']] == [('1234.56', '0.00'), ('765.00', '0.00'), ('0.00', '1999.56')]
+
     def test_las_columnas_se_eligen_al_mapear(self, web, empresa, cuentas, apertura):
         lote = subido(web, empresa, apertura['id'], csv_de(('Cta', 'Detalle', 'Valor'), ('1.1.01', 'Caja', '7.00'),
                                                             ('3.1.01', 'Capital', '-7.00')))
@@ -482,8 +532,12 @@ class TestRespaldos:
         for nombre, contenido, texto in (
                 ('foto.webp', webp, 'WEBP'), ('libro.xlsx', zip_.getvalue(), 'Solo se admiten'),
                 ('foto.png', b'\x89PNG\r\n\x1a\n' + b'\x00' * 20, 'imagen'), ('pagina.csv', b'<html><body>x</body></html>', 'Solo'),
+                # H1: lo que Pillow lanza con una imagen dañada y archivos.validar no traducía (500 en HTML)
+                ('danada.png', png_con_la_suma_del_idat_danada(), 'La imagen no se puede leer'),
+                ('sin_imagen.png', png_sin_imagen(), 'La imagen no se puede leer'),
                 ('binario.csv', b'a;b\x00\x01\x02', 'Solo'), ('vacio.pdf', b'', 'vacío')):
             respuesta = subir_respaldo(web, empresa, apertura['id'], contenido, nombre)
+            assert respuesta['Content-Type'] == 'application/json', nombre
             assert texto in errores(respuesta)['archivo'][0], nombre
         grande = subir_respaldo(web, empresa, apertura['id'], PDF + b'0' * respaldos.MAX_BYTES, 'grande.pdf')
         rechazo(grande, 400, 'archivo_grande')
@@ -498,6 +552,22 @@ class TestRespaldos:
         en(empresa, lambda: Apertura.objects.filter(pk=apertura['id']).update(estado='descartada', motivo='prueba'))
         rechazo(subir_respaldo(web, empresa, apertura['id'], PDF, 'b.pdf'), 409, 'estado')
         assert en(empresa, RespaldoApertura.objects.count) == 1
+
+    def test_la_misma_clave_en_otra_apertura(self, web, empresa, apertura):
+        """B2-AP-5: la apertura de la ruta es parte del envío (decisión común 5a), como en la importación de saldos: la
+        misma clave con el mismo archivo en otra apertura es otro envío, 409 `clave_usada` con el respaldo que ya existe.
+        Antes respondía 200 `repetido` con el respaldo de la primera y la segunda se quedaba sin el suyo."""
+        primero = subir_respaldo(web, empresa, apertura['id'], PDF, 'balance.pdf', clave='respaldo-clave-0001')
+        assert primero.status_code == 201, primero.content
+        servicio_descartar(web, empresa, apertura)
+        otra = creada(web, empresa)
+        cuerpo = rechazo(subir_respaldo(web, empresa, otra['id'], PDF, 'balance.pdf', clave='respaldo-clave-0001'), 409,
+                         'clave_usada')
+        assert cuerpo['respaldo']['id'] == primero.json()['respaldo']['id']
+        assert en(empresa, lambda: list(RespaldoApertura.objects.values_list('apertura_id', flat=True))) == [apertura['id']]
+        # en su apertura, el mismo envío sigue siendo `repetido`
+        otra_vez = subir_respaldo(web, empresa, apertura['id'], PDF, 'balance.pdf', clave='respaldo-clave-0001')
+        assert otra_vez.status_code == 200 and otra_vez.json()['repetido'] is True
 
     def test_anular_conserva_el_archivo(self, web, empresa, apertura):
         respaldo = subir_respaldo(web, empresa, apertura['id'], PDF, 'balance.pdf').json()['respaldo']
@@ -553,6 +623,13 @@ class TestValidarRespaldo:
         nombre, tipo, sha256 = respaldos.validar('C:\\docs\\Año 2025\x07.txt', 'Código;Año\n1;añejo\n'.encode('cp1252'))
         assert (nombre, tipo) == ('Año 2025.csv', 'text/csv')
         assert sha256 == hashlib.sha256('Código;Año\n1;añejo\n'.encode('cp1252')).hexdigest()
+
+    @pytest.mark.parametrize('contenido', [png_con_la_suma_del_idat_danada, png_sin_imagen], ids=['suma-del-idat', 'sin-idat'])
+    def test_imagen_danada(self, contenido):
+        """H1: cualquier error de Pillow con una imagen dañada (SyntaxError, IndexError…) es «La imagen no se puede leer»."""
+        with pytest.raises(respaldos.ArchivoInvalido) as error:
+            respaldos.validar('foto.png', contenido())
+        assert str(error.value) == respaldos.IMAGEN_ILEGIBLE
 
     def test_solo_los_admitidos(self):
         with pytest.raises(respaldos.ArchivoInvalido) as error:

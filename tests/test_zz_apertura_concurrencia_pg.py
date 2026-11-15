@@ -10,19 +10,24 @@ la concurrencia de crear y mapear:
 - lo que escribe la confirmación (asiento, líneas, acumulados, ejercicio, historia) queda en su empresa;
 - dos confirmaciones a la vez, con la misma clave y con claves distintas (aceptación 1, doble clic o dos personas): una
   sola apertura confirmada y un solo asiento; la otra recibe `repetido` o `apertura_confirmada` (el candado del libro las
-  pone en fila).
+  pone en fila);
+- el auxiliar de una cuenta que cambia mientras se confirma (B2-AP-1): confirmar valida con el auxiliar de cada cuenta y
+  lo fija en sus líneas con el candado tomado; cuentas.modificar toma el mismo candado antes de cambiarlo, así que espera
+  a que la confirmación termine y no se cuela entre la validación y la escritura.
 
 Va al final (test_zz_*) y crea todos sus datos: las pruebas transaccionales vacían la base."""
 import json
+import threading
+import time
 
 import pytest
 from django.contrib.auth.models import Group, Permission
 from django.db import DatabaseError, connection, transaction
 
-from core.contabilidad import api, apertura as servicio
-from core.contabilidad.models import Apertura, Asiento, EventoApertura, InicioContable, LineaApertura
+from core.contabilidad import api, apertura as servicio, cuentas as servicio_cuentas
+from core.contabilidad.models import Apertura, Asiento, Cuenta, EventoApertura, InicioContable, LineaApertura
 from core.tenancy.context import company_context
-from core.tenancy.models import ROLE_OWNER
+from core.tenancy.models import ROLE_OWNER, AuditLog
 from tests import ayudas_contables as ayudas
 from tests import helpers
 
@@ -167,3 +172,49 @@ def test_dos_confirmaciones_a_la_vez(misma_clave):
         assert list(Apertura.objects.values_list('estado', flat=True)) == ['confirmada']
         assert list(Asiento.objects.values_list('tipo', 'numero', 'total_debe')) == [('apertura', 1, 10000)]
         assert EventoApertura.objects.filter(accion='confirmada').count() == 1
+
+
+@pytest.mark.tiempos
+def test_el_auxiliar_de_una_cuenta_espera_a_que_termine_la_confirmacion(monkeypatch):
+    empresa, usuarios, cuentas = preparar()
+    Group.objects.get(name=ROLE_OWNER).permissions.add(Permission.objects.get(codename='change_cuenta'))
+    caja = cuentas['caja']
+    apertura = ayudas.apertura_en_revision(empresa, [(caja, '10000.00', None), (cuentas['capital'], None, '10000.00')],
+                                           usuario=usuarios[0])
+    validada, intentando = threading.Event(), threading.Event()
+    asiento_de_apertura = servicio._asiento_de_apertura
+
+    def despacio(*args, **kwargs):
+        validada.set()   # confirmar ya tiene el candado y lo validado (caja sin auxiliar: nada que aceptar)
+        assert intentando.wait(30)   # el cambio del auxiliar ya empezó…
+        time.sleep(1.0)   # …y, si no esperara al candado, terminaría aquí
+        return asiento_de_apertura(*args, **kwargs)
+    monkeypatch.setattr(servicio, '_asiento_de_apertura', despacio)
+    esperas = []
+
+    def confirmar():
+        with company_context(empresa):
+            return resultado(lambda: servicio.confirmar(ayudas.peticion(usuarios[0], empresa), apertura.pk, {
+                'version': apertura.version, 'clave': 'confirmar-pg-auxiliar', 'revisado': True, 'incompletos_aceptados': []}))
+
+    def cambiar_el_auxiliar():
+        assert validada.wait(30)
+        with company_context(empresa):
+            version = Cuenta.objects.get(pk=caja.pk).version
+            intentando.set()
+            desde = time.monotonic()
+            hecho = resultado(lambda: servicio_cuentas.modificar(ayudas.peticion(usuarios[1], empresa, 'patch'), caja.pk, {
+                'version': version, 'auxiliar': 'cliente'}))
+            esperas.append(time.monotonic() - desde)
+            return hecho
+    resultados, errores = ayudas.en_paralelo([confirmar, cambiar_el_auxiliar])
+    assert errores == [] and resultados == ['ok', 'ok']
+    with company_context(empresa):
+        assert Apertura.objects.get(pk=apertura.pk).estado == 'confirmada'
+        linea = LineaApertura.objects.get(apertura_id=apertura.pk, cuenta=caja)
+        # la línea quedó con el auxiliar con que se validó, y la cuenta cambió después (lo permite la Parte A)
+        assert (linea.detalle, linea.incompleto_aceptado, Cuenta.objects.get(pk=caja.pk).auxiliar) == ('', False, 'cliente')
+        orden = list(AuditLog.objects.filter(company=empresa, action__in=('apertura_confirmada', 'cuenta_modificada'))
+                     .order_by('id').values_list('action', flat=True))
+    assert orden == ['apertura_confirmada', 'cuenta_modificada']
+    assert esperas[0] > 0.5, esperas   # esperó al candado
