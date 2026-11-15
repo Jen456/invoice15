@@ -31,7 +31,7 @@ from django.db import DatabaseError, connection, transaction
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from core.contabilidad import api, capacidades, cuentas, importar_cuentas
+from core.contabilidad import api, capacidades, cuentas, importar_cuentas, lectura_tabular
 from core.contabilidad.models import Cuenta, ImportacionCuentas
 from core.tenancy import pestanas
 from core.tenancy.context import company_context
@@ -551,7 +551,7 @@ class TestLectura:
         respuesta = subir(entrar, empresa, datos, 'plan.xlsx')
         assert respuesta.status_code == 200, respuesta.content
         assert [f['codigo'] for f in respuesta.json()['lote']['filas']] == ['1', '1.1', '1.1.01', '1.1.02', '2']
-        with zipfile.ZipFile(importar_cuentas._xlsx_revisado(datos)) as copia:
+        with zipfile.ZipFile(lectura_tabular._xlsx_revisado(datos)) as copia:
             assert copia.read('xl/media/image1.png') == b''   # está, sin su contenido
 
     def test_una_hoja_guardada_como_imagen_no_llega_al_lector(self, entrar, empresa):
@@ -569,7 +569,7 @@ class TestLectura:
             assert list(libro.worksheets[0].iter_rows(min_row=2, max_row=2, values_only=True)) == [('1', 'ActivoActivo')]
         finally:
             libro.close()
-        with zipfile.ZipFile(importar_cuentas._xlsx_revisado(datos)) as copia:
+        with zipfile.ZipFile(lectura_tabular._xlsx_revisado(datos)) as copia:
             assert copia.read('xl/media/hoja.png') == b''   # está, sin su contenido
         respuesta = subir(entrar, empresa, datos, 'plan.xlsx')
         assert respuesta.status_code == 400 and respuesta.json() == {'error': T['formato'], 'codigo': 'formato'}
@@ -588,9 +588,9 @@ class TestLectura:
         assert [f['fila'] for f in lote['filas']] == [2, 3, 4, 5, 6]
 
     def test_demasiadas_celdas(self, entrar, empresa, monkeypatch):
-        monkeypatch.setattr(importar_cuentas, 'MAX_CELDAS', 11)
+        monkeypatch.setattr(lectura_tabular, 'MAX_CELDAS', 11)   # el tope es del lector común
         assert subir(entrar, empresa, csv_de(*PLAN)).status_code == 400   # 12 celdas
-        monkeypatch.setattr(importar_cuentas, 'MAX_CELDAS', 12)
+        monkeypatch.setattr(lectura_tabular, 'MAX_CELDAS', 12)
         assert subir(entrar, empresa, csv_de(*PLAN)).status_code == 200
 
     def test_demasiado_texto_en_la_tabla(self, entrar, empresa):

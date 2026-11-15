@@ -9,12 +9,19 @@ otra apertura o de otra empresa; 5 000 filas sin consultas por fila.
 
 POST …/<id>/respaldos/, GET …/respaldos/<id>/descargar/ y POST …/respaldos/<id>/anular/: PDF, JPG, PNG, XLSX y CSV
 validados por su contenido; WEBP y un ZIP que no es XLSX rechazados; cabeceras de la descarga; anular conserva el archivo.
-Datos ficticios."""
+
+El lector es el común (lectura_tabular.py), con las defensas del bloque 1 que prueba entero tests/test_cuentas_importacion.py:
+aquí, que valen también por la ruta de la apertura y para sus respaldos (partes en bzip2 o lzma, entidades XML y un logo
+SVG). Datos ficticios."""
 import csv
+import functools
 import hashlib
 import io
 import json
+import struct
+import tracemalloc
 import zipfile
+import zlib
 
 import openpyxl
 import pytest
@@ -23,7 +30,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from PIL import Image
 
-from core.contabilidad import apertura_importar, lectura_tabular, respaldos
+from core.contabilidad import api, apertura_importar, lectura_tabular, respaldos
 from core.contabilidad.models import Apertura, ImportacionApertura, LineaApertura, RespaldoApertura
 from core.tenancy.context import company_context
 from core.tenancy.models import AuditLog
@@ -31,6 +38,7 @@ from tests import ayudas_contables as ayudas
 from tests import helpers
 from tests.test_apertura_preparar import (API, creada, en, enviar, errores, eventos, leer, plan_grande, rechazo,
                                           servicio_descartar)
+from tests.test_cuentas_importacion import SVG, partes_de, retocar, xlsx_con
 
 pytestmark = pytest.mark.django_db
 
@@ -63,6 +71,50 @@ def imagen(formato):
 
 
 PDF = b'%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n'
+MB = lectura_tabular.MB
+
+
+def saldos_con_entidad():
+    """Los saldos de siempre en un XLSX cuyo rubro de la fila 2 no está escrito: sale de una entidad XML declarada en la hoja
+    (`&a;&a;`, que el lector de XML expande a «CajaCaja»). Es la forma de que unos kilobytes ocupen gigas al abrirlos."""
+    partes = partes_de(xlsx_de(*SALDOS))
+    caja = '<c r="B2" t="inlineStr"><is><t>Caja</t></is></c>'
+    hoja = partes['xl/worksheets/sheet1.xml'].decode()
+    assert hoja.count(caja) == 1
+    partes['xl/worksheets/sheet1.xml'] = ('<!DOCTYPE worksheet [<!ENTITY a "Caja">]>' + hoja.replace(
+        caja, '<c r="B2" t="inlineStr"><is><t>&a;&a;</t></is></c>')).encode()
+    return xlsx_con(partes)
+
+
+@functools.lru_cache(maxsize=None)
+def saldos_con_relleno(parte, metodo, relleno=32):
+    """Los saldos de siempre con `parte` comprimida con `metodo` y `relleno` MB de espacios detrás de su contenido. El
+    directorio del ZIP declara solo el contenido (su tamaño y su suma). Una parte que no es del libro trae 1 KB."""
+    partes = partes_de(xlsx_de(*SALDOS))
+    contenido = partes.pop(parte, b'x' * 1024)
+    salida = io.BytesIO()
+    with zipfile.ZipFile(salida, 'w', zipfile.ZIP_DEFLATED) as comprimido:
+        for nombre, datos in partes.items():
+            comprimido.writestr(nombre, datos)
+        info = zipfile.ZipInfo(parte)
+        info.compress_type = metodo
+        with comprimido.open(info, 'w') as destino:
+            destino.write(contenido)
+            for _ in range(relleno):
+                destino.write(b' ' * MB)
+    datos = bytearray(salida.getvalue())
+    entrada = datos.rindex(b'PK\x01\x02')   # la última del directorio del ZIP: ahí se declaran su suma y su tamaño
+    struct.pack_into('<L', datos, entrada + 16, zlib.crc32(contenido))
+    struct.pack_into('<L', datos, entrada + 24, len(contenido))
+    return bytes(datos)
+
+
+def saldos_con_logo_svg():
+    partes = partes_de(xlsx_de(*SALDOS))
+    partes['xl/media/image1.svg'] = SVG.encode()
+    retocar(partes, '[Content_Types].xml', '<Default Extension="rels"',
+            '<Default Extension="svg" ContentType="image/svg+xml"/><Default Extension="rels"')
+    return xlsx_con(partes)
 
 
 def subir(client, empresa, apertura_id, contenido, nombre='saldos.csv', clave=None, tipo='saldos'):
@@ -214,14 +266,63 @@ class TestSubir:
         assert en(empresa, ImportacionApertura.objects.count) == 0
 
     def test_el_lector_es_el_de_c3_con_los_textos_de_la_apertura(self):
-        """lectura_tabular reutiliza el lector del plan de cuentas (sus defensas) y solo cambia los textos que hablan de él."""
+        """El lector común es el del plan de cuentas (importar_cuentas.leer lo llama con sus textos): las mismas defensas y
+        los mismos límites. Cada importación solo cambia los textos que hablan de lo que trae la tabla."""
         from core.contabilidad import importar_cuentas
         assert (lectura_tabular.MAX_BYTES, lectura_tabular.MAX_FILAS) == (2 * 1024 * 1024, 5000)
+        assert (importar_cuentas.MAX_BYTES, importar_cuentas.MAX_FILAS) == (lectura_tabular.MAX_BYTES, lectura_tabular.MAX_FILAS)
         assert lectura_tabular.leer(csv_de(*SALDOS)) == importar_cuentas.leer(csv_de(*SALDOS))
-        assert set(TL) <= set(lectura_tabular.CASOS)
-        with pytest.raises(Exception) as error:
-            lectura_tabular.leer(csv_de(SALDOS[0]))
-        assert str(error.value) == importar_cuentas.TEXTOS['sin_filas']   # sin textos propios, los de C3
+        assert set(TL) <= set(lectura_tabular.CASOS) and set(lectura_tabular.CASOS) <= set(importar_cuentas.TEXTOS)
+        lectores = ((lectura_tabular.leer, lectura_tabular.TEXTOS), (importar_cuentas.leer, importar_cuentas.TEXTOS),
+                    (lambda datos: lectura_tabular.leer(datos, TL), TL))
+        for lector, textos in lectores:
+            with pytest.raises(api.ErrorApi) as error:
+                lector(csv_de(SALDOS[0]))
+            assert str(error.value) == textos['sin_filas']
+        assert importar_cuentas.TEXTOS['sin_filas'] != lectura_tabular.TEXTOS['sin_filas'] != TL['sin_filas']
+
+
+class TestLectorComun:
+    """Las defensas que el bloque 1 puso en el lector después de que la apertura empezara a usarlo (191a5c9 y cd23065)
+    están en lectura_tabular.py y valen por la ruta de la apertura igual que por la del plan de cuentas, donde
+    tests/test_cuentas_importacion.py las prueba enteras: una parte en bzip2 o lzma no se abre, ninguna parte XML declara
+    entidades y las imágenes llegan vacías al lector."""
+
+    @pytest.mark.parametrize('parte', ['xl/media/relleno.bin', 'xl/worksheets/sheet1.xml'])
+    @pytest.mark.parametrize('metodo', [zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA], ids=['bzip2', 'lzma'])
+    def test_xlsx_con_una_parte_comprimida_de_otra_forma(self, web, empresa, apertura, parte, metodo):
+        """Unos kilobytes que declaran 1 KB y traen 32 MB de relleno en bzip2 o lzma: `ZipFile` los descomprimiría de una
+        vez. Se rechazan antes de abrir la parte, sin que suba la memoria, y no queda lote."""
+        datos = saldos_con_relleno(parte, metodo)
+        assert len(datos) < 100_000
+        tracemalloc.start()
+        try:
+            with pytest.raises(api.ErrorApi) as negativa:
+                lectura_tabular.leer(datos, TL)
+            pico = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+        assert (negativa.value.codigo, str(negativa.value)) == ('formato', lectura_tabular.TEXTOS['formato'])
+        assert pico < 16 * MB, f'{pico / MB:.0f} MB'
+        respuesta = subir(web, empresa, apertura['id'], datos, nombre='saldos.xlsx')
+        assert rechazo(respuesta, 400, 'formato')['error'] == lectura_tabular.TEXTOS['formato']
+        assert en(empresa, ImportacionApertura.objects.count) == 0
+
+    def test_xlsx_con_entidades_xml(self, web, empresa, apertura):
+        datos = saldos_con_entidad()
+        libro = openpyxl.load_workbook(io.BytesIO(datos), read_only=True)   # leído tal cual, la entidad se expande
+        try:
+            assert list(libro.worksheets[0].iter_rows(min_row=2, max_row=2, values_only=True))[0][:2] == ('1.1.01', 'CajaCaja')
+        finally:
+            libro.close()
+        respuesta = subir(web, empresa, apertura['id'], datos, nombre='saldos.xlsx')
+        assert rechazo(respuesta, 400, 'formato')['error'] == lectura_tabular.TEXTOS['xlsx_declaraciones']
+        assert en(empresa, ImportacionApertura.objects.count) == 0
+
+    def test_xlsx_con_un_logo_svg(self, web, empresa, apertura):
+        """El DOCTYPE de un logo SVG en xl/media no rechaza el archivo: esa parte no es XML del libro y llega vacía."""
+        lote = subido(web, empresa, apertura['id'], saldos_con_logo_svg(), nombre='saldos.xlsx')
+        assert [(f['codigo'], f['estado']) for f in lote['filas']] == [('1.1.01', 'valida'), ('3.1.01', 'valida')]
 
 
 def ayudas_textos(clave):
@@ -436,6 +537,17 @@ class TestValidarRespaldo:
                 libro.writestr(nombre, contenido)
         with pytest.raises(respaldos.ArchivoInvalido):
             respaldos.validar('libro.xlsx', salida.getvalue())
+
+    @pytest.mark.parametrize('metodo', [zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA], ids=['bzip2', 'lzma'])
+    def test_xlsx_con_una_parte_comprimida_de_otra_forma_no_pasa(self, metodo):
+        """El respaldo se valida con el mismo revisor de partes que la importación (lectura_tabular.es_xlsx)."""
+        with pytest.raises(respaldos.ArchivoInvalido):
+            respaldos.validar('balance.xlsx', saldos_con_relleno('xl/media/relleno.bin', metodo))
+
+    def test_xlsx_con_un_logo_svg_pasa(self):
+        datos = saldos_con_logo_svg()
+        assert respaldos.validar('balance.xlsx', datos) == ('balance.xlsx', respaldos.TIPOS[respaldos.XLSX],
+                                                            hashlib.sha256(datos).hexdigest())
 
     def test_csv_en_windows_1252_y_nombre_saneado(self):
         nombre, tipo, sha256 = respaldos.validar('C:\\docs\\Año 2025\x07.txt', 'Código;Año\n1;añejo\n'.encode('cp1252'))
