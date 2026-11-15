@@ -326,12 +326,29 @@ class TestBloqueos:
         assert en(empresa, lambda: Asiento.objects.filter(tipo='apertura').count()) == 0
 
     def test_validar_no_escribe(self, web, empresa, cuentas):
-        apertura = preparada(web, empresa, [linea(cuentas['clientes'], '300.00'), linea(cuentas['capital'], None, '300.00')])
-        historia, auditoria = en(empresa, EventoApertura.objects.count), AuditLog.objects.filter(company=empresa).count()
+        """Parte B: validar «no cambia la apertura, sus líneas ni sus auxiliares» (ni deja historia ni auditoría). Se
+        compara la foto entera de las tres tablas, no solo los conteos y la versión: un validar que marcara las líneas
+        con detalle como aceptadas, o que tocara un campo de la apertura sin subir la versión, también se ve."""
+        apertura = preparada(web, empresa, [linea(cuentas['clientes'], '300.00'), linea(cuentas['capital'], None, '300.00')],
+                             cambios={'ambitos_no_aplican': [{'ambito': 'activos', 'nota': 'No tiene activos fijos.'}]})
+        with company_context(empresa):
+            clientes = LineaApertura.objects.get(apertura_id=apertura['id'], cuenta=cuentas['clientes'])
+            AuxiliarApertura.objects.create(apertura_id=apertura['id'], linea=clientes, cuenta=cuentas['clientes'],
+                                            naturaleza='cliente', saldo_inicial=Decimal('100.00'), tercero_nombre='CLIENTE',
+                                            creado_por_nombre='x')   # incompleto: validar lo advierte y no lo acepta
+
+        def foto():
+            with company_context(empresa):
+                return {'apertura': list(Apertura.objects.filter(pk=apertura['id']).values()),
+                        'lineas': list(LineaApertura.objects.filter(apertura_id=apertura['id']).order_by('id').values()),
+                        'auxiliares': list(AuxiliarApertura.objects.filter(apertura_id=apertura['id']).order_by('id').values()),
+                        'historia': list(EventoApertura.objects.order_by('id').values_list('id', flat=True)),
+                        'auditoria': list(AuditLog.objects.filter(company=empresa).order_by('id').values_list('id', flat=True))}
+        antes = foto()
+        assert len(antes['lineas']) == 2 and len(antes['auxiliares']) == 1
+        assert 'auxiliar_incompleto' in codigos(validar(web, empresa, apertura)['advertencias'])
         validar(web, empresa, apertura)
-        validar(web, empresa, apertura)
-        assert en(empresa, EventoApertura.objects.count) == historia
-        assert AuditLog.objects.filter(company=empresa).count() == auditoria
+        assert foto() == antes
         assert leer(web, f'{API}{apertura["id"]}/', empresa)['apertura']['version'] == apertura['version']
 
     def test_total_que_no_cabe_en_un_asiento(self, web, empresa, cuentas):
