@@ -5,6 +5,8 @@
     <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
     <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}">
     <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
+    <script src="{% static 'js/fp-importes.js' %}"></script>
+    <script src="{% static 'js/fp-lineas.js' %}"></script>
     <script src="{% static 'proformas/js/form.js' %}"></script>
 {% endblock %}
 
@@ -106,27 +108,29 @@
                     <button type="button" class="btn btn-primary" id="fp-abrir-busqueda"><i class="fas fa-search" aria-hidden="true"></i> Buscar productos</button>
                 </div>
             </div>
-            <small class="form-text text-muted">Incluye productos sin stock: en la proforma el stock solo se informa. El precio se puede negociar; el descuento es un porcentaje entero, igual que en la factura.</small>
+            <small class="form-text text-muted">Incluye productos sin stock: en la proforma el stock solo se informa. Los precios incluyen IVA y se pueden negociar; el descuento es un porcentaje entero, igual que en la factura.</small>
         </div>
         <div class="invalid-feedback d-block" data-campo="lineas"></div>
+        <p id="fp-orden-ayuda" class="fp-orden-ayuda"><span aria-hidden="true">⋮⋮</span> Arrastra el asa para cambiar el orden de las líneas, o enfócala y usa las flechas arriba y abajo. La proforma sale en este orden.</p>
         <div class="table-responsive">
-        <table class="table table-bordered table-sm fp-mobile-lines" id="tblLineas">
-            <caption class="sr-only">Líneas de la proforma</caption>
+        <table class="table table-bordered table-sm fp-mobile-lines fp-proforma-lineas" id="tblLineas">
+            <caption class="sr-only">Líneas de la proforma, en el orden en que saldrán</caption>
             <thead>
             <tr>
-                <th scope="col">Código</th>
-                <th scope="col">Producto</th>
-                <th scope="col">Descripción en la proforma</th>
-                <th scope="col">Cantidad</th>
-                <th scope="col">Precio unitario USD</th>
-                <th scope="col">Descuento %</th>
-                <th scope="col">Total USD</th>
-                <th scope="col"><span class="sr-only">Quitar</span></th>
+                <th scope="col" class="fp-col-orden"><span class="sr-only">Orden</span></th>
+                <th scope="col" class="fp-col-codigo">Código</th>
+                <th scope="col" class="fp-col-desc">Descripción en la proforma</th>
+                <th scope="col" class="fp-col-cant">Cantidad</th>
+                <th scope="col" class="fp-col-precio">P. unitario con IVA (USD)</th>
+                <th scope="col" class="fp-col-dscto">Descuento</th>
+                <th scope="col" class="fp-col-total">Total con IVA (USD)</th>
+                <th scope="col" class="fp-col-quitar"><span class="sr-only">Quitar</span></th>
             </tr>
             </thead>
             <tbody></tbody>
         </table>
         </div>
+        <p id="fp-orden-anuncio" class="sr-only" aria-live="polite" aria-atomic="true"></p>
         <div class="row d-flex flex-row-reverse">
             <div class="col-lg-5">
                 <table class="table table-sm" id="fp-totales">
@@ -162,7 +166,7 @@
                     <input type="search" id="fp-modal-termino" class="form-control mb-2" placeholder="Nombre o código" maxlength="100">
                     <div class="table-responsive">
                         <table class="table table-sm table-bordered" id="fp-modal-resultados">
-                            <thead><tr><th scope="col">Código</th><th scope="col">Nombre</th><th scope="col">Precio</th><th scope="col">Stock</th><th scope="col">IVA</th><th scope="col"><span class="sr-only">Agregar</span></th></tr></thead>
+                            <thead><tr><th scope="col">Código</th><th scope="col">Nombre</th><th scope="col">Precio con IVA</th><th scope="col">Stock</th><th scope="col">IVA</th><th scope="col"><span class="sr-only">Agregar</span></th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>

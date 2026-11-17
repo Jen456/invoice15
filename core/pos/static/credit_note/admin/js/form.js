@@ -42,6 +42,18 @@ var credit_note = {
                     }
                 },
                 {
+                    targets: [1],
+                    render: function (data, type, row) {
+                        // Solo presentación: la descripción escrita en la línea de la factura (precios con IVA), si la tiene.
+                        var texto = function (x) { return $('<div>').text(x === null || x === undefined ? '' : x).html(); };
+                        var nombre = row.product ? row.product.short_name : '';
+                        if (typeof row.descripcion === 'string' && row.descripcion.trim() && row.descripcion !== (row.product || {}).name) {
+                            return texto(row.descripcion) + '<br><small class="text-muted">Producto: ' + texto(nombre) + '</small>';
+                        }
+                        return texto(nombre);
+                    }
+                },
+                {
                     targets: [-4],
                     class: 'text-center',
                     render: function (data, type, row) {
@@ -56,10 +68,20 @@ var credit_note = {
                     }
                 },
                 {
-                    targets: [-1, -3],
+                    targets: [-1],
                     class: 'text-center',
                     render: function (data, type, row) {
                         return '$' + data.toFixed(2);
+                    }
+                },
+                {
+                    targets: [-3],
+                    class: 'text-center',
+                    render: function (data, type, row) {
+                        // Precio sin IVA (el de la devolución, sin cambios) y, como referencia, el precio con IVA de la factura.
+                        var conIva = row.precio_con_iva !== undefined && row.precio_con_iva !== null && row.precio_con_iva !== '' ?
+                            '<br><small class="text-muted">con IVA $' + $('<div>').text(String(row.precio_con_iva)).html() + '</small>' : '';
+                        return '$' + data.toFixed(2) + conIva;
                     }
                 }
             ],

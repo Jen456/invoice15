@@ -1,6 +1,6 @@
 var fvSale, fvClient;
 var select_client, select_payment_type, select_receipt, select_medio_cobro;
-var input_birthdate, input_cash, input_change, input_search_product, input_end_credit, input_sale, input_time_limit, input_date_joined;
+var input_birthdate, input_search_product, input_end_credit, input_time_limit, input_date_joined;
 var tblSearchProducts, tblProducts;
 
 var sale = {
@@ -12,52 +12,95 @@ var sale = {
         total_iva: 0.00,
         total_dscto: 0.00,
         total: 0.00,
-        cash: 0.00,
-        change: 0.00,
         products: [],
         additional_info: [],
     },
-    calculateInvoice: function () {
-        var tax = this.detail.iva / 100;
-        // Tarifa de cada producto (15 %, 5 %, 0 %, exento o no objeto); el servidor recalcula y manda. En centavos enteros y con
-        // redondeo a la mitad hacia arriba, como calcular_linea_iva: la pantalla muestra el mismo total que se emite.
-        var mitadArriba = function (numerador) { return Math.floor((numerador + 50) / 100); };
-        var gravado = 0, cero = 0, descuentos = 0, ivas = 0;
-        this.detail.products.forEach(function (value) {
-            value.iva = value.tarifa !== undefined ? parseFloat(value.tarifa) / 100 : (value.with_tax ? parseFloat(tax) : 0);
-            var tarifa = Math.round(value.iva * 100);
-            var sub = Math.round(value.price_current * 100) * value.cant;
-            var desc = mitadArriba(sub * (parseInt(value.dscto, 10) || 0));
-            var base = sub - desc;
-            var iva = mitadArriba(base * tarifa);
-            value.price_with_vat = value.price_current + (value.price_current * value.iva);
-            value.subtotal = sub / 100;
-            value.total_dscto = desc / 100;
-            value.total = base / 100;
-            value.total_iva = iva / 100;
-            if (tarifa > 0) { gravado += base; } else { cero += base; }
-            descuentos += desc;
-            ivas += iva;
-        });
-        this.detail.subtotal_0 = cero / 100;
-        this.detail.subtotal_12 = gravado / 100;
-        this.detail.total_dscto = descuentos / 100;
-        this.detail.subtotal = (cero + gravado) / 100;
-        this.detail.total_iva = ivas / 100;
-        this.detail.total = (cero + gravado + ivas) / 100;
-
-        $('input[name="subtotal_0"]').val(this.detail.subtotal_0.toFixed(2));
-        $('input[name="subtotal_12"]').val(this.detail.subtotal_12.toFixed(2));
-        $('input[name="iva"]').val(this.detail.iva.toFixed(2));
-        $('input[name="total_iva"]').val(this.detail.total_iva.toFixed(2));
-        $('input[name="total_dscto"]').val(this.detail.total_dscto.toFixed(2));
-        $('input[name="total"]').val(this.detail.total.toFixed(2));
-        if (select_payment_type.val() === 'efectivo') {
-            input_cash.trigger('change');
+    // Precios CON IVA incluido (contrato común «precios con IVA»): lo que se escribe en «P. unitario» es el precio final y
+    // la base y el IVA se derivan línea por línea, en centavos enteros (static/js/fp-importes.js), con el mismo algoritmo
+    // que el servidor. El servidor recalcula y manda; aquí se ve lo mismo que se emitirá.
+    tarifaDe: function (linea) {
+        // IVA % de la línea: el de la factura en borrador o el del catálogo; sin dato, el general si el producto cobra IVA.
+        if (linea.tarifa !== undefined && linea.tarifa !== null && linea.tarifa !== '') return parseFloat(linea.tarifa);
+        return linea.with_tax ? parseFloat(this.detail.iva) : 0;
+    },
+    precioConIva: function (linea) {
+        // «1000.00» que manda el servidor (precio_con_iva). Si una respuesta anterior al cambio no lo trae, se deriva del
+        // precio sin IVA con la conversión del catálogo (pvp × (1 + tarifa), mitad hacia arriba a centavos).
+        var valor = linea.precio_con_iva, c;
+        if (valor !== undefined && valor !== null && valor !== '') {
+            c = fpImportes.centavos(typeof valor === 'number' ? valor : String(valor));
+        } else {
+            c = fpImportes.desdeSinIva(linea.price_current, this.tarifaDe(linea));
         }
+        return c === null ? null : fpImportes.dinero(c);
+    },
+    prepararLinea: function (linea) {
+        // Lo que la tabla edita: precio con IVA (texto con 2 decimales), descripción (por defecto el nombre del producto),
+        // cantidad y descuento enteros. Un precio que no se puede leer queda vacío (nunca 0,00 en silencio): la línea se
+        // marca y no se puede emitir hasta corregirlo.
+        var precio = this.precioConIva(linea);
+        linea.precio_con_iva = precio === null ? '' : precio;
+        if (typeof linea.descripcion !== 'string' || !linea.descripcion.trim()) linea.descripcion = String(linea.name || '');
+        linea.descripcion = fpLineas.descripcion.limpiar(linea.descripcion).slice(0, fpLineas.descripcion.MAX);
+        linea.cant = parseInt(linea.cant, 10) || 1;
+        linea.dscto = parseInt(linea.dscto, 10) || 0;
+        return linea;
+    },
+    calculateInvoice: function () {
+        var calculos = [];
+        this.detail.products.forEach(function (value) {
+            var r = fpImportes.lineaSegura({precio_con_iva: value.precio_con_iva, cant: value.cant, dscto: value.dscto,
+                tarifa: sale.tarifaDe(value)});
+            value.importes_validos = r !== null;
+            value.excede_maximo = r !== null && r.total > sale.MAXIMO_CENTAVOS;
+            if (r) {
+                r.grupo = value.nombre_tarifa ? 'IVA ' + value.nombre_tarifa : 'IVA ' + r.tarifa + ' %';
+                calculos.push(r);
+            }
+            // Solo texto y números para mostrar: el JSON que se envía se arma aparte (lineasParaEnviar).
+            value.total_con_iva = r ? fpImportes.dinero(r.total) : '';
+            value.descuento_con_iva = r ? fpImportes.dinero(r.descuento) : '0.00';
+            value.total = r ? fpImportes.numero(r.total) : 0;
+            value.total_dscto = r ? fpImportes.numero(r.descuento) : 0;
+        });
+        var t = fpImportes.totales(calculos);
+        this.detail.excede_maximo = t.total > sale.MAXIMO_CENTAVOS;
+        this.detail.subtotal_0 = fpImportes.numero(t.base_0);
+        this.detail.subtotal_12 = fpImportes.numero(t.base_gravada);
+        this.detail.subtotal = fpImportes.numero(t.base);
+        this.detail.total_dscto = fpImportes.numero(t.descuento);
+        this.detail.total_iva = fpImportes.numero(t.iva);
+        this.detail.total = fpImportes.numero(t.total);
+
+        $('input[name="subtotal_0"]').val(fpImportes.dinero(t.base_0));
+        $('input[name="subtotal_12"]').val(fpImportes.dinero(t.base_gravada));
+        $('input[name="iva"]').val(parseFloat(this.detail.iva).toFixed(2));
+        $('input[name="total_iva"]').val(fpImportes.dinero(t.iva));
+        $('input[name="total_dscto"]').val(fpImportes.dinero(t.descuento));
+        $('input[name="total"]').val(fpImportes.dinero(t.total));
+        this.pintarDesglose(t.grupos);
+    },
+    pintarDesglose: function (grupos) {
+        // Si «Subtotal gravado» o «Subtotal 0 %» juntan más de una tarifa (15 % y 5 %; 0 %, exento y no objeto), base sin
+        // IVA e IVA de cada una, como el pie del RIDE.
+        var tabla = $('.fp-sale-summary tbody');
+        tabla.find('tr.fp-sale-desglose').remove();
+        var gravadas = grupos.filter(function (g) { return g.tarifa > 0; }).length;
+        if (gravadas < 2 && grupos.length - gravadas < 2) return;
+        var ancla = tabla.find('tr.fp-sale-subtotales').last();
+        grupos.slice().reverse().forEach(function (g) {
+            var detalle = g.tarifa > 0 ? ' · IVA ' + fpImportes.dinero(g.iva) : '';
+            ancla.after($('<tr class="fp-sale-desglose">').append(
+                $('<th scope="row">').text('Base ' + g.nombre.replace(/^IVA /, '') + ' (sin IVA)'),
+                $('<td>').text(fpImportes.dinero(g.base) + detalle)));
+        });
     },
     listProducts: function () {
+        this.detail.products.forEach(function (linea) { sale.prepararLinea(linea); });
         this.calculateInvoice();
+        var etiqueta = function (texto, clase) {
+            return {className: clase, createdCell: function (td) { td.setAttribute('data-label', texto); }};
+        };
         tblProducts = $('#tblProducts').DataTable({
             autoWidth: false,
             destroy: true,
@@ -67,121 +110,160 @@ var sale = {
             searching: false,
             paginate: false,
             columns: [
-                {data: "id"},
-                {data: "code"},
-                {data: "name"},
-                {data: "stock"},
-                {data: "cant"},
-                {data: "price_current"},
-                {data: "total_dscto"},
-                {data: "total"},
+                $.extend({data: 'id'}, etiqueta('Orden', 'fp-col-orden')),
+                $.extend({data: 'code'}, etiqueta('Código', 'fp-col-codigo')),
+                $.extend({data: 'descripcion'}, etiqueta('Descripción', 'fp-col-desc')),
+                $.extend({data: 'cant'}, etiqueta('Cantidad', 'fp-col-cant')),
+                $.extend({data: 'precio_con_iva'}, etiqueta('P. unitario con IVA', 'fp-col-precio')),
+                $.extend({data: 'dscto'}, etiqueta('Descuento', 'fp-col-dscto')),
+                $.extend({data: 'total_con_iva'}, etiqueta('Total con IVA', 'fp-col-total')),
+                $.extend({data: 'id'}, etiqueta('Quitar', 'fp-col-quitar')),
             ],
             columnDefs: [
+                {targets: [0], render: function (data, type, row, meta) { return sale.celdaOrden(row, meta.row); }},
                 {targets: [1], render: $.fn.dataTable.render.text()},
+                {targets: [2], render: function (data, type, row, meta) { return sale.celdaDescripcion(row, meta.row); }},
                 {
-                    targets: [-5],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        if (row.inventoried) {
-                            if (row.stock > 0) {
-                                return '<span class="badge badge-success badge-pill">' + row.stock + '</span>';
-                            }
-                            return '<span class="badge badge-danger badge-pill">' + row.stock + '</span>';
-                        }
-                        return '<span class="badge badge-secondary badge-pill">No inventariado</span>';
+                    targets: [3],
+                    render: function (data, type, row, meta) {
+                        return '<div class="fp-num"><input type="number" inputmode="numeric" class="form-control fp-num-campo" ' +
+                            'name="cant" min="1" max="' + sale.maximoDe(row) + '" step="1" autocomplete="off" value="' + row.cant +
+                            '" aria-label="Cantidad de la línea ' + (meta.row + 1) + '"></div>';
                     }
                 },
                 {
-                    targets: [2],
-                    render: function (data, type, row) {
-                        var nombre = $('<div>').text(data).html();
-                        if (row.codigo_porcentaje !== undefined) {
-                            return nombre + '<br>' + sale.celdaTarifa(row);   // factura en borrador: IVA de esta línea
-                        }
-                        return row.nombre_tarifa ? nombre + '<br><small class="text-muted">IVA ' + $('<div>').text(row.nombre_tarifa).html() + '</small>' : nombre;
-                    }
-                },
-                {
-                    targets: [-4],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        return '<input type="text" class="form-control" autocomplete="off" name="cant" aria-label="Cantidad" value="' + row.cant + '">';
-                    }
-                },
-                {
-                    targets: [-2],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        return '<input type="text" class="form-control" autocomplete="off" name="dscto_unitary" aria-label="Descuento en porcentaje" value="' + row.dscto + '">';
-                    }
-                },
-                {
-                    targets: [-3],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        // Precio de esta factura: no cambia el catálogo; el servidor lo valida y recalcula los importes.
+                    targets: [4],
+                    render: function (data, type, row, meta) {
+                        // Precio CON IVA de esta factura: no cambia el catálogo; el servidor lo valida y recalcula.
                         if (sale.precioEditable()) {
-                            return '<input type="text" inputmode="decimal" class="form-control fp-precio-linea" autocomplete="off" name="price_current" aria-label="Precio unitario sin IVA" value="' + parseFloat(data).toFixed(2) + '">';
+                            return '<div class="fp-num fp-dinero"><span class="fp-num-prefijo" aria-hidden="true">$</span>' +
+                                '<input type="text" inputmode="decimal" class="form-control fp-num-campo fp-precio-linea" ' +
+                                'autocomplete="off" name="precio_linea" maxlength="10" value="' + sale.escapar(row.precio_con_iva) +
+                                '" aria-label="Precio unitario con IVA de la línea ' + (meta.row + 1) + '"></div>';
                         }
-                        return '$' + data.toFixed(2);
+                        return '<span class="fp-importe">' + (row.precio_con_iva ? '$' + sale.escapar(row.precio_con_iva) : '—') + '</span>';
                     }
                 },
                 {
-                    targets: [-1],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        return '$' + data.toFixed(2);
+                    targets: [5],
+                    render: function (data, type, row, meta) {
+                        var id = 'fp-dscto-valor-' + meta.row;
+                        return '<div class="fp-dscto"><div class="fp-num fp-num-pct"><input type="number" inputmode="numeric" ' +
+                            'class="form-control fp-num-campo" name="dscto_unitary" min="0" max="100" step="1" autocomplete="off" ' +
+                            'value="' + row.dscto + '" aria-label="Descuento en porcentaje de la línea ' + (meta.row + 1) +
+                            '" aria-describedby="' + id + '"><span class="fp-num-sufijo" aria-hidden="true">%</span></div>' +
+                            '<small class="fp-dscto-valor" id="' + id + '">' + sale.textoDescuento(row) + '</small></div>';
                     }
                 },
                 {
-                    targets: [0],
-                    class: 'text-center',
+                    targets: [6],
                     render: function (data, type, row) {
-                        return '<a rel="remove" class="btn btn-danger btn-flat btn-xs"><i class="fas fa-times"></i></a>';
+                        return '<span class="fp-importe fp-total-linea">' + (row.importes_validos ? '$' + row.total_con_iva : '—') + '</span>';
+                    }
+                },
+                {
+                    targets: [7],
+                    render: function (data, type, row, meta) {
+                        return '<button type="button" rel="remove" class="btn btn-outline-danger fp-quitar" aria-label="Quitar la línea ' +
+                            (meta.row + 1) + ': ' + sale.escapar(row.descripcion || row.name) + '"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>';
                     }
                 },
             ],
             rowCallback: function (row, data, index) {
-                var tr = $(row).closest('tr');
-                var stock = data.inventoried ? data.stock : 1000000;
-                // Al reutilizar una factura se conserva la cantidad original para revisarla, sin recortarla en silencio.
-                if (data.fp_base) stock = Math.max(stock, data.cant);
-                tr.find('input[name="cant"]')
-                    .TouchSpin({
-                        min: 1,
-                        max: stock
-                    })
-                    .on('keypress', function (e) {
-                        return validate_text_box({'event': e, 'type': 'numbers'});
-                    });
-
-                tr.find('input[name="dscto_unitary"]')
-                    .TouchSpin({
-                        min: 0,
-                        max: 100,
-                        step: 1,
-                        decimals: 0,   // porcentaje entero, como lo guarda y valida el servidor
-                        boostat: 5,
-                        maxboostedstep: 10,
-                        postfix: Number(data.total_dscto || 0).toFixed(2)
-                    })
-                    .on('keypress', function (e) {
-                        var tecla = e.which || e.keyCode;
-                        if (tecla === 44 || tecla === 46) {   // sin borrar el separador en silencio (2.5 no puede volverse 25)
-                            message_error('El descuento es un porcentaje entero de 0 a 100, sin decimales.');
-                            return false;
-                        }
-                        return validate_text_box({'event': e, 'type': 'numbers'});
-                    });
-                tr.find('input[name="price_current"]').on('keypress', function (e) {
-                    return (e.which || e.keyCode) === 44 || validate_text_box({'event': e, 'type': 'decimals'});   // coma o punto
-                });
+                $(row).toggleClass('fp-linea-invalida', !data.importes_validos);
+            },
+            drawCallback: function () {
+                fpLineas.descripcion.ajustarTodas(document.getElementById('tblProducts'));
             },
             initComplete: function (settings, json) {
                 if (!$(this).parent().hasClass('dataTables_scroll')) { $(this).wrap('<div class="dataTables_scroll"></div>'); }
             }
         });
     },
+    maximoDe: function (row) {
+        var stock = row.inventoried ? Number(row.stock) : 999999;
+        // Al reutilizar una factura se conserva la cantidad original para revisarla, sin recortarla en silencio.
+        if (row.fp_base) stock = Math.max(stock, row.cant);
+        return Math.max(1, Math.min(999999, stock));
+    },
+    textoDescuento: function (row) {
+        return Number(row.dscto) > 0 ? '−$' + row.descuento_con_iva + ' con IVA' : 'Sin descuento';
+    },
+    celdaOrden: function (row, indice) {
+        var n = indice + 1, total = this.detail.products.length;
+        return '<div class="fp-orden">' +
+            '<button type="button" class="fp-asa" aria-label="Mover la línea ' + n + '" aria-describedby="fp-orden-ayuda">' +
+            '<span aria-hidden="true">⋮⋮</span></button>' +
+            '<span class="fp-orden-num" aria-hidden="true">' + n + '</span><span class="fp-orden-flechas">' +
+            '<button type="button" class="fp-orden-btn" data-mover="-1" aria-label="Subir la línea ' + n + '"' + (n === 1 ? ' disabled' : '') +
+            '><i class="fas fa-chevron-up" aria-hidden="true"></i></button>' +
+            '<button type="button" class="fp-orden-btn" data-mover="1" aria-label="Bajar la línea ' + n + '"' + (n === total ? ' disabled' : '') +
+            '><i class="fas fa-chevron-down" aria-hidden="true"></i></button></span></div>';
+    },
+    celdaDescripcion: function (row, indice) {
+        var esc = sale.escapar, id = 'fp-desc-' + indice;
+        var tarifa = row.codigo_porcentaje !== undefined ? sale.celdaTarifa(row) :
+            (row.nombre_tarifa ? '<small class="fp-desc-tarifa">IVA ' + esc(row.nombre_tarifa) + '</small>' : '');
+        var otro = row.descripcion !== row.name ? '' : ' hidden';
+        var stock = row.inventoried ? '<span class="badge badge-pill ' + (row.stock > 0 ? 'badge-success' : 'badge-danger') +
+            '">Stock ' + esc(row.stock) + '</span>' : '<span class="badge badge-pill badge-secondary">No inventariado</span>';
+        return '<textarea class="form-control fp-desc-linea" name="descripcion_linea" id="' + id + '" rows="1" maxlength="' +
+            fpLineas.descripcion.MAX + '" autocomplete="off" spellcheck="true" data-contador="' + id + '-aviso" aria-label="Descripción de la línea ' +
+            (indice + 1) + '" aria-describedby="' + id + '-aviso">' + esc(row.descripcion) + '</textarea>' +
+            '<div class="fp-desc-pie">' + stock + tarifa + '<small class="fp-desc-producto"' + otro + '>Producto: ' + esc(row.name) + '</small>' +
+            '<small class="fp-desc-aviso" id="' + id + '-aviso" aria-live="polite"></small></div>' +
+            '<p class="fp-linea-aviso" role="status" hidden></p>';
+    },
+    filaDe: function (elemento) {
+        var tr = $(elemento).closest('tr');
+        return {tr: tr, indice: tblProducts.row(tr).index()};
+    },
+    avisarLinea: function (tr, texto) {
+        var aviso = tr.find('.fp-linea-aviso');
+        aviso.text(texto || '').prop('hidden', !texto);
+    },
+    refrescarFila: function (indice) {
+        // Sin volver a dibujar la tabla (no se pierde el foco): total y descuento de la línea, y el pie.
+        var linea = this.detail.products[indice], tr = $(tblProducts.row(indice).node());
+        tr.find('.fp-total-linea').text(linea.importes_validos ? '$' + linea.total_con_iva : '—');
+        tr.find('.fp-dscto-valor').text(this.textoDescuento(linea));
+        tr.toggleClass('fp-linea-invalida', !linea.importes_validos);
+    },
+    moverLinea: function (desde, hasta) {
+        var lineas = this.detail.products;
+        if (desde < 0 || desde >= lineas.length || hasta < 0 || hasta >= lineas.length) return;
+        lineas.splice(hasta, 0, lineas.splice(desde, 1)[0]);
+        this.listProducts();
+    },
+    lineasParaEnviar: function () {
+        // Contrato §3, en el orden en que se ven las filas. El precio sin IVA (price_current) ya no se envía.
+        return this.detail.products.map(function (l) {
+            var fila = {id: l.id, cant: parseInt(l.cant, 10), precio_con_iva: l.precio_con_iva, dscto: parseInt(l.dscto, 10) || 0,
+                descripcion: fpLineas.descripcion.normalizar(l.descripcion)};
+            if (l.codigo_porcentaje !== undefined) fila.codigo_porcentaje = l.codigo_porcentaje;   // factura en borrador
+            return fila;
+        });
+    },
+    MAXIMO_CENTAVOS: 999999999,   // USD 9.999.999,99: lo más que guardan la línea y el comprobante (9 dígitos)
+    lineasValidas: function () {
+        // Antes de enviar: ninguna línea con importes sin calcular ni descripción fuera de lo que admite el servidor.
+        var mala = this.detail.products.findIndex(function (l) {
+            return !l.importes_validos || fpLineas.descripcion.normalizar(l.descripcion).length > fpLineas.descripcion.MAX;
+        });
+        if (mala !== -1) {
+            message_error('Revisa la línea ' + (mala + 1) + ': cantidad, precio con IVA, descuento o descripción.');
+            return false;
+        }
+        var grande = this.detail.products.findIndex(function (l) { return l.excede_maximo; });
+        if (grande !== -1 || this.detail.excede_maximo) {
+            message_error((grande !== -1 ? 'La línea ' + (grande + 1) : 'El total') +
+                ' supera USD 9.999.999,99, lo máximo que admite un comprobante.');
+            return false;
+        }
+        return true;
+    },
+    camposDeLinea: ['search_product', 'input_search_product', 'cant', 'precio_linea', 'price_current', 'dscto_unitary',
+        'tarifa_linea', 'descripcion_linea'],
     getProductsIds: function () {
         return this.detail.products.map(value => value.id);
     },
@@ -201,14 +283,14 @@ var sale = {
         var esc = sale.escapar, catalogo = row.tarifa_catalogo !== row.codigo_porcentaje ?
             ' <small class="text-muted">(catálogo: ' + esc(row.nombre_tarifa_catalogo) + ')</small>' : '';
         if (!sale.tarifaEditable() || !sale.tarifas.length) {
-            return '<small class="text-muted">IVA ' + esc(row.nombre_tarifa) + '</small>' + catalogo;
+            return '<small class="fp-desc-tarifa">IVA ' + esc(row.nombre_tarifa) + '</small>' + catalogo;
         }
         var opciones = sale.tarifas.map(function (t) {
             return '<option value="' + esc(t.codigo) + '"' + (t.codigo === row.codigo_porcentaje ? ' selected' : '') + '>IVA ' +
                 esc(t.nombre) + '</option>';
         }).join('');
         return '<select class="form-control form-control-sm fp-tarifa-linea" name="tarifa_linea" aria-label="IVA de ' +
-            esc(row.name) + ' en esta factura">' + opciones + '</select>' + catalogo;
+            esc(row.descripcion || row.name) + ' en esta factura">' + opciones + '</select>' + catalogo;
     },
     cambiarTarifa: function (indice, codigo) {
         var linea = this.detail.products[indice], tarifa = this.tarifas.find(function (t) { return t.codigo === codigo; });
@@ -217,15 +299,15 @@ var sale = {
         linea.tarifa_iva = tarifa.codigo;
         linea.tarifa = tarifa.tarifa;
         linea.nombre_tarifa = tarifa.nombre;
-        this.listProducts();   // recalcula subtotales, IVA y total con la tarifa de la línea
+        this.listProducts();   // recalcula base, IVA y total con la tarifa de la línea (el precio con IVA no cambia)
     },
     datosBorrador: function () {
         // Lo mismo que envía «Emitir factura», para guardarlo sin emitir.
         var params = new FormData(fvSale.form);
-        ['input_search_product', 'cant', 'price_current', 'dscto_unitary', 'tarifa_linea'].forEach(function (value) {
+        sale.camposDeLinea.forEach(function (value) {
             params.delete(value);
         });
-        params.append('products', JSON.stringify(sale.detail.products));
+        params.append('products', JSON.stringify(sale.lineasParaEnviar()));
         params.append('additional_info', JSON.stringify(sale.detail.additional_info.filter(value => !$.isEmptyObject(value.name) && !$.isEmptyObject(value.value))));
         return params;
     },
@@ -242,6 +324,7 @@ var sale = {
         fvSale.revalidateField('end_credit');
     },
     enviarBorrador: function (accion, exito) {
+        if (accion === 'guardar_borrador' && !sale.lineasValidas()) return;
         var params = accion === 'guardar_borrador' ? sale.datosBorrador() : new FormData();
         params.set('action', accion);
         params.set('borrador_id', $('input[name="borrador_id"]').val());
@@ -270,7 +353,7 @@ var sale = {
             item.nombre_tarifa_catalogo = item.nombre_tarifa;
         }
         if (index === -1) {
-            this.detail.products.push(item);
+            this.detail.products.push(this.prepararLinea(item));
         } else {
             var product = this.detail.products[index];
             if ((product.cant + 1 <= product.stock) || !product.inventoried) {
@@ -333,15 +416,6 @@ var sale = {
                 if (status === 'abort' || version !== sale.versionNumero) return;
                 panel.find('.fp-punto-proximo').text('Por confirmar');
                 aviso.text((xhr.responseJSON && xhr.responseJSON.error) || 'No se pudo consultar el próximo número. Vuelve a elegir el punto para reintentar.').prop('hidden', false);
-            }
-        });
-    },
-    setOptionsFields: function (inputs) {
-        inputs.forEach(function (value, index, array) {
-            if (value.enable) {
-                $(input_sale[value.index]).show();
-            } else {
-                $(input_sale[value.index]).hide();
             }
         });
     },
@@ -576,19 +650,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
 });
 
 document.addEventListener('DOMContentLoaded', function (e) {
-    function validateChange() {
-        var cash = parseFloat(input_cash.val());
-        if (select_payment_type.val() === 'efectivo' && select_medio_cobro.val() === 'efectivo') {
-            if (cash < sale.detail.total) {
-                input_change.val('0.00');
-                return {valid: false, message: 'El efectivo debe ser mayor o igual al total a pagar'};
-            }
-        }
-        var change = cash - sale.detail.total;
-        input_change.val(change.toFixed(2));
-        return {valid: true};
-    }
-
     fvSale = FormValidation.formValidation(document.getElementById('frmForm'), {
             locale: 'es_ES',
             localization: FormValidation.locales.es_ES,
@@ -671,27 +732,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
                         digits: {}
                     }
                 },
-                cash: {
-                    validators: {
-                        notEmpty: {},
-                        numeric: {
-                            message: 'El valor no es un número',
-                            thousandsSeparator: '',
-                            decimalSeparator: '.'
-                        }
-                    }
-                },
-                change: {
-                    validators: {
-                        notEmpty: {},
-                        callback: {
-                            //message: 'El cambio no puede ser negativo',
-                            callback: function (input) {
-                                return validateChange();
-                            }
-                        }
-                    }
-                },
             },
         }
     )
@@ -726,6 +766,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 message_error('Debe tener al menos un item en el detalle de la venta');
                 return false;
             }
+            if (!sale.lineasValidas()) return false;
             var customer = select_client.select2('data')[0];
             if (select_receipt.val() === '01') {
                 if (customer.identification_type.id === '07' && sale.detail.total > 50.00) {
@@ -739,10 +780,10 @@ document.addEventListener('DOMContentLoaded', function (e) {
             }
             var list_url = $(fvSale.form).attr('data-url');
             var params = new FormData(fvSale.form);
-            ['input_search_product', 'cant', 'price_current', 'dscto_unitary', 'tarifa_linea'].forEach(function (value) {
+            sale.camposDeLinea.forEach(function (value) {
                 params.delete(value);
             });
-            params.append('products', JSON.stringify(sale.detail.products));
+            params.append('products', JSON.stringify(sale.lineasParaEnviar()));
             params.append('additional_info', JSON.stringify(sale.detail.additional_info.filter(value => !$.isEmptyObject(value.name) && !$.isEmptyObject(value.value))));
             var args = {
                 'params': params,
@@ -780,9 +821,6 @@ $(function () {
     input_end_credit = $('input[name="end_credit"]');
     select_payment_type = $('select[name="payment_type"]');
     select_medio_cobro = $('select[name="medio_cobro"]');
-    input_cash = $('input[name="cash"]');
-    input_change = $('input[name="change"]');
-    input_sale = $('.input_sale');
     input_time_limit = $('input[name="time_limit"]');
 
     $('.select2').select2({
@@ -828,52 +866,137 @@ $(function () {
             $(this).val('').focus();
         }
     });
+    // Cada resultado muestra el precio CON IVA del catálogo, el mismo que llega a la línea.
+    var autocompletar = input_search_product.autocomplete('instance');
+    if (autocompletar) {
+        autocompletar._renderItem = function (ul, item) {
+            var precio = sale.precioConIva(item);
+            return $('<li>').append($('<div class="fp-ac-item">').append(
+                $('<span class="fp-ac-nombre">').text(item.label || item.value || item.name || ''),
+                $('<span class="fp-ac-precio">').text(precio === null ? '' : '$' + precio + ' con IVA'))).appendTo(ul);
+        };
+    }
 
     $('.btnClearProducts').on('click', function () {
         input_search_product.val('').focus();
     });
 
+    // Líneas: cantidad, precio con IVA y descuento se recalculan al escribir (sin redibujar: no se pierde el foco); al
+    // salir de la casilla se corrige lo que no vale y se avisa en la misma fila. La lista sale.detail.products es la
+    // fuente de verdad: el orden de las filas es el orden que se envía.
+    var tablaLineas = document.getElementById('tblProducts');
+    function recalcular(indice) {
+        sale.calculateInvoice();
+        sale.refrescarFila(indice);
+    }
     $('#tblProducts tbody')
         .off()
-        .on('change', 'input[name="cant"]', function () {
-            var tr = tblProducts.cell($(this).closest('td, li')).index();
-            sale.detail.products[tr.row].cant = parseInt($(this).val());
-            sale.calculateInvoice();
-            $('td:last', tblProducts.row(tr.row).node()).html('$' + sale.detail.products[tr.row].total.toFixed(2));
+        .on('keypress', 'input[name="cant"]', function (e) {
+            return validate_text_box({'event': e, 'type': 'numbers'});
         })
-        .on('change', 'input[name="price_current"]', function () {
-            var tr = tblProducts.cell($(this).closest('td, li')).index();
-            var producto = sale.detail.products[tr.row];
-            var texto = String($(this).val()).replace(',', '.').trim();
-            if (!/^\d{1,6}(\.\d{1,2})?$/.test(texto)) {
-                message_error('El precio va de 0 a 999999,99, con hasta 2 decimales.');
-                $(this).val(producto.price_current.toFixed(2));
-                return;
+        .on('input', 'input[name="cant"]', function () {
+            var f = sale.filaDe(this), linea = sale.detail.products[f.indice];
+            var n = fpImportes.entero(this.value, 1, sale.maximoDe(linea));
+            if (n === null) return;
+            linea.cant = n;
+            sale.avisarLinea(f.tr, '');
+            recalcular(f.indice);
+        })
+        .on('change', 'input[name="cant"]', function () {
+            var f = sale.filaDe(this), linea = sale.detail.products[f.indice], maximo = sale.maximoDe(linea);
+            var n = /^\s*\d+\s*$/.test(this.value) ? parseInt(this.value, 10) : NaN, aviso = '';
+            if (isNaN(n)) {
+                n = linea.cant;
+                aviso = 'La cantidad es un número entero de 1 a ' + maximo + '.';
+            } else if (n < 1) {
+                n = 1;
+                aviso = 'La cantidad mínima es 1.';
+            } else if (n > maximo) {
+                n = maximo;
+                aviso = linea.inventoried ? 'Hay ' + linea.stock + ' en stock: la cantidad quedó en ' + maximo + '.' :
+                    'La cantidad máxima es ' + maximo + '.';
             }
-            producto.price_current = parseFloat(texto);
-            $(this).val(producto.price_current.toFixed(2));
-            sale.calculateInvoice();
-            $('td:last', tblProducts.row(tr.row).node()).html('$' + producto.total.toFixed(2));
-            $('input[name="dscto_unitary"]', tblProducts.row(tr.row).node()).closest('.bootstrap-touchspin')
-                .find('.bootstrap-touchspin-postfix').children().html(producto.total_dscto.toFixed(2));
+            linea.cant = n;
+            this.value = String(n);
+            sale.avisarLinea(f.tr, aviso);
+            recalcular(f.indice);
+        })
+        .on('keypress', 'input[name="precio_linea"]', function (e) {
+            return (e.which || e.keyCode) === 44 || validate_text_box({'event': e, 'type': 'decimals'});   // coma o punto
+        })
+        .on('input', 'input[name="precio_linea"]', function () {
+            var f = sale.filaDe(this), c = fpImportes.centavos(String(this.value));
+            if (c === null) return;
+            sale.detail.products[f.indice].precio_con_iva = fpImportes.dinero(c);
+            sale.avisarLinea(f.tr, '');
+            recalcular(f.indice);
+        })
+        .on('change', 'input[name="precio_linea"]', function () {
+            var f = sale.filaDe(this), linea = sale.detail.products[f.indice], c = fpImportes.centavos(String(this.value));
+            if (c === null) {
+                sale.avisarLinea(f.tr, 'El precio con IVA va de 0 a 999999,99, con hasta 2 decimales.');
+            } else {
+                linea.precio_con_iva = fpImportes.dinero(c);
+                sale.avisarLinea(f.tr, '');
+            }
+            this.value = linea.precio_con_iva;
+            recalcular(f.indice);
+        })
+        .on('keypress', 'input[name="dscto_unitary"]', function (e) {
+            var tecla = e.which || e.keyCode;
+            if (tecla === 44 || tecla === 46) {   // sin borrar el separador en silencio (2.5 no puede volverse 25)
+                sale.avisarLinea($(this).closest('tr'), 'El descuento es un porcentaje entero de 0 a 100, sin decimales.');
+                return false;
+            }
+            return validate_text_box({'event': e, 'type': 'numbers'});
+        })
+        .on('input', 'input[name="dscto_unitary"]', function () {
+            var f = sale.filaDe(this), n = fpImportes.entero(this.value, 0, 100);
+            if (n === null) return;
+            sale.detail.products[f.indice].dscto = n;
+            sale.avisarLinea(f.tr, '');
+            recalcular(f.indice);
         })
         .on('change', 'input[name="dscto_unitary"]', function () {
-            var tr = tblProducts.cell($(this).closest('td, li')).index();
-            sale.detail.products[tr.row].dscto = parseInt($(this).val(), 10) || 0;
-            sale.calculateInvoice();
-            var parent = $(this).closest('.bootstrap-touchspin');
-            parent.find('.bootstrap-touchspin-postfix').children().html(sale.detail.products[tr.row].total_dscto.toFixed(2));
-            $('td:last', tblProducts.row(tr.row).node()).html('$' + sale.detail.products[tr.row].total.toFixed(2));
+            var f = sale.filaDe(this), linea = sale.detail.products[f.indice], texto = String(this.value).trim(), aviso = '';
+            var n = texto === '' ? 0 : (/^\d+$/.test(texto) ? parseInt(texto, 10) : NaN);
+            if (isNaN(n)) {
+                n = linea.dscto;
+                aviso = 'El descuento es un porcentaje entero de 0 a 100, sin decimales.';
+            } else if (n > 100) {
+                n = 100;
+                aviso = 'El descuento máximo es 100 %.';
+            }
+            linea.dscto = n;
+            this.value = String(n);
+            sale.avisarLinea(f.tr, aviso);
+            recalcular(f.indice);
         })
         .on('change', 'select[name="tarifa_linea"]', function () {
-            sale.cambiarTarifa(tblProducts.cell($(this).closest('td, li')).index().row, $(this).val());
+            sale.cambiarTarifa(sale.filaDe(this).indice, $(this).val());
         })
-        .on('click', 'a[rel="remove"]', function () {
-            var tr = tblProducts.cell($(this).closest('td, li')).index();
-            sale.detail.products.splice(tr.row, 1);
-            tblProducts.row(tr.row).remove().draw();
-            sale.calculateInvoice();
+        .on('click', '[rel="remove"]', function () {
+            var indice = sale.filaDe(this).indice;
+            sale.detail.products.splice(indice, 1);
+            sale.listProducts();
+            var filas = fpLineas.filas(tablaLineas), siguiente = filas[Math.min(indice, filas.length - 1)];
+            if (siguiente) { $(siguiente).find('[rel="remove"]').trigger('focus'); } else { input_search_product.trigger('focus'); }
         });
+
+    // Descripción de cada línea (por defecto el nombre del producto): va en `descripcion`; no cambia el catálogo.
+    fpLineas.descripcion.activar(tablaLineas.tBodies[0], function (area, texto) {
+        var f = sale.filaDe(area), linea = sale.detail.products[f.indice];
+        linea.descripcion = texto;
+        f.tr.find('.fp-desc-producto').prop('hidden', fpLineas.descripcion.normalizar(texto) === String(linea.name || ''));
+    });
+    // Arrastrar el asa ⋮⋮ (ratón o dedo), flechas sobre el asa o «Subir»/«Bajar»: se reordena la lista y se redibuja.
+    fpLineas.ordenar(tablaLineas, {
+        mover: function (desde, hasta) { sale.moverLinea(desde, hasta); },
+        redibujar: function () { sale.listProducts(); },
+        nombre: function (i) { return sale.detail.products[i] ? sale.detail.products[i].descripcion : ''; },
+        anuncio: document.getElementById('fp-orden-anuncio')
+    });
+    fpLineas.sinRueda(tablaLineas);
 
     // Factura en borrador de una proforma: guardar sin emitir y descartar (la proforma queda como estaba).
     $('.fp-guardar-borrador').on('click', function () {
@@ -911,17 +1034,20 @@ $(function () {
             columns: [
                 {data: "code"},
                 {data: "short_name"},
-                {data: "pvp"},
-                {data: "price_promotion"},
+                {data: "precio_con_iva", defaultContent: ''},
                 {data: "stock"},
                 {data: "id"},
             ],
             columnDefs: [
+                {targets: [0, 1], render: $.fn.dataTable.render.text()},
                 {
-                    targets: [-3, -4],
-                    class: 'text-center',
+                    targets: [-3],
+                    class: 'text-center fp-catalogo-precio',
                     render: function (data, type, row) {
-                        return '$' + data.toFixed(2);
+                        // Precio CON IVA del catálogo (o el de la promoción, con IVA), el mismo que llega a la línea.
+                        var precio = sale.precioConIva(row);
+                        return (precio === null ? '—' : '$' + precio) +
+                            (Number(row.price_promotion) > 0 ? '<br><small class="text-muted">En promoción</small>' : '');
                     }
                 },
                 {
@@ -941,7 +1067,8 @@ $(function () {
                     targets: [-1],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return '<a rel="add" class="btn btn-success btn-flat btn-xs"><i class="fas fa-plus"></i></a>';
+                        return '<button type="button" rel="add" class="btn btn-success btn-flat btn-xs" aria-label="Agregar ' +
+                            sale.escapar(row.short_name || row.name) + '"><i class="fas fa-plus" aria-hidden="true"></i></button>';
                     }
                 }
             ],
@@ -957,7 +1084,7 @@ $(function () {
 
     $('#tblSearchProducts tbody')
         .off()
-        .on('click', 'a[rel="add"]', function () {
+        .on('click', '[rel="add"]', function () {
             var row = tblSearchProducts.row($(this).parents('tr')).data();
             row.cant = 1;
             sale.addProduct(row);
@@ -1054,46 +1181,20 @@ $(function () {
         sale.searchVoucherNumber();
     });
 
-    // Condición de pago (contado / crédito) y medio de cobro (core/cobros): «Efectivo recibido» y «Cambio» solo con
-    // efectivo; con otro medio van en 0 y el servidor exige comprobante o nota. A crédito no hay cobro al emitir.
+    // Condición de pago (contado / crédito) y medio de cobro (core/cobros). Sin «Efectivo recibido» ni «Cambio»: el
+    // servidor ya no los pide. Con un medio distinto del efectivo el servidor exige comprobante o nota. A crédito no hay
+    // cobro al emitir y se pide la fecha de plazo.
     function aplicarCondicionYMedio() {
         var contado = select_payment_type.val() === 'efectivo';
         var efectivo = contado && select_medio_cobro.val() === 'efectivo';
-        sale.setOptionsFields([{'index': 0, 'enable': efectivo}, {'index': 1, 'enable': efectivo}, {'index': 2, 'enable': !contado}]);
+        $('.fp-sale-vence').prop('hidden', contado);
         $('.fp-cobro').toggle(contado).find('input,select,textarea').prop('disabled', !contado);
         $('.fp-cobro-efectivo-aviso').toggle(efectivo);
-        if (efectivo) {
-            fvSale.enableValidator('cash');
-            fvSale.enableValidator('change');
-        } else {
-            input_cash.val('0.00');
-            input_change.val('0.00');
-            fvSale.disableValidator('cash');
-            fvSale.disableValidator('change');
-        }
         if (contado) { fvSale.disableValidator('end_credit'); } else { fvSale.enableValidator('end_credit'); }
     }
 
     select_payment_type.on('change', aplicarCondicionYMedio);
     select_medio_cobro.on('change', aplicarCondicionYMedio);
-
-    input_cash
-        .TouchSpin({
-            min: 0.00,
-            max: 100000000,
-            step: 0.01,
-            decimals: 2,
-            boostat: 5,
-            maxboostedstep: 10
-        })
-        .off('change')
-        .on('change touchspin.on.min touchspin.on.max', function () {
-            fvSale.revalidateField('cash');
-            fvSale.revalidateField('change');
-        })
-        .on('keypress', function (e) {
-            return validate_text_box({'event': e, 'type': 'decimals'});
-        });
 
     input_date_joined.datetimepicker({
         useCurrent: false,
@@ -1135,13 +1236,11 @@ $(function () {
         fvSale.revalidateField('end_credit');
     });
 
+    // Plazo (días): casilla numérica legible, sin los botones grandes de TouchSpin; misma validación (0–1000 días).
     input_time_limit
-        .TouchSpin({
-            min: 0,
-            max: 1000,
-            step: 1
-        })
-        .on('change touchspin.on.min touchspin.on.max', function () {
+        .on('change', function () {
+            var dias = parseInt(this.value, 10);
+            if (!isNaN(dias)) this.value = String(Math.max(0, Math.min(1000, dias)));   // los límites que ponía TouchSpin
             fvSale.revalidateField('time_limit');
         })
         .on('keypress', function (e) {
@@ -1206,7 +1305,6 @@ $(function () {
     sale.searchVoucherNumber();
 
     $('i[data-field="client"]').hide();
-    $('i[data-field="cash"]').hide();
     $('i[data-field="input_search_product"]').hide();
     $('i[data-field="time_limit"]').hide();
 
