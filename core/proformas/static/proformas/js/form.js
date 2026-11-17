@@ -8,8 +8,6 @@ var fpForm = {
     lineas: [],
     validaHastaTocada: false,
     esperaModal: null,
-    redondear: function (valor) { return Math.round((valor + Number.EPSILON) * 100) / 100; },
-    dinero: function (valor) { return fpForm.redondear(valor).toFixed(2); },
     sumarDias: function (iso, dias) {
         var partes = iso.split('-').map(Number);
         var fecha = new Date(Date.UTC(partes[0], partes[1] - 1, partes[2] + dias));
@@ -162,9 +160,12 @@ var fpForm = {
         ['fp_tipo_cliente', 'descripcion', 'cant', 'price', 'precio_con_iva', 'dscto'].forEach(function (n) { datos.delete(n); });
         // Contrato «precios con IVA» §3: en el orden en que se ven las filas, con el precio CON IVA y la descripción.
         datos.append('lineas', JSON.stringify(fpForm.lineas.map(function (l) {
-            var c = fpImportes.centavos(String(l.precio_con_iva));
-            return {product: l.product, cant: l.cant, precio_con_iva: c === null ? l.precio_con_iva : fpImportes.dinero(c),
-                dscto: l.dscto, descripcion: fpLineas.descripcion.normalizar(l.descripcion)};
+            // Números y precio normalizados cuando son válidos; si no, tal como se escribieron: el servidor marca la línea.
+            var c = fpImportes.centavos(String(l.precio_con_iva)), cant = fpImportes.entero(l.cant, 1, 999999),
+                dscto = l.dscto === '' ? 0 : fpImportes.entero(l.dscto, 0, 100);
+            return {product: l.product, cant: cant === null ? l.cant : cant,
+                precio_con_iva: c === null ? l.precio_con_iva : fpImportes.dinero(c), dscto: dscto === null ? l.dscto : dscto,
+                descripcion: fpLineas.descripcion.normalizar(l.descripcion)};
         })));
         $.ajax({
             url: pathname, type: 'POST', data: datos, dataType: 'json', processData: false, contentType: false,

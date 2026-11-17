@@ -36,8 +36,10 @@ var sale = {
     },
     prepararLinea: function (linea) {
         // Lo que la tabla edita: precio con IVA (texto con 2 decimales), descripción (por defecto el nombre del producto),
-        // cantidad y descuento enteros.
-        linea.precio_con_iva = this.precioConIva(linea) || '0.00';
+        // cantidad y descuento enteros. Un precio que no se puede leer queda vacío (nunca 0,00 en silencio): la línea se
+        // marca y no se puede emitir hasta corregirlo.
+        var precio = this.precioConIva(linea);
+        linea.precio_con_iva = precio === null ? '' : precio;
         if (typeof linea.descripcion !== 'string' || !linea.descripcion.trim()) linea.descripcion = String(linea.name || '');
         linea.descripcion = fpLineas.descripcion.limpiar(linea.descripcion).slice(0, fpLineas.descripcion.MAX);
         linea.cant = parseInt(linea.cant, 10) || 1;
@@ -137,7 +139,7 @@ var sale = {
                                 'autocomplete="off" name="precio_linea" maxlength="10" value="' + sale.escapar(row.precio_con_iva) +
                                 '" aria-label="Precio unitario con IVA de la línea ' + (meta.row + 1) + '"></div>';
                         }
-                        return '<span class="fp-importe">$' + sale.escapar(row.precio_con_iva) + '</span>';
+                        return '<span class="fp-importe">' + (row.precio_con_iva ? '$' + sale.escapar(row.precio_con_iva) : '—') + '</span>';
                     }
                 },
                 {
