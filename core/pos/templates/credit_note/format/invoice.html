@@ -53,8 +53,8 @@
             <tr>
                 <td>{{ detail.product.code }}</td>
                 <td class="num">{{ detail.cant }}</td>
-                <td>{{ detail.product.get_short_name }}</td>
-                <td class="num">{{ detail.price|floatformat:2 }}</td>
+                <td>{% if detail.con_iva_incluido %}{{ detail.descripcion_linea }}{% else %}{{ detail.product.get_short_name }}{% endif %}</td>
+                <td class="num">{% if detail.con_iva_incluido %}{{ detail.precio_unitario|floatformat:detail.decimales_precio_unitario }}{% else %}{{ detail.price|floatformat:2 }}{% endif %}</td>
                 <td class="num">{{ detail.total_dscto|floatformat:2 }}</td>
                 <td class="num">{{ detail.total|floatformat:2 }}</td>
             </tr>

@@ -40,7 +40,7 @@ def tarifa_desde_excel(valor):
 # Importación del catálogo (R3): cada efecto exige su permiso, como en las pantallas de alta, edición y ajuste de stock.
 PERMISO_DEL_EFECTO = {'add_product': 'crear productos', 'change_product': 'modificar productos',
                       'adjust_product_stock': 'ajustar el stock', 'add_category': 'crear categorías'}
-CAMPOS_DEL_CATALOGO = ('name', 'code', 'category_id', 'price', 'pvp', 'inventoried', 'tarifa_iva')
+CAMPOS_DEL_CATALOGO = ('name', 'code', 'category_id', 'price', 'pvp', 'precio_con_iva', 'inventoried', 'tarifa_iva')
 
 
 def _centavos(valor):
@@ -72,6 +72,11 @@ def plan_de_importacion(hoja):
             product.category_id = None
         product.price = _centavos(float(hoja.cell(row=row, column=5).value))
         product.pvp = _centavos(float(hoja.cell(row=row, column=6).value))
+        # Precios con IVA: la columna 11 «Precio de venta (con IVA)» (la del archivo exportado). Si cambia, manda y pvp se
+        # deriva; si no está o no cambió, manda la columna 6 (sin IVA), como en los archivos anteriores (Product.save).
+        con_iva = hoja.cell(row=row, column=11).value if hoja.max_column >= 11 else None
+        if con_iva not in (None, ''):
+            product.precio_con_iva = _centavos(float(con_iva))
         product.stock = int(hoja.cell(row=row, column=7).value)
         product.inventoried = str(hoja.cell(row=row, column=8).value).lower() == 'si'
         # La columna «Tarifa de IVA» manda; los archivos sin ella usan «¿Se cobra impuesto?» y conservan
@@ -309,7 +314,7 @@ class ProductStockAdjustmentView(GroupPermissionMixin, TemplateView):
 class ProductExportExcelView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         try:
-            headers = {'Id': 15, 'Nombre': 75, 'Código': 20, 'Categoría': 20, 'Precio de Compra': 20, 'Precio de Venta': 20, 'Stock': 10, '¿Es inventariado?': 15, '¿Se cobra impuesto?': 15, 'Tarifa de IVA': 15}
+            headers = {'Id': 15, 'Nombre': 75, 'Código': 20, 'Categoría': 20, 'Precio de Compra': 20, 'Precio de Venta (sin IVA)': 20, 'Stock': 10, '¿Es inventariado?': 15, '¿Se cobra impuesto?': 15, 'Tarifa de IVA': 15, 'Precio de venta (con IVA)': 20}
             output = BytesIO()
             workbook = xlsxwriter.Workbook(output)
             worksheet = workbook.add_worksheet('productos')
@@ -332,6 +337,7 @@ class ProductExportExcelView(LoginRequiredMixin, View):
                 worksheet.write(row, 7, 'Si' if product.inventoried else 'No', row_format)
                 worksheet.write(row, 8, 'Si' if product.with_tax else 'No', row_format)
                 worksheet.write(row, 9, COLUMNA_TARIFA.get(product.tarifa_iva, NOMBRE_TARIFA_IVA.get(product.tarifa_iva, '')), row_format)
+                worksheet.write(row, 10, f'{product.precio_con_iva_catalogo():.2f}', row_format)
                 row += 1
             workbook.close()
             output.seek(0)

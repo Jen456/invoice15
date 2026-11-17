@@ -119,7 +119,16 @@
     <section class="fp-ticket-section" aria-label="Productos y valores">
         <h2 class="fp-ticket-section-title">Detalle</h2>
         {% for detail in sale.saledetail_set.all %}
-            <div class="fp-ticket-line">
+            <div class="fp-ticket-line">{% if detail.con_iva_incluido %}{# Precios con IVA: lo que ve la pantalla (P con IVA y total de la línea). #}
+                <p class="fp-ticket-description">{{ detail.descripcion_linea }}</p>
+                <table class="fp-ticket-values" aria-label="Cantidad, precio unitario con IVA e importe con IVA">
+                    <colgroup><col style="width:55%"><col style="width:45%"></colgroup>
+                    <tbody>
+                    <tr><th scope="col">Cant. × p. unit. con IVA</th><th scope="col" class="fp-ticket-amount">Importe</th></tr>
+                    <tr><td>{{ detail.cant }} × <span class="fp-ticket-money">${{ detail.precio_con_iva|floatformat:2 }}</span></td><td class="fp-ticket-amount">${{ detail.total_con_iva|floatformat:2 }}</td></tr>
+                    </tbody>
+                </table>
+                {% if detail.descuento_con_iva %}<p class="fp-ticket-discount">Descuento ({{ detail.dscto_porcentaje }} %): ${{ detail.descuento_con_iva|floatformat:2 }}</p>{% endif %}{% else %}
                 <p class="fp-ticket-description">{{ detail.product.name }}</p>
                 <table class="fp-ticket-values" aria-label="Cantidad, precio unitario e importe">
                     <colgroup><col style="width:55%"><col style="width:45%"></colgroup>
@@ -128,7 +137,7 @@
                     <tr><td>{{ detail.cant }} × <span class="fp-ticket-money">${{ detail.price|floatformat:2 }}</span></td><td class="fp-ticket-amount">${{ detail.total|floatformat:2 }}</td></tr>
                     </tbody>
                 </table>
-                <p class="fp-ticket-discount">Descuento: ${{ detail.total_dscto|floatformat:2 }}</p>
+                <p class="fp-ticket-discount">Descuento: ${{ detail.total_dscto|floatformat:2 }}</p>{% endif %}
             </div>
         {% endfor %}
     </section>
@@ -151,6 +160,8 @@
     <div class="fp-ticket-payment">
         {% if sale.payment_type == 'efectivo' and sale.medio_cobro and sale.medio_cobro != 'efectivo' %}
             <p><strong>Pago:</strong> {{ sale.get_medio_cobro_display }}</p>
+        {% elif sale.payment_type == 'efectivo' and not sale.cash and not sale.change %}{# Sin «Efectivo recibido» ni «Cambio» en 0 (precios con IVA); las ventas anteriores con valores los conservan. #}
+            {% if sale.medio_cobro %}<p><strong>Pago:</strong> {{ sale.get_medio_cobro_display }}</p>{% endif %}
         {% elif sale.payment_type == 'efectivo' %}
             <p><strong>Efectivo:</strong> ${{ sale.cash|floatformat:2 }}</p>
             <p><strong>Cambio:</strong> ${{ sale.change|floatformat:2 }}</p>

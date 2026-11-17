@@ -51,12 +51,14 @@ def trasladado_por_detalle(venta):
 
 def lineas_de_factura(venta):
     """Líneas de la factura con lo vendido, lo ya trasladado en guías vigentes y lo pendiente."""
+    from core.pos.models import descripcion_de_linea
     trasladado = trasladado_por_detalle(venta)
     lineas = []
     for d in venta.saledetail_set.select_related('product').order_by('pk'):
         vendido = Decimal(d.cant)
         enviado = trasladado.get(d.pk, Decimal('0'))
-        lineas.append({'detalle': d.pk, 'codigo': (d.product.code or '')[:25], 'descripcion': d.product.name[:300], 'vendido': vendido,
+        # La descripción de la línea de la factura (la escrita en la venta; en las anteriores, el nombre del producto).
+        lineas.append({'detalle': d.pk, 'codigo': (d.product.code or '')[:25], 'descripcion': descripcion_de_linea(d)[:300], 'vendido': vendido,
                        'trasladado': enviado, 'pendiente': max(vendido - enviado, Decimal('0'))})
     return lineas
 

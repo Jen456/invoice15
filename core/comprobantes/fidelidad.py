@@ -5,7 +5,8 @@ emisor y direcciones, comprador, cada detalle (código, descripción, cantidad, 
 Facturas (infoFactura) y notas de crédito (infoNotaCredito: además, documento modificado, su fecha, motivo y valor).
 
 Se compara sin espacios ni mayúsculas (los saltos de línea del PDF no cuentan) y se aceptan las formas en que la plantilla
-escribe números (1440,00 / 1.440,00 / 1440.00) y fechas (24/10/2026 / 2026-10-24)."""
+escribe números (1440,00 / 1.440,00 / 1440.00; el precio unitario con los decimales del XML, hasta 6: 8,695652) y fechas
+(24/10/2026 / 2026-10-24)."""
 import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -26,15 +27,21 @@ def _plano(texto):
     return re.sub(r'\s+', '', texto or '').lower()
 
 
-def _dinero(valor):
+def _dinero(valor, decimales=2):
     try:
         numero = Decimal(valor)
     except (InvalidOperation, TypeError):
         return [valor]
-    fijo = f'{numero:.2f}'
+    fijo = f'{numero:.{decimales}f}'
     entero, decimales = fijo.split('.')
     miles = f'{int(entero):,}'.replace(',', '.') if not entero.startswith('-') else entero
     return [f'{entero},{decimales}', f'{miles},{decimales}', fijo]
+
+
+def _precio(valor):
+    """Precio unitario: en la factura 1.1.0 puede llevar hasta 6 decimales («8.695652»); el RIDE lo escribe con los mismos."""
+    decimales = len((valor or '').strip().partition('.')[2])
+    return _dinero(valor, max(2, min(decimales, 6)))
 
 
 def _cantidad(valor):
@@ -88,7 +95,7 @@ def datos_autorizados(xml_autorizado):
         agregar(f'detalle {n}: código', d.findtext('codigoPrincipal') or d.findtext('codigoInterno'))
         agregar(f'detalle {n}: descripción', d.findtext('descripcion'))
         agregar(f'detalle {n}: cantidad', d.findtext('cantidad'), _cantidad)
-        agregar(f'detalle {n}: precio unitario', d.findtext('precioUnitario'), _dinero)
+        agregar(f'detalle {n}: precio unitario', d.findtext('precioUnitario'), _precio)
         agregar(f'detalle {n}: descuento', d.findtext('descuento'), _dinero)
         agregar(f'detalle {n}: total sin impuestos', d.findtext('precioTotalSinImpuesto'), _dinero)
     agregar('total sin impuestos', info.findtext('totalSinImpuestos'), _dinero)
