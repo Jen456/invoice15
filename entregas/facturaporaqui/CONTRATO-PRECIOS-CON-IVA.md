@@ -283,6 +283,8 @@ Convivencia durante la publicación (migrar → reiniciar):
 
 ## Para la revisión de Codex
 
+### Servidor
+
 Archivos del servidor tocados (rama `fase/precios-con-iva`):
 
 - `core/pos/precios_iva.py` (nuevo): cálculo §1, precio unitario de 6 decimales, texto del XML, descripción.
@@ -306,4 +308,95 @@ Archivos del servidor tocados (rama `fase/precios-con-iva`):
   `test_factura_base.py`, `test_factura_lineas.py`, `test_iva_tarifas.py`, `test_multiempresa.py`, `test_proformas.py`,
   `test_proformas_borrador.py`, `test_proformas_conversion.py`, `test_respaldo_cobros.py`, `test_suscripciones.py`.
 
-No se tocaron plantillas, CSS ni JS de las pantallas de venta, productos ni proformas (rama de pantalla).
+La rama del servidor no tocó plantillas, CSS ni JS de las pantallas de venta, productos ni proformas: los tocó la rama de
+pantalla (`fase/precios-con-iva-pantalla`) y la unión (`fase/precios-con-iva-union`), y están en la lista siguiente.
+
+### Pantalla
+
+Lista exacta de plantillas, CSS y JS que cambian respecto de e0d7c38 en la rama que se publica (31 archivos:
+`git diff --name-only e0d7c38 fase/precios-con-iva-union -- '*.html' '*.css' '*.js'`), con lo que cambió en cada uno.
+
+Nuevos, compartidos:
+
+- `static/js/fp-importes.js`: el cálculo de la línea del §2 en centavos enteros (BigInt; sin BigInt, enteros seguros con
+  `RangeError` si no cabe), lectura del precio con coma o punto y totales por tarifa. Vista previa de factura, proforma y
+  nota de crédito; el servidor recalcula y manda.
+- `static/js/fp-lineas.js`: asa ⋮⋮ para ordenar las filas (Pointer Events: ratón, dedo o lápiz; flechas, Inicio y Fin
+  con el asa enfocada; botones «Subir»/«Bajar»; aviso `aria-live`) y descripción editable de la línea (sin saltos de
+  línea ni caracteres de control, hasta 300 caracteres con aviso).
+- `static/js/fp-detalle-lineas.js`: opciones del DataTable del modal «Detalle» de los listados de ventas y notas de
+  crédito. Si todas las líneas traen `con_iva_incluido`: descripción, P. unitario, descuento y total con IVA del servidor;
+  si no, las columnas de siempre.
+
+Factura (venta):
+
+- `core/pos/templates/sale/admin/create.html`: carga `fp-importes.js` y `fp-lineas.js` (ya no TouchSpin); columnas
+  asa / Código / Descripción / Cantidad / P. unitario con IVA / Descuento / Total, ayuda del orden y anuncio `aria-live`;
+  sin «Efectivo recibido» ni «Cambio» (la fecha de crédito, oculta hasta elegir crédito); plazo en días como casilla
+  numérica; pie «Subtotal gravado (sin IVA)», «Descuento (con IVA)» y «Total (con IVA)»; catálogo con una sola columna
+  «Precio con IVA».
+- `core/pos/templates/sale/admin/_cobro.html`: la ayuda del medio de cobro ya no habla de «Efectivo recibido» ni «Cambio».
+- `core/pos/static/sale/admin/js/form.js`: líneas con precio con IVA (editable con el permiso), descripción, cantidad y
+  descuento en casillas propias sin TouchSpin (recalcula al escribir sin redibujar, corrige y avisa en la fila al salir),
+  descuento en % con su valor en $ con IVA, orden con `fp-lineas.js`, envío del §4 en el orden de las filas
+  (`lineasParaEnviar`: sin `price_current`, `cash` ni `change`), no envía líneas sin importe ni importes sobre
+  USD 9.999.999,99, desglose por tarifa en el pie, y búsqueda, código y catálogo con el precio con IVA.
+- `core/pos/static/sale/admin/js/base.js`: «Usar como base» copia `precio_con_iva` y la descripción de la línea de origen
+  (en líneas anteriores, el precio sin IVA × (1 + tarifa) con mitad hacia arriba), ya no `price_current`.
+- `core/pos/static/sale/admin/js/llenado.js`: el alta rápida de producto desde la factura usa `precio_con_iva` (tope
+  999999.99) y mantiene enlazada su ayuda (`aria-describedby` con el prefijo de los ids copiados).
+- `core/pos/static/sale/admin/css/base.css`: se quitan las reglas de TouchSpin de la tabla de líneas.
+- `core/pos/static/sale/admin/js/list.js` y `core/pos/static/sale/client/js/list.js`: el modal «Detalle» del listado de
+  ventas (administración y portal) usa `fp-detalle-lineas.js` (`price` como precio de las líneas anteriores).
+- `core/pos/templates/sale/admin/list.html` y `core/pos/templates/sale/client/list.html`: cargan `fp-detalle-lineas.js`.
+
+Nota de crédito:
+
+- `core/pos/templates/credit_note/admin/create.html`: carga `fp-importes.js`; columnas «P. unitario con IVA» y «Total con
+  IVA» (`form.js` las cambia a «(sin IVA)» si la factura es anterior al cambio); pie «Subtotal gravado (sin IVA)» y
+  descuento «(con IVA)».
+- `core/pos/static/credit_note/admin/js/form.js`: una factura con precios con IVA se devuelve con el cálculo del §2 sobre
+  la cantidad devuelta (`fp-importes.js`); el descuento de la factura se muestra y ya no se edita (sin su TouchSpin); la
+  cantidad devuelta se limita a lo que queda por acreditar; solo se envían las líneas marcadas. Facturas anteriores: el
+  cálculo de siempre.
+- `core/pos/static/credit_note/admin/js/list.js` y `core/pos/static/credit_note/client/js/list.js`: modal «Detalle» con
+  `fp-detalle-lineas.js` (`price_with_vat` como precio de las líneas anteriores).
+- `core/pos/templates/credit_note/admin/list.html` y `core/pos/templates/credit_note/client/list.html`: cargan
+  `fp-detalle-lineas.js`.
+
+Productos:
+
+- `core/pos/templates/product/create.html`: pinta el campo `precio_con_iva` (o `pvp` si el formulario no lo trae) como
+  «Precio de venta (con IVA)» con su ayuda; los demás campos, como antes.
+- `core/pos/static/product/js/form.js`: validación y TouchSpin del precio de venta sobre `precio_con_iva` (tope 999999.99).
+- `core/pos/templates/product/list.html`: encabezados «P./Venta con IVA» y «P./Promoción con IVA».
+- `core/pos/static/product/js/list.js`: esas columnas con `precio_con_iva_catalogo` y con el precio con IVA de la
+  promoción vigente.
+
+Proformas:
+
+- `templates/proformas/form.html`: carga `fp-importes.js` y `fp-lineas.js`; columnas asa / Código / Descripción /
+  Cantidad / P. unitario con IVA / Descuento / Total con IVA, ayuda del orden y anuncio `aria-live`; el catálogo dice
+  «Precio con IVA».
+- `core/proformas/static/proformas/js/form.js`: la misma fila que la factura (precio con IVA, descripción, cantidad y
+  descuento con su valor en $), cálculo del §2 en centavos, orden con `fp-lineas.js` y `lineas` con `precio_con_iva` en el
+  orden de las filas; un error del servidor en `precio_con_iva` o en `price` marca la casilla del precio.
+
+Impresión y ficha (de la rama del servidor, ya nombradas arriba):
+
+- `core/pos/templates/sale/format/invoice.html` y `core/pos/templates/credit_note/format/invoice.html` (RIDE): en las
+  líneas con precio con IVA, la descripción de la línea y el precio unitario con los decimales del XML.
+- `core/pos/templates/sale/format/ticket.html`: en las líneas nuevas, descripción, «Cant. × p. unit. con IVA», importe T y
+  descuento con IVA; sin «Efectivo» ni «Cambio» cuando valen 0.
+- `templates/proformas/pdf.html` y `templates/proformas/detalle.html`: columnas «P. unit. con IVA», «Descuento» y «Total
+  con IVA» si todas las líneas tienen precio con IVA.
+
+Estilos:
+
+- `static/css/facturaporaqui.css`: asa, flechas y fila arrastrada; casillas numéricas anchas (cantidad, precio con
+  prefijo $, descuento con sufijo %) y el valor del descuento en $; descripción y avisos de la línea; las líneas en tabla
+  desde 1400 px y en tarjetas por debajo (sustituye las reglas anteriores de la tabla de líneas).
+
+Pruebas de la pantalla (`node --test tests/frontend/`): `importes_con_iva.test.cjs`, `detalle_lineas.test.cjs` y
+`nota_credito_importes.test.cjs` (nuevas) y `factura_base.test.cjs` (ajustada). Recorrido en navegador con el servidor de la
+rama: `precios-iva/registros/union-navegador.mjs` (en la VM, fuera del repositorio).
