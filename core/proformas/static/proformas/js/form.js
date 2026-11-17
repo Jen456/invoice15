@@ -1,5 +1,7 @@
 /* Editor de proformas (crear y editar). Las filas se arman con nodos del DOM y .text()/.val(): ningún dato del usuario se
-   inserta como HTML. Los totales son una vista previa; el servidor recalcula y manda. */
+   inserta como HTML. Precios CON IVA incluido y el mismo cálculo que la factura (static/js/fp-importes.js, contrato
+   «precios con IVA»); las filas se ordenan con su asa (static/js/fp-lineas.js) y el orden de fpForm.lineas es el que se
+   guarda. Los totales son una vista previa; el servidor recalcula y manda. */
 var fpForm = {
     config: {},
     proforma: null,
@@ -14,11 +16,18 @@ var fpForm = {
         return fecha.toISOString().slice(0, 10);
     },
     ids: function () { return fpForm.lineas.map(function (l) { return l.product; }); },
+    // Precio con IVA «0.00»: el que manda el servidor o, en datos anteriores al cambio, el precio sin IVA convertido como el
+    // catálogo (× (1 + tarifa), mitad hacia arriba). '' si no hay un precio válido.
+    precioConIva: function (conIva, sinIva, tarifa) {
+        var c = conIva !== undefined && conIva !== null && conIva !== '' ? fpImportes.centavos(String(conIva)) :
+            fpImportes.desdeSinIva(sinIva === undefined || sinIva === null ? null : Number(sinIva), tarifa);
+        return c === null ? '' : fpImportes.dinero(c);
+    },
     desdeProducto: function (p) {
         return {
-            product: p.id, codigo: p.code, nombre: p.name, descripcion: p.name, cant: 1,
-            price: Number(p.price_current).toFixed(2), dscto: 0, tarifa: Number(p.tarifa), nombre_tarifa: p.nombre_tarifa,
-            stock: p.stock, inventariado: p.inventoried
+            product: p.id, codigo: p.code, nombre: p.name, descripcion: typeof p.descripcion === 'string' && p.descripcion.trim() ? p.descripcion : p.name,
+            cant: 1, precio_con_iva: fpForm.precioConIva(p.precio_con_iva, p.price_current, Number(p.tarifa)), dscto: 0,
+            tarifa: Number(p.tarifa), nombre_tarifa: p.nombre_tarifa, stock: p.stock, inventariado: p.inventoried
         };
     },
     agregar: function (producto) {
@@ -33,60 +42,87 @@ var fpForm = {
         fpForm.lineas.push(fpForm.desdeProducto(producto));
         fpForm.dibujar();
     },
+    // Importes en centavos (contrato §1): T = precio con IVA × cantidad − descuento; base e IVA se derivan. null si algún
+    // dato de la línea no es válido.
     importes: function (l) {
-        var subtotal = fpForm.redondear((parseFloat(l.price) || 0) * (parseInt(l.cant, 10) || 0));
-        var descuento = fpForm.redondear(subtotal * (parseInt(l.dscto, 10) || 0) / 100);
-        var total = subtotal - descuento;
-        return {subtotal: subtotal, descuento: descuento, total: total, iva: fpForm.redondear(total * l.tarifa / 100)};
+        var r = fpImportes.linea({precio_con_iva: l.precio_con_iva, cant: l.cant, dscto: l.dscto, tarifa: l.tarifa});
+        if (r) r.grupo = l.nombre_tarifa || (r.tarifa + ' %');
+        return r;
     },
-    celda: function (etiqueta) { return $('<td>').attr('data-label', etiqueta); },
+    celda: function (etiqueta, clase) { return $('<td>').attr('data-label', etiqueta).addClass(clase || ''); },
     entrada: function (nombre, valor, atributos, etiqueta) {
-        return $('<input class="form-control form-control-sm">').attr($.extend({name: nombre, 'aria-label': etiqueta}, atributos)).val(valor);
+        return $('<input class="form-control fp-num-campo">').attr($.extend({name: nombre, 'aria-label': etiqueta, autocomplete: 'off'}, atributos)).val(valor);
+    },
+    textoDescuento: function (r, dscto) {
+        return r && Number(dscto) > 0 ? '−$' + fpImportes.dinero(r.descuento) + ' con IVA' : 'Sin descuento';
     },
     dibujar: function () {
-        var cuerpo = $('#tblLineas tbody').empty();
+        var cuerpo = $('#tblLineas tbody').empty(), total = fpForm.lineas.length;
         fpForm.lineas.forEach(function (l, indice) {
-            var fila = $('<tr>').attr('data-indice', indice);
-            fila.append(fpForm.celda('Código').text(l.codigo));
-            var producto = fpForm.celda('Producto').text(l.nombre);
-            producto.append($('<br>'), $('<small class="text-muted">').text('IVA ' + l.nombre_tarifa +
-                (l.inventariado ? ' · stock ' + l.stock : '')));
-            fila.append(producto);
-            fila.append(fpForm.celda('Descripción').append(fpForm.entrada('descripcion', l.descripcion, {maxlength: 300}, 'Descripción de ' + l.nombre)));
-            fila.append(fpForm.celda('Cantidad').append(fpForm.entrada('cant', l.cant, {type: 'number', min: 1, max: 999999, step: 1}, 'Cantidad de ' + l.nombre)));
-            fila.append(fpForm.celda('Precio unitario USD').append(fpForm.entrada('price', l.price, {type: 'number', min: 0, max: 999999.99, step: '0.01'}, 'Precio de ' + l.nombre)));
-            fila.append(fpForm.celda('Descuento %').append(fpForm.entrada('dscto', l.dscto, {type: 'number', min: 0, max: 100, step: 1}, 'Descuento de ' + l.nombre)));
-            fila.append(fpForm.celda('Total USD').addClass('fp-total-linea text-right').text(fpForm.dinero(fpForm.importes(l).total)));
-            fila.append(fpForm.celda('Quitar').append($('<button type="button" class="btn btn-danger btn-xs btn-flat" data-quitar>')
-                .attr('aria-label', 'Quitar ' + l.nombre).append('<i class="fas fa-times" aria-hidden="true"></i>')));
+            var n = indice + 1, r = fpForm.importes(l), idDesc = 'fp-pf-desc-' + indice, idDscto = 'fp-pf-dscto-' + indice;
+            var fila = $('<tr>').attr('data-indice', indice).toggleClass('fp-linea-invalida', !r);
+            fila.append(fpForm.celda('Orden', 'fp-col-orden').append($('<div class="fp-orden">').append(
+                $('<button type="button" class="fp-asa" aria-describedby="fp-orden-ayuda">').attr('aria-label', 'Mover la línea ' + n)
+                    .append($('<span aria-hidden="true">').text('⋮⋮')),
+                $('<span class="fp-orden-num" aria-hidden="true">').text(n),
+                $('<span class="fp-orden-flechas">').append(
+                    $('<button type="button" class="fp-orden-btn" data-mover="-1">').attr('aria-label', 'Subir la línea ' + n)
+                        .prop('disabled', n === 1).append('<i class="fas fa-chevron-up" aria-hidden="true"></i>'),
+                    $('<button type="button" class="fp-orden-btn" data-mover="1">').attr('aria-label', 'Bajar la línea ' + n)
+                        .prop('disabled', n === total).append('<i class="fas fa-chevron-down" aria-hidden="true"></i>')))));
+            fila.append(fpForm.celda('Código', 'fp-col-codigo').text(l.codigo));
+            var descripcion = $('<textarea class="form-control fp-desc-linea" name="descripcion" rows="1">').attr({
+                id: idDesc, maxlength: fpLineas.descripcion.MAX, 'data-contador': idDesc + '-aviso', 'aria-describedby': idDesc + '-aviso',
+                'aria-label': 'Descripción de la línea ' + n, spellcheck: 'true'}).val(l.descripcion);
+            var pie = $('<div class="fp-desc-pie">').append(
+                $('<small class="fp-desc-tarifa">').text('IVA ' + l.nombre_tarifa + (l.inventariado ? ' · stock ' + l.stock : '')),
+                $('<small class="fp-desc-producto">').text('Producto: ' + l.nombre).prop('hidden', fpLineas.descripcion.normalizar(l.descripcion) === l.nombre),
+                $('<small class="fp-desc-aviso" aria-live="polite">').attr('id', idDesc + '-aviso'));
+            fila.append(fpForm.celda('Descripción en la proforma', 'fp-col-desc').append(descripcion, pie));
+            fila.append(fpForm.celda('Cantidad', 'fp-col-cant').append($('<div class="fp-num">').append(
+                fpForm.entrada('cant', l.cant, {type: 'number', inputmode: 'numeric', min: 1, max: 999999, step: 1}, 'Cantidad de la línea ' + n))));
+            fila.append(fpForm.celda('P. unitario con IVA', 'fp-col-precio').append($('<div class="fp-num fp-dinero">').append(
+                $('<span class="fp-num-prefijo" aria-hidden="true">').text('$'),
+                fpForm.entrada('precio_con_iva', l.precio_con_iva, {type: 'text', inputmode: 'decimal', maxlength: 10}, 'Precio unitario con IVA de la línea ' + n))));
+            fila.append(fpForm.celda('Descuento', 'fp-col-dscto').append($('<div class="fp-dscto">').append(
+                $('<div class="fp-num fp-num-pct">').append(
+                    fpForm.entrada('dscto', l.dscto, {type: 'number', inputmode: 'numeric', min: 0, max: 100, step: 1, 'aria-describedby': idDscto}, 'Descuento en porcentaje de la línea ' + n),
+                    $('<span class="fp-num-sufijo" aria-hidden="true">').text('%')),
+                $('<small class="fp-dscto-valor">').attr('id', idDscto).text(fpForm.textoDescuento(r, l.dscto)))));
+            fila.append(fpForm.celda('Total con IVA', 'fp-col-total text-right').append(
+                $('<span class="fp-importe fp-total-linea">').text(r ? '$' + fpImportes.dinero(r.total) : '—')));
+            fila.append(fpForm.celda('Quitar', 'fp-col-quitar').append($('<button type="button" class="btn btn-outline-danger fp-quitar" data-quitar>')
+                .attr('aria-label', 'Quitar la línea ' + n + ': ' + l.descripcion).append('<i class="fas fa-trash-alt" aria-hidden="true"></i>')));
             cuerpo.append(fila);
         });
+        fpLineas.descripcion.ajustarTodas(document.getElementById('tblLineas'));
+        fpForm.totales();
+    },
+    mover: function (desde, hasta) {
+        var l = fpForm.lineas;
+        if (desde < 0 || desde >= l.length || hasta < 0 || hasta >= l.length) return;
+        l.splice(hasta, 0, l.splice(desde, 1)[0]);
+        fpForm.dibujar();
+    },
+    refrescarFila: function (fila, linea) {
+        var r = fpForm.importes(linea);
+        fila.toggleClass('fp-linea-invalida', !r);
+        fila.find('.fp-total-linea').text(r ? '$' + fpImportes.dinero(r.total) : '—');
+        fila.find('.fp-dscto-valor').text(fpForm.textoDescuento(r, linea.dscto));
         fpForm.totales();
     },
     totales: function () {
-        var grupos = {}, orden = [], descuento = 0, total = 0;
-        fpForm.lineas.forEach(function (l) {
-            var i = fpForm.importes(l);
-            if (!grupos[l.nombre_tarifa]) {
-                grupos[l.nombre_tarifa] = {base: 0, iva: 0, tarifa: l.tarifa};
-                orden.push(l.nombre_tarifa);
-            }
-            grupos[l.nombre_tarifa].base += i.total;
-            grupos[l.nombre_tarifa].iva += i.iva;
-            descuento += i.descuento;
-            total += i.total + i.iva;
-        });
-        orden.sort(function (a, b) { return grupos[b].tarifa - grupos[a].tarifa; });
+        var t = fpImportes.totales(fpForm.lineas.map(fpForm.importes));
         var cuerpo = $('#fp-totales tbody').empty();
         var fila = function (texto, valor, fuerte) {
-            var tr = $('<tr>').append($('<th scope="row">').text(texto), $('<td class="text-right">').text(fpForm.dinero(valor)));
+            var tr = $('<tr>').append($('<th scope="row">').text(texto), $('<td class="text-right">').text(fpImportes.dinero(valor)));
             if (fuerte) { tr.addClass('font-weight-bold'); }
             cuerpo.append(tr);
         };
-        orden.forEach(function (n) { fila('Subtotal ' + n, grupos[n].base); });
-        fila('Descuentos', descuento);
-        orden.forEach(function (n) { if (grupos[n].tarifa > 0) { fila('IVA ' + n, grupos[n].iva); } });
-        fila('TOTAL USD', total, true);
+        t.grupos.forEach(function (g) { fila('Subtotal ' + g.nombre + ' (sin IVA)', g.base); });
+        fila('Descuentos (con IVA)', t.descuento);
+        t.grupos.forEach(function (g) { if (g.tarifa > 0) { fila('IVA ' + g.nombre, g.iva); } });
+        fila('TOTAL USD (con IVA)', t.total, true);
     },
     tipoCliente: function (tipo) {
         $('.fp-registrado').toggleClass('d-none', tipo !== 'registrado');
@@ -106,7 +142,8 @@ var fpForm = {
             if (campo === 'lineas' && $.isArray(texto)) {
                 texto.forEach(function (e) {
                     var fila = $('#tblLineas tbody tr[data-indice="' + Number(e.indice) + '"]');
-                    fila.find('[name="' + e.campo + '"]').addClass('is-invalid');
+                    // El servidor anterior llamaba «price» al precio; ahora es el precio con IVA.
+                    fila.find('[name="' + (e.campo === 'price' ? 'precio_con_iva' : e.campo) + '"]').addClass('is-invalid');
                     var nombre = fpForm.lineas[e.indice] ? fpForm.lineas[e.indice].nombre : '';
                     lista.append($('<li>').text('Línea ' + (Number(e.indice) + 1) + (nombre ? ' (' + nombre + ')' : '') + ': ' + e.texto));
                 });
@@ -122,9 +159,12 @@ var fpForm = {
     guardar: function () {
         fpForm.limpiarErrores();
         var datos = new FormData(document.getElementById('frmForm'));
-        ['fp_tipo_cliente', 'descripcion', 'cant', 'price', 'dscto'].forEach(function (n) { datos.delete(n); });
+        ['fp_tipo_cliente', 'descripcion', 'cant', 'price', 'precio_con_iva', 'dscto'].forEach(function (n) { datos.delete(n); });
+        // Contrato «precios con IVA» §3: en el orden en que se ven las filas, con el precio CON IVA y la descripción.
         datos.append('lineas', JSON.stringify(fpForm.lineas.map(function (l) {
-            return {product: l.product, cant: l.cant, price: l.price, dscto: l.dscto, descripcion: l.descripcion};
+            var c = fpImportes.centavos(String(l.precio_con_iva));
+            return {product: l.product, cant: l.cant, precio_con_iva: c === null ? l.precio_con_iva : fpImportes.dinero(c),
+                dscto: l.dscto, descripcion: fpLineas.descripcion.normalizar(l.descripcion)};
         })));
         $.ajax({
             url: pathname, type: 'POST', data: datos, dataType: 'json', processData: false, contentType: false,
@@ -173,8 +213,9 @@ var fpForm = {
                             fpForm.agregar(p);
                             $(this).closest('tr').remove();
                         });
+                    var precio = fpForm.precioConIva(p.precio_con_iva, p.price_current, Number(p.tarifa));
                     cuerpo.append($('<tr>').append(
-                        $('<td>').text(p.code), $('<td>').text(p.name), $('<td class="text-right">').text(Number(p.price_current).toFixed(2)),
+                        $('<td>').text(p.code), $('<td>').text(p.name), $('<td class="text-right">').text(precio ? '$' + precio : '—'),
                         $('<td>').text(p.inventoried ? p.stock : 'No inventariado'), $('<td>').text(p.nombre_tarifa), $('<td>').append(boton)));
                 });
             },
@@ -209,7 +250,8 @@ var fpForm = {
             }
             fpForm.lineas.push({
                 product: l.product_id, codigo: l.codigo, nombre: l.producto.nombre, descripcion: l.descripcion, cant: l.cant,
-                price: l.price, dscto: parseInt(l.dscto, 10), tarifa: parseFloat(l.tarifa), nombre_tarifa: l.nombre_tarifa,
+                precio_con_iva: fpForm.precioConIva(l.precio_con_iva, l.price, parseFloat(l.tarifa)),
+                dscto: parseInt(l.dscto, 10), tarifa: parseFloat(l.tarifa), nombre_tarifa: l.nombre_tarifa,
                 stock: l.producto.stock, inventariado: l.producto.inventariado
             });
         });
@@ -295,18 +337,38 @@ $(function () {
         fpForm.esperaModal = setTimeout(fpForm.buscarEnModal, 300);
     });
 
+    var tabla = document.getElementById('tblLineas');
     $('#tblLineas tbody')
-        .on('input change', 'input', function () {
+        .on('input change', 'input', function (e) {
             var fila = $(this).closest('tr');
             var linea = fpForm.lineas[Number(fila.attr('data-indice'))];
             linea[this.name] = $(this).val();
-            fila.find('.fp-total-linea').text(fpForm.dinero(fpForm.importes(linea).total));
-            fpForm.totales();
+            if (e.type === 'change' && this.name === 'precio_con_iva') {   // «12,5» → «12.50» (el servidor valida igual)
+                var c = fpImportes.centavos(String(this.value));
+                if (c !== null) { linea.precio_con_iva = fpImportes.dinero(c); $(this).val(linea.precio_con_iva); }
+            }
+            fpForm.refrescarFila(fila, linea);
         })
         .on('click', '[data-quitar]', function () {
-            fpForm.lineas.splice(Number($(this).closest('tr').attr('data-indice')), 1);
+            var indice = Number($(this).closest('tr').attr('data-indice'));
+            fpForm.lineas.splice(indice, 1);
             fpForm.dibujar();
+            var filas = fpLineas.filas(tabla), siguiente = filas[Math.min(indice, filas.length - 1)];
+            if (siguiente) { $(siguiente).find('[data-quitar]').trigger('focus'); } else { buscador.trigger('focus'); }
         });
+    // Descripción (hasta 300 caracteres, sin saltos de línea) y orden de las filas: el orden de fpForm.lineas es el que se guarda.
+    fpLineas.descripcion.activar(tabla.tBodies[0], function (area, texto) {
+        var fila = $(area).closest('tr'), linea = fpForm.lineas[Number(fila.attr('data-indice'))];
+        linea.descripcion = texto;
+        fila.find('.fp-desc-producto').prop('hidden', fpLineas.descripcion.normalizar(texto) === linea.nombre);
+    });
+    fpLineas.ordenar(tabla, {
+        mover: fpForm.mover,
+        redibujar: fpForm.dibujar,
+        nombre: function (i) { return fpForm.lineas[i] ? fpForm.lineas[i].descripcion : ''; },
+        anuncio: document.getElementById('fp-orden-anuncio')
+    });
+    fpLineas.sinRueda(tabla);
 
     $('#frmForm').on('submit', function (evento) {
         evento.preventDefault();
