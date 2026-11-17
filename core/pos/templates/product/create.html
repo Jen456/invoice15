@@ -1,5 +1,5 @@
 {% extends 'form.html' %}
-{% load static %}
+{% load static widget_tweaks %}
 {% block assets_form %}
     <script src="{% static 'lib/select2-4.0.13/js/select2.min.js' %}"></script>
     <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
@@ -8,5 +8,26 @@
     <link rel="stylesheet" href="{% static 'lib/bootstrap-touchspin-4.2.5/css/jquery.bootstrap-touchspin.css' %}"/>
     <script src="{% static 'lib/bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js' %}"></script>
     <script src="{% static 'product/js/form.js' %}"></script>
+{% endblock %}
+{% block form_fields %}
+    {# El precio de venta se escribe CON IVA (contrato «precios con IVA»): `precio_con_iva` si el formulario lo trae, si no `pvp`. #}
+    {% for field in form.visible_fields %}
+        {% if field.name == 'precio_con_iva' or field.name == 'pvp' and not form.precio_con_iva %}
+            <div class="form-group fp-precio-venta">
+                <label for="{{ field.id_for_label }}">Precio de venta (con IVA):</label>
+                {% render_field field class+="form-control" inputmode="decimal" aria-describedby="fp-precio-venta-ayuda" %}
+                <small id="fp-precio-venta-ayuda" class="form-text text-muted">El precio final que paga el cliente, con el IVA de la tarifa incluido. El sistema calcula la base y el IVA de cada venta.</small>
+            </div>
+        {% else %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                {% if field.field.widget.input_type == 'checkbox' %}
+                    <br>{{ field }}
+                {% else %}
+                    {{ field|add_class:'form-control' }}
+                {% endif %}
+            </div>
+        {% endif %}
+    {% endfor %}
 {% endblock %}
 {% block content_form_before %}<template id="fp-product-context" data-company="{{ company.pk }}"></template>{% endblock %}

@@ -1,6 +1,11 @@
 var fv;
 var input_inventoried;
 
+// Precio de venta CON IVA (contrato «precios con IVA»): `precio_con_iva` si el formulario lo trae, si no `pvp`.
+function campoVenta() {
+    return document.querySelector('[name="precio_con_iva"]') ? 'precio_con_iva' : 'pvp';
+}
+
 document.addEventListener('DOMContentLoaded', function (e) {
     fv = FormValidation.formValidation(document.getElementById('frmForm'), {
             locale: 'es_ES',
@@ -140,6 +145,14 @@ document.addEventListener('DOMContentLoaded', function (e) {
             };
             submit_with_formdata(args);
         });
+    if (campoVenta() !== 'pvp') {
+        fv.addField(campoVenta(), {
+            validators: {
+                notEmpty: {},
+                numeric: {message: 'El valor no es un número', thousandsSeparator: '', decimalSeparator: '.'}
+            }
+        });
+    }
 });
 
 $(function () {
@@ -167,14 +180,14 @@ $(function () {
             prefix: '$'
         })
         .on('change touchspin.on.min touchspin.on.max', function () {
-            $('input[name="pvp"]').trigger("touchspin.updatesettings", {min: parseFloat($(this).val())});
+            $('input[name="' + campoVenta() + '"]').trigger("touchspin.updatesettings", {min: parseFloat($(this).val())});
             fv.revalidateField('price');
         })
         .on('keypress', function (e) {
             return validate_text_box({'event': e, 'type': 'decimals'});
         });
 
-    $('input[name="pvp"]')
+    $('input[name="' + campoVenta() + '"]')
         .TouchSpin({
             min: 0.01,
             max: 1000000,
@@ -185,7 +198,7 @@ $(function () {
             prefix: '$'
         })
         .on('change touchspin.on.min touchspin.on.max', function () {
-            fv.revalidateField('pvp');
+            fv.revalidateField(campoVenta());
         })
         .on('keypress', function (e) {
             return validate_text_box({'event': e, 'type': 'decimals'});
@@ -211,5 +224,5 @@ $(function () {
         });
 
     $('i[data-field="price"]').hide();
-    $('i[data-field="pvp"]').hide();
+    $('i[data-field="' + campoVenta() + '"]').hide();
 });
