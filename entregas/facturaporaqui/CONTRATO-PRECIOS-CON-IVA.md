@@ -39,6 +39,13 @@ Código: `core/pos/precios_iva.py` (`calcular`, `precio_unitario`, `medio_arriba
 Totales del comprobante: `importeTotal = Σ T`; por tarifa `baseImponible = Σ base` y `valor = Σ iva`;
 `totalSinImpuestos = Σ base`; `totalDescuento = Σ descuento_sin_iva`. Nunca se recalcula el IVA como base × tarifa.
 
+Dos descuentos distintos, los dos correctos:
+
+- **Descuento con IVA** (`desc`): el que se escribe y ve la usuaria en la pantalla, en el ticket y en el PDF de la
+  proforma. 1000,00 con 10 % → 100,00.
+- **Descuento sin IVA** (`descuento_sin_iva`): el del XML (`descuento` de la línea y `totalDescuento`), el del RIDE y el
+  de `Sale.total_dscto`. El mismo ejemplo → 86,96.
+
 Dónde queda cada número en la línea guardada (`SaleDetail`, `CreditNoteDetail`, `ProformaDetalle`):
 
 | Campo | Valor |
@@ -134,7 +141,8 @@ Proformas (crear y editar, campo `lineas`): se mantienen sus claves de siempre y
     {"product": 12, "cant": 2, "precio_con_iva": "1000.00", "dscto": 0, "descripcion": ""}
 
 (`id` también vale en lugar de `product`.) Precisión del contrato: en proformas la lista sigue llamándose `lineas` y el
-producto `product`, como hoy. El error de línea del precio viene con `campo: "precio_con_iva"` (antes `"price"`).
+producto `product`, como hoy. El error de línea del precio viene con `campo: "precio_con_iva"` (antes `"price"`; la
+pantalla ya pinta los dos en la casilla del precio).
 
 Formulario del producto (`/pos/product/add/` y `/pos/product/update/<id>/`, también el alta rápida desde la factura):
 campo **`precio_con_iva`** (obligatorio, etiqueta «Precio de venta (con IVA)»). Ya no hay campo `pvp` en el formulario.
@@ -191,8 +199,13 @@ Ticket: en las líneas nuevas, la descripción, «Cant. × p. unit. con IVA» co
 solo si lo hay. El pie (subtotales sin IVA por tarifa, descuentos, IVA y total) no cambia. Sin «Efectivo» ni «Cambio»
 cuando valen 0 (muestra «Pago: Efectivo» si el medio es efectivo); las ventas anteriores con valores los conservan.
 
-PDF de la proforma: si todas sus líneas tienen precio con IVA, las columnas son «P. unit. con IVA», «Descuento» (con IVA)
-y «Total con IVA». Las proformas anteriores, como siempre.
+PDF y ficha de la proforma (`templates/proformas/pdf.html` y `detalle.html`): la descripción de cada línea y, si todas
+sus líneas tienen precio con IVA, las columnas «P. unit. con IVA», «Descuento» (con IVA) y «Total con IVA». Las proformas
+anteriores, como siempre.
+
+Listado de ventas (modal de detalle, `search_detail_products`): el servidor ya manda `descripcion`, `precio_con_iva` y
+`total_con_iva` de cada línea; el JS del modal (`core/pos/static/sale/admin/js/list.js`) todavía muestra nombre y
+precio/total sin IVA: se ajusta al unir las ramas.
 
 Guía de remisión: la descripción de la línea de la factura. Excel del catálogo: columna 11 «Precio de venta (con IVA)» al
 exportar; al importar, si esa columna cambia, manda; si no, manda la 6 (sin IVA), como en los archivos de antes.
@@ -282,10 +295,11 @@ Archivos del servidor tocados (rama `fase/precios-con-iva`):
 - `core/pos/views/sale/views.py`: líneas con precio con IVA y descripción; sin efectivo ni cambio.
 - `core/pos/forms.py`: `ProductForm` pide `precio_con_iva`; `SaleForm` sin `cash` ni `change`.
 - `core/pos/notas_credito.py`: la línea de la nota copia precio con IVA y descripción.
-- `core/proformas/models.py`, `core/proformas/servicios.py`: validación, cálculo, duplicar, precarga, borrador, conversión,
-  JSON y contexto del PDF.
+- `core/proformas/models.py`, `core/proformas/servicios.py`, `core/proformas/views.py`: validación, cálculo, duplicar,
+  precarga, borrador, conversión, JSON y contexto del PDF y de la ficha.
 - `core/pos/templates/sale/format/invoice.html`, `ticket.html`, `core/pos/templates/credit_note/format/invoice.html`,
-  `templates/proformas/pdf.html`: formatos de impresión.
+  `templates/proformas/pdf.html`: formatos de impresión; `templates/proformas/detalle.html` (ficha de la proforma, a
+  pedido de la coordinación: la rama de pantalla no la toca).
 - `core/comprobantes/fidelidad.py`, `core/comprobantes/guias.py`, `core/pos/views/product/views.py` (Excel).
 - Pruebas: `tests/test_precios_con_iva.py` y `tests/ayudas_precios.py` (nuevas); ajustadas al formato nuevo:
   `ayudas_proformas.py`, `test_alta_producto_en_factura.py`, `test_diseno_factura.py`, `test_emision_sri.py`,
