@@ -14,8 +14,49 @@ var credit_note = {
         total: 0.00,
         products: [],
     },
+    // Precios CON IVA (contrato «precios con IVA» §1 y §2): una factura guardada con precio con IVA (todas sus líneas traen
+    // `con_iva_incluido`) se devuelve con el mismo cálculo que hará el servidor (static/js/fp-importes.js) sobre la cantidad
+    // devuelta: precio con IVA × cantidad − descuento = total con IVA, y de ahí la base y el IVA. Una factura anterior al
+    // cambio se calcula y se muestra como siempre (precio sin IVA). El servidor recalcula y manda: cantidad devuelta es lo
+    // único que lee de esta pantalla (precio, descripción, descuento y tarifa salen de la factura).
+    conIva: function () {
+        return !this.detail.products.some(function (l) { return l.con_iva_incluido !== true; });
+    },
+    importes: function (linea) {
+        if (linea.con_iva_incluido !== true) return null;
+        return fpImportes.lineaSegura({precio_con_iva: linea.precio_con_iva, cant: linea.quantity, dscto: linea.dscto,
+            tarifa: linea.tarifa});
+    },
+    texto: function (x) {
+        return $('<div>').text(x === null || x === undefined ? '' : String(x)).html();
+    },
+    textoPrecio: function (row) {
+        if (!this.conIva()) return '$' + row.price.toFixed(2);
+        var c = fpImportes.centavos(String(row.precio_con_iva));
+        return c === null ? '—' : '$' + fpImportes.dinero(c);
+    },
+    textoDescuento: function (row) {
+        // El descuento es el de la factura (el servidor no lo toma de esta pantalla): se muestra, no se edita.
+        var porcentaje = Number(row.dscto) || 0;
+        if (!porcentaje) return 'Sin descuento';
+        var valor = this.conIva() ? (row.descuento_con_iva || '0.00') + ' con IVA' : (row.total_dscto || 0).toFixed(2) + ' sin IVA';
+        return this.texto(porcentaje) + ' %<br><small class="text-muted">−$' + this.texto(valor) + '</small>';
+    },
+    textoTotal: function (row) {
+        if (!this.conIva()) return '$' + (row.total || 0).toFixed(2);
+        return row.total_con_iva ? '$' + this.texto(row.total_con_iva) : '—';
+    },
+    refrescarFila: function (indice) {
+        var linea = this.detail.products[indice], nodo = $(tblProducts.row(indice).node());
+        nodo.find('.fp-nc-dscto').html(this.textoDescuento(linea));
+        nodo.find('td:last').html(this.textoTotal(linea));
+    },
     listProducts: function () {
         this.calculateInvoice();
+        var conIva = this.conIva(), encabezados = $('#tblProducts thead th');
+        encabezados.eq(4).text(conIva ? 'P. unitario con IVA' : 'P./Unitario (sin IVA)');
+        encabezados.eq(6).text(conIva ? 'Total con IVA' : 'Total (sin IVA)');
+        $('#fp-nc-rotulo-dscto').text(conIva ? ' (CON IVA)' : ' (SIN IVA)');
         tblProducts = $('#tblProducts').DataTable({
             autoWidth: false,
             destroy: true,
@@ -30,7 +71,7 @@ var credit_note = {
                 {data: "cant"},
                 {data: "quantity"},
                 {data: "price"},
-                {data: "total_dscto"},
+                {data: "dscto"},
                 {data: "total"},
             ],
             columnDefs: [
@@ -45,12 +86,11 @@ var credit_note = {
                     targets: [1],
                     render: function (data, type, row) {
                         // Solo presentación: la descripción escrita en la línea de la factura (precios con IVA), si la tiene.
-                        var texto = function (x) { return $('<div>').text(x === null || x === undefined ? '' : x).html(); };
                         var nombre = row.product ? row.product.short_name : '';
                         if (typeof row.descripcion === 'string' && row.descripcion.trim() && row.descripcion !== (row.product || {}).name) {
-                            return texto(row.descripcion) + '<br><small class="text-muted">Producto: ' + texto(nombre) + '</small>';
+                            return credit_note.texto(row.descripcion) + '<br><small class="text-muted">Producto: ' + credit_note.texto(nombre) + '</small>';
                         }
-                        return texto(nombre);
+                        return credit_note.texto(nombre);
                     }
                 },
                 {
@@ -61,27 +101,24 @@ var credit_note = {
                     }
                 },
                 {
+                    targets: [-3],
+                    class: 'text-center',
+                    render: function (data, type, row) {
+                        return credit_note.textoPrecio(row);
+                    }
+                },
+                {
                     targets: [-2],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return '<input type="text" class="form-control" autocomplete="off" name="dscto_unitary" value="' + row.dscto + '">';
+                        return '<span class="fp-nc-dscto">' + credit_note.textoDescuento(row) + '</span>';
                     }
                 },
                 {
                     targets: [-1],
                     class: 'text-center',
                     render: function (data, type, row) {
-                        return '$' + data.toFixed(2);
-                    }
-                },
-                {
-                    targets: [-3],
-                    class: 'text-center',
-                    render: function (data, type, row) {
-                        // Precio sin IVA (el de la devolución, sin cambios) y, como referencia, el precio con IVA de la factura.
-                        var conIva = row.precio_con_iva !== undefined && row.precio_con_iva !== null && row.precio_con_iva !== '' ?
-                            '<br><small class="text-muted">con IVA $' + $('<div>').text(String(row.precio_con_iva)).html() + '</small>' : '';
-                        return '$' + data.toFixed(2) + conIva;
+                        return credit_note.textoTotal(row);
                     }
                 }
             ],
@@ -90,29 +127,14 @@ var credit_note = {
                 tr.find('input[name="quantity"]')
                     .TouchSpin({
                         min: 1,
-                        max: data.cant
+                        // Lo que aún se puede acreditar de la línea (vendido menos lo ya acreditado), que es lo que admite el servidor.
+                        max: data.disponible !== undefined ? data.disponible : data.cant
                     })
                     .on('keypress', function (e) {
                         return validate_text_box({'event': e, 'type': 'numbers'});
                     });
 
-                tr.find('input[name="dscto_unitary"]')
-                    .TouchSpin({
-                        min: 0.00,
-                        max: 100,
-                        step: 0.01,
-                        decimals: 2,
-                        boostat: 5,
-                        maxboostedstep: 10,
-                        postfix: "0.00"
-                    })
-                    .on('keypress', function (e) {
-                        return validate_text_box({'event': e, 'type': 'decimals'});
-                    });
-
                 tr.find('input[name="quantity"]').prop('disabled', data.state === 0);
-                tr.find('input[name="dscto_unitary"]').prop('disabled', data.state === 0);
-
             },
             initComplete: function (settings, json) {
                 $(this).wrap('<div class="dataTables_scroll"><div/>');
@@ -121,22 +143,39 @@ var credit_note = {
     },
     calculateInvoice: function () {
         var tax = this.detail.iva / 100;
-        var products = this.detail.products.filter(value => value.state === 1);
         // Tarifa de la línea de la factura (15 %, 5 %, 0 %, exento o no objeto); el servidor recalcula y manda.
         var redondear = function (valor) { return Math.round((valor + Number.EPSILON) * 100) / 100; };
-        products.forEach(function (value, index, array) {
+        var nuevas = [], anteriores = [];
+        this.detail.products.forEach(function (value, index, array) {
+            var r = credit_note.importes(value);
             value.iva = value.tarifa !== undefined ? parseFloat(value.tarifa) / 100 : (value.product.with_tax ? parseFloat(tax) : 0);
+            if (r) {
+                // Línea con precio con IVA: total con IVA exacto; base e IVA derivados (centavos enteros, mitad hacia arriba).
+                value.total_con_iva = fpImportes.dinero(r.total);
+                value.descuento_con_iva = fpImportes.dinero(r.descuento);
+                value.base = fpImportes.numero(r.base);
+                value.total_iva = fpImportes.numero(r.iva);
+                value.total_dscto = fpImportes.numero(r.descuento);
+                value.total = fpImportes.numero(r.total);
+                if (value.state === 1) nuevas.push(r);
+                return;
+            }
+            // Línea anterior al cambio: el cálculo de siempre, sobre el precio sin IVA.
             value.price_with_vat = value.price + (value.price * value.iva);
             value.subtotal = redondear(value.price * value.quantity);
             value.total_dscto = redondear(value.subtotal * parseFloat((value.dscto / 100)));
             value.total = value.subtotal - value.total_dscto;
+            value.base = value.total;
             value.total_iva = redondear(value.total * value.iva);
+            if (value.state === 1) anteriores.push(value);
         });
-        this.detail.subtotal_0 = products.filter(value => !value.iva).reduce((a, b) => a + (b.total || 0), 0);
-        this.detail.subtotal_12 = products.filter(value => value.iva > 0).reduce((a, b) => a + (b.total || 0), 0);
-        this.detail.total_dscto = this.detail.products.reduce((a, b) => a + (b.total_dscto || 0), 0);
+        var t = fpImportes.totales(nuevas);
+        var sumar = function (lista, campo) { return lista.reduce(function (a, b) { return a + (b[campo] || 0); }, 0); };
+        this.detail.subtotal_0 = fpImportes.numero(t.base_0) + sumar(anteriores.filter(value => !value.iva), 'base');
+        this.detail.subtotal_12 = fpImportes.numero(t.base_gravada) + sumar(anteriores.filter(value => value.iva > 0), 'base');
+        this.detail.total_dscto = fpImportes.numero(t.descuento) + sumar(anteriores, 'total_dscto');
         this.detail.subtotal = parseFloat(this.detail.subtotal_0) + parseFloat(this.detail.subtotal_12);
-        this.detail.total_iva = products.reduce((a, b) => a + (b.total_iva || 0), 0);
+        this.detail.total_iva = fpImportes.numero(t.iva) + sumar(anteriores, 'total_iva');
         this.detail.total = this.detail.subtotal + this.detail.total_iva;
         this.detail.total = parseFloat(this.detail.total.toFixed(2));
 
@@ -226,7 +265,8 @@ document.addEventListener('DOMContentLoaded', function (e) {
             ['quantity', 'dscto_unitary'].forEach(function (value) {
                 params.delete(value)
             });
-            params.append('products', JSON.stringify(credit_note.detail.products));
+            // Solo las líneas marcadas: el servidor acredita cada línea que recibe con su cantidad.
+            params.append('products', JSON.stringify(credit_note.detail.products.filter(value => value.state === 1)));
             var args = {
                 'params': params,
                 'form': fv.form
@@ -282,6 +322,7 @@ $(function () {
     })
         .on('select2:select', function (e) {
             var object = e.params.data;
+            object.detail.forEach(function (linea) { linea.disponible = linea.quantity; });   // lo que queda por acreditar
             credit_note.detail.products = object.detail;
             credit_note.listProducts();
             input_date_joined.datetimepicker('minDate', object.date_joined);
@@ -318,21 +359,14 @@ $(function () {
             credit_note.detail.products[tr.row].state = this.checked ? 1 : 0;
             $('td', tblProducts.row(tr.row).node()).find('input[type="text"]').prop('disabled', !this.checked);
             credit_note.calculateInvoice();
-            $('td:last', tblProducts.row(tr.row).node()).html('$' + credit_note.detail.products[tr.row].total.toFixed(2));
+            credit_note.refrescarFila(tr.row);
         })
         .on('change', 'input[name="quantity"]', function () {
             var tr = tblProducts.cell($(this).closest('td, li')).index();
-            credit_note.detail.products[tr.row].quantity = parseInt($(this).val());
+            var cantidad = parseInt($(this).val(), 10);
+            credit_note.detail.products[tr.row].quantity = isNaN(cantidad) ? 1 : cantidad;
             credit_note.calculateInvoice();
-            $('td:last', tblProducts.row(tr.row).node()).html('$' + credit_note.detail.products[tr.row].total.toFixed(2));
-        })
-        .on('change', 'input[name="dscto_unitary"]', function () {
-            var tr = tblProducts.cell($(this).closest('td, li')).index();
-            credit_note.detail.products[tr.row].dscto = parseFloat($(this).val());
-            credit_note.calculateInvoice();
-            var parent = $(this).closest('.bootstrap-touchspin');
-            parent.find('.bootstrap-touchspin-postfix').children().html(credit_note.detail.products[tr.row].total_dscto.toFixed(2));
-            $('td:last', tblProducts.row(tr.row).node()).html('$' + credit_note.detail.products[tr.row].total.toFixed(2));
+            credit_note.refrescarFila(tr.row);
         })
         .on('click', 'a[rel="remove"]', function () {
             var tr = tblProducts.cell($(this).closest('td, li')).index();

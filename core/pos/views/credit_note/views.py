@@ -75,7 +75,8 @@ class CreditNoteCreateView(GroupPermissionMixin, CreateView):
         try:
             if action == 'add':
                 # Reglas en el servidor (core/pos/notas_credito.py): cantidades, precios y tarifa salen de la factura.
-                lineas = [(i['id'], i['quantity']) for i in json.loads(request.POST['products'])]
+                # Una línea que la pantalla envía sin marcar (`state` 0) no se acredita (antes se acreditaba igual).
+                lineas = [(i['id'], i['quantity']) for i in json.loads(request.POST['products']) if i.get('state', 1) != 0]
                 # Punto de emisión fijado al formulario (`punto`), validado otra vez para este usuario; sin él, su punto activo.
                 punto = pt.punto_del_formulario(request.user, request.company, request.POST.get('punto'))
                 with transaction.atomic():

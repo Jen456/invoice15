@@ -10,6 +10,7 @@
     <script src="{% static 'lib/bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js' %}"></script>
     <script src="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js' %}"></script>
     <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
+    <script src="{% static 'js/fp-importes.js' %}"></script>
     <script src="{% static 'credit_note/admin/js/form.js' %}"></script>
 {% endblock %}
 
@@ -63,9 +64,10 @@
                         <th style="width: 25%;">Producto</th>
                         <th style="width: 15%;">Cantidad vendida</th>
                         <th style="width: 15%;">Cantidad devuelta</th>
-                        <th style="width: 15%;">P./Unitario (sin IVA)</th>
+                        {# form.js pone «(sin IVA)» en estas dos columnas si la factura es anterior a los precios con IVA. #}
+                        <th style="width: 15%;">P. unitario con IVA</th>
                         <th style="width: 15%;">Descuento</th>
-                        <th style="width: 10%;">Total (sin IVA)</th>
+                        <th style="width: 10%;">Total con IVA</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -82,11 +84,11 @@
                         <td>{{ form.subtotal_0 }}</td>
                     </tr>
                     <tr>
-                        <td><b>SUBTOTAL CON IVA</b></td>
+                        <td><b>SUBTOTAL GRAVADO (SIN IVA)</b></td>
                         <td>{{ form.subtotal_12 }}</td>
                     </tr>
                     <tr>
-                        <td><b>{{ form.total_dscto.label|upper }}</b></td>
+                        <td><b>{{ form.total_dscto.label|upper }}<span id="fp-nc-rotulo-dscto"> (CON IVA)</span></b></td>
                         <td>{{ form.total_dscto }}</td>
                     </tr>
                     <tr>
