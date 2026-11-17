@@ -52,6 +52,7 @@ var sale = {
             var r = fpImportes.linea({precio_con_iva: value.precio_con_iva, cant: value.cant, dscto: value.dscto,
                 tarifa: sale.tarifaDe(value)});
             value.importes_validos = r !== null;
+            value.excede_maximo = r !== null && r.total > sale.MAXIMO_CENTAVOS;
             if (r) {
                 r.grupo = value.nombre_tarifa ? 'IVA ' + value.nombre_tarifa : 'IVA ' + r.tarifa + ' %';
                 calculos.push(r);
@@ -63,6 +64,7 @@ var sale = {
             value.total_dscto = r ? fpImportes.numero(r.descuento) : 0;
         });
         var t = fpImportes.totales(calculos);
+        this.detail.excede_maximo = t.total > sale.MAXIMO_CENTAVOS;
         this.detail.subtotal_0 = fpImportes.numero(t.base_0);
         this.detail.subtotal_12 = fpImportes.numero(t.base_gravada);
         this.detail.subtotal = fpImportes.numero(t.base);
@@ -242,14 +244,23 @@ var sale = {
             return fila;
         });
     },
+    MAXIMO_CENTAVOS: 999999999,   // USD 9.999.999,99: lo más que guardan la línea y el comprobante (9 dígitos)
     lineasValidas: function () {
         // Antes de enviar: ninguna línea con importes sin calcular ni descripción fuera de lo que admite el servidor.
         var mala = this.detail.products.findIndex(function (l) {
             return !l.importes_validos || fpLineas.descripcion.normalizar(l.descripcion).length > fpLineas.descripcion.MAX;
         });
-        if (mala === -1) return true;
-        message_error('Revisa la línea ' + (mala + 1) + ': cantidad, precio con IVA, descuento o descripción.');
-        return false;
+        if (mala !== -1) {
+            message_error('Revisa la línea ' + (mala + 1) + ': cantidad, precio con IVA, descuento o descripción.');
+            return false;
+        }
+        var grande = this.detail.products.findIndex(function (l) { return l.excede_maximo; });
+        if (grande !== -1 || this.detail.excede_maximo) {
+            message_error((grande !== -1 ? 'La línea ' + (grande + 1) : 'El total') +
+                ' supera USD 9.999.999,99, lo máximo que admite un comprobante.');
+            return false;
+        }
+        return true;
     },
     camposDeLinea: ['search_product', 'input_search_product', 'cant', 'precio_linea', 'price_current', 'dscto_unitary',
         'tarifa_linea', 'descripcion_linea'],
