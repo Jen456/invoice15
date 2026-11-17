@@ -55,16 +55,20 @@
 
     <table class="detalle">
         <colgroup><col style="width:11%"><col style="width:8%"><col style="width:45%"><col style="width:12%"><col style="width:11%"><col style="width:13%"></colgroup>
-        <thead><tr><th>Código</th><th class="num">Cant.</th><th>Descripción</th><th class="num">P. unitario</th><th class="num">Descuento</th><th class="num">Total</th></tr></thead>
+        <thead><tr><th>Código</th><th class="num">Cant.</th><th>Descripción</th>{% if precios_con_iva %}<th class="num">P. unit. con IVA</th><th class="num">Descuento</th><th class="num">Total con IVA</th>{% else %}<th class="num">P. unitario</th><th class="num">Descuento</th><th class="num">Total</th>{% endif %}</tr></thead>
         <tbody>
         {% for linea in lineas %}
             <tr>
                 <td>{{ linea.codigo }}</td>
                 <td class="num">{{ linea.cant }}</td>
                 <td>{{ linea.descripcion }}<br><small>IVA {{ linea.nombre_tarifa }}</small></td>
+{% if precios_con_iva %}
+                <td class="num">{{ linea.precio_con_iva|floatformat:2 }}</td>
+                <td class="num">{{ linea.descuento_con_iva|floatformat:2 }}</td>
+                <td class="num">{{ linea.total_con_iva|floatformat:2 }}</td>{% else %}
                 <td class="num">{{ linea.price|floatformat:2 }}</td>
                 <td class="num">{{ linea.total_dscto|floatformat:2 }}</td>
-                <td class="num">{{ linea.total|floatformat:2 }}</td>
+                <td class="num">{{ linea.total|floatformat:2 }}</td>{% endif %}
             </tr>
         {% endfor %}
         </tbody>

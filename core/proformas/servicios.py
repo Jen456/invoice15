@@ -157,7 +157,6 @@ AVISOS = {
     'stock_parcial': '«{nombre}»: hay {stock} en stock y la proforma pedía {cant}; se cargaron {stock}.',
     'tarifa_cambiada': '«{nombre}»: el IVA cambió de {antes} a {ahora}; la factura usa la tarifa actual.',
     'precio_distinto': '«{nombre}»: se usa el precio de la proforma (USD {precio}) y no el actual (USD {actual}).',
-    'descripcion': 'La factura usa el nombre de cada producto, no la descripción escrita en la proforma.',
     'prospecto': 'La proforma es para un prospecto: registra al cliente antes de emitir.',
     'pruebas': ('La empresa está en PRUEBAS: la factura no tendrá validez tributaria y la proforma quedará facturada con '
                 'ella. Para volver a cotizar, duplícala.'),
@@ -305,6 +304,15 @@ def _auditar(request, usuario, codigo, p, **detalle):
     if request is None:
         request = crum.get_current_request() or SimpleNamespace(user=usuario, META={})
     audit(request, codigo, company=require_company(), proforma=p.numero_completo, proforma_id=int(p.pk), **detalle)
+
+
+def precio_con_iva_de_proforma(linea):
+    """Precio con IVA de una línea de proforma: el escrito o, en las anteriores (precio sin IVA), ese precio con la tarifa
+    ACTUAL del producto, que es la que usan la copia y la factura (avisos `tarifa_cambiada`)."""
+    from core.pos import precios_iva
+    if linea.precio_con_iva is not None:
+        return Decimal(str(linea.precio_con_iva)).quantize(CENTAVO)
+    return precios_iva.con_iva(_cuantizar(linea.price), linea.product.tarifa_porcentaje())
 
 
 def tarifa_de_producto(product):
@@ -483,6 +491,10 @@ def _validar_cliente(datos, campos):
 
 
 def _validar_lineas(datos, campos):
+    """Líneas del editor en el formato del contrato de precios con IVA (§3): [{product (o id), cant, precio_con_iva, dscto
+    (porcentaje), descripcion}], en el orden en que se ven. Sin `precio_con_iva` (página anterior) se rechaza todo con
+    PANTALLA_CAMBIO_PROFORMA: nunca se toma `price` (sin IVA) como precio con IVA."""
+    from core.pos import precios_iva
     from core.pos.models import Product
     crudas = datos.get('lineas', '')
     if isinstance(crudas, str):
@@ -496,13 +508,19 @@ def _validar_lineas(datos, campos):
     if len(crudas) > MAX_LINEAS:
         campos['lineas'] = CAMPOS['lineas_max']
         return []
-    ids = [_entero(c.get('product')) for c in crudas if isinstance(c, dict)]
+    if any(isinstance(c, dict) and 'precio_con_iva' not in c for c in crudas):
+        raise ErrorProforma(precios_iva.PANTALLA_CAMBIO_PROFORMA, estado_http=409)
+
+    def producto_de(cruda):
+        return _entero(cruda.get('product') if cruda.get('product') not in (None, '') else cruda.get('id'))
+
+    ids = [producto_de(c) for c in crudas if isinstance(c, dict)]
     productos = {p.pk: p for p in Product.objects.filter(pk__in=[i for i in ids if i is not None])}
     errores, lineas, vistos = [], [], set()
     for indice, cruda in enumerate(crudas):
         cruda = cruda if isinstance(cruda, dict) else {}
         propios = []
-        producto = productos.get(_entero(cruda.get('product')))
+        producto = productos.get(producto_de(cruda))
         if producto is None:
             propios.append(('product', LINEAS['product']))
         elif producto.pk in vistos:
@@ -512,20 +530,20 @@ def _validar_lineas(datos, campos):
         cant = _entero(cruda.get('cant'))
         if cant is None or not 1 <= cant <= MAX_CANTIDAD:
             propios.append(('cant', LINEAS['cant']))
-        precio = _decimal(cruda.get('price'))
+        precio = _decimal(cruda.get('precio_con_iva'))
         if precio is None or not Decimal('0') <= precio <= MAX_PRECIO or precio != precio.quantize(CENTAVO):
-            propios.append(('price', LINEAS['price']))
+            propios.append(('precio_con_iva', LINEAS['price']))
         dscto = _decimal(cruda.get('dscto') if cruda.get('dscto') not in ('', None) else 0)   # sin descuento = 0
         if dscto is None or dscto != dscto.to_integral_value() or not 0 <= dscto <= 100:
             propios.append(('dscto', LINEAS['dscto']))
-        descripcion = ' '.join(str(cruda.get('descripcion') or '').split())
-        if len(descripcion) > 300:
-            propios.append(('descripcion', LINEAS['descripcion']))
+        descripcion, error = precios_iva.limpiar_descripcion(cruda.get('descripcion'), producto.name if producto else '')
+        if error:
+            propios.append(('descripcion', error))
         if propios:
             errores.extend({'indice': indice, 'campo': campo, 'texto': texto} for campo, texto in propios)
             continue
-        lineas.append(ProformaDetalle(product=producto, codigo=producto.code[:20], descripcion=descripcion or producto.name[:300],
-                                      cant=cant, price=precio.quantize(CENTAVO),
+        lineas.append(ProformaDetalle(product=producto, codigo=producto.code[:20], descripcion=descripcion,
+                                      cant=cant, precio_con_iva=precio.quantize(CENTAVO),
                                       dscto=(dscto / 100).quantize(CENTAVO, ROUND_HALF_UP),
                                       codigo_porcentaje=tarifa_de_producto(producto)))
     if errores:
@@ -574,14 +592,16 @@ IMPORTES = ('subtotal_gravado', 'subtotal_cero', 'total_iva', 'total_descuento',
 
 
 def calcular(proforma, lineas):
-    """Importes de cada línea con su tarifa y totales de la proforma, con las mismas funciones que la factura."""
-    from core.pos.models import calcular_linea_iva, totales_de_lineas
+    """Importes de cada línea con su tarifa y totales de la proforma, con las mismas funciones que la factura: con precio
+    con IVA, el contrato §1 (core/pos/precios_iva.py); las líneas anteriores, calcular_linea_iva."""
+    from core.pos.models import calcular_linea, totales_de_lineas
     for linea in lineas:
-        calcular_linea_iva(linea, linea.codigo_porcentaje)
+        calcular_linea(linea, linea.codigo_porcentaje)
     gravado, cero, iva, descuento = totales_de_lineas(lineas)
     total = gravado + cero + iva
     importes = [gravado, cero, iva, descuento, total]
     importes += [Decimal(str(v)) for linea in lineas for v in (linea.subtotal, linea.total_dscto, linea.price_with_vat)]
+    importes += [Decimal(str(linea.precio_con_iva)) * linea.cant for linea in lineas if linea.precio_con_iva is not None]
     if max(importes) > MAX_IMPORTE:   # ningún importe desborda DecimalField(9, 2), ni aquí ni en la factura
         raise ErrorProforma(MENSAJES['total_maximo'])
     proforma.subtotal_gravado = _cuantizar(gravado)
@@ -647,8 +667,10 @@ def duplicar(proforma_id, usuario):
         if linea.product_id is None:
             avisos.append(AVISOS['producto_eliminado'].format(descripcion=linea.descripcion))
             continue
+        # La copia es con precio con IVA: el de la línea o, en las anteriores (precio sin IVA), ese precio con la tarifa
+        # actual del producto (lo que cobraba la proforma original con esa tarifa).
         lineas.append(ProformaDetalle(product=linea.product, codigo=linea.product.code[:20], descripcion=linea.descripcion,
-                                      cant=linea.cant, price=linea.price, dscto=linea.dscto,
+                                      cant=linea.cant, precio_con_iva=precio_con_iva_de_proforma(linea), dscto=linea.dscto,
                                       codigo_porcentaje=tarifa_de_producto(linea.product)))
     if not lineas:
         raise ErrorProforma(MENSAJES['sin_lineas_facturables'].format(numero=original.numero_completo), estado_http=409)
@@ -718,7 +740,10 @@ def contexto_pdf(proforma):
     lineas = list(proforma.detalles.select_related('product'))
     punto = punto_predeterminado(empresa)
     venta = proforma.venta if proforma.venta_id else None
+    # Precios con IVA: si todas las líneas los tienen, el PDF muestra el precio y el total de cada línea con IVA (lo que ve
+    # el cliente); las proformas anteriores, como siempre (sin IVA).
     return {'proforma': proforma, 'empresa': empresa, 'lineas': lineas, 'impuestos': impuestos_por_tarifa(lineas),
+            'precios_con_iva': bool(lineas) and all(l.precio_con_iva is not None for l in lineas),
             'estado': proforma.estado_visible(), 'estado_nombre': proforma.nombre_estado(),
             'establecimiento': (punto.establishment.address if punto else '') or empresa.establishment_address,
             'proveedor': emision.datos_proveedor(),
@@ -870,10 +895,15 @@ def _exigir_facturable(p, hoy=None):
 
 
 def _fila_del_pos(producto, cant, linea):
-    """Línea en el formato del POS (sale/admin/js/form.js calcula con números): precio y descuento de la proforma."""
+    """Línea en el formato del POS: precio con IVA, descripción y descuento de la proforma (contrato §2). `price_current`
+    queda por compatibilidad (sin IVA) y la pantalla ya no calcula con él."""
+    from core.pos import precios_iva
+    precio = precio_con_iva_de_proforma(linea)
     item = producto.toJSON()
-    item.update({'cant': int(cant), 'price_current': float(linea.price), 'dscto': float(linea.dscto * 100),
-                 'total_dscto': 0.0, 'pvp': float(producto.pvp), 'value': producto.get_full_name()})
+    item.update({'cant': int(cant), 'precio_con_iva': _dinero(precio), 'descripcion': linea.descripcion or producto.name,
+                 'price_current': float(precios_iva.base_unitaria(precio, producto.tarifa_porcentaje())),
+                 'dscto': float(linea.dscto * 100), 'total_dscto': 0.0, 'pvp': float(producto.pvp),
+                 'value': producto.get_full_name()})
     return item
 
 
@@ -894,7 +924,7 @@ def precarga_para_venta(proforma_id, hoy=None, cotizado=False):
     avisos = [AVISOS['emitir']]
     if require_company().environment_type != emision.PRODUCCION:
         avisos.append(AVISOS['pruebas'])
-    lineas, descripcion_distinta = [], False
+    lineas = []
     for linea in p.detalles.select_related('product__category'):
         producto = linea.product if linea.product_id else None
         if producto is None:
@@ -912,17 +942,16 @@ def precarga_para_venta(proforma_id, hoy=None, cotizado=False):
             avisos.append(AVISOS['tarifa_cambiada'].format(
                 nombre=producto.name, antes=NOMBRE_TARIFA_IVA.get(linea.codigo_porcentaje, linea.codigo_porcentaje),
                 ahora=NOMBRE_TARIFA_IVA.get(tarifa, tarifa)))
-        actual = _cuantizar(producto.get_price_current())
-        if linea.price != actual:
-            avisos.append(AVISOS['precio_distinto'].format(nombre=producto.name, precio=_dinero(linea.price),
+        # Precios con IVA: el de la proforma contra el del catálogo con IVA (promoción incluida). La factura lleva la
+        # descripción escrita en la proforma.
+        precio, actual = precio_con_iva_de_proforma(linea), producto.precio_con_iva_actual()
+        if precio != actual:
+            avisos.append(AVISOS['precio_distinto'].format(nombre=producto.name, precio=_dinero(precio),
                                                            actual=_dinero(actual)))
-        descripcion_distinta = descripcion_distinta or linea.descripcion != producto.name
         lineas.append(_fila_del_pos(producto, cant, linea))
     if not lineas:
         raise ErrorProforma(MENSAJES['sin_lineas_facturables'].format(numero=p.numero_completo), estado_http=409,
                             url=_url_ver(p.pk))
-    if descripcion_distinta:
-        avisos.append(AVISOS['descripcion'])
     prospecto = None
     if p.cliente_id is None:
         prospecto = {'nombre': p.cliente_nombre, 'identificacion': p.cliente_identificacion, 'correo': p.cliente_correo,
@@ -946,10 +975,14 @@ def bloquear_para_facturar(proforma_id, tipo_comprobante):
 
 
 def _mismas_lineas(proforma, venta):
-    def clave(linea):
-        return (linea.product_id or 0, int(linea.cant), _cuantizar(linea.price), _cuantizar(linea.dscto))
-    return (sorted(clave(l) for l in proforma.detalles.all())
-            == sorted(clave(d) for d in venta.saledetail_set.all()))
+    """¿La factura lleva las mismas líneas que la proforma (producto, cantidad, precio con IVA, descuento y descripción)?"""
+    from core.pos.models import descripcion_de_linea, precio_con_iva_de_linea
+
+    def clave(linea, precio):
+        return (linea.product_id or 0, int(linea.cant), precio, _cuantizar(linea.dscto), descripcion_de_linea(linea))
+    return (sorted(clave(l, precio_con_iva_de_proforma(l) if l.product_id else _cuantizar(l.price_with_vat))
+                   for l in proforma.detalles.select_related('product'))
+            == sorted(clave(d, precio_con_iva_de_linea(d)) for d in venta.saledetail_set.select_related('product')))
 
 
 @transaction.atomic
@@ -1080,8 +1113,8 @@ def convertir(proforma_id, usuario, request=None):
     if existente is not None:
         return existente, False
     precarga = precarga_para_venta(p.pk, cotizado=True)   # cantidades cotizadas, sin productos eliminados, tarifa actual
-    lineas = [{'product': int(l['id']), 'nombre': l['name'], 'cant': int(l['cant']), 'price': _dinero(l['price_current']),
-               'dscto': int(round(l['dscto'])), 'codigo_porcentaje': l['tarifa_iva']} for l in precarga['lineas']]
+    lineas = [_linea_de_borrador(int(l['id']), l['name'], int(l['cant']), Decimal(l['precio_con_iva']), int(round(l['dscto'])),
+                                 l['tarifa_iva'], l['descripcion']) for l in precarga['lineas']]
     info, avisos_notas = _info_adicional_inicial(p)
     propios = (AVISOS['emitir'], AVISOS['pruebas'], AVISOS['prospecto'])   # se calculan al abrir el borrador
     borrador = BorradorFactura(proforma=p, cliente_id=p.cliente_id, payment_type=PAYMENT_TYPE[0][0],
@@ -1104,6 +1137,24 @@ def obtener_borrador(borrador_id):
     return b
 
 
+def _linea_de_borrador(producto_id, nombre, cant, precio_con_iva, dscto, codigo, descripcion):
+    """Línea guardada en BorradorFactura.lineas, en el orden de la factura. `price` (sin IVA) queda por compatibilidad con
+    la versión anterior; manda `precio_con_iva`."""
+    from core.pos import precios_iva
+    return {'product': int(producto_id), 'nombre': nombre, 'cant': int(cant), 'precio_con_iva': _dinero(precio_con_iva),
+            'price': _dinero(precios_iva.base_unitaria(_cuantizar(precio_con_iva), precios_iva.tarifa_de_codigo(codigo))),
+            'dscto': int(dscto), 'codigo_porcentaje': codigo, 'descripcion': descripcion}
+
+
+def precio_con_iva_de_borrador(linea):
+    """Precio con IVA de una línea del borrador; en los borradores anteriores (solo `price`, sin IVA), con la tarifa de la
+    línea: lo que cobraba ese borrador."""
+    from core.pos import precios_iva
+    if linea.get('precio_con_iva') not in (None, ''):
+        return _cuantizar(linea['precio_con_iva'])
+    return precios_iva.con_iva(_cuantizar(linea['price']), precios_iva.tarifa_de_codigo(linea['codigo_porcentaje']))
+
+
 def tarifas_guardadas(borrador):
     """{producto: tarifa} de las líneas guardadas en el borrador (las que revisó quien podía revisarlas)."""
     return {l['product']: l['codigo_porcentaje'] for l in borrador.lineas}
@@ -1112,10 +1163,14 @@ def tarifas_guardadas(borrador):
 def _fila_de_borrador(producto, linea):
     """Línea del borrador en el formato del POS, con la tarifa elegida para esta factura (la del catálogo se informa).
     fp_base: el POS no recorta en silencio una cantidad mayor que el stock; avisa y el servidor la valida al emitir."""
+    from core.pos import precios_iva
     codigo, catalogo = linea['codigo_porcentaje'], tarifa_de_producto(producto)
+    precio = precio_con_iva_de_borrador(linea)
     item = producto.toJSON()
-    item.update({'cant': int(linea['cant']), 'price_current': float(Decimal(linea['price'])), 'dscto': float(linea['dscto']),
-                 'total_dscto': 0.0, 'pvp': float(producto.pvp), 'value': producto.get_full_name(),
+    item.update({'cant': int(linea['cant']), 'precio_con_iva': _dinero(precio),
+                 'descripcion': linea.get('descripcion') or producto.name,
+                 'price_current': float(precios_iva.base_unitaria(precio, precios_iva.tarifa_de_codigo(codigo))),
+                 'dscto': float(linea['dscto']), 'total_dscto': 0.0, 'pvp': float(producto.pvp), 'value': producto.get_full_name(),
                  'codigo_porcentaje': codigo, 'tarifa_iva': codigo, 'tarifa': float(PORCENTAJE_IVA.get(codigo, 0)),
                  'nombre_tarifa': NOMBRE_TARIFA_IVA.get(codigo, codigo), 'tarifa_catalogo': catalogo,
                  'nombre_tarifa_catalogo': NOMBRE_TARIFA_IVA.get(catalogo, catalogo), 'fp_base': True})
@@ -1123,14 +1178,14 @@ def _fila_de_borrador(producto, linea):
 
 
 def totales_de_borrador(lineas):
-    """Importes del borrador con calcular_linea_iva y totales_de_lineas: los mismos que guardará la venta y llevará el XML
-    (misma tarifa por línea, cantidad y descuento)."""
-    from core.pos.models import calcular_linea_iva, totales_de_lineas
+    """Importes del borrador con el cálculo de la línea con precio con IVA (contrato §1) y totales_de_lineas: los mismos
+    que guardará la venta y llevará el XML (misma tarifa por línea, cantidad y descuento)."""
+    from core.pos.models import calcular_linea_con_iva, totales_de_lineas
     calculadas = []
     for l in lineas:
-        linea = SimpleNamespace(price=Decimal(l['price']), cant=int(l['cant']), dscto=(Decimal(int(l['dscto'])) / 100),
-                                product_id=l['product'])
-        calcular_linea_iva(linea, l['codigo_porcentaje'])
+        linea = SimpleNamespace(precio_con_iva=precio_con_iva_de_borrador(l), cant=int(l['cant']),
+                                dscto=(Decimal(int(l['dscto'])) / 100), product_id=l['product'])
+        calcular_linea_con_iva(linea, l['codigo_porcentaje'])
         calculadas.append(linea)
     gravado, cero, iva, descuento = totales_de_lineas(calculadas)
     return {'subtotal_gravado': _dinero(gravado), 'subtotal_cero': _dinero(cero), 'total_descuento': _dinero(descuento),
@@ -1286,9 +1341,8 @@ def guardar_borrador(borrador_id, datos, request, usuario):
     plazo, vencimiento = plazo_del_credito(datos), _vencimiento_del_credito(datos, condicion)
     b.cliente, b.payment_type, b.payment_method, b.medio_cobro = cliente, condicion, forma, medio
     b.time_limit, b.end_credit = plazo, vencimiento
-    b.lineas = [{'product': int(l['producto'].pk), 'nombre': l['producto'].name, 'cant': int(l['cant']),
-                 'price': _dinero(l['precio']), 'dscto': int((l['dscto'] * 100).to_integral_value()),
-                 'codigo_porcentaje': l['tarifa']} for l in lineas]
+    b.lineas = [_linea_de_borrador(l['producto'].pk, l['producto'].name, l['cant'], l['precio_con_iva'],
+                                   int((l['dscto'] * 100).to_integral_value()), l['tarifa'], l['descripcion']) for l in lineas]
     b.info_adicional = _info_adicional(datos.get('additional_info', '[]'))
     b.avisos = []   # los de la conversión ya se revisaron; los de stock y tarifa se recalculan al abrirlo
     b.actualizado_por = usuario
@@ -1406,16 +1460,21 @@ def fila(proforma, permisos, facturable, plan_vencido, hoy=None):
 
 
 def _linea_json(linea):
+    """Línea guardada (contrato de precios con IVA §2): `precio_con_iva` (en las anteriores, el que calculó la proforma con
+    su tarifa), `total_con_iva` (T) y `precio_unitario` sin IVA; `price` (sin IVA) queda por compatibilidad."""
+    from core.pos.models import json_de_linea
     producto = linea.product if linea.product_id else None
     return {'id': int(linea.pk), 'product_id': linea.product_id, 'codigo': linea.codigo, 'descripcion': linea.descripcion,
             'cant': int(linea.cant), 'price': _dinero(linea.price), 'dscto': str(int((linea.dscto * 100).to_integral_value())),
+            **{k: v for k, v in json_de_linea(linea).items() if k != 'descripcion'},
             'codigo_porcentaje': linea.codigo_porcentaje,
             'tarifa': f'{PORCENTAJE_IVA.get(linea.codigo_porcentaje, Decimal("0")):.2f}', 'nombre_tarifa': linea.nombre_tarifa,
             'subtotal': _dinero(linea.subtotal), 'total_dscto': _dinero(linea.total_dscto), 'total': _dinero(linea.total),
             'total_iva': _dinero(linea.total_iva), 'producto_eliminado': producto is None,
             # Para el editor: datos actuales del producto (solo se informan).
             'producto': {'nombre': producto.name, 'stock': int(producto.stock), 'inventariado': producto.inventoried,
-                         'pvp': _dinero(producto.pvp)} if producto else None}
+                         'pvp': _dinero(producto.pvp), 'precio_con_iva': _dinero(producto.precio_con_iva_actual())}
+            if producto else None}
 
 
 def impuestos_json(lineas):
