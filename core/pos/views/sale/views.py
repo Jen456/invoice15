@@ -247,13 +247,13 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     nota_cobro = ' '.join((request.POST.get('nota_cobro') or '').split())
                     referencia_cobro = request.POST.get('referencia_cobro', '')
                     respaldo = request.FILES.get('respaldo')
+                    # «Efectivo recibido» y «Cambio» ya no se piden (contrato de precios con IVA §3): se guardan en 0 y lo
+                    # que envíe una página anterior se ignora. Las ventas anteriores conservan lo que guardaron.
                     sale.cash, sale.change = Decimal('0.00'), Decimal('0.00')
                     if contado:
                         if medio_cobro not in dict(MEDIOS_DE_PAGO):
                             raise ValueError('Elige el medio de cobro.')
                         sale.medio_cobro = medio_cobro
-                        if medio_cobro == 'efectivo':
-                            sale.cash = cobros.efectivo_recibido(request.POST.get('cash'))   # el cambio se calcula abajo
                     elif sale.payment_type == PAYMENT_TYPE[1][0]:
                         if nota_cobro or respaldo is not None:
                             raise ValueError(cobros.MENSAJES['credito_sin_abono'])
@@ -268,9 +268,11 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     lineas_venta.comprobar_precios(request, lineas, proforma)
                     if borrador is not None:   # tarifa distinta del catálogo: con permiso o la guardada en el borrador
                         lineas_venta.comprobar_tarifas(request, lineas, proformas.tarifas_guardadas(borrador))
-                    for linea in lineas:   # las líneas, en el orden de la factura (XML y RIDE)
-                        # Sin tarifa propia ('') calculate_detail pone la del producto, como siempre.
-                        SaleDetail.objects.create(sale=sale, product=linea['producto'], cant=linea['cant'], price=linea['precio'],
+                    for linea in lineas:   # las líneas, en el orden recibido: el de la factura (XML, RIDE, ticket y al reabrir)
+                        # Precio con IVA y descripción de la línea; calculate_detail deriva base, IVA y el precio unitario sin
+                        # IVA (core/pos/precios_iva.py). Sin tarifa propia ('') pone la del producto, como siempre.
+                        SaleDetail.objects.create(sale=sale, product=linea['producto'], cant=linea['cant'],
+                                                  precio_con_iva=linea['precio_con_iva'], descripcion=linea['descripcion'],
                                                   dscto=linea['dscto'], codigo_porcentaje=linea['tarifa'] or '')
                     for linea in sorted(lineas, key=lambda x: x['producto'].pk):   # orden fijo: dos ventas no se interbloquean
                         lineas_venta.descontar_stock(linea)   # F() y stock suficiente: no pisa el catálogo ni otra venta
@@ -279,10 +281,6 @@ class SaleCreateView(GroupPermissionMixin, CreateView):
                     if sale.create_electronic_invoice:
                         self.validar_consumidor_final(sale)
                     if contado:
-                        if sale.medio_cobro == 'efectivo':
-                            # «Efectivo recibido» y «Cambio» solo para efectivo, y el cambio lo calcula el servidor.
-                            sale.change = cobros.cambio(sale.cash, sale.total)
-                            sale.save(update_fields=['cash', 'change'])
                         if sale.medio_cobro != 'efectivo' or nota_cobro or respaldo is not None:
                             # Respaldo del cobro al contado: obligatorio salvo en efectivo (comprobante, nota o ambos).
                             cobros.registrar_al_emitir(request, sale, sale.medio_cobro, referencia_cobro, nota_cobro, respaldo)

@@ -120,6 +120,14 @@ class ProductForm(forms.ModelForm):
         self.fields['tarifa_iva'].choices = TARIFAS_IVA
         if not self.instance.tarifa_iva:
             self.initial['tarifa_iva'] = '0' if self.instance.pk and not self.instance.with_tax else '4'
+        # Precios con IVA: se escribe el precio de venta con IVA incluido; pvp (sin IVA) lo deriva Product.save(). Al editar
+        # se muestra el vigente (el guardado o, si pvp lo cambió otra versión o una importación, el derivado de pvp).
+        precio = self.fields['precio_con_iva']
+        precio.required = True
+        precio.label = 'Precio de venta (con IVA)'
+        precio.help_text = 'El precio final que paga el cliente, con el IVA de su tarifa incluido.'
+        if self.instance.pk:
+            self.initial['precio_con_iva'] = f'{self.instance.precio_con_iva_catalogo():.2f}'
 
     class Meta:
         model = Product
@@ -130,10 +138,10 @@ class ProductForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'placeholder': 'Ingrese una descripción', 'rows': 3, 'cols': 3}),
             'category': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
             'price': forms.TextInput(),
-            'pvp': forms.TextInput(),
+            'precio_con_iva': forms.TextInput(attrs={'inputmode': 'decimal', 'autocomplete': 'off'}),
             'tarifa_iva': forms.Select(attrs={'class': 'form-control select2', 'style': 'width: 100%;'}),
         }
-        exclude = ['stock', 'barcode', 'with_tax']
+        exclude = ['stock', 'barcode', 'with_tax', 'pvp']   # pvp (sin IVA) se deriva del precio con IVA
 
     def clean_code(self):
         codigo = (self.cleaned_data.get('code') or '').strip()
@@ -480,15 +488,9 @@ class SaleForm(forms.ModelForm):
                 'class': 'form-control',
                 'disabled': True
             }),
-            'cash': forms.TextInput(attrs={
-                'class': 'form-control',
-                'autocomplete': 'off'
-            }),
-            'change': forms.TextInput(attrs={
-                'class': 'form-control',
-                'readonly': True
-            }),
         }
+        # «Efectivo recibido» y «Cambio» ya no se piden (precios con IVA): la venta los guarda en 0 (SaleCreateView).
+        exclude = ['cash', 'change']
 
 
 class PaymentsCtaCollectForm(forms.ModelForm):
