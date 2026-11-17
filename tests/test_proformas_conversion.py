@@ -26,7 +26,7 @@ from core.suscripciones.models import QuotaReservation, SubscriptionPeriod
 from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_ACCOUNTANT, ROLE_OWNER, ROLE_READONLY, AuditLog
 from tests import helpers
-from tests.ayudas_proformas import EJEMPLO, ayer, crear_proforma, datos_ejemplo, lineas_ejemplo, productos_por_tarifa
+from tests.ayudas_proformas import EJEMPLO, ayer, con_iva, crear_proforma, datos_ejemplo, lineas_ejemplo, productos_por_tarifa
 from tests.test_emision_sri import (VENTAS, comprador, dueno, empresa, leer, p12, producto, sri, vender,  # noqa: F401
                                     venta_de, web)
 
@@ -67,16 +67,16 @@ def precarga(web, p):  # noqa: F811
 
 def manual(productos):
     """Lo que enviaría el navegador sin pasar por la precarga (para estados que no la permiten)."""
-    lineas = [{'id': productos[tarifa].pk, 'cant': cant, 'price_current': float(precio), 'dscto': float(dscto)}
-              for tarifa, _, precio, cant, dscto in EJEMPLO]
+    lineas = [{'id': productos[tarifa].pk, 'cant': cant, 'precio_con_iva': con_iva(precio, tarifa), 'dscto': float(dscto),
+               'descripcion': ''} for tarifa, _, precio, cant, dscto in EJEMPLO]
     return {'lineas': lineas, 'forma_pago': '20', 'info_adicional': []}
 
 
 def emitir(web, p, cliente, datos=None, **extra):  # noqa: F811
     """POST «Emitir factura» como lo arma form.js: líneas, forma de pago e información adicional de la precarga."""
     datos = datos or precarga(web, p)
-    lineas = [{'id': l['id'], 'cant': l['cant'], 'price_current': l['price_current'], 'dscto': l['dscto']}
-              for l in datos['lineas']]
+    lineas = [{'id': l['id'], 'cant': l['cant'], 'precio_con_iva': l['precio_con_iva'], 'dscto': l['dscto'],
+               'descripcion': l.get('descripcion', '')} for l in datos['lineas']]
     post = {'action': 'add', 'receipt': '01', 'client': cliente.pk, 'payment_type': 'efectivo',
             'date_joined': timezone.localdate().isoformat(), 'cash': '100', 'change': '0', 'time_limit': '0',
             'payment_method': datos['forma_pago'] or '01', 'additional_info': json.dumps(datos['info_adicional']),
@@ -177,10 +177,11 @@ class TestAbrir:
             A['tarifa_cambiada'].format(nombre='PRODUCTO P0', antes=NOMBRE_TARIFA_IVA['0'], ahora=NOMBRE_TARIFA_IVA['4']),
             A['precio_distinto'].format(nombre='PRODUCTO PNO', precio='5.50', actual='6.00'),
             A['producto_eliminado'].format(descripcion='PRODUCTO PEX'),
-            A['descripcion'],
-        ]
-        assert [(l['code'], l['cant'], l['price_current']) for l in datos['lineas']] == [('P5', 1, 12.35), ('P0', 1, 8.0),
-                                                                                         ('PNO', 1, 5.5)]
+        ]   # la descripción de la proforma pasa a la factura: ya no hay aviso
+        # Precios con IVA: la línea conserva su precio con IVA aunque P0 pase al 15 % (su precio sin IVA baja a 6,96).
+        assert [(l['code'], l['cant'], l['precio_con_iva'], l['price_current'], l['descripcion']) for l in datos['lineas']] == [
+            ('P5', 1, '12.97', 12.35, 'Producto 5 % con la descripción negociada'), ('P0', 1, '8.00', 6.96, 'PRODUCTO P0'),
+            ('PNO', 1, '5.50', 5.5, 'PRODUCTO PNO')]
         assert [l['tarifa_iva'] for l in datos['lineas']] == ['5', '4', '6']   # la factura usa la tarifa actual
         with company_context(empresa):
             Product.objects.filter(code__in=['P5', 'P0', 'PNO']).update(stock=0)
@@ -480,7 +481,7 @@ class TestEmitir:
     def test_prospecto_facturado_a_consumidor_final_sigue_como_prospecto(self, web, empresa, dueno, productos, sri):  # noqa: F811
         """Facturar a consumidor final no liga el prospecto a ese cliente: duplicar para volver a cotizar (decisiones 5
         y 11) conserva los datos del prospecto y no sale a nombre de «CONSUMIDOR FINAL»."""
-        lineas = [{'product': productos['0'].pk, 'cant': 1, 'price': '8.00', 'dscto': 0, 'descripcion': ''}]   # USD 8
+        lineas = [{'product': productos['0'].pk, 'cant': 1, 'precio_con_iva': '8.00', 'dscto': 0, 'descripcion': ''}]   # USD 8
         p = crear_proforma(empresa, dueno, datos_ejemplo(productos, lineas=lineas), estado='aceptada')
         with company_context(empresa):
             final = consumidor_final(empresa)

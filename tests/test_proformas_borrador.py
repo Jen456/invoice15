@@ -28,7 +28,7 @@ from core.tenancy.context import company_context
 from core.tenancy.models import ROLE_OWNER, ROLE_SELLER, AuditLog, Membership
 from core.user.models import User
 from tests import helpers
-from tests.ayudas_proformas import EJEMPLO, crear_proforma, datos_ejemplo, productos_por_tarifa, web_con_rol
+from tests.ayudas_proformas import EJEMPLO, con_iva, crear_proforma, datos_ejemplo, productos_por_tarifa, web_con_rol
 from tests.test_emision_sri import (VENTAS, comprador, dueno, empresa, leer, p12, sri, vender,  # noqa: F401
                                     venta_de, web)
 from tests.test_proformas import texto_pdf
@@ -71,7 +71,8 @@ def borrador(empresa, p):  # noqa: F811
 def formulario(datos, cliente, tarifas=None, **extra):
     """Lo que envía form.js de la venta abierta con el borrador; `tarifas` {código de producto: tarifa} cambia el IVA de
     esas líneas (el selector «IVA» de cada línea)."""
-    lineas = [{'id': l['id'], 'cant': l['cant'], 'price_current': l['price_current'], 'dscto': l['dscto'],
+    lineas = [{'id': l['id'], 'cant': l['cant'], 'precio_con_iva': l['precio_con_iva'], 'dscto': l['dscto'],
+               'descripcion': l.get('descripcion', ''),
                'codigo_porcentaje': (tarifas or {}).get(l['code'], l['codigo_porcentaje'])} for l in datos['lineas']]
     medio = datos['medio_cobro'] or 'efectivo'
     post = {'receipt': '01', 'client': cliente.pk, 'payment_type': datos['condicion_pago'] or 'efectivo',
@@ -171,8 +172,9 @@ class TestConvertir:
         b = borrador(empresa, p)
         assert b.cliente_id == comprador.pk and (b.payment_type, b.payment_method, b.medio_cobro) == ('efectivo', '20',
                                                                                                     'transferencia')
-        assert b.lineas == [{'product': productos[t].pk, 'nombre': f'PRODUCTO {codigo}', 'cant': cant, 'price': precio,
-                             'dscto': dscto, 'codigo_porcentaje': t} for t, codigo, precio, cant, dscto in EJEMPLO]
+        assert b.lineas == [{'product': productos[t].pk, 'nombre': f'PRODUCTO {codigo}', 'cant': cant,
+                             'precio_con_iva': con_iva(precio, t), 'price': precio, 'dscto': dscto, 'codigo_porcentaje': t,
+                             'descripcion': f'PRODUCTO {codigo}'} for t, codigo, precio, cant, dscto in EJEMPLO]
         assert b.info_adicional == [{'name': 'Proforma', 'value': p.numero_completo},
                                     {'name': 'Notas', 'value': 'Entrega en 48 horas. Pago por transferencia.'}]
         datos = precarga(web, url)
@@ -227,9 +229,10 @@ class TestTarifaPorLinea:
         """El caso real (§13): tres conceptos que esta operación factura al 0 % y pago por transferencia. Revisar la tarifa
         en el borrador recalcula los totales y solo afecta a esta factura."""
         c1, c2, c3 = conceptos(empresa)
-        lineas = [{'product': c1.pk, 'cant': 2, 'price': '120.00', 'dscto': 10, 'descripcion': ''},
-                  {'product': c2.pk, 'cant': 3, 'price': '45.50', 'dscto': 0, 'descripcion': ''},
-                  {'product': c3.pk, 'cant': 1, 'price': '18.00', 'dscto': 5, 'descripcion': ''}]
+        # Precios con IVA del catálogo (120,00 / 45,50 / 18,00 sin IVA al 15 %).
+        lineas = [{'product': c1.pk, 'cant': 2, 'precio_con_iva': '138.00', 'dscto': 10, 'descripcion': ''},
+                  {'product': c2.pk, 'cant': 3, 'precio_con_iva': '52.33', 'dscto': 0, 'descripcion': ''},
+                  {'product': c3.pk, 'cant': 1, 'precio_con_iva': '20.70', 'dscto': 5, 'descripcion': ''}]
         p = crear_proforma(empresa, dueno, datos_ejemplo(None, cliente=comprador, lineas=lineas,
                                                           medio_pago_sugerido='transferencia'), estado='aceptada')
         assert p.total == Decimal('425.05')                       # con el 15 % del catálogo
@@ -239,12 +242,14 @@ class TestTarifaPorLinea:
         assert guardar(web, datos, comprador, tarifas={'C1': '0', 'C2': '0', 'C3': '0'}) == {
             'mensaje': M['borrador_guardado'], 'borrador': {'id': datos['borrador']['id']}}
         datos = precarga(web, url)                                # reabrir: el mismo borrador, con lo guardado
-        assert [(l['code'], l['cant'], l['price_current'], l['dscto'], l['codigo_porcentaje'], l['tarifa_catalogo'])
-                for l in datos['lineas']] == [('C1', 2, 120.0, 10.0, '0', '4'), ('C2', 3, 45.5, 0.0, '0', '4'),
-                                              ('C3', 1, 18.0, 5.0, '0', '4')]
+        # Precios con IVA: la pantalla envía el mismo precio con IVA y la tarifa 0 %; el total con IVA de cada línea no
+        # cambia (antes, con el precio sin IVA, bajaba el IVA: 369,60) y la base pasa a ser ese total.
+        assert [(l['code'], l['cant'], l['precio_con_iva'], l['dscto'], l['codigo_porcentaje'], l['tarifa_catalogo'])
+                for l in datos['lineas']] == [('C1', 2, '138.00', 10.0, '0', '4'), ('C2', 3, '52.33', 0.0, '0', '4'),
+                                              ('C3', 1, '20.70', 5.0, '0', '4')]
         totales = datos['borrador']['totales']
         assert (totales['subtotal_gravado'], totales['subtotal_cero'], totales['total_descuento'], totales['total_iva'],
-                totales['total']) == ('0.00', '369.60', '24.90', '0.00', '369.60')
+                totales['total']) == ('0.00', '425.05', '28.64', '0.00', '425.05')
         assert A['tarifa_revisada'].format(nombre='CONCEPTO FICTICIO 1', elegida='0 %', catalogo='15 %') in datos['avisos']
         assert sri.recepciones == [] and ventas(empresa) == 0      # guardar no emite
         sri.respuestas_autorizacion = ['AUTORIZADO']
@@ -252,11 +257,11 @@ class TestTarifaPorLinea:
         assert r.get('resp') is True, r
         venta = venta_de(empresa, 271)
         assert (venta.payment_method, venta.medio_cobro, venta.payment_type) == ('20', 'transferencia', 'efectivo')
-        assert venta.total == Decimal('369.60') and venta.total_iva == Decimal('0.00')   # mostrado = guardado = enviado
+        assert venta.total == Decimal('425.05') and venta.total_iva == Decimal('0.00')   # mostrado = guardado = enviado
         xml = venta.xml_signed
-        assert '<formaPago>20</formaPago>' in xml and '<importeTotal>369.60</importeTotal>' in xml
+        assert '<formaPago>20</formaPago>' in xml and '<importeTotal>425.05</importeTotal>' in xml
         assert xml.count('<codigoPorcentaje>0</codigoPorcentaje>') == 4 and '<codigoPorcentaje>4</codigoPorcentaje>' not in xml
-        for cantidad, precio, descuento in (('2.00', '120.00', '24.00'), ('3.00', '45.50', '0.00'), ('1.00', '18.00', '0.90')):
+        for cantidad, precio, descuento in (('2.00', '138.00', '27.60'), ('3.00', '52.33', '0.00'), ('1.00', '20.70', '1.04')):
             assert f'<cantidad>{cantidad}</cantidad><precioUnitario>{precio}</precioUnitario><descuento>{descuento}</descuento>' in xml
         assert sri.recepciones == [xml]
         with company_context(empresa):
@@ -265,7 +270,7 @@ class TestTarifaPorLinea:
             assert set(Product.objects.filter(code__in=['C1', 'C2', 'C3']).values_list('tarifa_iva', flat=True)) == {'4'}
         detalle = AuditLog.objects.get(action='proforma_facturada').detail
         assert detalle['tarifas_revisadas'] == ['C1: 15 % → 0 %', 'C2: 15 % → 0 %', 'C3: 15 % → 0 %']
-        assert detalle['coincide'] is False and detalle['total_factura'] == '369.60'
+        assert detalle['coincide'] is True and detalle['total_factura'] == '425.05'   # mismas líneas y mismo total con IVA
         # Solo esa operación: la venta siguiente del mismo concepto lleva el 15 % del catálogo.
         sri.respuestas_autorizacion = ['AUTORIZADO']
         assert vender(web, comprador, c1, cantidad=1, cash='200')['resp'] is True
@@ -290,11 +295,11 @@ class TestTarifaPorLinea:
         with company_context(empresa):
             assert SaleDetail.objects.get(sale=venta, product__code='P15').codigo_porcentaje == '0'
             assert Product.objects.get(code='P15').tarifa_iva == '4'
-        assert venta.total == Decimal('71.19')                     # 75,24 − 4,05 del IVA de P15
+        assert venta.total == Decimal('75.24')   # precio con IVA conservado: P15 al 0 % sigue en 31,05 (base 31,05, IVA 0)
 
     def test_venta_de_siempre_ignora_la_tarifa_del_navegador(self, web, empresa, comprador, productos, sri):  # noqa: F811
         sri.respuestas_autorizacion = ['AUTORIZADO']
-        lineas = [{'id': productos['4'].pk, 'cant': 1, 'price_current': '10.00', 'dscto': 0, 'codigo_porcentaje': '0'}]
+        lineas = [{'id': productos['4'].pk, 'cant': 1, 'precio_con_iva': '11.50', 'dscto': 0, 'codigo_porcentaje': '0'}]
         assert vender(web, comprador, productos['4'], products=json.dumps(lineas))['resp'] is True
         venta = venta_de(empresa, 271)
         with company_context(empresa):

@@ -35,8 +35,14 @@ def datos(cliente, lineas, **extra):
     return base
 
 
-def linea(producto, cant=1, precio=None, dscto=0):
-    return {'id': producto.pk, 'cant': cant, 'price_current': str(producto.pvp if precio is None else precio), 'dscto': dscto}
+def linea(producto, cant=1, precio=None, dscto=0, descripcion=None):
+    """Línea en el formato del contrato de precios con IVA (§3): `precio` es el precio CON IVA (por defecto, el del
+    catálogo con IVA)."""
+    item = {'id': producto.pk, 'cant': cant, 'dscto': dscto,
+            'precio_con_iva': str(f'{producto.precio_con_iva:.2f}' if precio is None else precio)}
+    if descripcion is not None:
+        item['descripcion'] = descripcion
+    return item
 
 
 @pytest.fixture
@@ -59,15 +65,17 @@ class TestPrecioDeLaLinea:
 
     def test_precio_particular_no_cambia_el_catalogo(self, web, empresa, comprador, producto, sri):
         sri.respuestas_autorizacion = ['AUTORIZADO']
-        r = web.post(f'{VENTAS}add/', datos(comprador, [linea(producto, cant=2, precio='8.75', dscto=10)])).json()
+        # 10,06 con IVA × 2 − 10 %: T = 18,11, base 15,75 (la misma factura que antes daban 8,75 sin IVA)
+        r = web.post(f'{VENTAS}add/', datos(comprador, [linea(producto, cant=2, precio='10.06', dscto=10)])).json()
         assert r.get('resp') is True, r
         venta = leer(empresa, lambda: Sale.objects.latest('id'))
         d = leer(empresa, lambda: SaleDetail.objects.get(sale=venta))
         assert (d.price, d.subtotal, d.total_dscto, d.total) == (Decimal('8.75'), Decimal('17.50'), Decimal('1.75'), Decimal('15.75'))
-        assert venta.total == Decimal('18.11')   # 15,75 + 15 % (2,3625 → 2,36)
+        assert (d.precio_con_iva, d.total_iva) == (Decimal('10.06'), Decimal('2.36'))
+        assert venta.total == Decimal('18.11')   # T exacto: 20,12 − 2,01
         assert '<precioUnitario>8.75</precioUnitario>' in venta.xml_signed and '<descuento>1.75</descuento>' in venta.xml_signed
         catalogo = leer(empresa, lambda: Product.objects.get(pk=producto.pk))
-        assert (catalogo.pvp, catalogo.stock) == (Decimal('10.00'), 98)
+        assert (catalogo.pvp, catalogo.precio_con_iva, catalogo.stock) == (Decimal('10.00'), Decimal('11.50'), 98)
 
     def test_precio_cero_se_admite(self, web, empresa, comprador, producto, sri):
         sri.respuestas_autorizacion = ['AUTORIZADO']
@@ -80,7 +88,7 @@ class TestPrecioDeLaLinea:
         web_v = sesion(client, empresa, vendedor)
         antes = foto(empresa, producto)
         r = web_v.post(f'{VENTAS}add/', datos(comprador, [linea(producto, precio='7.00')])).json()
-        assert r['error'] == lineas_venta.PRECIO_SIN_PERMISO.format(nombre=producto.name, catalogo='10.00')
+        assert r['error'] == lineas_venta.PRECIO_SIN_PERMISO.format(nombre=producto.name, catalogo='11.50')
         assert foto(empresa, producto) == antes
         sri.respuestas_autorizacion = ['AUTORIZADO']
         assert web_v.post(f'{VENTAS}add/', datos(comprador, [linea(producto)])).json().get('resp') is True
@@ -92,7 +100,7 @@ class TestPrecioDeLaLinea:
         with company_context(empresa):   # el catálogo cambió después de la proforma: la factura respeta su precio
             Product.objects.filter(code=datos_pf['lineas'][0]['code']).update(pvp=Decimal('99.00'))
         otro = json.loads(json.dumps(datos_pf))
-        otro['lineas'][0]['price_current'] = 1.23   # ni el de la proforma ni el del catálogo: necesita el permiso
+        otro['lineas'][0]['precio_con_iva'] = '1.23'   # ni el de la proforma ni el del catálogo: necesita el permiso
         assert 'no coincide con el del catálogo' in emitir(web_v, aceptada, comprador, otro)['error']
         sri.respuestas_autorizacion = ['AUTORIZADO']
         r = emitir(web_v, aceptada, comprador, datos_pf)
@@ -108,10 +116,10 @@ class TestPrecioDeLaLinea:
 class TestLineasInvalidas:
 
     @pytest.mark.parametrize('cambio, texto', [
-        ({'price_current': '-1'}, 'El precio va de 0 a 999999,99'),
-        ({'price_current': '10.005'}, 'El precio va de 0 a 999999,99'),
-        ({'price_current': 'NaN'}, 'El precio va de 0 a 999999,99'),
-        ({'price_current': '1000000'}, 'El precio va de 0 a 999999,99'),
+        ({'precio_con_iva': '-1'}, 'El precio va de 0 a 999999,99'),
+        ({'precio_con_iva': '10.005'}, 'El precio va de 0 a 999999,99'),
+        ({'precio_con_iva': 'NaN'}, 'El precio va de 0 a 999999,99'),
+        ({'precio_con_iva': '1000000'}, 'El precio va de 0 a 999999,99'),
         ({'cant': 0}, 'La cantidad es un número entero'),
         ({'cant': -2}, 'La cantidad es un número entero'),
         ({'cant': '1.5'}, 'La cantidad es un número entero'),
@@ -184,7 +192,7 @@ class TestAltasDesdeLaFactura:
     def test_codigo_repetido_con_mensaje_claro(self, web, empresa, producto, monkeypatch):
         categoria = leer(empresa, lambda: Category.objects.first())
         datos_p = {'action': 'add', 'name': 'OTRO', 'code': producto.code.lower(), 'category': categoria.pk, 'price': '1.00',
-                   'pvp': '2.00', 'tarifa_iva': '4', 'inventoried': 'on'}
+                   'precio_con_iva': '2.30', 'tarifa_iva': '4', 'inventoried': 'on'}
         r = web.post('/pos/product/add/', datos_p).json()
         assert r['error']['code'] == ['Ya existe un producto con este código en tu empresa: búscalo en el catálogo.']
         monkeypatch.setattr(ProductForm, 'clean_code', lambda self: self.cleaned_data['code'])   # otra pestaña lo creó a la vez
@@ -208,7 +216,7 @@ def test_editar_un_producto_con_codigo_tomado_a_la_vez(web, empresa, producto, m
     categoria = leer(empresa, lambda: Category.objects.first())
     monkeypatch.setattr(ProductForm, 'clean_code', lambda self: self.cleaned_data['code'])   # la otra pestaña ganó la carrera
     r = web.post(f'/pos/product/update/{otro.pk}/', {'action': 'edit', 'name': otro.name, 'code': producto.code, 'category': categoria.pk,
-                                                     'price': '1.00', 'pvp': '3.00', 'tarifa_iva': '4', 'inventoried': 'on'}).json()
+                                                     'price': '1.00', 'precio_con_iva': '3.45', 'tarifa_iva': '4', 'inventoried': 'on'}).json()
     assert r == {'error': 'Ya existe un producto con ese código o nombre en esta empresa: búscalo en el catálogo.'}
     assert leer(empresa, lambda: Product.objects.get(pk=otro.pk).code) == 'PRC2'
 

@@ -131,10 +131,15 @@ def sin_pie(textos):
     return plano(' '.join(salida))
 
 
-def fuente_sin_diseno():
-    """Fuente de la plantilla de la factura sin lo que añadió el diseño de factura (todo bajo ride_style / ride_muestra)."""
+def fuente_sin_diseno(lineas_anteriores=False):
+    """Fuente de la plantilla de la factura sin lo que añadió el diseño de factura (todo bajo ride_style / ride_muestra).
+    `lineas_anteriores`: además, las celdas de los precios con IVA reducidas a su rama anterior ({% if
+    detail.con_iva_incluido %}…{% else %}X{% endif %} → X): con las líneas de antes del cambio, la plantilla es la de
+    producción byte a byte."""
     fuente = Path(get_template(FACTURA).origin.name).read_text(encoding='utf-8')
     fuente = re.sub(r'\{% comment %\}.*?\{% endcomment %\}', '', fuente, flags=re.S)
+    if lineas_anteriores:
+        fuente = re.sub(r'\{% if detail\.con_iva_incluido %\}.*?\{% else %\}(.*?)\{% endif %\}', r'\1', fuente, flags=re.S)
     return re.sub(r'\{% if ride_(?:style|muestra) %\}.*?\{% endif %\}', '', fuente, flags=re.S)
 
 
@@ -188,7 +193,7 @@ class TestEstilos:
 class TestPlantilla:
 
     def test_sin_estilo_es_la_plantilla_de_produccion_byte_a_byte(self):
-        fuente = fuente_sin_diseno()
+        fuente = fuente_sin_diseno(lineas_anteriores=True)
         assert hashlib.sha256(fuente.encode('utf-8')).hexdigest() == HASH_PLANTILLA_PRODUCCION
         contexto = contexto_demo('factura')
         original = engines['django'].from_string(fuente).render(contexto)

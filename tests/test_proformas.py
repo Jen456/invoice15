@@ -150,8 +150,8 @@ class TestTotales:
     @pytest.mark.parametrize('cambio, campo, texto', [
         ({'cant': 0}, 'cant', servicios.LINEAS['cant']),
         ({'cant': 1.5}, 'cant', servicios.LINEAS['cant']),
-        ({'price': '-1.00'}, 'price', servicios.LINEAS['price']),
-        ({'price': '10.005'}, 'price', servicios.LINEAS['price']),
+        ({'precio_con_iva': '-1.00'}, 'precio_con_iva', servicios.LINEAS['price']),
+        ({'precio_con_iva': '10.005'}, 'precio_con_iva', servicios.LINEAS['price']),
         ({'dscto': '12.5'}, 'dscto', servicios.LINEAS['dscto']),
         ({'dscto': 101}, 'dscto', servicios.LINEAS['dscto']),
         ({'descripcion': 'x' * 301}, 'descripcion', servicios.LINEAS['descripcion']),
@@ -169,7 +169,7 @@ class TestTotales:
         elif cambio == 'vacia':
             lineas = []
         elif cambio == 'maximo':
-            lineas = [dict(lineas[0], price='999999.99', cant=11, dscto=0)]
+            lineas = [dict(lineas[0], precio_con_iva='999999.99', cant=11, dscto=0)]
         else:
             lineas[0].update(cambio)
         r = guardar(web, datos_ejemplo(productos, lineas=lineas))
@@ -501,7 +501,7 @@ class TestPdf:
             productos = [Product.objects.create(name=f'ARTÍCULO LARGO {i:03d}', code=f'L{i:03d}', category=categoria,
                                                 price=Decimal('1'), pvp=Decimal('2.00'), stock=5, tarifa_iva='4')
                          for i in range(60)]
-        lineas = [{'product': prod.pk, 'cant': 1, 'price': '2.00', 'dscto': 0} for prod in productos]
+        lineas = [{'product': prod.pk, 'cant': 1, 'precio_con_iva': '2.30', 'dscto': 0} for prod in productos]
         p = crear_proforma(empresa, dueno, datos_ejemplo(None, lineas=lineas))
         with pdfium.PdfDocument(web.get(f'{LISTA}pdf/{p.pk}/').content) as documento:
             textos = [' '.join(pagina.get_textpage().get_text_range().split()) for pagina in documento]
@@ -763,7 +763,9 @@ class TestListaYJson:
             'id': d['lineas'][0]['id'], 'product_id': d['lineas'][0]['product_id'], 'codigo': 'P15', 'descripcion': 'PRODUCTO P15',
             'cant': 3, 'price': '10.00', 'dscto': '10', 'codigo_porcentaje': '4', 'tarifa': '15.00', 'nombre_tarifa': '15 %',
             'subtotal': '30.00', 'total_dscto': '3.00', 'total': '27.00', 'total_iva': '4.05', 'producto_eliminado': False,
-            'producto': {'nombre': 'PRODUCTO P15', 'stock': 100, 'inventariado': True, 'pvp': '10.00'}}
+            # Precios con IVA (contrato §2): 3 × 11,50 − 10 % = 31,05 con IVA.
+            'precio_con_iva': '11.50', 'total_con_iva': '31.05', 'precio_unitario': '10.00', 'con_iva_incluido': True,
+            'producto': {'nombre': 'PRODUCTO P15', 'stock': 100, 'inventariado': True, 'pvp': '10.00', 'precio_con_iva': '11.50'}}
         assert d['forma_pago_sugerida'] == {'id': '20', 'nombre': 'OTROS CON UTILIZACION DEL SISTEMA FINANCIERO'}
         assert d['empresa'] == {'razon_social': 'EMPRESA A S.A.', 'nombre_comercial': 'EMPRESA A', 'ruc': empresa.ruc}
         assert set(d['fechas']) == {'creada', 'actualizada', 'enviada', 'aceptada', 'rechazada', 'anulada', 'facturada'}

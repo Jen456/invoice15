@@ -21,10 +21,11 @@ def test_alta_y_recuperacion_no_emiten_ni_consumen_numeracion(client, empresa, a
     assert f'data-company="{empresa.pk}"' in product_form
     assert 'csrfmiddlewaretoken' in product_form
     data = {'action':'add', 'name':'Servicio ficticio', 'code':'RAPIDO-01', 'category':category.pk,
-            'pvp':'10.00', 'price':'0.00', 'tarifa_iva':'4'}
+            'precio_con_iva':'11.50', 'price':'0.00', 'tarifa_iva':'4'}
     assert client.post('/pos/product/add/', data).json() == {}
     result = client.post('/pos/sale/admin/add/', {'action':'search_product_code', 'code':'RAPIDO-01'}).json()
     assert result['code'] == 'RAPIDO-01' and result['price_current'] == 10.0 and result['tarifa'] == 15.0
+    assert (result['precio_con_iva'], result['descripcion']) == ('11.50', 'Servicio ficticio')
     assert not result['inventoried']
     # Aísla el rechazo SQL en el savepoint de esta petición de prueba.
     with transaction.atomic():

@@ -35,9 +35,17 @@ def productos_por_tarifa(empresa):
         return productos
 
 
+def con_iva(precio, tarifa):
+    """Precio con IVA (texto) del precio sin IVA `precio` con la tarifa `tarifa` (código): el del catálogo migrado."""
+    from core.pos.precios_iva import con_iva as calcular, tarifa_de_codigo
+    return f'{calcular(Decimal(precio), tarifa_de_codigo(tarifa)):.2f}'
+
+
 def lineas_ejemplo(productos):
-    return [{'product': productos[tarifa].pk, 'cant': cant, 'price': precio, 'dscto': dscto, 'descripcion': ''}
-            for tarifa, _, precio, cant, dscto in EJEMPLO]
+    """Líneas del Anexo B en el formato del editor con precios con IVA (contrato §3). Con el precio con IVA de cada pvp,
+    los importes del Anexo B no cambian (gravado 51,70; cero 18,25; IVA 5,29; descuento 3,25; total 75,24)."""
+    return [{'product': productos[tarifa].pk, 'cant': cant, 'precio_con_iva': con_iva(precio, tarifa), 'dscto': dscto,
+             'descripcion': ''} for tarifa, _, precio, cant, dscto in EJEMPLO]
 
 
 def datos_ejemplo(productos, cliente=None, lineas=None, **extra):

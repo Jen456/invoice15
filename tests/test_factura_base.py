@@ -19,7 +19,8 @@ pytestmark = pytest.mark.django_db
 def origen(web, empresa, comprador, sri):
     producto = helpers.crear_producto(empresa, 'BASE-DEMO', pvp='10.00')
     sri.respuestas_autorizacion = ['AUTORIZADO']
-    resultado = web.post(f'{VENTAS}add/', datos(comprador, [linea(producto, cant=3, precio='8.50', dscto=5)])).json()
+    resultado = web.post(f'{VENTAS}add/', datos(comprador, [linea(producto, cant=3, precio='9.78', dscto=5,
+                                                                     descripcion='Base copiada')])).json()
     assert resultado.get('resp') is True, resultado
     return leer(empresa, lambda: Sale.objects.latest('pk'))
 
@@ -38,8 +39,8 @@ def test_cargar_y_reintentar_no_crea_factura_ni_reserva_numero(web, empresa, ori
         pagina = web.get(f'{VENTAS}add/?base={origen.pk}&empresa={empresa.pk}')
         assert pagina.status_code == 200
         detalle = web.post(VENTAS, {'action': 'search_detail_products', 'id': origen.pk}).json()
-        assert [(d['cant'], d['price'], d['dscto']) for d in detalle] == [(3, 8.5, 5)]
-        assert detalle[0]['product']['price_current'] == 10
+        assert [(d['cant'], d['precio_con_iva'], d['dscto'], d['descripcion']) for d in detalle] == [(3, '9.78', 5, 'Base copiada')]
+        assert detalle[0]['product']['price_current'] == 10 and detalle[0]['product']['precio_con_iva'] == '11.50'
         numero = web.post(f'{VENTAS}add/', {'action': 'search_voucher_number', 'receipt': '01'}).json()
         assert numero['voucher_number'] != origen.voucher_number
     assert estado(empresa) == antes
@@ -61,8 +62,8 @@ def test_nueva_factura_con_otro_cliente_respeta_secuencia_y_original(web, empres
     original = estado(empresa)[0]
     detalle = web.post(VENTAS, {'action': 'search_detail_products', 'id': origen.pk}).json()
     # La interfaz manda únicamente datos editables al alta normal, nunca duplica la fila Sale.
-    productos = [{'id': d['product']['id'], 'cant': d['cant'], 'price_current': d['price'], 'dscto': d['dscto']}
-                 for d in detalle]
+    productos = [{'id': d['product']['id'], 'cant': d['cant'], 'precio_con_iva': d['precio_con_iva'], 'dscto': d['dscto'],
+                  'descripcion': d['descripcion']} for d in detalle]
     for _ in range(2):
         sri.respuestas_autorizacion = ['AUTORIZADO']
         respuesta = web.post(f'{VENTAS}add/', datos(cliente, productos, voucher_number=origen.voucher_number)).json()
@@ -72,7 +73,8 @@ def test_nueva_factura_con_otro_cliente_respeta_secuencia_y_original(web, empres
         assert [int(v.voucher_number) for v in nuevas] == [int(origen.voucher_number) + 1, int(origen.voucher_number) + 2]
         assert all(v.client_id == cliente.pk and v.receipt_id == origen.receipt_id for v in nuevas)
         assert len({origen.access_code, *(v.access_code for v in nuevas)}) == 3
-        assert list(SaleDetail.objects.filter(sale__in=nuevas).values_list('price', flat=True)) == [Decimal('8.50')] * 2
+        assert list(SaleDetail.objects.filter(sale__in=nuevas).values_list('precio_con_iva', 'descripcion')) == [
+            (Decimal('9.78'), 'Base copiada')] * 2
         assert Product.objects.get(pk=productos[0]['id']).pvp == Decimal('10.00')
     assert [fila for fila in estado(empresa)[0] if fila['id'] == origen.pk] == original
 

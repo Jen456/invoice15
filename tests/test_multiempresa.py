@@ -106,7 +106,7 @@ class TestPantallas:
         respuesta = client.post('/pos/sale/admin/add/', {
             'action': 'add', 'date_joined': '2026-10-09', 'receipt': '08', 'client': datos['cli_b'].id,
             'payment_type': 'efectivo', 'cash': '20', 'change': '0', 'additional_info': '[]',
-            'products': json.dumps([{'id': datos['prod_a'].id, 'cant': 1, 'price_current': '10', 'dscto': '0'}]),
+            'products': json.dumps([{'id': datos['prod_a'].id, 'cant': 1, 'precio_con_iva': f"{datos['prod_a'].precio_con_iva:.2f}", 'dscto': '0'}]),
         })
         assert 'error' in respuesta.json()
         with platform_scope():

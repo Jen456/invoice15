@@ -152,13 +152,19 @@ class TestCobroACredito:
 
 class TestEmisionContado:
 
-    def test_efectivo_exige_efectivo_suficiente_y_el_servidor_calcula_el_cambio(self, web, empresa, comprador, producto, sri):  # noqa: F811
+    def test_efectivo_ya_no_pide_efectivo_recibido_ni_cambio(self, web, empresa, comprador, producto, sri):  # noqa: F811
+        # Precios con IVA: «Efectivo recibido» y «Cambio» ya no se piden ni se validan; se guardan en 0 (lo que envíe una
+        # página anterior se ignora).
         r = vender(web, comprador, producto, medio_cobro='efectivo', cash='10', change='0')
-        assert 'El efectivo recibido' in r['error'] and leer(empresa, lambda: Sale.objects.count()) == 0
-        r = vender(web, comprador, producto, medio_cobro='efectivo', cash='100', change='99')   # el cambio lo calcula el servidor
         assert 'error' not in r, r
         venta = venta_de(empresa, 271)
-        assert (venta.payment_type, venta.medio_cobro, venta.cash, venta.change) == ('efectivo', 'efectivo', Decimal('100.00'), Decimal('77.00'))
+        assert (venta.payment_type, venta.medio_cobro, venta.cash, venta.change) == ('efectivo', 'efectivo', Decimal('0.00'), Decimal('0.00'))
+        sin_campos = {'action': 'add', 'receipt': '01', 'client': comprador.pk, 'payment_type': 'efectivo', 'medio_cobro': 'efectivo',
+                      'time_limit': '0', 'payment_method': '01', 'additional_info': '[]',
+                      'products': json.dumps([{'id': producto.pk, 'cant': 1, 'precio_con_iva': '11.50', 'dscto': 0}])}
+        r = web.post('/pos/sale/admin/add/', sin_campos).json()   # sin cash ni change en el POST
+        assert 'error' not in r, r
+        assert (venta_de(empresa, 272).cash, venta_de(empresa, 272).change) == (Decimal('0.00'), Decimal('0.00'))
         assert not respaldos(empresa)   # en efectivo la nota es opcional
         r = vender(web, comprador, producto, medio_cobro='efectivo', cash='23', nota_cobro='Recibió Ana en caja 1')
         assert 'error' not in r and respaldos(empresa)[0].origen == 'contado'

@@ -117,7 +117,7 @@ def producto(empresa):
 def vender(web, cliente, producto, cantidad=2, receipt='01', fecha='2026-10-11', **extra):
     datos = {'action': 'add', 'receipt': receipt, 'client': cliente.pk, 'payment_type': 'efectivo', 'date_joined': fecha,
              'cash': '100', 'change': '0', 'time_limit': '0', 'payment_method': '01', 'additional_info': '[]',
-             'products': json.dumps([{'id': producto.pk, 'cant': cantidad, 'price_current': str(producto.pvp), 'dscto': 0}])}
+             'products': json.dumps([{'id': producto.pk, 'cant': cantidad, 'precio_con_iva': f'{producto.precio_con_iva:.2f}', 'dscto': 0}])}
     datos.update(extra)
     return web.post(f'{VENTAS}add/', datos).json()
 

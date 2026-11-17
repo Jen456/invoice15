@@ -18,18 +18,20 @@ from core.tenancy.context import company_context
 from tests import helpers
 from tests.test_emision_sri import VENTAS, comprador, dueno, empresa, leer, p12, sri, venta_de, web  # noqa: F401
 from tests.test_liquidaciones import nueva_compra
+from tests.ayudas_precios import validar_factura_110
 from tests.test_rimpe import XSD, validar
 
 pytestmark = pytest.mark.django_db
 
-# (código, tarifa, precio, cantidad): 15 % → 20,00 + 3,00; 5 % → 9,99 + 0,50 (0,4995 redondeado); 0 % 4,00; exento 2,50; no objeto 1,00
-LINEAS = (('4', 'P15', '10.00', 2), ('5', 'P05', '3.33', 3), ('0', 'P00', '4.00', 1), ('7', 'PEX', '2.50', 1), ('6', 'PNO', '1.00', 1))
+# (código, tarifa, precio CON IVA, cantidad): 15 % → 23,00 = 20,00 + 3,00; 5 % → 10,50 = 10,00 + 0,50; 0 % 4,00; exento 2,50;
+# no objeto 1,00. Total 41,00 = Σ de los totales con IVA de las líneas.
+LINEAS = (('4', 'P15', '11.50', 2), ('5', 'P05', '3.50', 3), ('0', 'P00', '4.00', 1), ('7', 'PEX', '2.50', 1), ('6', 'PNO', '1.00', 1))
 
 
-def producto(empresa, tarifa, codigo, pvp):  # noqa: F811
+def producto(empresa, tarifa, codigo, precio):  # noqa: F811
     with company_context(empresa):
-        p = helpers.crear_producto(empresa, codigo, pvp=pvp)
-        p.tarifa_iva = tarifa
+        p = helpers.crear_producto(empresa, codigo)
+        p.tarifa_iva, p.precio_con_iva = tarifa, Decimal(precio)
         p.save()
         return p
 
@@ -42,7 +44,7 @@ def productos(empresa):  # noqa: F811
 @pytest.fixture
 def factura(web, empresa, comprador, productos, sri):  # noqa: F811
     sri.respuestas_autorizacion = ['AUTORIZADO']
-    lineas = [{'id': p.pk, 'cant': cantidad, 'price_current': str(p.pvp), 'dscto': 0} for p, cantidad in productos.values()]
+    lineas = [{'id': p.pk, 'cant': cantidad, 'precio_con_iva': f'{p.precio_con_iva:.2f}', 'dscto': 0} for p, cantidad in productos.values()]
     r = web.post(f'{VENTAS}add/', {'action': 'add', 'receipt': '01', 'client': comprador.pk, 'payment_type': 'efectivo',
                                    'date_joined': '2026-10-11', 'cash': '100', 'change': '0', 'time_limit': '0',
                                    'payment_method': '01', 'additional_info': '[]', 'products': json.dumps(lineas)}).json()
@@ -59,17 +61,19 @@ class TestFacturaConVariasTarifas:
 
     def test_totales(self, factura):
         assert (factura.subtotal_12, factura.subtotal_0, factura.total_iva, factura.total) == (
-            Decimal('29.99'), Decimal('7.50'), Decimal('3.50'), Decimal('40.99'))
+            Decimal('30.00'), Decimal('7.50'), Decimal('3.50'), Decimal('41.00'))
 
     def test_xml_valido_contra_el_xsd_y_agrupado_por_tarifa(self, factura):
-        ok, errores, documento = validar(factura.xml_signed, XSD / 'factura' / 'factura_V1.0.0.xsd')
+        ok, errores, documento = validar_factura_110(factura.xml_signed)   # versión 1.1.0: precio unitario de 6 decimales
         assert ok, errores
-        assert impuestos(documento) == [('4', '20.00', '3.00'), ('5', '9.99', '0.50'), ('0', '4.00', '0.00'),
+        assert documento.get('version') == '1.1.0'
+        assert impuestos(documento) == [('4', '20.00', '3.00'), ('5', '10.00', '0.50'), ('0', '4.00', '0.00'),
                                         ('6', '1.00', '0.00'), ('7', '2.50', '0.00')]
         lineas = [(d.findtext('impuestos/impuesto/codigoPorcentaje'), d.findtext('impuestos/impuesto/tarifa'),
                    d.findtext('impuestos/impuesto/valor')) for d in documento.findall('detalles/detalle')]
         assert lineas == [('4', '15.00', '3.00'), ('5', '5.00', '0.50'), ('0', '0.00', '0.00'), ('7', '0.00', '0.00'), ('6', '0.00', '0.00')]
-        assert documento.findtext('infoFactura/totalSinImpuestos') == '37.49' and documento.findtext('infoFactura/importeTotal') == '40.99'
+        assert [d.findtext('precioUnitario') for d in documento.findall('detalles/detalle')] == ['10.00', '3.333333', '4.00', '2.50', '1.00']
+        assert documento.findtext('infoFactura/totalSinImpuestos') == '37.50' and documento.findtext('infoFactura/importeTotal') == '41.00'
 
     def test_la_linea_conserva_su_tarifa_si_el_producto_cambia(self, empresa, factura, productos):  # noqa: F811
         p5, _ = productos['5']
@@ -80,7 +84,7 @@ class TestFacturaConVariasTarifas:
             venta.calculate_detail()
             venta.calculate_invoice()
             assert SaleDetail.objects.get(sale=venta, product=p5).codigo_porcentaje == '5'
-            assert venta.total == Decimal('40.99')
+            assert venta.total == Decimal('41.00')
 
     def test_ride_con_una_fila_por_tarifa(self, empresa, factura):  # noqa: F811
         with company_context(empresa):
@@ -101,7 +105,7 @@ class TestFacturaConVariasTarifas:
         nota = leer(empresa, lambda: CreditNote.objects.get(sale=factura))
         ok, errores, documento = validar(nota.xml_signed, XSD / 'notacredito' / 'NotaCredito_V1.1.0.xsd')
         assert ok, errores
-        assert impuestos(documento) == [('5', '6.66', '0.33')] and nota.total == Decimal('6.99')
+        assert impuestos(documento) == [('5', '6.67', '0.33')] and nota.total == Decimal('7.00')   # 2 × 3,50 con IVA
         assert documento.findtext('detalles/detalle/impuestos/impuesto/tarifa') == '5.00'
 
 
@@ -123,11 +127,11 @@ class TestProducto:
         with company_context(empresa):
             categoria = helpers.crear_producto(empresa, 'CAT').category
         r = web.post('/pos/product/add/', {'action': 'add', 'name': 'MEDICINA', 'code': 'MED-1', 'category': categoria.pk,
-                                           'price': '1.00', 'pvp': '2.00', 'inventoried': 'on', 'tarifa_iva': '5'}).json()
+                                           'price': '1.00', 'precio_con_iva': '2.10', 'inventoried': 'on', 'tarifa_iva': '5'}).json()
         assert 'error' not in r, r
         with company_context(empresa):
             nuevo = Product.objects.get(code='MED-1')
-        assert (nuevo.tarifa_iva, nuevo.with_tax) == ('5', True)
+        assert (nuevo.tarifa_iva, nuevo.with_tax, nuevo.precio_con_iva, nuevo.pvp) == ('5', True, Decimal('2.10'), Decimal('2.00'))
         with company_context(empresa):
             assert ProductForm(instance=helpers.crear_producto(empresa, 'SIN', con_iva=False)).initial['tarifa_iva'] == '0'
 
