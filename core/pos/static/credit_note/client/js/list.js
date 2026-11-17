@@ -103,48 +103,19 @@ $(function () {
             $('.tooltip').remove();
             var tr = tblCreditNote.cell($(this).closest('td, li')).index();
             var row = tblCreditNote.row(tr.row).data();
-            $('#tblProducts').DataTable({
-                autoWidth: false,
-                destroy: true,
-                ajax: {
-                    url: pathname,
-                    type: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrftoken
-                    },
-                    data: {
-                        'action': 'search_detail_products',
-                        'id': row.id
-                    },
-                    dataSrc: ""
+            // Líneas con precio con IVA: descripción, precio, descuento y total con IVA del servidor; las anteriores, como
+            // siempre (static/js/fp-detalle-lineas.js).
+            $('#tblProducts').DataTable(fpDetalleLineas.opciones('#tblProducts', {
+                url: pathname,
+                type: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken
                 },
-                columns: [
-                    {data: "product.short_name"},
-                    {data: "price_with_vat"},
-                    {data: "cant"},
-                    {data: "total_dscto"},
-                    {data: "total"},
-                ],
-                columnDefs: [
-                    {
-                        targets: [-1, -2, -4],
-                        class: 'text-center',
-                        render: function (data, type, row) {
-                            return '$' + data.toFixed(2);
-                        }
-                    },
-                    {
-                        targets: [-3],
-                        class: 'text-center',
-                        render: function (data, type, row) {
-                            return data;
-                        }
-                    }
-                ],
-                initComplete: function (settings, json) {
-                    $(this).wrap('<div class="dataTables_scroll"><div/>');
+                data: {
+                    'action': 'search_detail_products',
+                    'id': row.id
                 }
-            });
+            }, 'price_with_vat'));
             $('#myModalDetails').modal('show');
         })
 
