@@ -90,8 +90,9 @@ def test_vuelta_documentada_y_otra_ida_sobre_una_instalacion_con_menu(tmp_path):
             # pos 0035 (copia en la factura, sobre pos 0034) y tenancy 0012 (acción de auditoría, sobre 0011) caen con sus
             # apps; configuracion 0004-0005 (tabla y módulo) cuelgan de pos 0019, como 0001-0003, y no se deshacen. «Convertir en
             # factura» (primera entrega): proformas 0004 (borrador de factura) cae con `proformas zero` y tenancy 0013 (sus dos
-            # acciones de auditoría, sobre 0012) con la vuelta a tenancy 0006. 45 en total.
-            assert len(pendientes(env)) == 45
+            # acciones de auditoría, sobre 0012) con la vuelta a tenancy 0006. Precios con IVA: pos 0036-0037 (sobre pos 0035)
+            # caen con la vuelta a pos 0019 y proformas 0005 con `proformas zero`. 48 en total.
+            assert len(pendientes(env)) == 48
             sin_fase = estado(env)
             assert not NUEVOS & {m[0] for m in sin_fase['modulos']}
             assert not any(c.startswith('change_anulado_sri_') for _, codigos in sin_fase['roles'].values() for c in codigos)
@@ -125,10 +126,12 @@ def test_vuelta_del_diseno_y_otra_pasada_por_configuracion_0003(tmp_path):
         for app, destino in (('configuracion', '0003_modulo_puntos'), ('pos', '0034_cliente_nacimiento_opcional'),
                              ('tenancy', '0011_acciones_kardex')):   # la vuelta de DISENO-FACTURA.md
             manage(env, 'migrate', app, destino, '--noinput', '-v', '0')
-        # tenancy 0013 (acciones del borrador de factura) va sobre 0012: la vuelta a tenancy 0011 la deshace también.
+        # tenancy 0013 (acciones del borrador de factura) va sobre 0012: la vuelta a tenancy 0011 la deshace también. Los
+        # precios con IVA (pos 0036-0037) van sobre pos 0035: la vuelta a pos 0034 los deshace (proformas 0005 no depende de pos).
         sin_diseno = ['configuracion.0004_diseno_factura', 'configuracion.0005_modulo_diseno_factura',
-                      'configuracion.0006_personalizacion_factura', 'pos.0035_sale_ride_diseno',
-                      'tenancy.0012_accion_diseno_factura', 'tenancy.0013_acciones_borrador_factura']
+                      'configuracion.0006_personalizacion_factura', 'pos.0035_sale_ride_diseno', 'pos.0036_precios_con_iva',
+                      'pos.0037_precio_con_iva_del_catalogo', 'tenancy.0012_accion_diseno_factura',
+                      'tenancy.0013_acciones_borrador_factura']
         assert sorted(pendientes(env)) == sin_diseno
         assert diseno not in {m[0] for m in estado(env)['modulos']}
         # Otra pasada por 0003 (quita y vuelve a crear «Locales y puntos»): sin la tabla de 0004, ningún módulo del diseño

@@ -59,7 +59,7 @@
             <div class="table-responsive">
                 <table class="table table-bordered table-sm" id="fp-lineas">
                     <caption class="sr-only">Líneas de la proforma</caption>
-                    <thead><tr><th scope="col">Código</th><th scope="col">Descripción</th><th scope="col">IVA</th><th scope="col" class="text-right">Cant.</th><th scope="col" class="text-right">P. unitario</th><th scope="col" class="text-right">Descuento</th><th scope="col" class="text-right">Total</th></tr></thead>
+                    <thead><tr><th scope="col">Código</th><th scope="col">Descripción</th><th scope="col">IVA</th><th scope="col" class="text-right">Cant.</th>{% if precios_con_iva %}<th scope="col" class="text-right">P. unit. con IVA</th><th scope="col" class="text-right">Descuento</th><th scope="col" class="text-right">Total con IVA</th>{% else %}<th scope="col" class="text-right">P. unitario</th><th scope="col" class="text-right">Descuento</th><th scope="col" class="text-right">Total</th>{% endif %}</tr></thead>
                     <tbody>
                     {% for l in lineas %}
                         <tr>
@@ -67,9 +67,13 @@
                             <td>{{ l.descripcion }}{% if not l.product_id %} <span class="badge badge-secondary">producto eliminado</span>{% endif %}</td>
                             <td>{{ l.nombre_tarifa }}</td>
                             <td class="text-right">{{ l.cant }}</td>
+{% if precios_con_iva %}
+                            <td class="text-right">{{ l.precio_con_iva|floatformat:2 }}</td>
+                            <td class="text-right">{{ l.descuento_con_iva|floatformat:2 }}</td>
+                            <td class="text-right">{{ l.total_con_iva|floatformat:2 }}</td>{% else %}
                             <td class="text-right">{{ l.price|floatformat:2 }}</td>
                             <td class="text-right">{{ l.total_dscto|floatformat:2 }}</td>
-                            <td class="text-right">{{ l.total|floatformat:2 }}</td>
+                            <td class="text-right">{{ l.total|floatformat:2 }}</td>{% endif %}
                         </tr>
                     {% endfor %}
                     </tbody>

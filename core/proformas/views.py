@@ -230,6 +230,8 @@ class ProformaDetailView(GroupPermissionMixin, TemplateView):
         lineas = list(p.detalles.all())
         context.update({'title': f'Proforma {p.numero_completo}', 'list_url': URL_LISTA, 'p': p, 'lineas': lineas,
                         'impuestos': impuestos_por_tarifa(lineas),
+                        # Precios con IVA: líneas con precio y total con IVA (como el PDF); las anteriores, como siempre.
+                        'precios_con_iva': bool(lineas) and all(l.precio_con_iva is not None for l in lineas),
                         'proforma': sv.detalle(p, **sv.contexto_de_peticion(self.request)),
                         'config': configuracion_acciones()})
         return context

@@ -298,6 +298,19 @@ class TestVenta:
             posiciones = [html.index(f'Fila {n}<') for n in range(1, 11)]
             assert posiciones == sorted(posiciones)
 
+    def test_sin_efectivo_ni_cambio_en_el_formulario(self, web, empresa, comprador, sri):  # noqa: F811
+        from core.pos.forms import SaleForm
+        with company_context(empresa):
+            campos = SaleForm().fields
+        assert 'cash' not in campos and 'change' not in campos
+        html = web.get(f'{VENTAS}add/').content.decode()
+        assert 'name="cash"' not in html and 'name="change"' not in html
+        p = producto_con(empresa, 'SINCASH', '11.50')
+        sri.respuestas_autorizacion = ['AUTORIZADO']
+        r = web.post(f'{VENTAS}add/', post_venta(comprador, [linea(p)]))   # sin cash ni change en el POST
+        assert r.json().get('resp') is True, r.json()
+        assert (ultima_venta(empresa).cash, ultima_venta(empresa).change) == (D('0.00'), D('0.00'))
+
     def test_formato_viejo_rechazado_sin_efectos(self, web, empresa, comprador):  # noqa: F811
         p = producto_con(empresa, 'VIEJO', '11.50')
         antes = leer(empresa, lambda: (Sale.objects.count(), Product.objects.get(pk=p.pk).stock))
@@ -583,6 +596,8 @@ class TestProforma:
             assert pdf['precios_con_iva'] is True
         texto = texto_pdf(web.get(f'/proformas/pdf/{p.pk}/').content)   # el PDF muestra los precios con IVA de las líneas
         assert 'P. unit. con IVA' in texto and 'Primera: asesoría' in texto and '2700,00' in texto and '3725,94' in texto
+        ficha = web.get(f'/proformas/ver/{p.pk}/').content.decode()     # y la ficha de la proforma
+        assert 'P. unit. con IVA' in ficha and 'Segunda: equipo' in ficha and '2700,00' in ficha and '300,00' in ficha
         r = web.post('/proformas/', {'action': 'convertir', 'id': p.pk}).json()
         b = leer(empresa, lambda: BorradorFactura.objects.get(proforma=p))
         assert [(l['product'], l['precio_con_iva'], l['descripcion']) for l in b.lineas] == [
