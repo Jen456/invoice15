@@ -395,7 +395,8 @@ Estilos:
 
 - `static/css/facturaporaqui.css`: asa, flechas y fila arrastrada; casillas numéricas anchas (cantidad, precio con
   prefijo $, descuento con sufijo %) y el valor del descuento en $; descripción y avisos de la línea; las líneas en tabla
-  desde 1400 px y en tarjetas por debajo (sustituye las reglas anteriores de la tabla de líneas).
+  desde 1400 px y en tarjetas por debajo (sustituye las reglas anteriores de la tabla de líneas); los importes del pie de
+  la proforma (`#fp-totales`) en una sola línea (a 1024 px «3814.70» salía partido).
 
 Pruebas de la pantalla (`node --test tests/frontend/`): `importes_con_iva.test.cjs`, `detalle_lineas.test.cjs` y
 `nota_credito_importes.test.cjs` (nuevas) y `factura_base.test.cjs` (ajustada). Recorrido en navegador con el servidor de la

@@ -342,6 +342,9 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-stage .fp-acciones .btn { min-width: 42px; }
 .fp-stage #fp-totales { background: #f3f9fb; border: 1px solid #cbdfe8; }
 .fp-stage #fp-totales tr:last-child { background: #163B50; color: white; font-size: 1.2rem; }
+/* Importes del pie de la proforma en una sola línea: con los rótulos «(sin IVA)»/«(con IVA)», a 1024 px la columna se
+   estrechaba y «3814.70» salía partido en «381» y «4.70». El rótulo es el que se parte. */
+.fp-stage #fp-totales td { white-space: nowrap; }
 .fp-stage .fp-proforma-aviso, .fp-stage-note { border-left: 4px solid #44BADD; padding: 1rem; background: #E5F1F6; border-radius: 12px; overflow-wrap: anywhere; }
 /* El aviso de la proforma que se factura usa .alert-info (texto blanco de AdminLTE) sobre este fondo claro: texto oscuro. */
 .fp-stage .fp-proforma-aviso, .fp-stage .fp-proforma-aviso .alert-link { color: #163B50; }
