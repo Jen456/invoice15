@@ -2773,3 +2773,12 @@ Base: `frontend/etapa3` avanzó por fast-forward a `plataforma 96d39e1` tras fet
 **Propiedad:** Codex deja diseño/contrato y adapta interfaz tras aprobación. Claude implementa cuentas, apertura, auxiliares, asientos, permisos y contratos definitivos; conservar límites por empresa y las reglas comerciales autorizadas. No habilitar todo quitando `MENSAJE_COMPLEMENTO`. No se modificaron backend, plantillas productivas, suscripciones ni datos.
 
 **Validación:** cuatro vistas × seis anchos, 24 combinaciones sin desborde; siete comprobaciones de interacción y foco/movimiento reducido; cero errores JS y HTTP. Capturas ficticias 360/768/1360 y PDF A4 de siete páginas. Detalle en RESULTADOS-FRONTEND. Sin despliegue ni operaciones reales.
+
+
+## 17/11/2026 — Codex revisa apertura `2e247a2` (sin tocar la rama de Claude)
+
+Revisión dirigida del corte 1, código `7a5c567`; GitHub aún no contiene un corte 2 más reciente. [Informe y orden breve](revisiones/apertura-20261117/REVISION.md), [cuatro reproductores](revisiones/apertura-20261117/reproductores.py) y [resultado](revisiones/apertura-20261117/RESULTADOS.txt).
+
+Tres problemas reproducidos: **A1**, ingresos y gastos con resultado neto cero se rechazan como `resultado_duplicado`; **A2**, confirmar saldos al 31/12/2025 deja consultar un diario de 2024 sin datos con `provisional=false`; **A3**, un importe demasiado grande dispara `Decimal.InvalidOperation` y devuelve 500 tanto al capturarlo como al subir CSV. Corregir esos casos conservando lo que avance del corte 2; no abrir otro bloque ni repetir las auditorías cerradas.
+
+Validación propia: 37 pruebas existentes seleccionadas pasan y los cuatro reproductores fallan por los motivos descritos, sin errores de preparación. SQLite temporal, datos ficticios. No se ejecutaron PostgreSQL, suites completas, navegador ni despliegue. La API de apertura y lectura del diario está; las pantallas conectadas y las Partes C–F siguen pendientes. No se modificaron backend, permisos comerciales, rama de Claude ni producción.

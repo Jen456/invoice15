@@ -1877,3 +1877,13 @@ Petición: completar Contabilidad/Tributario y admitir empresas que parten de es
 **Pendiente de Claude:** aceptar/ajustar el contrato C6-A e implementar el núcleo genérico, apertura y auxiliares sin duplicaciones, diario/mayor y conexión tributaria. Las decisiones fiscales reales y la activación comercial se resuelven con sus fuentes/autorizaciones; no impiden construir los componentes genéricos. **Pendiente de la propietaria:** revisar el PDF de la propuesta antes de su integración visual, conforme al encargo.
 
 **Commit de la propuesta subido:** `f5b57aa95176b77348ef9e9bb198422d7cff6ab4` en GitHub `frontend/etapa3`, verificado con `git ls-remote`. El registro posterior solo documenta esa subida.
+
+
+## 17/11/2026 — revisión dirigida del backend de apertura (Codex)
+
+- Rama remota leída: `fase/contable-2-apertura`, `2e247a2f6eb35a48fa1798ad744d789a9506bfc2`. Último código `7a5c567`; diferencia posterior solo documental. `plataforma` sigue en `96d39e1`; no se integra la candidata sin corregir.
+- Copia de revisión separada y temporal, sin modificar archivos de la rama original. Documento: `revisiones/apertura-20261117/REVISION.md`.
+- SQLite: 37 pruebas existentes aprobadas; cuatro reproductores adicionales fallan, cero errores de preparación, 37,21 s. Selección: aceptación de confirmación/reintento, bloqueos de saldos, casos de confirmación, empresa/permisos/plan y controles de texto.
+- Hallazgos: A1 (neto cero con actividad nominal), A2 (cobertura del diario anterior al corte), A3 (importe excesivo produce 500 en captura y CSV). Reproductores y extracto de salida junto al informe.
+- No se repiten suites completas, PostgreSQL/RLS, ensayos de migración o auditorías previas. No hay capturas nuevas: revisión de código y API con cliente de pruebas. No se prueba guardado en producción, SRI, correos ni pagos.
+- Entrega solo documental en `frontend/etapa3`; backend y pantallas productivas sin cambios. Claude corrige A1–A3 y continúa el corte 2. Codex conserva pendiente conectar el diseño al contrato definitivo.
