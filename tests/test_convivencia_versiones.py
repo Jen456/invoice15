@@ -24,12 +24,15 @@ from tests.test_importacion_verificacion_sri import archivos_temporales, dueno, 
 
 pytestmark = pytest.mark.django_db
 
-# Migraciones de esta entrega; producción (e0f2902) está en importacion 0007, proformas 0003 y tenancy 0012.
+# Migraciones de esta entrega y de los precios con IVA (CONTRATO-PRECIOS-CON-IVA.md, sobre el PR #1); producción (e0f2902)
+# está en importacion 0007, proformas 0003, tenancy 0012 y pos 0035; el PR #1, en pos 0035 y proformas 0004.
 DE_ESTA_ENTREGA = [('importacion', '0008_estado_fuera_rango_sri'), ('importacion', '0009_verificacion_sri_ultimo_intento'),
-                   ('proformas', '0004_borrador_factura'), ('tenancy', '0013_acciones_borrador_factura')]
+                   ('proformas', '0004_borrador_factura'), ('tenancy', '0013_acciones_borrador_factura'),
+                   ('pos', '0036_precios_con_iva'), ('proformas', '0005_precios_con_iva')]
 NO_NULAS_AGREGADAS = {('importacion_documentoimportado', 'ultima_consulta_mensaje'),
                       ('importacion_documentoimportado', 'ultima_consulta_resultado'),
-                      ('proformas_proforma', 'medio_pago_sugerido'), ('proformas_proforma', 'ocultar_vendedor')}
+                      ('proformas_proforma', 'medio_pago_sugerido'), ('proformas_proforma', 'ocultar_vendedor'),
+                      ('pos_saledetail', 'descripcion'), ('pos_creditnotedetail', 'descripcion')}
 
 
 def modelo_de_produccion(app, migracion, modelo):
@@ -131,3 +134,29 @@ def test_lo_que_verifica_la_version_anterior_se_completa_con_las_reglas_de_0009(
     salida = io.StringIO()
     call_command('procesar_importaciones', stdout=salida)
     assert 'versión anterior' not in salida.getvalue()
+
+
+def test_la_version_anterior_vende_sobre_la_base_con_precios_con_iva(empresa, dueno):  # noqa: F811
+    """La versión publicada y la del PR #1 (pos 0035) crean productos y líneas de venta sin las columnas de los precios con
+    IVA; esta versión los lee como «anteriores»: la línea con su cálculo de siempre y el producto con el precio con IVA de su
+    pvp."""
+    from decimal import Decimal
+
+    from core.pos.models import Product, SaleDetail
+    from tests import helpers
+    Producto = modelo_de_produccion('pos', '0035_sale_ride_diseno', 'Product')
+    Linea = modelo_de_produccion('pos', '0035_sale_ride_diseno', 'SaleDetail')
+    cliente = helpers.crear_cliente('comprador.anterior', empresa, '0991234567001', '0990000077')
+    base = helpers.crear_producto(empresa, 'BASE-ANT')
+    venta = helpers.crear_venta(empresa, cliente, dueno, base, cantidad=1)
+    with company_context(empresa), transaction.atomic():
+        producto = Producto.objects.create(company_id=empresa.pk, name='DE LA VERSIÓN ANTERIOR', code='ANT-1',
+                                           category_id=base.category_id, price=Decimal('1.00'), pvp=Decimal('20.00'),
+                                           tarifa_iva='4', with_tax=True, stock=5)
+        linea = Linea.objects.create(company_id=empresa.pk, sale_id=venta.pk, product_id=producto.pk, cant=1,
+                                     price=Decimal('20.00'), codigo_porcentaje='4')
+    with company_context(empresa):
+        nuevo, detalle = Product.objects.get(pk=producto.pk), SaleDetail.objects.get(pk=linea.pk)
+        assert nuevo.precio_con_iva is None and nuevo.precio_con_iva_catalogo() == Decimal('23.00')
+        assert (detalle.precio_con_iva, detalle.precio_unitario, detalle.descripcion) == (None, None, '')
+        assert not detalle.con_iva_incluido and detalle.descripcion_linea == 'DE LA VERSIÓN ANTERIOR'
