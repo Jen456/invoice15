@@ -406,12 +406,98 @@ a.card-icon:hover{animation:none;background:var(--fp-pale)}.card-icon-selected{b
 .fp-sale-payment-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px}.fp-sale-summary{background:#f3fafd;border:1px solid var(--fp-border);border-radius:16px;padding:22px;align-self:start}.fp-sale-summary h2{font-size:21px;margin-bottom:18px}.fp-sale-summary .table{margin-bottom:16px}.fp-sale-summary .table td{border:0;padding:8px 4px}.fp-sale-summary label{font-size:15px;margin:0}.fp-sale-summary input{background:transparent!important;border-color:transparent!important;text-align:right;font-weight:600}.fp-sale-summary .fp-sale-total td{border-top:1px solid var(--fp-border);padding-top:16px}.fp-sale-total input{font-size:24px!important;color:var(--fp-ink)}.fp-sale-note{padding:14px;border-left:3px solid var(--fp-sky,#44BADD);background:var(--fp-pale);border-radius:8px;font-size:15px}
 .fp-product-dialog{color:var(--fp-ink);border:1px solid var(--fp-border);border-radius:20px;padding:28px;width:720px;max-width:calc(100% - 24px);max-height:calc(100dvh - 32px);overflow:auto;box-shadow:0 24px 70px #163b5033}.fp-product-dialog::backdrop{background:#163b5099}.fp-product-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.fp-product-heading h2{font-size:26px;font-weight:750;margin-bottom:16px}.fp-product-close:not(.btn){flex-shrink:0;min-width:44px;min-height:44px;background:white;border:1px solid var(--fp-border);border-radius:10px;font-size:25px;color:var(--fp-ink)}.fp-product-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}.fp-product-fields .form-group{min-width:0;margin-bottom:20px}.fp-product-fields .form-control{font-size:16px;min-height:46px}.fp-product-fields input[type=file]{max-width:100%;font-size:14px}.fp-product-fields input[type=checkbox]{width:20px;height:20px}.fp-product-fields textarea{height:auto}.fp-product-dialog summary{cursor:pointer;padding:14px 0;font-weight:650}.fp-product-footer{display:flex;gap:12px;justify-content:flex-end;border-top:1px solid var(--fp-border);margin-top:22px;padding-top:22px}.fp-product-footer .btn{min-height:46px}.fp-product-dialog .invalid-feedback{display:block}.fp-product-dialog [hidden]{display:none!important}.fp-product-dialog .alert{overflow-wrap:anywhere}.fp-product-dialog :focus-visible{outline:3px solid #163B50;outline-offset:3px}body:has(.fp-product-dialog[open]){overflow:hidden}
 @media(min-width:1200px){.fp-sale-grid:first-child{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:1399px){.fp-sale-lines #tblProducts{position:relative;display:block!important;min-width:0!important;width:100%!important;border:0}.fp-sale-lines #tblProducts thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.fp-sale-lines #tblProducts tbody{display:block}.fp-sale-lines #tblProducts tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 16px;padding:16px;border:1px solid var(--fp-border);border-radius:12px;margin:12px 0}.fp-sale-lines #tblProducts tbody td{display:block!important;min-width:0;width:auto!important;border:0;padding:6px 0!important;text-align:left!important}.fp-sale-lines #tblProducts tbody td:nth-child(3),.fp-sale-lines #tblProducts tbody td.dataTables_empty{grid-column:1/-1}.fp-sale-lines #tblProducts td[data-label]::before{content:attr(data-label);display:block;font-size:14px;font-weight:600;color:var(--fp-muted);margin-bottom:4px}.fp-sale-lines .dataTables_scroll{overflow:visible}}
 @media(max-width:1023px){.fp-sale-payment-layout{grid-template-columns:1fr}}
-@media(max-width:575px){.fp-sale-grid,.fp-product-fields{grid-template-columns:1fr}.fp-sale-section{padding:20px 0}.fp-sale-section legend{font-size:20px}.fp-sale-search>.btn{margin:0 0 16px;width:100%}.fp-sale-tools .btnRemoveAllProducts{margin-left:0}.fp-sale-summary{padding:16px}.fp-product-dialog{padding:20px;max-width:calc(100% - 16px);max-height:calc(100dvh - 16px);border-radius:16px}.fp-product-heading h2{font-size:23px}.fp-product-footer{flex-direction:column-reverse}.fp-product-dialog input,.fp-product-dialog select,.fp-product-dialog textarea{font-size:16px}.fp-sale-lines #tblProducts tbody tr{grid-template-columns:1fr}}
+@media(max-width:575px){.fp-sale-grid,.fp-product-fields{grid-template-columns:1fr}.fp-sale-section{padding:20px 0}.fp-sale-section legend{font-size:20px}.fp-sale-search>.btn{margin:0 0 16px;width:100%}.fp-sale-tools .btnRemoveAllProducts{margin-left:0}.fp-sale-summary{padding:16px}.fp-product-dialog{padding:20px;max-width:calc(100% - 16px);max-height:calc(100dvh - 16px);border-radius:16px}.fp-product-heading h2{font-size:23px}.fp-product-footer{flex-direction:column-reverse}.fp-product-dialog input,.fp-product-dialog select,.fp-product-dialog textarea{font-size:16px}}
 
-.fp-sale-lines #tblProducts td:nth-child(6),.fp-sale-lines #tblProducts td:nth-child(8){white-space:nowrap}.fp-sale-editor #fp-product-status{background:#e5f1f6;color:#163b50;border-color:#87bacc}.fp-responsive-form:has(.fp-sale-editor)>.card>.fp-form-actions{position:static}.fp-stage .fp-sale-editor .fp-sale-section legend{font-size:21px}
+.fp-sale-editor #fp-product-status{background:#e5f1f6;color:#163b50;border-color:#87bacc}.fp-responsive-form:has(.fp-sale-editor)>.card>.fp-form-actions{position:static}.fp-stage .fp-sale-editor .fp-sale-section legend{font-size:21px}
 #frmForm:has(.fp-sale-editor) :focus-visible{outline:3px solid #163B50;outline-offset:3px}
+
+/* Líneas de factura y proforma con precios CON IVA: asa ⋮⋮ para ordenar, descripción editable, cantidad y descuento
+   legibles (casilla numérica con flechas pequeñas, sin los botones de TouchSpin) y el descuento en % con su valor en $.
+   Tabla desde 1400 px; por debajo, cada línea es una tarjeta. */
+.fp-orden-ayuda{font-size:14px;color:var(--fp-muted);margin:0 0 10px}
+.fp-orden-ayuda>span{font-weight:700;letter-spacing:-3px;margin-right:6px}
+.fp-orden{display:flex;align-items:center;gap:4px}
+.fp-orden-flechas{display:flex;gap:4px}
+.fp-asa{display:inline-grid;place-items:center;flex:0 0 auto;width:32px;min-height:44px;padding:0;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--fp-muted);font-size:18px;font-weight:700;line-height:1;letter-spacing:-3px;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
+.fp-asa:hover,.fp-asa:focus-visible{background:var(--fp-pale);border-color:var(--fp-border);color:var(--fp-ink)}
+.fp-orden-num{min-width:1.4em;text-align:center;font-size:14px;font-weight:700;color:var(--fp-muted);font-variant-numeric:tabular-nums}
+.fp-orden-btn{display:inline-grid;place-items:center;flex:0 0 auto;width:30px;height:30px;min-height:0!important;padding:0;border:1px solid var(--fp-border);border-radius:8px;background:#fff;color:var(--fp-ink);font-size:12px;line-height:1}
+.fp-orden-btn:hover:not(:disabled){background:var(--fp-pale)}
+.fp-orden-btn:disabled{opacity:.35;cursor:default}
+.fp-tabla-arrastrando,.fp-tabla-arrastrando *{cursor:grabbing!important;-webkit-user-select:none;user-select:none}
+.fp-fila-arrastrada{position:relative;z-index:2;background:#fff!important;box-shadow:0 10px 28px #163b5033;outline:2px solid var(--fp-sky)}
+.fp-fila-arrastrada>td{background:#fff!important}
+.fp-num{display:flex;align-items:stretch;min-width:0}
+.fp-num .fp-num-campo{flex:1 1 auto;min-width:0;height:44px;padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:var(--fp-ink)}
+.fp-num .fp-num-campo[type=number]{padding-right:2px}
+.fp-num-prefijo,.fp-num-sufijo{display:grid;place-items:center;flex:0 0 auto;padding:0 9px;border:1px solid #ced4da;background:var(--fp-pale);color:var(--fp-ink);font-weight:600}
+.fp-num-prefijo{border-right:0;border-radius:.25rem 0 0 .25rem}
+.fp-num-sufijo{border-left:0;border-radius:0 .25rem .25rem 0}
+.fp-num-prefijo+.fp-num-campo{border-top-left-radius:0;border-bottom-left-radius:0}
+.fp-num-pct .fp-num-campo{border-top-right-radius:0;border-bottom-right-radius:0}
+.fp-col-cant .fp-num-campo{min-width:6.5rem}
+.fp-dinero .fp-num-campo{min-width:6.5rem;padding-left:5px;padding-right:5px}
+.fp-num-pct .fp-num-campo{min-width:4.5rem}
+.fp-dscto-valor{display:block;margin-top:4px;font-size:13px;color:var(--fp-muted);white-space:nowrap}
+.fp-importe{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.fp-desc-linea{min-height:44px;resize:none;overflow:hidden;line-height:1.4}
+.fp-desc-pie{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin-top:4px;font-size:13px;color:var(--fp-muted)}
+.fp-desc-pie [hidden]{display:none!important}
+.fp-desc-pie .badge{font-size:12px}
+.fp-desc-pie .fp-tarifa-linea{width:auto;max-width:100%}
+.fp-desc-aviso{margin-left:auto}
+.fp-desc-aviso.fp-desc-limite{color:#9e3522;font-weight:600}
+.fp-linea-aviso{margin:6px 0 0;padding:6px 10px;border-left:3px solid var(--fp-coral);border-radius:4px;background:#fff3ed;color:#7a2a1a;font-size:14px}
+.fp-linea-aviso[hidden]{display:none!important}
+tr.fp-linea-invalida .fp-total-linea{color:#9e3522}
+.fp-quitar{display:inline-grid;place-items:center;width:44px;height:44px;padding:0}
+.fp-sale-lines #tblProducts td,.fp-proforma-lineas td{vertical-align:top}
+.fp-sale-summary .fp-sale-desglose th,.fp-sale-summary .fp-sale-desglose td{border:0;padding:0 4px 6px;font-size:14px;font-weight:500;color:var(--fp-muted)}
+.fp-sale-summary .fp-sale-desglose th{padding-left:16px}
+.fp-sale-summary .fp-sale-desglose td{text-align:right;font-variant-numeric:tabular-nums}
+.fp-sale-pago .fp-sale-grid{align-items:start}
+.fp-ac-item{display:flex;justify-content:space-between;gap:12px}
+.fp-ac-precio{white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums}
+@media(min-width:1400px){
+ .fp-sale-lines #tblProducts,.fp-proforma-lineas{table-layout:fixed}
+ .fp-sale-lines #tblProducts th,.fp-sale-lines #tblProducts td,.fp-stage .fp-proforma-lineas th,.fp-stage .fp-proforma-lineas td{box-sizing:border-box;padding:10px 8px;white-space:normal}
+ .fp-sale-lines #tblProducts .fp-orden-flechas,.fp-proforma-lineas .fp-orden-flechas{flex-direction:column;gap:2px}
+ .fp-sale-lines #tblProducts .fp-orden-btn,.fp-proforma-lineas .fp-orden-btn{height:22px}
+ .fp-sale-lines #tblProducts .fp-col-orden,.fp-proforma-lineas .fp-col-orden{width:104px}
+ .fp-sale-lines #tblProducts .fp-col-codigo,.fp-proforma-lineas .fp-col-codigo{width:100px;overflow-wrap:anywhere}
+ .fp-sale-lines #tblProducts .fp-col-cant,.fp-proforma-lineas .fp-col-cant{width:116px}
+ .fp-sale-lines #tblProducts .fp-col-precio,.fp-proforma-lineas .fp-col-precio{width:148px}
+ .fp-sale-lines #tblProducts .fp-col-dscto,.fp-proforma-lineas .fp-col-dscto{width:120px}
+ .fp-sale-lines #tblProducts .fp-col-total,.fp-proforma-lineas .fp-col-total{width:132px;text-align:right}
+ .fp-sale-lines #tblProducts .fp-col-quitar,.fp-proforma-lineas .fp-col-quitar{width:60px;text-align:center}
+ .fp-sale-lines #tblProducts .fp-col-total .fp-importe,.fp-proforma-lineas .fp-col-total .fp-importe{display:block;line-height:1.3;padding-top:11px;white-space:normal;overflow-wrap:anywhere}
+}
+@media(max-width:1399.98px){
+ .fp-sale-lines #tblProducts,.fp-stage #tblLineas.fp-proforma-lineas{position:relative;display:block!important;width:100%!important;min-width:0!important;border:0}
+ .fp-sale-lines #tblProducts thead,.fp-stage #tblLineas.fp-proforma-lineas thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .fp-sale-lines #tblProducts tbody,.fp-stage #tblLineas.fp-proforma-lineas tbody{display:block;width:100%}
+ .fp-sale-lines #tblProducts tbody tr,.fp-stage #tblLineas.fp-proforma-lineas tbody>tr{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-areas:"orden codigo codigo quitar" "desc desc desc desc" "cant precio dscto total";gap:10px 16px;margin:12px 0;padding:12px 16px 16px;border:1px solid var(--fp-border);border-radius:12px;background:#fff}
+ .fp-sale-lines #tblProducts tbody td,.fp-stage #tblLineas.fp-proforma-lineas tbody>tr>td{display:block!important;min-width:0;width:auto!important;max-width:none;padding:0!important;border:0;text-align:left!important}
+ .fp-sale-lines #tblProducts tbody td.dataTables_empty{grid-column:1/-1;padding:12px!important}
+ .fp-sale-lines #tblProducts td[data-label]::before,.fp-stage #tblLineas.fp-proforma-lineas td[data-label]::before{content:attr(data-label);display:block;margin-bottom:4px;font-size:14px;font-weight:600;color:var(--fp-muted)}
+ .fp-sale-lines #tblProducts td.fp-col-orden::before,.fp-sale-lines #tblProducts td.fp-col-quitar::before,.fp-stage #tblLineas.fp-proforma-lineas td.fp-col-orden::before,.fp-stage #tblLineas.fp-proforma-lineas td.fp-col-quitar::before{display:none}
+ .fp-sale-lines #tblProducts td.fp-col-orden,.fp-stage #tblLineas.fp-proforma-lineas tbody>tr>td.fp-col-orden{grid-area:orden;align-self:center}
+ .fp-sale-lines #tblProducts td.fp-col-codigo,.fp-stage #tblLineas.fp-proforma-lineas tbody>tr>td.fp-col-codigo{grid-area:codigo;overflow-wrap:anywhere}
+ .fp-sale-lines #tblProducts td.fp-col-quitar,.fp-stage #tblLineas.fp-proforma-lineas tbody>tr>td.fp-col-quitar{grid-area:quitar;justify-self:end;align-self:center}
+ .fp-sale-lines #tblProducts td.fp-col-desc,.fp-stage #tblLineas.fp-proforma-lineas tbody>tr>td.fp-col-desc{grid-area:desc}
+ .fp-sale-lines #tblProducts td.fp-col-cant,.fp-stage #tblLineas.fp-proforma-lineas tbody>tr>td.fp-col-cant{grid-area:cant}
+ .fp-sale-lines #tblProducts td.fp-col-precio,.fp-stage #tblLineas.fp-proforma-lineas tbody>tr>td.fp-col-precio{grid-area:precio}
+ .fp-sale-lines #tblProducts td.fp-col-dscto,.fp-stage #tblLineas.fp-proforma-lineas tbody>tr>td.fp-col-dscto{grid-area:dscto}
+ .fp-sale-lines #tblProducts td.fp-col-total,.fp-stage #tblLineas.fp-proforma-lineas tbody>tr>td.fp-col-total{grid-area:total}
+ .fp-sale-lines #tblProducts td.fp-col-total .fp-importe,.fp-sale-lines #tblProducts td.fp-col-precio span.fp-importe,.fp-stage #tblLineas.fp-proforma-lineas td.fp-col-total .fp-importe{display:block;line-height:44px;font-size:18px}
+ .fp-sale-lines .dataTables_scroll{overflow:visible}
+ .fp-stage .table-responsive:has(>.fp-proforma-lineas){overflow:visible}
+}
+@media(max-width:575.98px){
+ .fp-sale-summary .fp-sale-total input{font-size:20px!important}
+ .fp-sale-lines #tblProducts tbody tr,.fp-stage #tblLineas.fp-proforma-lineas tbody>tr{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"orden quitar" "codigo total" "desc desc" "cant dscto" "precio precio";gap:10px 12px;padding:12px}
+}
 
 /* Cliente dentro de la factura: un solo formulario, con errores y búsqueda contextual. */
 .fp-client-modal { color: #163B50; }

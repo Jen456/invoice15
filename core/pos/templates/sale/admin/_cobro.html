@@ -2,7 +2,7 @@
 <section class="fp-cobro" aria-labelledby="fp-cobro-titulo">
     <div class="fp-cobro-cabecera"><i class="fas fa-receipt" aria-hidden="true"></i><div><h3 id="fp-cobro-titulo">¿Cómo recibiste el pago?</h3><p>Deja el comprobante, una nota interna o ambos junto a esta factura.</p></div></div>
     <div class="fp-cobro-grid">
-        <div class="form-group"><label for="{{ form.medio_cobro.id_for_label }}">{{ form.medio_cobro.label }}</label>{{ form.medio_cobro }}<small>«Efectivo recibido» y «Cambio» solo aplican al efectivo.</small></div>
+        <div class="form-group"><label for="{{ form.medio_cobro.id_for_label }}">{{ form.medio_cobro.label }}</label>{{ form.medio_cobro }}<small>Efectivo, transferencia, tarjeta u otro medio con el que te pagaron.</small></div>
         <div class="form-group"><label for="{{ form.referencia_cobro.id_for_label }}">{{ form.referencia_cobro.label }}</label>{{ form.referencia_cobro }}<small>No escribas números completos de tarjeta.</small></div>
         <div class="form-group fp-cobro-archivo"><label for="{{ form.respaldo.id_for_label }}">{{ form.respaldo.label }}</label>{{ form.respaldo }}<small>PDF, JPG o PNG, hasta 5 MB. El archivo queda privado.</small></div>
         <div class="form-group"><label for="{{ form.nota_cobro.id_for_label }}">{{ form.nota_cobro.label }}</label>{{ form.nota_cobro }}<small>Obligatoria si no adjuntas un comprobante, salvo en efectivo.</small></div>

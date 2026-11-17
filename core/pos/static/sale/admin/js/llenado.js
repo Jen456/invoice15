@@ -14,7 +14,9 @@
         const status = document.getElementById('fp-product-status');
         const sourceURL = new URL(opener.dataset.productUrl, location.href);
         let busy = false, loaded = false, lookupCode = null, saved = false;
-        const essentials = ['name', 'code', 'category', 'pvp', 'tarifa_iva', 'inventoried'];
+        // El precio de venta se escribe CON IVA: `precio_con_iva` si el formulario lo trae, si no `pvp` (contrato «precios con IVA»).
+        const essentials = ['name', 'code', 'category', 'pvp', 'precio_con_iva', 'tarifa_iva', 'inventoried'];
+        const salePrice = () => form.elements.namedItem('precio_con_iva') || form.elements.namedItem('pvp');
         function note(text) { status.textContent = text; status.hidden = false; }
         function failure(text) { error.textContent = text; error.hidden = false; error.focus(); }
         function working(value) {
@@ -24,7 +26,7 @@
         }
         function stockNote() {
             const stock = form.elements.namedItem('inventoried');
-            const cost = form.elements.namedItem('price'), price = form.elements.namedItem('pvp');
+            const cost = form.elements.namedItem('price'), price = salePrice();
             if (price && cost) price.min = String(Math.max(0.01, Number(cost.value) || 0));
             document.getElementById('fp-product-stock-note').hidden = !stock || !stock.checked;
             save.textContent = lookupCode ? 'Comprobar producto guardado' : stock && stock.checked ? 'Guardar producto' : 'Guardar y añadir a la factura';
@@ -75,9 +77,9 @@
                     // Selects nativos: no se ejecutan los scripts de la página descargada.
                     copy.querySelectorAll('.select2').forEach(e => e.classList.remove('select2'));
                     if (['name','code'].includes(control.name)) control.minLength = 2;
-                    if (['price','pvp'].includes(control.name)) {
+                    if (['price','pvp','precio_con_iva'].includes(control.name)) {
                         control.type = 'number'; control.inputMode = 'decimal'; control.step = '0.01';
-                        control.min = control.name === 'pvp' ? '0.01' : '0'; control.max = '1000000';
+                        control.min = control.name === 'price' ? '0' : '0.01'; control.max = '1000000';
                     }
                     if (control.name === 'inventoried') copy.querySelector('label').textContent = 'Controlar existencias de este producto';
                     (essentials.includes(control.name) ? fields : extras).append(copy);

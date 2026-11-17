@@ -6,10 +6,10 @@
     <script src="{% static 'lib/select2-4.0.13/js/i18n/es.js' %}"></script>
     <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2.min.css' %}">
     <link rel="stylesheet" href="{% static 'lib/select2-4.0.13/css/select2-bootstrap4.min.css' %}">
-    <link rel="stylesheet" href="{% static 'lib/bootstrap-touchspin-4.2.5/css/jquery.bootstrap-touchspin.css' %}"/>
-    <script src="{% static 'lib/bootstrap-touchspin-4.2.5/js/jquery.bootstrap-touchspin.js' %}"></script>
     <script src="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/js/tempusdominus-bootstrap.js' %}"></script>
     <link rel="stylesheet" href="{% static 'lib/tempusdominus-bootstrap-4.5.37.0/css/tempusdominus-bootstrap.css' %}"/>
+    <script src="{% static 'js/fp-importes.js' %}"></script>
+    <script src="{% static 'js/fp-lineas.js' %}"></script>
     <script src="{% static 'sale/admin/js/form.js' %}"></script>
     <script src="{% static 'sale/admin/js/llenado.js' %}" defer></script>
     <script src="{% static 'sale/admin/js/cliente_rapido.js' %}" defer></script>
@@ -64,7 +64,7 @@
         <div class="fp-sale-search">
             <div class="form-group"><label for="fp-sale-search">Busca por nombre o código</label>
                 <input id="fp-sale-search" type="text" class="form-control" autocomplete="off" name="search_product" placeholder="Escribe para buscar un producto" aria-describedby="fp-search-help">
-                <small id="fp-search-help" class="text-muted">Selecciona un resultado para agregarlo. Después puedes cambiar la cantidad{% if fp_alta.change_product %}, el precio de esta factura (no cambia el catálogo){% endif %} y el descuento.</small>
+                <small id="fp-search-help" class="text-muted">Los precios incluyen IVA. Selecciona un resultado para agregarlo; después puedes cambiar la descripción, la cantidad{% if fp_alta.change_product %}, el precio con IVA de esta factura (no cambia el catálogo){% endif %} y el descuento.</small>
             </div>
             {% if fp_alta.add_product %}<button type="button" class="btn btn-primary fp-open-product" data-product-url="{% url 'product_create' %}" aria-haspopup="dialog" aria-controls="fp-product-dialog"><i class="fas fa-plus" aria-hidden="true"></i> Crear producto aquí</button>{% endif %}
         </div>
@@ -75,39 +75,42 @@
         </div>
         <p id="fp-product-status" class="alert alert-info" role="status" hidden></p>
         <div id="fp-sale-no-results" class="fp-sale-empty" hidden>No encontramos productos disponibles con esa búsqueda. {% if fp_alta.add_product %}Puedes usar «Crear producto aquí» sin perder los datos de esta factura.{% endif %}</div>
+        <p id="fp-orden-ayuda" class="fp-orden-ayuda"><span aria-hidden="true">⋮⋮</span> Arrastra el asa para cambiar el orden de las líneas, o enfócala y usa las flechas arriba y abajo. La factura sale en este orden.</p>
         <div class="fp-sale-lines">
             <table class="table table-bordered table-sm" id="tblProducts" style="width:100%">
-                <thead><tr><th>Eliminar</th><th>Código</th><th>Producto</th><th>Stock</th><th>Cantidad</th><th>P./Unitario</th><th>Descuento</th><th>Total</th></tr></thead><tbody></tbody>
+                <caption class="sr-only">Líneas de la factura, en el orden en que saldrán</caption>
+                <thead><tr><th class="fp-col-orden"><span class="sr-only">Orden</span></th><th class="fp-col-codigo">Código</th><th class="fp-col-desc">Descripción</th><th class="fp-col-cant">Cantidad</th><th class="fp-col-precio">P. unitario <small>con IVA</small></th><th class="fp-col-dscto">Descuento</th><th class="fp-col-total">Total <small>con IVA</small></th><th class="fp-col-quitar"><span class="sr-only">Quitar</span></th></tr></thead><tbody></tbody>
             </table>
         </div>
+        <p id="fp-orden-anuncio" class="sr-only" aria-live="polite" aria-atomic="true"></p>
     </fieldset>
     <fieldset class="fp-sale-section">
         <legend><span>3</span> Pago y resumen</legend>
         <div class="fp-sale-payment-layout">
-            <div>
+            <div class="fp-sale-pago">
                 <div class="content-electronic-billing">
                     <p class="fp-sale-note"><input type="hidden" name="create_electronic_invoice" value="on"><i class="fas fa-file-invoice" aria-hidden="true"></i> Factura electrónica: se enviará al SRI al emitir.</p>
-                    <div class="form-group"><label for="{{ form.payment_method.id_for_label }}">{{ form.payment_method.label }}</label>{{ form.payment_method }}</div>
-                    <div class="form-group"><label for="{{ form.time_limit.id_for_label }}">{{ form.time_limit.label }}</label>{{ form.time_limit }}</div>
+                    <div class="fp-sale-grid">
+                        <div class="form-group"><label for="{{ form.payment_method.id_for_label }}">{{ form.payment_method.label }}</label>{{ form.payment_method }}</div>
+                        <div class="form-group fp-sale-plazo"><label for="{{ form.time_limit.id_for_label }}">{{ form.time_limit.label }} <small>(días)</small></label>{% render_field form.time_limit type="number" inputmode="numeric" min="0" max="1000" step="1" %}</div>
+                    </div>
                 </div>
-                <div class="form-group"><label for="{{ form.payment_type.id_for_label }}">{{ form.payment_type.label }}</label>{{ form.payment_type }}</div>
                 <div class="fp-sale-grid">
-                    <div class="form-group input_sale"><label for="{{ form.cash.id_for_label }}">{{ form.cash.label }}</label>{{ form.cash }}</div>
-                    <div class="form-group input_sale"><label for="{{ form.change.id_for_label }}">{{ form.change.label }}</label>{{ form.change }}</div>
-                    <div class="form-group input_sale" style="display:none"><label for="{{ form.end_credit.id_for_label }}">{{ form.end_credit.label }}</label>{{ form.end_credit }}</div>
+                    <div class="form-group"><label for="{{ form.payment_type.id_for_label }}">{{ form.payment_type.label }}</label>{{ form.payment_type }}</div>
+                    <div class="form-group fp-sale-vence" hidden><label for="{{ form.end_credit.id_for_label }}">{{ form.end_credit.label }}</label>{{ form.end_credit }}</div>
                 </div>
                 {% include 'sale/admin/_cobro.html' %}
             </div>
             <div class="fp-sale-summary"><h2>Resumen de tu factura</h2>
                 <table class="table table-sm"><tbody>
-                    <tr><td><label for="{{ form.subtotal_0.id_for_label }}">{{ form.subtotal_0.label }}</label></td><td>{{ form.subtotal_0 }}</td></tr>
-                    <tr><td><label for="{{ form.subtotal_12.id_for_label }}">Subtotal con IVA</label></td><td>{{ form.subtotal_12 }}</td></tr>
-                    <tr><td><label for="{{ form.total_dscto.id_for_label }}">{{ form.total_dscto.label }}</label></td><td>{{ form.total_dscto }}</td></tr>
+                    <tr class="fp-sale-subtotales"><td><label for="{{ form.subtotal_0.id_for_label }}">{{ form.subtotal_0.label }}</label></td><td>{{ form.subtotal_0 }}</td></tr>
+                    <tr class="fp-sale-subtotales"><td><label for="{{ form.subtotal_12.id_for_label }}">Subtotal gravado (sin IVA)</label></td><td>{{ form.subtotal_12 }}</td></tr>
+                    <tr><td><label for="{{ form.total_dscto.id_for_label }}">Descuento (con IVA)</label></td><td>{{ form.total_dscto }}</td></tr>
                     <tr><td><label for="{{ form.iva.id_for_label }}">IVA general %</label></td><td>{{ form.iva }}</td></tr>
                     <tr><td><label for="{{ form.total_iva.id_for_label }}">{{ form.total_iva.label }}</label></td><td>{{ form.total_iva }}</td></tr>
-                    <tr class="fp-sale-total"><td><label for="{{ form.total.id_for_label }}">{{ form.total.label }}</label></td><td>{{ form.total }}</td></tr>
+                    <tr class="fp-sale-total"><td><label for="{{ form.total.id_for_label }}">{{ form.total.label }} (con IVA)</label></td><td>{{ form.total }}</td></tr>
                 </tbody></table>
-                <p class="text-muted mb-0">Revisa las tarifas y los importes antes de emitir.</p>
+                <p class="text-muted mb-0">Los precios incluyen IVA: el total es la suma de las líneas y el IVA se calcula en cada una. Revisa las tarifas y los importes antes de emitir.</p>
             </div>
         </div>
     </fieldset>
@@ -156,8 +159,7 @@
                             <tr>
                                 <th>Código</th>
                                 <th>Nombre</th>
-                                <th>P./Unitario</th>
-                                <th>P./Promoción</th>
+                                <th>Precio con IVA</th>
                                 <th>Stock</th>
                                 <th>Agregar</th>
                             </tr>

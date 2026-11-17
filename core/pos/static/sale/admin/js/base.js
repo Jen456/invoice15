@@ -2,6 +2,20 @@
 (function () {
     'use strict';
 
+    // Precio CON IVA «0.00» (contrato «precios con IVA»): el que trae el dato o, en datos anteriores al cambio, el precio
+    // sin IVA × (1 + tarifa) con mitad hacia arriba a centavos (la conversión del catálogo). null si no es válido.
+    function conIva(texto, sinIva, tarifa) {
+        if (texto !== undefined && texto !== null && texto !== '') {
+            const m = /^(\d{1,6})(?:[.,](\d{1,2}))?$/.exec(String(texto).trim());
+            return m ? String(Number(m[1])) + '.' + ((m[2] || '') + '00').slice(0, 2) : null;
+        }
+        const precio = Number(sinIva), t = Number(tarifa);
+        if (sinIva === null || sinIva === '' || !Number.isFinite(precio) || precio < 0 ||
+            Math.abs(precio * 100 - Math.round(precio * 100)) > .00001 || !Number.isInteger(t) || t < 0 || t > 100) return null;
+        const a = 2 * Math.round(precio * 100) * (100 + t) + 100, c = (a - a % 200) / 200;
+        return c > 99999999 ? null : Math.floor(c / 100) + '.' + String(c % 100).padStart(2, '0');
+    }
+
     function preparar(detalles, precioEditable) {
         if (!Array.isArray(detalles) || !detalles.length) {
             throw new Error('No encontramos productos para copiar. Vuelve al listado y elige una factura de esta empresa.');
@@ -11,13 +25,12 @@
         const lineas = detalles.map(function (detalle) {
             const p = detalle.product || {};
             const cantidad = Number(detalle.cant), descuento = Number(detalle.dscto);
-            const original = Number(detalle.price), vigente = Number(p.price_current);
+            const original = conIva(detalle.precio_con_iva, detalle.price, detalle.tarifa);
+            const vigente = conIva(p.precio_con_iva, p.price_current, p.tarifa);
             const precio = precioEditable ? original : vigente;
             if (!Number.isSafeInteger(p.id) || p.id <= 0 || vistos.has(p.id) ||
                 !Number.isInteger(cantidad) || cantidad < 1 || cantidad > 999999 ||
-                !Number.isInteger(descuento) || descuento < 0 || descuento > 100 ||
-                !Number.isFinite(precio) || precio < 0 || precio > 999999.99 ||
-                Math.abs(precio * 100 - Math.round(precio * 100)) > .00001 ||
+                !Number.isInteger(descuento) || descuento < 0 || descuento > 100 || precio === null ||
                 !Number.isFinite(Number(p.stock)) || !Number.isFinite(Number(p.tarifa))) {
                 throw new Error('Una línea de la factura de origen necesita revisión. Crea una factura vacía y agrega sus productos desde el catálogo.');
             }
@@ -27,15 +40,18 @@
             if (p.inventoried && cantidad > Number(p.stock)) {
                 avisos.push(String(p.name) + ': copiaste ' + cantidad + ', pero hay ' + p.stock + ' en stock. Revisa la cantidad antes de emitir.');
             }
+            // La descripción escrita en la línea de origen se conserva (vacía → nombre del producto).
+            const descripcion = typeof detalle.descripcion === 'string' && detalle.descripcion.trim() ?
+                detalle.descripcion : String(p.name || '');
             // Lista explícita: nunca pasa el id del detalle, cliente, número, autorización, pagos ni archivos de origen.
             return {
                 id: p.id, code: String(p.code || ''), name: String(p.name || ''),
                 stock: Number(p.stock), inventoried: Boolean(p.inventoried), with_tax: Boolean(p.with_tax),
                 tarifa: Number(p.tarifa), nombre_tarifa: String(p.nombre_tarifa || ''),
-                cant: cantidad, price_current: precio, dscto: descuento, fp_base: true
+                cant: cantidad, precio_con_iva: precio, descripcion: descripcion, dscto: descuento, fp_base: true
             };
         });
-        if (preciosActualizados) avisos.push('Tu perfil usa el precio vigente del catálogo: se actualizaron ' + preciosActualizados + ' líneas.');
+        if (preciosActualizados) avisos.push('Tu perfil usa el precio vigente del catálogo (con IVA): se actualizaron ' + preciosActualizados + ' líneas.');
         if (impuestosActualizados) avisos.push('Se aplicaron las tarifas de IVA actuales del catálogo en ' + impuestosActualizados + ' líneas. Revisa los totales.');
         return {lineas: lineas, avisos: avisos};
     }

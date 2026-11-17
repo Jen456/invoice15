@@ -1,10 +1,5 @@
 .fp-sale-copy { max-width: 18rem; white-space: normal; }
 .fp-sale-copy:focus-visible { outline: 3px solid #163b50; outline-offset: -3px; }
-.fp-sale-editor #tblProducts .bootstrap-touchspin { display: flex; flex-wrap: nowrap; }
-.fp-sale-editor #tblProducts .bootstrap-touchspin > .form-control { flex: 1 1 0; width: 0 !important; min-width: 0; }
-.fp-sale-editor #tblProducts .bootstrap-touchspin .input-group-prepend,
-.fp-sale-editor #tblProducts .bootstrap-touchspin .input-group-append { flex: 0 0 auto; }
-.fp-sale-editor #tblProducts .bootstrap-touchspin .btn { min-width: 44px; }
 .fp-sale-base {
     margin-bottom: 1.5rem;
     padding: 1.15rem 1.25rem;
