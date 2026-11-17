@@ -118,6 +118,8 @@ class TestLineasInvalidas:
     @pytest.mark.parametrize('cambio, texto', [
         ({'precio_con_iva': '-1'}, 'El precio va de 0 a 999999,99'),
         ({'precio_con_iva': '10.005'}, 'El precio va de 0 a 999999,99'),
+        ({'precio_con_iva': '1.500'}, 'El precio va de 0 a 999999,99'),   # 1500 con punto de miles: no es 1,50
+        ({'precio_con_iva': '1.000'}, 'El precio va de 0 a 999999,99'),
         ({'precio_con_iva': 'NaN'}, 'El precio va de 0 a 999999,99'),
         ({'precio_con_iva': '1000000'}, 'El precio va de 0 a 999999,99'),
         ({'cant': 0}, 'La cantidad es un número entero'),

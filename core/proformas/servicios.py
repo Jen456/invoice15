@@ -277,6 +277,12 @@ def _decimal(valor):
     return numero if numero.is_finite() else None
 
 
+def _hasta_dos_decimales(numero):
+    """Un precio con a lo sumo 2 decimales ESCRITOS: «1.500» y «1.000» (puntos de miles, 1500 y 1000 para quien los
+    escribe) no valen 1,50 ni 1,00: se rechazan, como en la pantalla (fp-importes.js) y en el formulario del producto."""
+    return numero.as_tuple().exponent >= -2
+
+
 def _id(valor):
     numero = _entero(valor)
     if numero is None:
@@ -531,7 +537,7 @@ def _validar_lineas(datos, campos):
         if cant is None or not 1 <= cant <= MAX_CANTIDAD:
             propios.append(('cant', LINEAS['cant']))
         precio = _decimal(cruda.get('precio_con_iva'))
-        if precio is None or not Decimal('0') <= precio <= MAX_PRECIO or precio != precio.quantize(CENTAVO):
+        if precio is None or not Decimal('0') <= precio <= MAX_PRECIO or not _hasta_dos_decimales(precio):
             propios.append(('precio_con_iva', LINEAS['price']))
         dscto = _decimal(cruda.get('dscto') if cruda.get('dscto') not in ('', None) else 0)   # sin descuento = 0
         if dscto is None or dscto != dscto.to_integral_value() or not 0 <= dscto <= 100:

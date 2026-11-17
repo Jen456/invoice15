@@ -31,7 +31,7 @@ from decimal import Decimal
 from core.pos import precios_iva
 from core.pos.choices import NOMBRE_TARIFA_IVA, TARIFAS_IVA
 from core.proformas.servicios import (CENTAVO, LINEAS, MAX_CANTIDAD, MAX_IMPORTE, MAX_PRECIO, _decimal, _entero,
-                                      tarifa_de_producto)
+                                      _hasta_dos_decimales, tarifa_de_producto)
 
 SIN_LINEAS = 'Agrega al menos un producto.'
 PANTALLA_CAMBIO = precios_iva.PANTALLA_CAMBIO
@@ -81,7 +81,7 @@ def validar(crudas, tarifas=False):
         if cant is None or not 1 <= cant <= MAX_CANTIDAD:
             raise ErrorLineas(f'Línea {n} ({producto.name}): {LINEAS["cant"]}')
         precio = _decimal(cruda.get('precio_con_iva'))
-        if precio is None or not Decimal('0') <= precio <= MAX_PRECIO or precio != precio.quantize(CENTAVO):
+        if precio is None or not Decimal('0') <= precio <= MAX_PRECIO or not _hasta_dos_decimales(precio):
             raise ErrorLineas(f'Línea {n} ({producto.name}): {LINEAS["price"]}')
         dscto = _decimal(cruda.get('dscto') if cruda.get('dscto') not in ('', None) else 0)
         if dscto is None or dscto != dscto.to_integral_value() or not 0 <= dscto <= 100:

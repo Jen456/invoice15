@@ -152,6 +152,8 @@ class TestTotales:
         ({'cant': 1.5}, 'cant', servicios.LINEAS['cant']),
         ({'precio_con_iva': '-1.00'}, 'precio_con_iva', servicios.LINEAS['price']),
         ({'precio_con_iva': '10.005'}, 'precio_con_iva', servicios.LINEAS['price']),
+        ({'precio_con_iva': '1.500'}, 'precio_con_iva', servicios.LINEAS['price']),   # 1500 con punto de miles: no es 1,50
+        ({'precio_con_iva': '1.000'}, 'precio_con_iva', servicios.LINEAS['price']),
         ({'dscto': '12.5'}, 'dscto', servicios.LINEAS['dscto']),
         ({'dscto': 101}, 'dscto', servicios.LINEAS['dscto']),
         ({'descripcion': 'x' * 301}, 'descripcion', servicios.LINEAS['descripcion']),
