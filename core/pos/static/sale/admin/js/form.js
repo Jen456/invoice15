@@ -49,7 +49,7 @@ var sale = {
     calculateInvoice: function () {
         var calculos = [];
         this.detail.products.forEach(function (value) {
-            var r = fpImportes.linea({precio_con_iva: value.precio_con_iva, cant: value.cant, dscto: value.dscto,
+            var r = fpImportes.lineaSegura({precio_con_iva: value.precio_con_iva, cant: value.cant, dscto: value.dscto,
                 tarifa: sale.tarifaDe(value)});
             value.importes_validos = r !== null;
             value.excede_maximo = r !== null && r.total > sale.MAXIMO_CENTAVOS;

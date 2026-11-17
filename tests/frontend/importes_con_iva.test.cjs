@@ -46,6 +46,7 @@ test('máximos (999999,99 × 999999): exactos con BigInt; sin BigInt se rechazan
     assert.deepEqual(cifras(grande, grande.linea(L('999999.99', 999999, 33, 15))),
         ['582608107217.40', '87391216082.61', '669999323300.01', '329999666700.00']);
     assert.throws(() => api.crear(false).linea(L('999999.99', 999999, 0, 15)), RangeError);
+    assert.equal(api.crear(false).lineaSegura(L('999999.99', 999999, 0, 15)), null);   // la pantalla marca la línea
 });
 
 test('datos anteriores al cambio: precio sin IVA × (1 + tarifa), mitad hacia arriba', () => {

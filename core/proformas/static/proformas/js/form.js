@@ -43,7 +43,7 @@ var fpForm = {
     // Importes en centavos (contrato §1): T = precio con IVA × cantidad − descuento; base e IVA se derivan. null si algún
     // dato de la línea no es válido.
     importes: function (l) {
-        var r = fpImportes.linea({precio_con_iva: l.precio_con_iva, cant: l.cant, dscto: l.dscto, tarifa: l.tarifa});
+        var r = fpImportes.lineaSegura({precio_con_iva: l.precio_con_iva, cant: l.cant, dscto: l.dscto, tarifa: l.tarifa});
         if (r) r.grupo = l.nombre_tarifa || (r.tarifa + ' %');
         return r;
     },

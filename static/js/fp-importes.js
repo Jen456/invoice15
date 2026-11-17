@@ -109,9 +109,16 @@
             return r > MAX_CENTAVOS ? null : r;
         }
 
+        // Para las pantallas: como linea(), pero un importe que no cabe en un navegador sin BigInt da null (línea marcada)
+        // en vez de interrumpir el dibujo de la tabla.
+        function lineaSegura(datos) {
+            try { return linea(datos); } catch (e) { if (e instanceof RangeError) return null; throw e; }
+        }
+
         return {
             bigint: grande, centavos: centavos, dinero: dinero, numero: numero, entero: entero,
-            medioArriba: medioArriba, linea: linea, totales: totales, desdeSinIva: desdeSinIva, crear: crear
+            medioArriba: medioArriba, linea: linea, lineaSegura: lineaSegura, totales: totales, desdeSinIva: desdeSinIva,
+            crear: crear
         };
     }
 
