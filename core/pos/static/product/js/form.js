@@ -100,6 +100,16 @@ document.addEventListener('DOMContentLoaded', function (e) {
                         }
                     }
                 },
+                precio_con_iva: {
+                    validators: {
+                        notEmpty: {},
+                        numeric: {
+                            message: 'El valor no es un número',
+                            thousandsSeparator: '',
+                            decimalSeparator: '.'
+                        }
+                    }
+                },
                 image: {
                     validators: {
                         file: {
@@ -145,14 +155,6 @@ document.addEventListener('DOMContentLoaded', function (e) {
             };
             submit_with_formdata(args);
         });
-    if (campoVenta() !== 'pvp') {
-        fv.addField(campoVenta(), {
-            validators: {
-                notEmpty: {},
-                numeric: {message: 'El valor no es un número', thousandsSeparator: '', decimalSeparator: '.'}
-            }
-        });
-    }
 });
 
 $(function () {
@@ -190,7 +192,7 @@ $(function () {
     $('input[name="' + campoVenta() + '"]')
         .TouchSpin({
             min: 0.01,
-            max: 1000000,
+            max: campoVenta() === 'precio_con_iva' ? 999999.99 : 1000000,   // el máximo que guarda el precio con IVA
             step: 0.01,
             decimals: 2,
             boostat: 5,

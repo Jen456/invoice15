@@ -73,13 +73,17 @@
                     copy.querySelectorAll('script').forEach(e => e.remove());
                     copy.querySelectorAll('[id]').forEach(e => e.id = 'fp-quick-' + e.id);
                     copy.querySelectorAll('label[for]').forEach(e => e.htmlFor = 'fp-quick-' + e.htmlFor);
+                    // La ayuda del campo (p. ej. «Precio de venta (con IVA)») sigue enlazada a su texto, que también cambió de id.
+                    copy.querySelectorAll('[aria-describedby]').forEach(e => e.setAttribute('aria-describedby',
+                        e.getAttribute('aria-describedby').split(/\s+/).filter(Boolean).map(i => 'fp-quick-' + i).join(' ')));
                     copy.querySelectorAll('[autofocus]').forEach(e => e.removeAttribute('autofocus'));
                     // Selects nativos: no se ejecutan los scripts de la página descargada.
                     copy.querySelectorAll('.select2').forEach(e => e.classList.remove('select2'));
                     if (['name','code'].includes(control.name)) control.minLength = 2;
                     if (['price','pvp','precio_con_iva'].includes(control.name)) {
                         control.type = 'number'; control.inputMode = 'decimal'; control.step = '0.01';
-                        control.min = control.name === 'price' ? '0' : '0.01'; control.max = '1000000';
+                        control.min = control.name === 'price' ? '0' : '0.01';
+                        control.max = control.name === 'precio_con_iva' ? '999999.99' : '1000000';   // el máximo del servidor
                     }
                     if (control.name === 'inventoried') copy.querySelector('label').textContent = 'Controlar existencias de este producto';
                     (essentials.includes(control.name) ? fields : extras).append(copy);

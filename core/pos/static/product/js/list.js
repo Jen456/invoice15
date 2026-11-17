@@ -25,7 +25,7 @@ var product = {
                 {data: "image"},
                 {data: "barcode"},
                 {data: "price"},
-                {data: "pvp"},
+                {data: "precio_con_iva_catalogo"},
                 {data: "price_promotion"},
                 {data: "stock"},
                 {data: "id"},
@@ -56,10 +56,27 @@ var product = {
                     }
                 },
                 {
-                    targets: [-4, -5, -3],
+                    targets: [-5],
                     class: 'text-center',
                     render: function (data, type, row) {
                         return '$' + data.toFixed(2);
+                    }
+                },
+                {
+                    // Precios de venta CON IVA (contrato «precios con IVA»): el del catálogo y, si hay promoción vigente, el
+                    // de la promoción con IVA (el que llega a la factura). Texto con 2 decimales del servidor.
+                    targets: [-4],
+                    class: 'text-center',
+                    render: function (data, type, row) {
+                        return type === 'display' ? '$' + $('<div>').text(data).html() : Number(data);
+                    }
+                },
+                {
+                    targets: [-3],
+                    class: 'text-center',
+                    render: function (data, type, row) {
+                        var promocion = Number(row.price_promotion) > 0 ? row.precio_con_iva : '0.00';
+                        return type === 'display' ? '$' + $('<div>').text(promocion).html() : Number(promocion);
                     }
                 },
                 {
