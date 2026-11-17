@@ -37,9 +37,13 @@ var sale = {
     prepararLinea: function (linea) {
         // Lo que la tabla edita: precio con IVA (texto con 2 decimales), descripción (por defecto el nombre del producto),
         // cantidad y descuento enteros. Un precio que no se puede leer queda vacío (nunca 0,00 en silencio): la línea se
-        // marca y no se puede emitir hasta corregirlo.
-        var precio = this.precioConIva(linea);
-        linea.precio_con_iva = precio === null ? '' : precio;
+        // marca y no se puede emitir hasta corregirlo. Lo que la usuaria escribió y no vale («1.500», vacío) se conserva tal
+        // cual al redibujar (ordenar, quitar otra fila, cambiar la tarifa): nunca se sustituye por el precio sin IVA convertido.
+        if (!linea.precio_invalido) {
+            var precio = this.precioConIva(linea);
+            linea.precio_con_iva = precio === null ? '' : precio;
+            linea.precio_invalido = precio === null;
+        }
         if (typeof linea.descripcion !== 'string' || !linea.descripcion.trim()) linea.descripcion = String(linea.name || '');
         linea.descripcion = fpLineas.descripcion.limpiar(linea.descripcion).slice(0, fpLineas.descripcion.MAX);
         linea.cant = parseInt(linea.cant, 10) || 1;
@@ -883,7 +887,8 @@ $(function () {
 
     // Líneas: cantidad, precio con IVA y descuento se recalculan al escribir (sin redibujar: no se pierde el foco); al
     // salir de la casilla se corrige lo que no vale y se avisa en la misma fila. La lista sale.detail.products es la
-    // fuente de verdad: el orden de las filas es el orden que se envía.
+    // fuente de verdad: el orden de las filas es el orden que se envía. Un precio que no se puede leer no se corrige: la
+    // línea queda marcada con lo escrito y no se emite (nunca con lo que quedó a medio escribir: «1.500» no es 1,50).
     var tablaLineas = document.getElementById('tblProducts');
     function recalcular(indice) {
         sale.calculateInvoice();
@@ -893,6 +898,11 @@ $(function () {
         .off()
         .on('keypress', 'input[name="cant"]', function (e) {
             return validate_text_box({'event': e, 'type': 'numbers'});
+        })
+        .on('focusin', 'input[name="cant"]', function () {
+            // La cantidad al entrar: si al salir la casilla queda vacía o no vale, vuelve esta (no la que quedó a medio borrar).
+            var linea = sale.detail.products[sale.filaDe(this).indice];
+            if (linea) this.dataset.alEntrar = String(linea.cant);
         })
         .on('input', 'input[name="cant"]', function () {
             var f = sale.filaDe(this), linea = sale.detail.products[f.indice];
@@ -906,7 +916,7 @@ $(function () {
             var f = sale.filaDe(this), linea = sale.detail.products[f.indice], maximo = sale.maximoDe(linea);
             var n = /^\s*\d+\s*$/.test(this.value) ? parseInt(this.value, 10) : NaN, aviso = '';
             if (isNaN(n)) {
-                n = linea.cant;
+                n = /^\d+$/.test(this.dataset.alEntrar || '') ? parseInt(this.dataset.alEntrar, 10) : linea.cant;
                 aviso = 'La cantidad es un número entero de 1 a ' + maximo + '.';
             } else if (n < 1) {
                 n = 1;
@@ -917,7 +927,7 @@ $(function () {
                     'La cantidad máxima es ' + maximo + '.';
             }
             linea.cant = n;
-            this.value = String(n);
+            this.value = this.dataset.alEntrar = String(n);
             sale.avisarLinea(f.tr, aviso);
             recalcular(f.indice);
         })
@@ -925,21 +935,23 @@ $(function () {
             return (e.which || e.keyCode) === 44 || validate_text_box({'event': e, 'type': 'decimals'});   // coma o punto
         })
         .on('input', 'input[name="precio_linea"]', function () {
-            var f = sale.filaDe(this), c = fpImportes.centavos(String(this.value));
-            if (c === null) return;
-            sale.detail.products[f.indice].precio_con_iva = fpImportes.dinero(c);
+            var f = sale.filaDe(this), linea = sale.detail.products[f.indice], c = fpImportes.centavos(String(this.value));
+            linea.precio_invalido = c === null;
+            linea.precio_con_iva = c === null ? String(this.value) : fpImportes.dinero(c);
             sale.avisarLinea(f.tr, '');
             recalcular(f.indice);
         })
         .on('change', 'input[name="precio_linea"]', function () {
             var f = sale.filaDe(this), linea = sale.detail.products[f.indice], c = fpImportes.centavos(String(this.value));
-            if (c === null) {
-                sale.avisarLinea(f.tr, 'El precio con IVA va de 0 a 999999,99, con hasta 2 decimales.');
+            linea.precio_invalido = c === null;
+            if (c === null) {   // se queda lo escrito, la línea marcada y sin total: «Emitir» pide revisarla
+                linea.precio_con_iva = String(this.value);
+                sale.avisarLinea(f.tr, 'El precio con IVA va de 0 a 999999,99, con hasta 2 decimales y sin puntos de miles ' +
+                    '(por ejemplo, 1500 o 1500,50).');
             } else {
-                linea.precio_con_iva = fpImportes.dinero(c);
+                linea.precio_con_iva = this.value = fpImportes.dinero(c);
                 sale.avisarLinea(f.tr, '');
             }
-            this.value = linea.precio_con_iva;
             recalcular(f.indice);
         })
         .on('keypress', 'input[name="dscto_unitary"]', function (e) {
