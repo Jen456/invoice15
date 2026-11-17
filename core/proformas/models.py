@@ -151,6 +151,12 @@ class ProformaDetalle(TenantModel):
     total_dscto = models.DecimalField(max_digits=9, decimal_places=2, default=0, verbose_name='Valor del descuento')
     total = models.DecimalField(max_digits=9, decimal_places=2, default=0, verbose_name='Total')
     total_iva = models.DecimalField(max_digits=9, decimal_places=2, default=0, verbose_name='IVA')
+    # Precios con IVA (core/pos/precios_iva.py): el precio escrito con IVA y el unitario sin IVA de 6 decimales. NULL en las
+    # líneas anteriores, que siguen con calcular_linea_iva y su `price` sin IVA.
+    precio_con_iva = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True,
+                                         verbose_name='Precio unitario con IVA')
+    precio_unitario = models.DecimalField(max_digits=14, decimal_places=6, null=True, blank=True,
+                                          verbose_name='Precio unitario sin IVA (6 decimales)')
 
     class Meta:
         verbose_name = 'Línea de proforma'
@@ -173,14 +179,31 @@ class ProformaDetalle(TenantModel):
     def nombre_tarifa(self):
         return NOMBRE_TARIFA_IVA.get(self.codigo_porcentaje, self.codigo_porcentaje)
 
+    @property
+    def con_iva_incluido(self):
+        return self.precio_con_iva is not None
+
+    @property
+    def total_con_iva(self):
+        from core.pos.models import total_con_iva_de_linea
+        return total_con_iva_de_linea(self)
+
+    @property
+    def descuento_con_iva(self):
+        if self.precio_con_iva is None:
+            return None
+        return (Decimal(str(self.precio_con_iva)) * self.cant - self.total_con_iva).quantize(Decimal('0.01'))
+
 
 class BorradorFactura(TenantModel):
     """Factura en borrador de una proforma («Convertir en factura»). Una por proforma (OneToOne): convertir otra vez o con
     doble clic reabre la misma. No tiene número, cupo, stock, cuenta por cobrar ni XML: se emite solo con «Emitir factura»
     en la venta, que lo borra en su misma transacción (marcar_facturada). Descartarlo deja la proforma como estaba.
 
-    `lineas`: [{product, nombre, cant, price ("10.00"), dscto (porcentaje entero), codigo_porcentaje}] en el orden de la
-    factura. `codigo_porcentaje` es la tarifa de IVA elegida para ESTA operación (tabla 17); nunca cambia el producto."""
+    `lineas`: [{product, nombre, cant, precio_con_iva ("1000.00"), price (sin IVA, "869.57"), dscto (porcentaje entero),
+    codigo_porcentaje, descripcion}] en el orden de la factura. `codigo_porcentaje` es la tarifa de IVA elegida para ESTA
+    operación (tabla 17); nunca cambia el producto. Los borradores anteriores a los precios con IVA no tienen
+    precio_con_iva ni descripcion: se derivan de `price` (sin IVA) y del nombre al abrirlos (core/proformas/servicios.py)."""
     proforma = models.OneToOneField(Proforma, on_delete=models.CASCADE, related_name='borrador_factura',
                                     verbose_name='Proforma')
     cliente = models.ForeignKey('pos.Client', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',

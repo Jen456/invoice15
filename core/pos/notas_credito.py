@@ -2,8 +2,8 @@
 
 - Solo sobre facturas autorizadas, del mismo ambiente y que no sean a consumidor final (desde 2026 el
   SRI no admite notas de crédito sobre ellas, Res. NAC-DGERCGC25-00000014).
-- Cada línea no supera lo vendido menos lo ya acreditado; precio, descuento y tarifa salen de la
-  factura, no del navegador. La factura se bloquea mientras se crea la nota: dos a la vez no se pisan.
+- Cada línea no supera lo vendido menos lo ya acreditado; precio (con IVA en las líneas nuevas), descripción, descuento y
+  tarifa salen de la factura, no del navegador. La factura se bloquea mientras se crea la nota: dos a la vez no se pisan.
 - Motivo obligatorio. Solo vuelve al stock lo que se inventaría.
 - La factura pasa a «Anulado» cuando las notas autorizadas cubren su total.
 - Etapa 2 (O2): una factura marcada «Anulado en el SRI» no admite notas nuevas, y las notas anuladas en el SRI no cuentan
@@ -93,8 +93,11 @@ def crear(company, venta_id, lineas, motivo, punto=None):
     nota.voucher_number_full = nota.get_voucher_number_full()
     nota.save()
     for detalle, cantidad in a_acreditar:
+        # Precio con IVA y descripción de la línea de la factura (NULL / '' en las anteriores, que siguen igual): una
+        # devolución parcial usa el mismo cálculo de la línea con la cantidad devuelta (calculate_detail).
         CreditNoteDetail.objects.create(credit_note=nota, sale_detail=detalle, product=detalle.product, cant=cantidad,
-                                        price=detalle.price, dscto=detalle.dscto)
+                                        price=detalle.price, dscto=detalle.dscto, precio_con_iva=detalle.precio_con_iva,
+                                        descripcion=detalle.descripcion)
         if detalle.product.inventoried:   # devolución de mercadería: con F(), sin reescribir el producto ni pisar otra venta
             from django.db.models import F
 

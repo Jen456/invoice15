@@ -12,7 +12,7 @@ from barcode import writer
 from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
 from django.core.files.base import ContentFile
-from django.core.validators import RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models, transaction
 from django.db.models import FloatField
 from django.db.models import Sum
@@ -214,7 +214,12 @@ class Product(TenantModel):
     description = models.CharField(max_length=500, null=True, blank=True, verbose_name='Descripción')
     category = models.ForeignKey(Category, on_delete=models.PROTECT, verbose_name='Categoría')
     price = models.DecimalField(max_digits=9, decimal_places=2, default=0.00, verbose_name='Precio de Compra')
+    # Precios con IVA (core/pos/precios_iva.py): el catálogo se escribe con IVA incluido y `pvp` (sin IVA) se deriva al
+    # guardar, para quien lo lee (utilidad, reportes, promociones). NULL = fila escrita por una versión anterior (o solo con
+    # pvp): manda pvp y precio_con_iva_catalogo() lo deriva.
     pvp = models.DecimalField(max_digits=9, decimal_places=2, default=0.00, verbose_name='Precio de Venta')
+    precio_con_iva = models.DecimalField(max_digits=9, decimal_places=2, null=True, verbose_name='Precio de venta (con IVA)',
+                                         validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('999999.99'))])
     image = models.ImageField(upload_to=CompanyPath('productos'), null=True, blank=True, verbose_name='Imagen')
     barcode = models.ImageField(upload_to=CompanyPath('codigos'), null=True, blank=True, verbose_name='Código de barra')
     inventoried = models.BooleanField(default=True, verbose_name='¿Es inventariado?')
@@ -244,10 +249,42 @@ class Product(TenantModel):
         return 0.00
 
     def get_price_current(self):
+        """Precio vigente SIN IVA (promoción o pvp). Se mantiene por compatibilidad; la venta usa precio_con_iva_actual()."""
         price_promotion = self.get_price_promotion()
         if price_promotion > 0:
             return price_promotion
         return self.pvp
+
+    def tarifa_porcentaje(self):
+        """Porcentaje entero de IVA del producto (15, 5, 0…), con la misma regla que Sale.calculate_detail."""
+        from core.pos.precios_iva import tarifa_de_codigo
+        return tarifa_de_codigo(self.tarifa_iva or ('4' if self.with_tax else '0'))
+
+    @staticmethod
+    def _precio_vigente(pvp, precio_con_iva, tarifa):
+        """Precio con IVA que vale para un pvp: el guardado si de él sale ese pvp; si no (NULL, o pvp cambiado por una
+        versión anterior, una importación o SQL directo), el derivado de pvp. Así nunca se cobra un precio viejo."""
+        from core.pos.precios_iva import base_unitaria, con_iva
+        pvp = Decimal(str(pvp or 0)).quantize(CENTAVO)
+        if precio_con_iva is not None and base_unitaria(precio_con_iva, tarifa) == pvp:
+            return Decimal(str(precio_con_iva)).quantize(CENTAVO)
+        return con_iva(pvp, tarifa)
+
+    def precio_con_iva_catalogo(self):
+        """Precio de venta del catálogo con IVA (Decimal, 2 decimales)."""
+        return self._precio_vigente(self.pvp, self.precio_con_iva, self.tarifa_porcentaje())
+
+    def precio_con_iva_promocion(self):
+        """Precio de la promoción vigente con IVA, o None. La promoción guarda su precio final sin IVA (calculado sobre
+        pvp): con IVA es medio_arriba(precio final × (100 + t), 100), lo que cobraba la factura antes de este cambio."""
+        from core.pos.precios_iva import con_iva
+        promocion = Decimal(str(self.get_price_promotion()))
+        return con_iva(promocion.quantize(CENTAVO, ROUND_HALF_UP), self.tarifa_porcentaje()) if promocion > 0 else None
+
+    def precio_con_iva_actual(self):
+        """Precio con IVA con que sale hoy en la venta: el de la promoción vigente o el del catálogo."""
+        promocion = self.precio_con_iva_promocion()
+        return promocion if promocion is not None else self.precio_con_iva_catalogo()
 
     def get_image(self):
         if self.image:
@@ -278,12 +315,42 @@ class Product(TenantModel):
         item['price_promotion'] = float(self.get_price_promotion())
         item['price_current'] = float(self.get_price_current())
         item['pvp'] = float(self.pvp)
+        # Precios con IVA (contrato común §2): texto con 2 decimales. `precio_con_iva` es el que usa la venta (promoción
+        # incluida); `precio_con_iva_catalogo`, el del catálogo. `descripcion` es la de una línea nueva: el nombre.
+        item['precio_con_iva'] = f'{self.precio_con_iva_actual():.2f}'
+        item['precio_con_iva_catalogo'] = f'{self.precio_con_iva_catalogo():.2f}'
+        item['descripcion'] = self.name
         item['image'] = self.get_image()
         item['barcode'] = self.get_barcode()
         item['tarifa_iva'] = self.tarifa_iva or ('4' if self.with_tax else '0')
         item['tarifa'] = float(PORCENTAJE_IVA.get(item['tarifa_iva'], 0))
         item['nombre_tarifa'] = NOMBRE_TARIFA_IVA.get(item['tarifa_iva'], '')
         return item
+
+    def _sincronizar_precios(self, anterior):
+        """pvp (sin IVA) y precio_con_iva coherentes: pvp = medio_arriba(P × 100, 100 + t).
+
+        - Quien escribe el precio con IVA (formulario) manda: pvp se deriva.
+        - Quien escribe solo pvp (versión anterior, importación del Excel o del facturero, SQL) manda si no tocó el precio con
+          IVA: este se deriva de pvp.
+        - Sin cambio de precios (p. ej. solo la tarifa): se conserva el precio con IVA vigente y se recalcula pvp."""
+        from core.pos.precios_iva import base_unitaria, con_iva, tarifa_de_codigo
+        tarifa = self.tarifa_porcentaje()
+        pvp = Decimal(str(self.pvp or 0)).quantize(CENTAVO, ROUND_HALF_UP)
+        con = None if self.precio_con_iva is None else Decimal(str(self.precio_con_iva)).quantize(CENTAVO, ROUND_HALF_UP)
+        if anterior is None:                                    # alta
+            precio = con if con is not None else con_iva(pvp, tarifa)
+        else:
+            pvp_antes, con_antes, codigo_antes, con_impuesto_antes = anterior
+            if con is not None and con != con_antes:            # escribió el precio con IVA
+                precio = con
+            elif pvp != pvp_antes:                              # escribió solo pvp
+                precio = con_iva(pvp, tarifa)
+            else:                                               # sin cambio de precio: se conserva el vigente
+                precio = self._precio_vigente(pvp_antes, con_antes,
+                                              tarifa_de_codigo(codigo_antes or ('4' if con_impuesto_antes else '0')))
+        self.precio_con_iva = precio
+        self.pvp = base_unitaria(precio, tarifa)
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
@@ -292,9 +359,12 @@ class Product(TenantModel):
             self.with_tax = PORCENTAJE_IVA.get(self.tarifa_iva, Decimal('0')) > 0
         else:
             self.tarifa_iva = '4' if self.with_tax else '0'
+        guardado = (type(self).all_companies.filter(pk=self.pk)
+                    .values_list('code', 'barcode', 'pvp', 'precio_con_iva', 'tarifa_iva', 'with_tax').first() if self.pk else None)
+        self._sincronizar_precios(guardado[2:] if guardado else None)   # pvp y precio con IVA coherentes
         # La imagen del código de barras se hace al crear el producto, al cambiar su código o si falta el archivo; antes se
         # rehacía en cada guardado (cada venta o compra mueve el stock) y la anterior quedaba huérfana.
-        anterior = type(self).all_companies.filter(pk=self.pk).values_list('code', 'barcode').first() if self.pk else None
+        anterior = guardado[:2] if guardado else None
         if anterior is None or anterior[0] != self.code or not self.barcode or not self.barcode.storage.exists(self.barcode.name):
             reemplazada = anterior[1] if anterior else None
             self.generate_barcode()
@@ -792,6 +862,65 @@ def calcular_linea_iva(detalle, codigo):
     detalle.total_iva = ((subtotal - descuento) * porcentaje / 100).quantize(CENTAVO, ROUND_HALF_UP)
 
 
+def con_precio_con_iva(detalle):
+    """¿La línea se guardó con el precio con IVA (este cambio)? Las anteriores tienen precio_con_iva NULL."""
+    return getattr(detalle, 'precio_con_iva', None) is not None
+
+
+def calcular_linea_con_iva(detalle, codigo):
+    """Importes de una línea con precio con IVA (core/pos/precios_iva.py, contrato §1) en los mismos campos que
+    calcular_linea_iva, para que impuestos_por_tarifa, totales_de_lineas, el XML y el RIDE no cambien:
+    total = base (precioTotalSinImpuesto), total_iva = T − base, subtotal y total_dscto sin IVA,
+    price_with_vat = precio con IVA, price = precio unitario sin IVA a 2 decimales y precio_unitario con 6."""
+    from core.pos import precios_iva
+    linea = precios_iva.calcular(detalle.precio_con_iva, detalle.cant, precios_iva.dscto_entero(detalle.dscto),
+                                 precios_iva.tarifa_de_codigo(codigo))
+    detalle.codigo_porcentaje = codigo
+    detalle.iva = Decimal(linea.tarifa) / 100
+    detalle.precio_con_iva = linea.precio_con_iva
+    detalle.price_with_vat = linea.precio_con_iva
+    detalle.precio_unitario = linea.precio_unitario
+    detalle.price = linea.precio_unitario.quantize(CENTAVO, ROUND_HALF_UP)
+    detalle.subtotal = linea.subtotal_sin_iva
+    detalle.total_dscto = linea.descuento_sin_iva
+    detalle.total = linea.base
+    detalle.total_iva = linea.iva
+    return linea
+
+
+def calcular_linea(detalle, codigo):
+    """La regla de cada línea: con precio con IVA, el contrato §1; las anteriores, calcular_linea_iva de siempre."""
+    if con_precio_con_iva(detalle):
+        return calcular_linea_con_iva(detalle, codigo)
+    return calcular_linea_iva(detalle, codigo)
+
+
+def total_con_iva_de_linea(detalle):
+    """T de la línea (lo que paga el cliente): base + IVA, también en las líneas anteriores."""
+    return (Decimal(str(detalle.total)) + Decimal(str(detalle.total_iva))).quantize(CENTAVO)
+
+
+def precio_con_iva_de_linea(detalle):
+    """Precio unitario con IVA de una línea guardada: el escrito o, en las anteriores, el que calculó calcular_linea_iva."""
+    valor = detalle.precio_con_iva if con_precio_con_iva(detalle) else detalle.price_with_vat
+    return Decimal(str(valor or 0)).quantize(CENTAVO)
+
+
+def descripcion_de_linea(detalle):
+    """Descripción de la línea: la escrita en la venta o, en las anteriores (''), el nombre del producto."""
+    return getattr(detalle, 'descripcion', '') or (detalle.product.name if detalle.product_id else '')
+
+
+def json_de_linea(detalle):
+    """Campos de una línea guardada para la pantalla (contrato §2), como texto: precio con IVA, descripción, total con IVA
+    y precio unitario sin IVA (6 decimales en las líneas nuevas, el de siempre en las anteriores)."""
+    from core.pos.precios_iva import texto_decimal
+    unitario = detalle.precio_unitario if con_precio_con_iva(detalle) and detalle.precio_unitario is not None else detalle.price
+    return {'precio_con_iva': f'{precio_con_iva_de_linea(detalle):.2f}', 'descripcion': descripcion_de_linea(detalle),
+            'total_con_iva': f'{total_con_iva_de_linea(detalle):.2f}', 'precio_unitario': texto_decimal(unitario),
+            'con_iva_incluido': con_precio_con_iva(detalle)}
+
+
 def codigo_de_linea(detalle):
     """Tarifa guardada en la línea; las líneas anteriores al cambio se infieren de «¿Se cobra impuesto?»."""
     return detalle.codigo_porcentaje or ('4' if detalle.product_id and detalle.product.with_tax else '0')
@@ -845,6 +974,23 @@ def xml_impuesto_de_linea(nodo, detalle):
     ElementTree.SubElement(impuesto, 'tarifa').text = f'{PORCENTAJE_IVA.get(codigo, Decimal(0)):.2f}'
     ElementTree.SubElement(impuesto, 'baseImponible').text = f'{Decimal(str(detalle.total)):.2f}'
     ElementTree.SubElement(impuesto, 'valor').text = f'{iva_de_linea(detalle, codigo):.2f}'
+
+
+def xml_cantidades_de_linea(nodo, detalle):
+    """descripcion, cantidad, precioUnitario, descuento y precioTotalSinImpuesto de un <detalle> (factura y nota de crédito).
+    Líneas con precio con IVA (1.1.0): la descripción de la línea y el precio unitario sin IVA con hasta 6 decimales, de
+    modo que cantidad × precioUnitario − descuento = precioTotalSinImpuesto al centavo. Las anteriores, como siempre."""
+    if con_precio_con_iva(detalle):
+        from core.pos.precios_iva import texto_decimal
+        ElementTree.SubElement(nodo, 'descripcion').text = descripcion_de_linea(detalle)
+        ElementTree.SubElement(nodo, 'cantidad').text = texto_decimal(detalle.cant)
+        ElementTree.SubElement(nodo, 'precioUnitario').text = texto_decimal(detalle.precio_unitario)
+    else:
+        ElementTree.SubElement(nodo, 'descripcion').text = detalle.product.name
+        ElementTree.SubElement(nodo, 'cantidad').text = f'{detalle.cant:.2f}'
+        ElementTree.SubElement(nodo, 'precioUnitario').text = f'{detalle.price:.2f}'
+    ElementTree.SubElement(nodo, 'descuento').text = f'{detalle.total_dscto:.2f}'
+    ElementTree.SubElement(nodo, 'precioTotalSinImpuesto').text = f'{detalle.total:.2f}'
 
 
 def info_tributaria_final(company, info_tributaria):
@@ -1006,7 +1152,11 @@ class Sale(TenantModel):
     def generate_xml(self):
         fecha_emision = self.emission_date or timezone.localdate()   # la misma fecha (de Ecuador) para la clave y fechaEmision
         access_key = self.access_code or SRI().create_access_key(self, fecha_emision)
-        root = ElementTree.Element('factura', id="comprobante", version="1.0.0")
+        detalles = list(self.saledetail_set.select_related('product'))
+        # Precios con IVA: versión 1.1.0 (precioUnitario y cantidad con hasta 6 decimales). Las facturas anteriores (líneas
+        # sin precio con IVA) siguen generando su XML 1.0.0 de siempre, byte a byte.
+        con_iva = any(con_precio_con_iva(d) for d in detalles)
+        root = ElementTree.Element('factura', id="comprobante", version="1.1.0" if con_iva else "1.0.0")
         # infoTributaria
         xml_tax_info = ElementTree.SubElement(root, 'infoTributaria')
         ElementTree.SubElement(xml_tax_info, 'ambiente').text = str(self.environment_type)
@@ -1033,7 +1183,7 @@ class Sale(TenantModel):
         ElementTree.SubElement(xml_info_invoice, 'totalSinImpuestos').text = f'{self.get_full_subtotal():.2f}'
         ElementTree.SubElement(xml_info_invoice, 'totalDescuento').text = f'{self.total_dscto:.2f}'
         # totalConImpuestos: un totalImpuesto por tarifa de IVA de las líneas
-        xml_total_con_impuestos(ElementTree.SubElement(xml_info_invoice, 'totalConImpuestos'), self.saledetail_set.select_related('product'))
+        xml_total_con_impuestos(ElementTree.SubElement(xml_info_invoice, 'totalConImpuestos'), detalles)
         ElementTree.SubElement(xml_info_invoice, 'propina').text = '0.00'
         ElementTree.SubElement(xml_info_invoice, 'importeTotal').text = f'{self.total:.2f}'
         ElementTree.SubElement(xml_info_invoice, 'moneda').text = 'DOLAR'
@@ -1046,14 +1196,10 @@ class Sale(TenantModel):
         ElementTree.SubElement(xml_payment, 'unidadTiempo').text = 'dias'
         # detalles
         xml_details = ElementTree.SubElement(root, 'detalles')
-        for detail in self.saledetail_set.select_related('product'):
+        for detail in detalles:
             xml_detail = ElementTree.SubElement(xml_details, 'detalle')
             ElementTree.SubElement(xml_detail, 'codigoPrincipal').text = detail.product.code
-            ElementTree.SubElement(xml_detail, 'descripcion').text = detail.product.name
-            ElementTree.SubElement(xml_detail, 'cantidad').text = f'{detail.cant:.2f}'
-            ElementTree.SubElement(xml_detail, 'precioUnitario').text = f'{detail.price:.2f}'
-            ElementTree.SubElement(xml_detail, 'descuento').text = f'{detail.total_dscto:.2f}'
-            ElementTree.SubElement(xml_detail, 'precioTotalSinImpuesto').text = f'{detail.total:.2f}'
+            xml_cantidades_de_linea(xml_detail, detail)
             xml_impuesto_de_linea(xml_detail, detail)
         # infoAdicional
         informacion_adicional(root, [(i.get('name'), i.get('value')) for i in (self.additional_info or [])])
@@ -1099,7 +1245,8 @@ class Sale(TenantModel):
     def calculate_detail(self):
         """Cada línea con la tarifa de su producto, fijada al vender (cambiar el producto después no altera la factura)."""
         for detail in self.saledetail_set.select_related('product'):
-            calcular_linea_iva(detail, detail.codigo_porcentaje or detail.product.tarifa_iva or ('4' if detail.product.with_tax else '0'))
+            # Con precio con IVA (líneas nuevas) el contrato §1; las anteriores, calcular_linea_iva de siempre.
+            calcular_linea(detail, detail.codigo_porcentaje or detail.product.tarifa_iva or ('4' if detail.product.with_tax else '0'))
             detail.save()
 
     def calculate_invoice(self):
@@ -1172,6 +1319,13 @@ class SaleDetail(TenantModel):
     total_dscto = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
     total = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
     codigo_porcentaje = models.CharField(max_length=2, default='', blank=True, verbose_name='Tarifa de IVA (código)')
+    # Precios con IVA (core/pos/precios_iva.py). Campos aditivos: NULL / '' en las líneas anteriores, que siguen con
+    # calcular_linea_iva; db_default para que un INSERT de la versión anterior (sin estas columnas) siga valiendo.
+    precio_con_iva = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True,
+                                         verbose_name='Precio unitario con IVA')
+    precio_unitario = models.DecimalField(max_digits=14, decimal_places=6, null=True, blank=True,
+                                          verbose_name='Precio unitario sin IVA (XML, 6 decimales)')
+    descripcion = models.CharField(max_length=300, default='', db_default='', blank=True, verbose_name='Descripción')
 
     def __str__(self):
         return self.product.name
@@ -1179,9 +1333,46 @@ class SaleDetail(TenantModel):
     def get_iva_percent(self):
         return int(self.iva * 100)
 
+    @property
+    def con_iva_incluido(self):
+        """Línea con precio con IVA (RIDE y ticket la muestran con su descripción y precio unitario de 6 decimales)."""
+        return con_precio_con_iva(self)
+
+    @property
+    def descripcion_linea(self):
+        return descripcion_de_linea(self)
+
+    @property
+    def total_con_iva(self):
+        return total_con_iva_de_linea(self)
+
+    @property
+    def descuento_con_iva(self):
+        """Descuento con IVA de la línea (bruto − T); solo en líneas con precio con IVA."""
+        if not con_precio_con_iva(self):
+            return None
+        return (Decimal(str(self.precio_con_iva)) * self.cant - self.total_con_iva).quantize(CENTAVO)
+
+    @property
+    def precio_unitario_texto(self):
+        """Precio unitario sin IVA como en el XML (mínimo 2 decimales, hasta 6)."""
+        from core.pos.precios_iva import texto_decimal
+        return texto_decimal(self.precio_unitario if con_precio_con_iva(self) and self.precio_unitario is not None else self.price)
+
+    @property
+    def decimales_precio_unitario(self):
+        """Decimales del precio unitario en el XML (2 a 6): el RIDE lo escribe igual (floatformat, con coma)."""
+        return len(self.precio_unitario_texto.partition('.')[2])
+
+    @property
+    def dscto_porcentaje(self):
+        from core.pos.precios_iva import dscto_entero
+        return dscto_entero(self.dscto)
+
     def toJSON(self, args=None):
-        item = model_to_dict(self, exclude=['sale'])
+        item = model_to_dict(self, exclude=['sale', 'precio_con_iva', 'precio_unitario'])
         item['product'] = self.product.toJSON()
+        item.update(json_de_linea(self))   # precio_con_iva, descripcion, total_con_iva, precio_unitario (contrato §2)
         item['price'] = float(self.price)
         item['price_with_vat'] = float(self.price_with_vat)
         item['subtotal'] = float(self.subtotal)
@@ -1765,11 +1956,7 @@ class CreditNote(TenantModel):
         for detail in self.creditnotedetail_set.select_related('product', 'sale_detail__product'):
             xml_detail = ElementTree.SubElement(xml_details, 'detalle')
             ElementTree.SubElement(xml_detail, 'codigoInterno').text = detail.product.code
-            ElementTree.SubElement(xml_detail, 'descripcion').text = detail.product.name
-            ElementTree.SubElement(xml_detail, 'cantidad').text = f'{detail.cant:.2f}'
-            ElementTree.SubElement(xml_detail, 'precioUnitario').text = f'{detail.price:.2f}'
-            ElementTree.SubElement(xml_detail, 'descuento').text = f'{detail.total_dscto:.2f}'
-            ElementTree.SubElement(xml_detail, 'precioTotalSinImpuesto').text = f'{detail.total:.2f}'
+            xml_cantidades_de_linea(xml_detail, detail)   # las anteriores, como siempre; con precio con IVA, 6 decimales
             xml_impuesto_de_linea(xml_detail, detail)
         # infoAdicional
         informacion_adicional(root, [('dirCliente', self.sale.client.address), ('telfCliente', self.sale.client.mobile),
@@ -1817,7 +2004,8 @@ class CreditNote(TenantModel):
     def calculate_detail(self):
         """Cada línea con la tarifa de la línea de la factura que acredita (no la del producto hoy)."""
         for detail in self.creditnotedetail_set.select_related('product', 'sale_detail__product'):
-            calcular_linea_iva(detail, detail.codigo_porcentaje or codigo_de_linea(detail.sale_detail))
+            # Línea de una factura con precio con IVA: el mismo cálculo (contrato §1) con la cantidad devuelta.
+            calcular_linea(detail, detail.codigo_porcentaje or codigo_de_linea(detail.sale_detail))
             detail.save()
 
     def calculate_invoice(self):
@@ -1880,12 +2068,27 @@ class CreditNoteDetail(TenantModel):
     total_dscto = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
     total = models.DecimalField(max_digits=9, decimal_places=2, default=0.00)
     codigo_porcentaje = models.CharField(max_length=2, default='', blank=True, verbose_name='Tarifa de IVA (código)')
+    # Copia de la línea de la factura con precio con IVA (NULL / '' en las anteriores, que siguen con calcular_linea_iva).
+    precio_con_iva = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True,
+                                         verbose_name='Precio unitario con IVA')
+    precio_unitario = models.DecimalField(max_digits=14, decimal_places=6, null=True, blank=True,
+                                          verbose_name='Precio unitario sin IVA (XML, 6 decimales)')
+    descripcion = models.CharField(max_length=300, default='', db_default='', blank=True, verbose_name='Descripción')
 
     def __str__(self):
         return self.product.name
 
+    con_iva_incluido = SaleDetail.con_iva_incluido
+    descripcion_linea = SaleDetail.descripcion_linea
+    total_con_iva = SaleDetail.total_con_iva
+    descuento_con_iva = SaleDetail.descuento_con_iva
+    precio_unitario_texto = SaleDetail.precio_unitario_texto
+    decimales_precio_unitario = SaleDetail.decimales_precio_unitario
+    dscto_porcentaje = SaleDetail.dscto_porcentaje
+
     def toJSON(self):
-        item = model_to_dict(self)
+        item = model_to_dict(self, exclude=['precio_con_iva', 'precio_unitario'])
+        item.update(json_de_linea(self))
         item['date_joined'] = self.date_joined.strftime('%Y-%m-%d')
         item['sale_detail'] = self.sale_detail.toJSON()
         item['product'] = self.product.toJSON()
